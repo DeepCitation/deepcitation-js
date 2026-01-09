@@ -25,6 +25,9 @@
     "scripts": {
         "build": "rimraf lib && tsc",
         "build:watch": "rimraf lib && tsc --watch",
+        "docs": "rimraf docs && typedoc",
+        "docs:watch": "typedoc --watch",
+        "docs:serve": "npm run docs && npx http-server docs -p 8080 -o",
         "lint": "eslint src --max-warnings 0",
         "lint:fix": "eslint src --fix",
         "type-check": "tsc --noEmit",
@@ -68,6 +71,8 @@
         "react-dom": "19.2.3",
         "rimraf": "^5.0.5",
         "ts-jest": "^29.4.6",
+        "typedoc": "^0.28.15",
+        "typedoc-plugin-missing-exports": "^4.1.2",
         "typescript": "^5.9.3",
         "vite": "^7.3.0"
     },

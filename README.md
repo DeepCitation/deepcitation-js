@@ -7,8 +7,9 @@
 [![npm version](https://img.shields.io/npm/v/@deepcitation/deepcitation-js.svg)](https://www.npmjs.com/package/@deepcitation/deepcitation-js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![Documentation](https://img.shields.io/badge/docs-API%20Reference-blue)](https://deepcitation.github.io/deepcitation-js/)
 
-[Documentation](https://deepcitation.com/docs) · [Get Free API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Discord](https://discord.gg/deepcitation)
+[API Documentation](https://deepcitation.github.io/deepcitation-js/) · [Get Free API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Discord](https://discord.gg/deepcitation)
 
 </div>
 

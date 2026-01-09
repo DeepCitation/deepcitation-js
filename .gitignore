@@ -4,6 +4,10 @@ node_modules
 lib/**/*
 *.tsbuildinfo
 
+# Documentation output
+docs/
+.typedoc
+
 
 /playwright/.cache/
 /test-results/

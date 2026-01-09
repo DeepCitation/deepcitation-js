@@ -1,0 +1,54 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/index.ts", "./src/react/index.ts"],
+  "entryPointStrategy": "expand",
+  "out": "docs",
+  "plugin": ["typedoc-plugin-missing-exports"],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "exclude": [
+    "**/node_modules/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ],
+  "readme": "README.md",
+  "includeVersion": true,
+  "name": "DeepCitation JavaScript SDK",
+  "navigationLinks": {
+    "GitHub": "https://github.com/deepcitation/deepcitation-js",
+    "NPM": "https://www.npmjs.com/package/@deepcitation/deepcitation-js",
+    "API Documentation": "https://api.deepcitation.com"
+  },
+  "sidebarLinks": {
+    "DeepCitation": "https://deepcitation.com",
+    "Report an Issue": "https://github.com/deepcitation/deepcitation-js/issues"
+  },
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Main",
+    "React Components",
+    "Types",
+    "Utilities",
+    "*"
+  ],
+  "sort": ["source-order", "required-first"],
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "gitRevision": "main",
+  "hideGenerator": true,
+  "searchInComments": true,
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  }
+}
