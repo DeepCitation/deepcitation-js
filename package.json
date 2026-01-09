@@ -25,6 +25,9 @@
     "scripts": {
         "build": "rimraf lib && tsc",
         "build:watch": "rimraf lib && tsc --watch",
+        "lint": "eslint src --max-warnings 0",
+        "lint:fix": "eslint src --fix",
+        "type-check": "tsc --noEmit",
         "test": "bun test ./src/__tests__/*.test.ts ./src/__tests__/*.test.tsx",
         "test:jest": "jest",
         "test:watch": "jest --watch",
