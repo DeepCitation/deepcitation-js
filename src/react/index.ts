@@ -47,3 +47,28 @@ export {
   type CitationVariant,
   type CitationComponentProps,
 } from "./CitationComponent.js";
+
+// Primitives - Composable building blocks
+export {
+  Citation,
+  CitationRoot,
+  CitationTrigger,
+  CitationBracket,
+  CitationNumber,
+  CitationValue,
+  CitationIndicator,
+  CitationStatusComponent,
+  CitationPhrase,
+  CitationPage,
+  useCitationContext,
+  useCitationContextSafe,
+  type CitationRootProps,
+  type CitationTriggerProps,
+  type CitationBracketProps,
+  type CitationNumberProps,
+  type CitationValueProps,
+  type CitationIndicatorProps,
+  type CitationStatusProps,
+  type CitationPhraseProps,
+  type CitationPageProps,
+} from "./primitives.js";

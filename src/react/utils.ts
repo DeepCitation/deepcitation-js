@@ -80,3 +80,6 @@ export function classNames(...classes: (string | undefined | null | false)[]): s
  */
 export const CITATION_X_PADDING = 4;
 export const CITATION_Y_PADDING = 1;
+
+// Re-export cn utility for Tailwind class merging
+export { cn } from "./cn.js";
