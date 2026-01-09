@@ -1,0 +1,57 @@
+# Source files (lib/ is the published output)
+src/
+!src/react/styles.css
+
+# Test files and directories
+__tests__/
+__mocks__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+test-results/
+playwright-report/
+blob-report/
+test-screenshots/
+cleanup-failure-*.png
+test-failure-*.png
+*.test.png
+*.spec.png
+
+# Config files
+tsconfig.json
+tsconfig.jest.json
+tsconfig.tsbuildinfo
+jest.config.cjs
+jest.setup.ts
+eslint.config.js
+playwright-ct.config.ts
+happydom.setup.ts
+bunfig.toml
+
+# Build artifacts
+node_modules/
+bun.lock
+
+# Playwright
+playwright/
+
+# Development files
+CLAUDE.md
+llms.txt
+.gitignore
+.vscode/
+
+# Editor/IDE
+*.swp
+*.swo
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Bundle analysis
+bundle-stats*
+examples/

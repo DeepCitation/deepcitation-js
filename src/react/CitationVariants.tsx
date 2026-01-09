@@ -1,0 +1,683 @@
+import React, { memo, useMemo, useCallback, forwardRef, type ReactNode } from "react";
+import { getCitationStatus } from "../parsing/parseCitation.js";
+import type { Citation, CitationStatus } from "../types/citation.js";
+import type { FoundHighlightLocation } from "../types/foundHighlight.js";
+import type { SearchState } from "../types/search.js";
+import {
+  generateCitationKey,
+  generateCitationInstanceId,
+  getCitationDisplayText,
+  getCitationValueText,
+  classNames,
+} from "./utils.js";
+import type { BaseCitationProps, CitationVariant as CitationVariantType, CitationEventHandlers } from "./types.js";
+
+const TWO_DOTS_THINKING_CONTENT = "..";
+
+/**
+ * Shared props for all citation variant components.
+ */
+export interface CitationVariantProps extends BaseCitationProps {
+  /** Found citation highlight location data */
+  foundCitation?: FoundHighlightLocation | null;
+  /** Current search state for the citation */
+  searchState?: SearchState | null;
+  /** Event handlers */
+  eventHandlers?: CitationEventHandlers;
+  /** Whether on mobile device */
+  isMobile?: boolean;
+  /** Whether tooltips should be prevented */
+  preventTooltips?: boolean;
+  /** Custom pending text content */
+  pendingContent?: ReactNode;
+  /** Custom render function for verified indicator */
+  renderVerifiedIndicator?: (status: CitationStatus) => ReactNode;
+  /** Custom render function for partial match indicator */
+  renderPartialIndicator?: (status: CitationStatus) => ReactNode;
+}
+
+/**
+ * Hook to get common citation data.
+ * NOTE: Status is not memoized because foundCitation may be mutated in place.
+ */
+function useCitationData(citation: Citation, foundCitation?: FoundHighlightLocation | null) {
+  const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
+  const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
+  // Don't memoize - object reference as dependency causes stale values on mutation
+  const status = getCitationStatus(foundCitation ?? null);
+  return { citationKey, citationInstanceId, status };
+}
+
+/**
+ * Default verified indicator (checkmark)
+ */
+const DefaultVerifiedIndicator = () => (
+  <span className="citation-verified-icon" aria-hidden="true">
+    ✓
+  </span>
+);
+
+/**
+ * Default partial match indicator (asterisk)
+ */
+const DefaultPartialIndicator = () => (
+  <span className="citation-partial-icon" aria-hidden="true">
+    *
+  </span>
+);
+
+// =============================================================================
+// CHIP VARIANT - Pill/badge style citation
+// =============================================================================
+
+export interface ChipCitationProps extends CitationVariantProps {
+  /** Chip size */
+  size?: "sm" | "md" | "lg";
+  /** Whether to show an icon before the text */
+  showIcon?: boolean;
+  /** Custom icon to display */
+  icon?: ReactNode;
+}
+
+/**
+ * Chip/Badge style citation component.
+ * Displays citation as a rounded pill/badge.
+ *
+ * @example
+ * ```tsx
+ * <ChipCitation citation={citation} foundCitation={found} size="md" />
+ * ```
+ */
+export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
+  (
+    {
+      citation,
+      children,
+      className,
+      displayCitationValue = false,
+      fallbackDisplay,
+      foundCitation,
+      eventHandlers,
+      isMobile = false,
+      preventTooltips = false,
+      pendingContent = TWO_DOTS_THINKING_CONTENT,
+      renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
+      renderPartialIndicator = () => <DefaultPartialIndicator />,
+      size = "md",
+      showIcon = false,
+      icon,
+    },
+    ref,
+  ) => {
+    const { citationKey, citationInstanceId, status } = useCitationData(citation, foundCitation);
+    const { isVerified, isMiss, isPartialMatch, isPending } = status;
+
+    const displayText = useMemo(
+      () =>
+        getCitationDisplayText(citation, {
+          displayCitationValue,
+          fallbackDisplay,
+        }),
+      [citation, displayCitationValue, fallbackDisplay],
+    );
+
+    const valueText = useMemo(
+      () =>
+        getCitationValueText(citation, {
+          displayCitationValue,
+        }),
+      [citation, displayCitationValue],
+    );
+
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLSpanElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        eventHandlers?.onClick?.(citation, citationKey, e);
+      },
+      [eventHandlers, citation, citationKey],
+    );
+
+    const handleMouseEnter = useCallback(() => {
+      eventHandlers?.onMouseEnter?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    const handleMouseLeave = useCallback(() => {
+      eventHandlers?.onMouseLeave?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    const sizeClasses = {
+      sm: "citation-chip--sm",
+      md: "citation-chip--md",
+      lg: "citation-chip--lg",
+    };
+
+    // Check partial first since isVerified is true when isPartialMatch is true
+    const statusClass = isPartialMatch
+      ? "citation-chip--partial"
+      : isMiss
+      ? "citation-chip--miss"
+      : isVerified
+      ? "citation-chip--verified"
+      : isPending
+      ? "citation-chip--pending"
+      : "";
+
+    return (
+      <>
+        {children}
+        <span
+          ref={ref}
+          data-citation-id={citationKey}
+          data-citation-instance={citationInstanceId}
+          data-variant="chip"
+          className={classNames("citation-chip", sizeClasses[size], statusClass, className)}
+          onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
+          onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
+          onMouseDown={handleClick}
+          onClick={e => e.stopPropagation()}
+          aria-label={displayText ? `Citation: ${displayText}` : undefined}
+        >
+          {showIcon && (icon || <span className="citation-chip__icon">📄</span>)}
+          {valueText && !displayCitationValue && <span className="citation-chip__value">{valueText}</span>}
+          <span className="citation-chip__text">{displayText}</span>
+          {isPartialMatch && renderPartialIndicator(status)}
+          {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
+          {isPending && <span className="citation-chip__pending">{pendingContent}</span>}
+        </span>
+      </>
+    );
+  },
+);
+
+ChipCitation.displayName = "ChipCitation";
+
+// =============================================================================
+// SUPERSCRIPT VARIANT - Academic superscript style
+// =============================================================================
+
+export interface SuperscriptCitationProps extends CitationVariantProps {
+  /** Whether to show brackets around the superscript */
+  showBrackets?: boolean;
+}
+
+/**
+ * Superscript style citation component.
+ * Displays citation as a superscript number like academic papers.
+ *
+ * @example
+ * ```tsx
+ * <SuperscriptCitation citation={citation} foundCitation={found} />
+ * // Renders: Text content¹
+ * ```
+ */
+export const SuperscriptCitation = forwardRef<HTMLSpanElement, SuperscriptCitationProps>(
+  (
+    {
+      citation,
+      children,
+      className,
+      displayCitationValue = false,
+      fallbackDisplay,
+      foundCitation,
+      eventHandlers,
+      isMobile = false,
+      preventTooltips = false,
+      pendingContent = TWO_DOTS_THINKING_CONTENT,
+      renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
+      renderPartialIndicator = () => <DefaultPartialIndicator />,
+      showBrackets = false,
+    },
+    ref,
+  ) => {
+    const { citationKey, citationInstanceId, status } = useCitationData(citation, foundCitation);
+    const { isVerified, isMiss, isPartialMatch, isPending } = status;
+
+    const displayText = useMemo(
+      () =>
+        getCitationDisplayText(citation, {
+          displayCitationValue,
+          fallbackDisplay,
+        }),
+      [citation, displayCitationValue, fallbackDisplay],
+    );
+
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLSpanElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        eventHandlers?.onClick?.(citation, citationKey, e);
+      },
+      [eventHandlers, citation, citationKey],
+    );
+
+    const handleMouseEnter = useCallback(() => {
+      eventHandlers?.onMouseEnter?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    const handleMouseLeave = useCallback(() => {
+      eventHandlers?.onMouseLeave?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    // Check partial first since isVerified is true when isPartialMatch is true
+    const statusClass = isPartialMatch
+      ? "citation-superscript--partial"
+      : isMiss
+      ? "citation-superscript--miss"
+      : isVerified
+      ? "citation-superscript--verified"
+      : isPending
+      ? "citation-superscript--pending"
+      : "";
+
+    return (
+      <>
+        {children}
+        <sup
+          ref={ref}
+          data-citation-id={citationKey}
+          data-citation-instance={citationInstanceId}
+          data-variant="superscript"
+          className={classNames("citation-superscript", statusClass, className)}
+          onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
+          onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
+          onMouseDown={handleClick}
+          onClick={e => e.stopPropagation()}
+          aria-label={`Citation ${displayText}`}
+        >
+          {showBrackets && "["}
+          {displayText}
+          {isPartialMatch && renderPartialIndicator(status)}
+          {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
+          {isPending && pendingContent}
+          {showBrackets && "]"}
+        </sup>
+      </>
+    );
+  },
+);
+
+SuperscriptCitation.displayName = "SuperscriptCitation";
+
+// =============================================================================
+// FOOTNOTE VARIANT - Footnote marker style
+// =============================================================================
+
+export interface FootnoteCitationProps extends CitationVariantProps {
+  /** Footnote symbol style */
+  symbolStyle?: "number" | "asterisk" | "dagger" | "custom";
+  /** Custom symbol (when symbolStyle is "custom") */
+  customSymbol?: string;
+}
+
+const FOOTNOTE_SYMBOLS = ["*", "†", "‡", "§", "‖", "¶"];
+
+/**
+ * Footnote style citation component.
+ * Displays citation as a footnote marker.
+ *
+ * @example
+ * ```tsx
+ * <FootnoteCitation citation={citation} symbolStyle="asterisk" />
+ * // Renders: Text content*
+ * ```
+ */
+export const FootnoteCitation = forwardRef<HTMLSpanElement, FootnoteCitationProps>(
+  (
+    {
+      citation,
+      children,
+      className,
+      fallbackDisplay,
+      foundCitation,
+      eventHandlers,
+      preventTooltips = false,
+      pendingContent = TWO_DOTS_THINKING_CONTENT,
+      renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
+      renderPartialIndicator = () => <DefaultPartialIndicator />,
+      symbolStyle = "number",
+      customSymbol,
+    },
+    ref,
+  ) => {
+    const { citationKey, citationInstanceId, status } = useCitationData(citation, foundCitation);
+    const { isVerified, isMiss, isPartialMatch, isPending } = status;
+
+    const displaySymbol = useMemo(() => {
+      if (symbolStyle === "custom" && customSymbol) return customSymbol;
+      if (symbolStyle === "number") return citation.citationNumber?.toString() || "1";
+      if (symbolStyle === "asterisk") return "*";
+      if (symbolStyle === "dagger") {
+        const num = (citation.citationNumber || 1) - 1;
+        return FOOTNOTE_SYMBOLS[num % FOOTNOTE_SYMBOLS.length];
+      }
+      return "*";
+    }, [symbolStyle, customSymbol, citation.citationNumber]);
+
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLSpanElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        eventHandlers?.onClick?.(citation, citationKey, e);
+      },
+      [eventHandlers, citation, citationKey],
+    );
+
+    const handleMouseEnter = useCallback(() => {
+      eventHandlers?.onMouseEnter?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    const handleMouseLeave = useCallback(() => {
+      eventHandlers?.onMouseLeave?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    // Check partial first since isVerified is true when isPartialMatch is true
+    const statusClass = isPartialMatch
+      ? "citation-footnote--partial"
+      : isMiss
+      ? "citation-footnote--miss"
+      : isVerified
+      ? "citation-footnote--verified"
+      : isPending
+      ? "citation-footnote--pending"
+      : "";
+
+    return (
+      <>
+        {children}
+        <sup
+          ref={ref}
+          data-citation-id={citationKey}
+          data-citation-instance={citationInstanceId}
+          data-variant="footnote"
+          className={classNames("citation-footnote", statusClass, className)}
+          onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
+          onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
+          onMouseDown={handleClick}
+          onClick={e => e.stopPropagation()}
+          aria-label={`Footnote ${displaySymbol}`}
+        >
+          {displaySymbol}
+          {isPartialMatch && renderPartialIndicator(status)}
+          {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
+          {isPending && pendingContent}
+        </sup>
+      </>
+    );
+  },
+);
+
+FootnoteCitation.displayName = "FootnoteCitation";
+
+// =============================================================================
+// INLINE VARIANT - Subtle inline style with underline
+// =============================================================================
+
+export interface InlineCitationProps extends CitationVariantProps {
+  /** Underline style */
+  underlineStyle?: "solid" | "dotted" | "dashed" | "none";
+}
+
+/**
+ * Inline style citation component.
+ * Displays citation inline with subtle underline decoration.
+ *
+ * @example
+ * ```tsx
+ * <InlineCitation citation={citation} underlineStyle="dotted" />
+ * // Renders: "quoted text" with subtle underline
+ * ```
+ */
+export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
+  (
+    {
+      citation,
+      children,
+      className,
+      displayCitationValue = true, // Default to merged for inline
+      fallbackDisplay,
+      foundCitation,
+      eventHandlers,
+      preventTooltips = false,
+      pendingContent = TWO_DOTS_THINKING_CONTENT,
+      renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
+      renderPartialIndicator = () => <DefaultPartialIndicator />,
+      underlineStyle = "dotted",
+    },
+    ref,
+  ) => {
+    const { citationKey, citationInstanceId, status } = useCitationData(citation, foundCitation);
+    const { isVerified, isMiss, isPartialMatch, isPending } = status;
+
+    const displayText = useMemo(
+      () =>
+        getCitationDisplayText(citation, {
+          displayCitationValue,
+          fallbackDisplay,
+        }),
+      [citation, displayCitationValue, fallbackDisplay],
+    );
+
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLSpanElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        eventHandlers?.onClick?.(citation, citationKey, e);
+      },
+      [eventHandlers, citation, citationKey],
+    );
+
+    const handleMouseEnter = useCallback(() => {
+      eventHandlers?.onMouseEnter?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    const handleMouseLeave = useCallback(() => {
+      eventHandlers?.onMouseLeave?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    // Check partial first since isVerified is true when isPartialMatch is true
+    const statusClass = isPartialMatch
+      ? "citation-inline--partial"
+      : isMiss
+      ? "citation-inline--miss"
+      : isVerified
+      ? "citation-inline--verified"
+      : isPending
+      ? "citation-inline--pending"
+      : "";
+
+    const underlineClass = `citation-inline--underline-${underlineStyle}`;
+
+    return (
+      <>
+        {children}
+        <span
+          ref={ref}
+          data-citation-id={citationKey}
+          data-citation-instance={citationInstanceId}
+          data-variant="inline"
+          className={classNames("citation-inline", underlineClass, statusClass, className)}
+          onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
+          onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
+          onMouseDown={handleClick}
+          onClick={e => e.stopPropagation()}
+          aria-label={`Citation: ${displayText}`}
+        >
+          {displayText}
+          {isPartialMatch && renderPartialIndicator(status)}
+          {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
+          {isPending && <span className="citation-inline__pending">{pendingContent}</span>}
+        </span>
+      </>
+    );
+  },
+);
+
+InlineCitation.displayName = "InlineCitation";
+
+// =============================================================================
+// MINIMAL VARIANT - Just the number, minimal decoration
+// =============================================================================
+
+export interface MinimalCitationProps extends CitationVariantProps {
+  /** Whether to show status indicator */
+  showStatusIndicator?: boolean;
+}
+
+/**
+ * Minimal style citation component.
+ * Displays just the citation number with minimal decoration.
+ *
+ * @example
+ * ```tsx
+ * <MinimalCitation citation={citation} />
+ * // Renders: 1
+ * ```
+ */
+export const MinimalCitation = forwardRef<HTMLSpanElement, MinimalCitationProps>(
+  (
+    {
+      citation,
+      children,
+      className,
+      displayCitationValue = false,
+      fallbackDisplay,
+      foundCitation,
+      eventHandlers,
+      preventTooltips = false,
+      pendingContent = TWO_DOTS_THINKING_CONTENT,
+      renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
+      renderPartialIndicator = () => <DefaultPartialIndicator />,
+      showStatusIndicator = true,
+    },
+    ref,
+  ) => {
+    const { citationKey, citationInstanceId, status } = useCitationData(citation, foundCitation);
+    const { isVerified, isMiss, isPartialMatch, isPending } = status;
+
+    const displayText = useMemo(
+      () =>
+        getCitationDisplayText(citation, {
+          displayCitationValue,
+          fallbackDisplay,
+        }),
+      [citation, displayCitationValue, fallbackDisplay],
+    );
+
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLSpanElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        eventHandlers?.onClick?.(citation, citationKey, e);
+      },
+      [eventHandlers, citation, citationKey],
+    );
+
+    const handleMouseEnter = useCallback(() => {
+      eventHandlers?.onMouseEnter?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    const handleMouseLeave = useCallback(() => {
+      eventHandlers?.onMouseLeave?.(citation, citationKey);
+    }, [eventHandlers, citation, citationKey]);
+
+    // Check partial first since isVerified is true when isPartialMatch is true
+    const statusClass = isPartialMatch
+      ? "citation-minimal--partial"
+      : isMiss
+      ? "citation-minimal--miss"
+      : isVerified
+      ? "citation-minimal--verified"
+      : isPending
+      ? "citation-minimal--pending"
+      : "";
+
+    return (
+      <>
+        {children}
+        <span
+          ref={ref}
+          data-citation-id={citationKey}
+          data-citation-instance={citationInstanceId}
+          data-variant="minimal"
+          className={classNames("citation-minimal", statusClass, className)}
+          onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
+          onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
+          onMouseDown={handleClick}
+          onClick={e => e.stopPropagation()}
+          aria-label={`Citation ${displayText}`}
+        >
+          {displayText}
+          {showStatusIndicator && (
+            <>
+              {isPartialMatch && renderPartialIndicator(status)}
+              {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
+              {isPending && pendingContent}
+            </>
+          )}
+        </span>
+      </>
+    );
+  },
+);
+
+MinimalCitation.displayName = "MinimalCitation";
+
+// =============================================================================
+// VARIANT FACTORY - Creates the appropriate variant component
+// =============================================================================
+
+export interface VariantCitationProps extends CitationVariantProps {
+  /** The variant to render */
+  variant?: CitationVariantType;
+  /** Chip-specific props */
+  chipProps?: Partial<ChipCitationProps>;
+  /** Superscript-specific props */
+  superscriptProps?: Partial<SuperscriptCitationProps>;
+  /** Footnote-specific props */
+  footnoteProps?: Partial<FootnoteCitationProps>;
+  /** Inline-specific props */
+  inlineProps?: Partial<InlineCitationProps>;
+  /** Minimal-specific props */
+  minimalProps?: Partial<MinimalCitationProps>;
+}
+
+/**
+ * Factory component that renders the appropriate citation variant.
+ *
+ * @example
+ * ```tsx
+ * <CitationVariantFactory variant="chip" citation={citation} chipProps={{ size: "lg" }} />
+ * ```
+ */
+export const CitationVariantFactory = forwardRef<HTMLSpanElement, VariantCitationProps>(
+  ({ variant = "bracket", chipProps, superscriptProps, footnoteProps, inlineProps, minimalProps, ...props }, ref) => {
+    switch (variant) {
+      case "chip":
+        return <ChipCitation ref={ref} {...props} {...chipProps} />;
+      case "superscript":
+        return <SuperscriptCitation ref={ref} {...props} {...superscriptProps} />;
+      case "footnote":
+        return <FootnoteCitation ref={ref} {...props} {...footnoteProps} />;
+      case "inline":
+        return <InlineCitation ref={ref} {...props} {...inlineProps} />;
+      case "minimal":
+        return <MinimalCitation ref={ref} {...props} {...minimalProps} />;
+      case "bracket":
+      default:
+        // For bracket variant, we return null here as CitationComponent handles it
+        // This factory is meant to be used for alternate variants
+        return null;
+    }
+  },
+);
+
+CitationVariantFactory.displayName = "CitationVariantFactory";
+
+// Memoized versions for performance
+export const MemoizedChipCitation = memo(ChipCitation);
+export const MemoizedSuperscriptCitation = memo(SuperscriptCitation);
+export const MemoizedFootnoteCitation = memo(FootnoteCitation);
+export const MemoizedInlineCitation = memo(InlineCitation);
+export const MemoizedMinimalCitation = memo(MinimalCitation);
+export const MemoizedCitationVariantFactory = memo(CitationVariantFactory);

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeepCitation Component Tests</title>
+    <style>
+      /* Base reset */
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #f8fafc;
+      }
+
+      /* Citation component default styles */
+      .citation-container {
+        display: inline;
+        cursor: pointer;
+      }
+
+      .citation-bracket-wrapper {
+        display: inline;
+      }
+
+      .citation-bracket-content {
+        display: inline;
+      }
+
+      .citation-text {
+        display: inline;
+      }
+
+      /* Citation states */
+      .citation--verified {
+        color: #10b981;
+      }
+
+      .citation--miss {
+        color: #ef4444;
+        text-decoration: line-through;
+      }
+
+      .citation--partial {
+        color: #f59e0b;
+      }
+
+      .citation--pending {
+        color: #9ca3af;
+      }
+
+      .citation-verified-icon {
+        color: #10b981;
+        margin-left: 2px;
+      }
+
+      .citation-partial-icon {
+        color: #ef4444;
+        margin-left: 2px;
+      }
+
+      /* Chip variant styles */
+      .citation-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 0.875em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.15s, color 0.15s;
+        background-color: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+      }
+
+      .citation-chip--sm {
+        font-size: 0.75em;
+        padding: 1px 6px;
+      }
+
+      .citation-chip--md {
+        font-size: 0.875em;
+        padding: 2px 8px;
+      }
+
+      .citation-chip--lg {
+        font-size: 1em;
+        padding: 4px 12px;
+      }
+
+      .citation-chip--verified {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+      }
+
+      .citation-chip--miss {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        text-decoration: line-through;
+      }
+
+      .citation-chip--partial {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+      }
+
+      .citation-chip--pending {
+        background-color: rgba(156, 163, 175, 0.1);
+        color: #9ca3af;
+      }
+
+      .citation-chip__icon {
+        font-size: 0.9em;
+      }
+
+      .citation-chip__value {
+        margin-right: 2px;
+      }
+
+      .citation-chip__text {
+        /* text display */
+      }
+
+      .citation-chip__pending {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      /* Superscript variant styles */
+      .citation-superscript {
+        font-size: 0.75em;
+        vertical-align: super;
+        cursor: pointer;
+        color: #3b82f6;
+        font-weight: 500;
+      }
+
+      .citation-superscript--verified {
+        color: #10b981;
+      }
+
+      .citation-superscript--miss {
+        color: #ef4444;
+        text-decoration: line-through;
+      }
+
+      .citation-superscript--partial {
+        color: #f59e0b;
+      }
+
+      .citation-superscript--pending {
+        color: #9ca3af;
+      }
+
+      /* Footnote variant styles */
+      .citation-footnote {
+        font-size: 0.75em;
+        vertical-align: super;
+        cursor: pointer;
+        color: #6b7280;
+        font-weight: 400;
+      }
+
+      .citation-footnote--verified {
+        color: #10b981;
+      }
+
+      .citation-footnote--miss {
+        color: #ef4444;
+        text-decoration: line-through;
+      }
+
+      .citation-footnote--partial {
+        color: #f59e0b;
+      }
+
+      .citation-footnote--pending {
+        color: #9ca3af;
+      }
+
+      /* Inline variant styles */
+      .citation-inline {
+        cursor: pointer;
+        transition: background-color 0.15s;
+      }
+
+      .citation-inline--underline-solid {
+        border-bottom: 1px solid currentColor;
+      }
+
+      .citation-inline--underline-dotted {
+        border-bottom: 1px dotted currentColor;
+      }
+
+      .citation-inline--underline-dashed {
+        border-bottom: 1px dashed currentColor;
+      }
+
+      .citation-inline--underline-none {
+        border-bottom: none;
+      }
+
+      .citation-inline--verified {
+        color: #10b981;
+      }
+
+      .citation-inline--miss {
+        color: #ef4444;
+        text-decoration: line-through;
+      }
+
+      .citation-inline--partial {
+        color: #f59e0b;
+      }
+
+      .citation-inline--pending {
+        color: #9ca3af;
+      }
+
+      .citation-inline__pending {
+        margin-left: 2px;
+      }
+
+      /* Minimal variant styles */
+      .citation-minimal {
+        cursor: pointer;
+        color: #3b82f6;
+      }
+
+      .citation-minimal--verified {
+        color: #10b981;
+      }
+
+      .citation-minimal--miss {
+        color: #ef4444;
+        text-decoration: line-through;
+      }
+
+      .citation-minimal--partial {
+        color: #f59e0b;
+      }
+
+      .citation-minimal--pending {
+        color: #9ca3af;
+      }
+
+      /* URL citation styles */
+      .url-citation {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .url-citation--chip {
+        padding: 2px 8px;
+        border-radius: 9999px;
+        font-size: 0.875em;
+        background-color: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+      }
+
+      .url-citation--inline {
+        color: #3b82f6;
+        border-bottom: 1px dotted currentColor;
+      }
+
+      .url-citation--bracket {
+        color: #3b82f6;
+      }
+
+      .url-citation--verified {
+        color: #10b981;
+        background-color: rgba(16, 185, 129, 0.1);
+      }
+
+      .url-citation--partial {
+        color: #f59e0b;
+        background-color: rgba(245, 158, 11, 0.1);
+      }
+
+      .url-citation--pending {
+        color: #9ca3af;
+        background-color: rgba(156, 163, 175, 0.1);
+      }
+
+      .url-citation--blocked {
+        color: #f59e0b;
+        background-color: rgba(245, 158, 11, 0.1);
+      }
+
+      .url-citation--error {
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+      }
+
+      .url-citation--unknown {
+        color: #6b7280;
+        background-color: rgba(107, 114, 128, 0.1);
+      }
+
+      .url-citation__favicon {
+        width: 14px;
+        height: 14px;
+        border-radius: 2px;
+      }
+
+      .url-citation__domain {
+        /* domain text */
+      }
+
+      .url-citation__verified-icon {
+        color: #10b981;
+        margin-left: 2px;
+      }
+
+      .url-citation__partial-icon {
+        color: #f59e0b;
+        margin-left: 2px;
+      }
+
+      .url-citation__pending {
+        margin-left: 2px;
+      }
+
+      .url-citation__blocked-indicator {
+        margin-left: 2px;
+      }
+
+      .url-citation__blocked-icon {
+        /* blocked icon */
+      }
+
+      /* Cursor classes */
+      .cursor-pointer {
+        cursor: pointer;
+      }
+
+      .cursor-zoom-in {
+        cursor: zoom-in;
+      }
+
+      .cursor-zoom-out {
+        cursor: zoom-out;
+      }
+
+      /* Animations */
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

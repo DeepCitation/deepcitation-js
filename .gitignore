@@ -1,0 +1,17 @@
+
+node_modules
+# Ignore built ts files
+lib/**/*
+
+
+/playwright/.cache/
+/test-results/
+/playwright-report/
+/blob-report/
+/test-screenshots/
+cleanup-failure-*.png
+test-failure-*.png
+*.test.png
+*.spec.png
+
+bundle-stats*

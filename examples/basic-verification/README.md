@@ -1,0 +1,105 @@
+# Basic Verification Example
+
+A minimal example demonstrating the DeepCitation 3-step workflow for verifying AI citations against source documents.
+
+## What This Example Does
+
+1. **Pre-Prompt**: Uploads a sample document and enhances your LLM prompt with citation instructions
+2. **Post-Prompt**: Calls your LLM, then verifies all citations against the source document
+3. **Display**: Shows verification results with status, matched text snippets, and summary statistics
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Copy environment file and add your API keys
+cp .env.example .env
+
+# Run with OpenAI
+npm run start:openai
+
+# Or run with Anthropic Claude
+npm run start:anthropic
+```
+
+## Required API Keys
+
+1. **DeepCitation API Key** (free): Get one at [deepcitation.com/signup](https://deepcitation.com/signup)
+2. **LLM Provider Key**: Either OpenAI or Anthropic API key
+
+## Example Output
+
+```
+🔍 DeepCitation Basic Example - OpenAI
+
+📄 Step 1: Uploading document and preparing prompts...
+✅ Document uploaded successfully
+   File ID: abc123...
+
+🤖 Step 2: Calling OpenAI and verifying citations...
+📝 LLM Response (raw with citations):
+──────────────────────────────────────────────────
+ACME Corporation achieved revenue growth of 23% in 2024 <cite file_id='abc123'
+full_phrase='representing a 23% increase from the previous year' line_ids='5-6'/>.
+The Asia-Pacific region performed best with 35% year-over-year growth <cite.../>
+──────────────────────────────────────────────────
+
+✨ Step 3: Verification Results
+
+Found 2 citation(s):
+
+Citation [1]: ✅
+  Status: found
+  Page: 1
+  Match: "representing a 23% increase from the previous year..."
+  Has proof image: true
+
+Citation [2]: ✅
+  Status: found
+  Page: 1
+  Match: "Asia-Pacific showed the strongest growth at 35% YoY..."
+  Has proof image: true
+
+📖 Clean Response (for display):
+──────────────────────────────────────────────────
+ACME Corporation achieved revenue growth of 23% in 2024.
+The Asia-Pacific region performed best with 35% year-over-year growth.
+──────────────────────────────────────────────────
+
+📊 Summary:
+   Total citations: 2
+   Verified: 2 (100%)
+   Not found: 0
+```
+
+## Using Your Own Documents
+
+Replace the sample document buffer in the source file with your own PDF:
+
+```typescript
+import { readFileSync } from "fs";
+
+const myDocument = readFileSync("./path/to/your/document.pdf");
+
+const { fileDataParts, fileDeepTexts } = await deepcitation.prepareFiles([
+  { file: myDocument, filename: "my-document.pdf" },
+]);
+```
+
+## Key Functions Used
+
+| Function | Purpose |
+|----------|---------|
+| `deepcitation.prepareFiles()` | Upload documents, get formatted text for LLM |
+| `wrapCitationPrompt()` | Add citation instructions to your prompts |
+| `deepcitation.verifyCitations()` | Verify citations against source documents |
+| `getCitationStatus()` | Get simplified status (isVerified, isMiss, etc.) |
+| `removeCitations()` | Strip citation tags for clean display |
+
+## Next Steps
+
+- Check out the [support-bot example](../support-bot) for invisible citations in customer-facing apps
+- See the [full documentation](https://deepcitation.com/docs) for advanced usage
+- Explore [React components](../../README.md#react-components) for building citation UIs

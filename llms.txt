@@ -1,0 +1,131 @@
+# DeepCitation
+
+> Deterministic AI citation verification. Eliminate hallucination risk by proving every AI citation against source documents.
+
+DeepCitation is an open-source library and API that enables AI applications to include verifiable, traceable citations. Every citation is deterministically matched to its exact location in source documents with visual proof generation.
+
+## Core Concepts
+
+- **Deterministic Matching**: Citations are traced to exact locations in source documents. No fuzzy matching or guessing—just deterministic proof.
+- **Visual Proof**: Automated screenshots with highlighted text show exactly where each citation comes from.
+- **LLM Agnostic**: Works with any LLM provider—OpenAI, Anthropic, Google, or custom models.
+- **React Components**: Pre-built and composable components for rendering citations with verification status.
+
+## Integration Workflow
+
+DeepCitation works in three steps:
+
+1. **Pre-Prompt**: Upload source documents and enhance your LLM prompt with citation instructions using `prepareFiles()` and `wrapCitationPrompt()`.
+2. **Post-Prompt**: After receiving the LLM response, verify citations against source documents using `verifyCitations()`.
+3. **Display**: Render verified citations with React components like `CitationComponent`.
+
+## Documentation
+
+- [README](https://github.com/deepcitation/deepcitation-js#readme): Full documentation with installation, quick start, and API reference
+- [Get API Key](https://deepcitation.com/signup): Sign up for a free API key (no credit card required)
+- [API Documentation](https://deepcitation.com/docs): Complete API reference and guides
+
+## Installation
+
+```bash
+npm install @deepcitation/deepcitation-js
+# or yarn add / bun add
+```
+
+## Key Exports
+
+```typescript
+// Core client and utilities
+import { DeepCitation, wrapCitationPrompt, getAllCitationsFromLlmOutput } from "@deepcitation/deepcitation-js";
+
+// React components
+import { CitationComponent, ChipCitation, SuperscriptCitation } from "@deepcitation/deepcitation-js/react";
+
+// Types
+import type { Citation, FoundHighlightLocation } from "@deepcitation/deepcitation-js";
+```
+
+## API Reference
+
+### DeepCitation Client
+
+- `new DeepCitation({ apiKey })` - Initialize the client with your API key
+- `prepareFiles(files)` - Upload source documents and get structured content for LLM prompts
+- `verifyCitations({ llmOutput, fileDataParts })` - Verify citations from LLM output against sources
+
+### Prompt Utilities
+
+- `wrapCitationPrompt({ systemPrompt, userPrompt, fileDeepText? })` - Wrap prompts with citation instructions and optionally include file content
+- `wrapSystemCitationPrompt({ systemPrompt })` - Wrap only system prompt (for more control)
+- `getAllCitationsFromLlmOutput(text)` - Extract citations from LLM response
+- `removeCitations(text)` - Remove citation tags from text
+- `groupCitationsByFileId(citations)` - Group citations by fileId for multi-file verification
+
+### React Components
+
+- `CitationComponent` - Classic bracket style [1]
+- `ChipCitation` - Chip/badge style
+- `SuperscriptCitation` - Academic superscript style
+- `FootnoteCitation` - Footnote marker style
+- `InlineCitation` - Subtle underline style
+- `MinimalCitation` - Just the number
+
+### Composable Primitives
+
+Build custom citation components with `Citation.Root`, `Citation.Trigger`, `Citation.Bracket`, `Citation.Number`, `Citation.Value`, `Citation.Indicator`, `Citation.Status`, `Citation.Phrase`, and `Citation.Page`.
+
+## Supported File Types
+
+### Direct Upload
+- PDF documents (native and scanned with OCR)
+- Images (PNG, JPEG, TIFF, WebP, AVIF, HEIC)
+
+### URL Conversion (via `convertToPdf()`)
+- Web pages (HTML rendered to PDF)
+- Direct PDF links
+
+### Office Documents (via `convertToPdf()`)
+- Microsoft Word: `.doc`, `.docx`
+- Microsoft Excel: `.xls`, `.xlsx`
+- Microsoft PowerPoint: `.ppt`, `.pptx`
+- OpenDocument: `.odt`, `.ods`, `.odp`
+- Rich Text Format: `.rtf`
+- CSV: `.csv`
+
+## Converting URLs and Office Files
+
+For URLs or Office documents, use `convertToPdf()` followed by `prepareConvertedFile()`:
+
+```typescript
+const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
+
+// Convert a URL to PDF
+const result = await dc.convertToPdf("https://example.com/article");
+
+// Or convert an Office document
+const result = await dc.convertToPdf({
+  file: docxBuffer,
+  filename: "report.docx"
+});
+
+// Then prepare for citation verification
+const { fileDeepText, fileId } = await dc.prepareConvertedFile({
+  fileId: result.fileId
+});
+
+// Use fileDeepText in LLM prompt, then verify citations
+const verified = await dc.verifyCitations(fileId, citations);
+```
+
+### `convertToPdf(input)`
+- Input: URL string, or object with `{ url?, file?, filename?, fileId?, singlePage? }`
+- Returns: `{ fileId, metadata, status }`
+
+### `prepareConvertedFile(options)`
+- Input: `{ fileId }`
+- Returns: Same as `uploadFile()` - `{ fileDeepText, fileId, ... }`
+
+## Optional
+
+- [GitHub Issues](https://github.com/deepcitation/deepcitation-js/issues): Report bugs or request features
+- [Contributing Guide](https://github.com/deepcitation/deepcitation-js#contributing): How to contribute to the project

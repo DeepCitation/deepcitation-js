@@ -1,0 +1,7 @@
+[test]
+preload = ["./happydom.setup.ts", "./jest.setup.ts"]
+coverage = false
+
+# Exclude playwright component tests - they should be run with `bun run test:ct`
+# Pattern matches .test.ts and .test.tsx files but not .spec.tsx (playwright)
+root = "src/__tests__"

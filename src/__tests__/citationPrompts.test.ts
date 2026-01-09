@@ -1,0 +1,162 @@
+import { describe, expect, it } from "@jest/globals";
+import {
+  CITATION_MARKDOWN_SYNTAX_PROMPT,
+  AV_CITATION_MARKDOWN_SYNTAX_PROMPT,
+  CITATION_JSON_OUTPUT_FORMAT,
+  CITATION_AV_BASED_JSON_OUTPUT_FORMAT,
+  wrapSystemCitationPrompt,
+  wrapCitationPrompt,
+} from "../prompts/citationPrompts.js";
+
+describe("citation prompts", () => {
+  it("includes guidance for citation markdown syntax", () => {
+    expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("<cite file_id='file_id'");
+    expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("line_ids");
+    expect(AV_CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("timestamps='HH:MM:SS.SSS");
+  });
+
+  it("defines required fields for text-based citations", () => {
+    expect(CITATION_JSON_OUTPUT_FORMAT.required).toEqual([
+      "fileId",
+      "startPageKey",
+      "reasoning",
+      "fullPhrase",
+      "lineIds",
+    ]);
+  });
+
+  it("defines timestamp requirements for AV citations", () => {
+    const timestamps = CITATION_AV_BASED_JSON_OUTPUT_FORMAT.properties?.timestamps;
+    expect(timestamps?.required).toEqual(["startTime", "endTime"]);
+  });
+});
+
+describe("wrapSystemCitationPrompt", () => {
+  it("appends citation instructions to system prompt by default", () => {
+    const systemPrompt = "You are a helpful assistant.";
+    const result = wrapSystemCitationPrompt({ systemPrompt });
+
+    expect(result).toContain("You are a helpful assistant.");
+    expect(result).toContain("<cite file_id='file_id'");
+    expect(result).toContain("line_ids");
+    // By default, system prompt comes first
+    expect(result.indexOf("You are a helpful assistant.")).toBeLessThan(result.indexOf("<cite"));
+  });
+
+  it("prepends citation instructions when prependCitationInstructions is true", () => {
+    const systemPrompt = "You are a helpful assistant.";
+    const result = wrapSystemCitationPrompt({
+      systemPrompt,
+      prependCitationInstructions: true,
+    });
+
+    expect(result).toContain("You are a helpful assistant.");
+    expect(result).toContain("<cite file_id='file_id'");
+    // Citation instructions come first
+    expect(result.indexOf("<cite")).toBeLessThan(result.indexOf("You are a helpful assistant."));
+  });
+
+  it("uses AV citation format when isAudioVideo is true", () => {
+    const systemPrompt = "You are an audio transcription assistant.";
+    const result = wrapSystemCitationPrompt({
+      systemPrompt,
+      isAudioVideo: true,
+    });
+
+    expect(result).toContain("You are an audio transcription assistant.");
+    expect(result).toContain("timestamps='HH:MM:SS.SSS");
+    expect(result).not.toContain("line_ids");
+  });
+
+  it("trims whitespace from system prompt", () => {
+    const systemPrompt = "  Has whitespace around  ";
+    const result = wrapSystemCitationPrompt({ systemPrompt });
+
+    expect(result).toContain("Has whitespace around");
+    expect(result).not.toMatch(/^\s+Has/);
+  });
+
+  it("handles empty system prompt", () => {
+    const result = wrapSystemCitationPrompt({ systemPrompt: "" });
+
+    expect(result).toContain("<cite file_id='file_id'");
+  });
+});
+
+describe("wrapCitationPrompt", () => {
+  it("wraps both system and user prompts", () => {
+    const result = wrapCitationPrompt({
+      systemPrompt: "You are a helpful assistant.",
+      userPrompt: "Analyze this document.",
+    });
+
+    expect(result.enhancedSystemPrompt).toContain("You are a helpful assistant.");
+    expect(result.enhancedSystemPrompt).toContain("<cite file_id='file_id'");
+    expect(result.enhancedUserPrompt).toContain("Analyze this document.");
+  });
+
+  it("returns object with enhancedSystemPrompt and enhancedUserPrompt", () => {
+    const result = wrapCitationPrompt({
+      systemPrompt: "System",
+      userPrompt: "User",
+    });
+
+    expect(result).toHaveProperty("enhancedSystemPrompt");
+    expect(result).toHaveProperty("enhancedUserPrompt");
+    expect(typeof result.enhancedSystemPrompt).toBe("string");
+    expect(typeof result.enhancedUserPrompt).toBe("string");
+  });
+
+  it("uses AV citation format when isAudioVideo is true", () => {
+    const result = wrapCitationPrompt({
+      systemPrompt: "Audio assistant",
+      userPrompt: "Transcribe this.",
+      isAudioVideo: true,
+    });
+
+    expect(result.enhancedSystemPrompt).toContain("timestamps='HH:MM:SS.SSS");
+    expect(result.enhancedSystemPrompt).not.toContain("line_ids");
+  });
+
+  it("passes through user prompt unchanged by default", () => {
+    const userPrompt = "Analyze this document: [content here]";
+    const result = wrapCitationPrompt({
+      systemPrompt: "System prompt",
+      userPrompt,
+    });
+
+    // User prompt should be returned as-is (or with minimal modifications)
+    expect(result.enhancedUserPrompt).toContain("Analyze this document: [content here]");
+  });
+
+  it("handles empty prompts", () => {
+    const result = wrapCitationPrompt({
+      systemPrompt: "",
+      userPrompt: "",
+    });
+
+    expect(result.enhancedSystemPrompt).toContain("<cite");
+    expect(typeof result.enhancedUserPrompt).toBe("string");
+  });
+
+  it("preserves multi-line prompts", () => {
+    const systemPrompt = `You are a helpful assistant.
+
+You should analyze documents carefully.
+
+Always cite your sources.`;
+    const userPrompt = `Here is the document:
+
+Page 1:
+Some content here.
+
+Page 2:
+More content.`;
+
+    const result = wrapCitationPrompt({ systemPrompt, userPrompt });
+
+    expect(result.enhancedSystemPrompt).toContain("analyze documents carefully");
+    expect(result.enhancedUserPrompt).toContain("Page 1:");
+    expect(result.enhancedUserPrompt).toContain("Page 2:");
+  });
+});
