@@ -69,10 +69,6 @@ describe("DeepCitation Client", () => {
       const result = await client.uploadFile(blob, { filename: "test.pdf" });
 
       expect(result.fileId).toBe("file_abc123");
-      // attachmentId is hidden from public API
-      expect(
-        (result as { attachmentId?: string }).attachmentId
-      ).toBeUndefined();
       expect(result.deepTextPromptPortion).toContain("[Page 1]");
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
@@ -315,11 +311,8 @@ describe("DeepCitation Client", () => {
       );
     });
 
-    it("verifies citations with explicit fileDataParts", async () => {
+    it("verifies citations with fileId in citation", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      // Register file manually
-      client.registerFile("file_123", "att_123");
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -353,31 +346,11 @@ describe("DeepCitation Client", () => {
     });
   });
 
-  describe("verifyCitations (legacy signature)", () => {
+  describe("verifyCitations", () => {
     it("verifies citations with fileId and citation map", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
 
-      // Upload file first
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          fileId: "file_abc",
-          attachmentId: "att_abc",
-          deepTextPromptPortion: "content",
-          metadata: {
-            filename: "test.pdf",
-            mimeType: "application/pdf",
-            pageCount: 1,
-            textByteSize: 50,
-          },
-          status: "ready",
-        }),
-      } as Response);
-
-      const blob = new Blob(["content"]);
-      await client.uploadFile(blob, { fileId: "file_abc" });
-
-      // Verify citations
+      // Verify citations directly with fileId
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -394,52 +367,20 @@ describe("DeepCitation Client", () => {
       expect(result.foundHighlights["1"].searchState.status).toBe("found");
     });
 
-    it("throws error for unknown fileId", async () => {
+    it("handles API error gracefully", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: { message: "File not found" } }),
+      } as Response);
 
       await expect(
         client.verifyCitations("unknown_file", {
           "1": { fullPhrase: "test" },
         })
-      ).rejects.toThrow('File ID "unknown_file" not found');
-    });
-  });
-
-  describe("registerFile", () => {
-    it("allows verification after manual registration", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      client.registerFile("my_file", "my_attachment");
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          foundHighlights: {
-            "1": { pageNumber: 1, searchState: { status: "found" } },
-          },
-        }),
-      } as Response);
-
-      const result = await client.verifyCitations("my_file", {
-        "1": { fullPhrase: "test" },
-      });
-
-      expect(result.foundHighlights).toBeDefined();
-    });
-  });
-
-  describe("clearFileMap", () => {
-    it("clears registered files", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      client.registerFile("file_1", "att_1");
-      client.clearFileMap();
-
-      await expect(
-        client.verifyCitations("file_1", {
-          "1": { fullPhrase: "test" },
-        })
-      ).rejects.toThrow('File ID "file_1" not found');
+      ).rejects.toThrow("File not found");
     });
   });
 });

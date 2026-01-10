@@ -81,7 +81,12 @@ provided documents accurately and cite your sources.`;
   // Convert image to base64 for Claude vision API
   const imageBase64 = sampleDocument.toString("base64");
 
-  const message = await anthropic.messages.create({
+  console.log("📝 LLM Response (raw with citations):");
+  console.log("─".repeat(50));
+
+  // Stream the response
+  let llmResponse = "";
+  const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,
     system: enhancedSystemPrompt,
@@ -108,13 +113,16 @@ provided documents accurately and cite your sources.`;
     ],
   });
 
-  const llmResponse =
-    message.content[0].type === "text" ? message.content[0].text : "";
-
-  console.log("📝 LLM Response (raw with citations):");
-  console.log("─".repeat(50));
-  console.log(llmResponse);
-  console.log("─".repeat(50) + "\n");
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "text_delta"
+    ) {
+      process.stdout.write(event.delta.text);
+      llmResponse += event.delta.text;
+    }
+  }
+  console.log("\n" + "─".repeat(50) + "\n");
 
   // ============================================
   // STEP 3: VERIFY CITATIONS

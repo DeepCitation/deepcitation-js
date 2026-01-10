@@ -4,7 +4,7 @@
  * This directory contains examples for different LLM providers.
  * Run the example for your preferred provider:
  *
- *   npm run start:openai     - OpenAI GPT-4
+ *   npm run start:openai     - OpenAI GPT-5 Mini
  *   npm run start:anthropic  - Anthropic Claude
  *
  * Make sure to copy .env.example to .env and add your API keys first!
@@ -17,7 +17,7 @@ console.log(`
 ║                                                            ║
 ║  Run one of the following commands:                        ║
 ║                                                            ║
-║    npm run start:openai      - Using OpenAI GPT-4          ║
+║    npm run start:openai      - Using OpenAI GPT-5 Mini     ║
 ║    npm run start:anthropic   - Using Anthropic Claude      ║
 ║                                                            ║
 ║  Make sure to:                                             ║

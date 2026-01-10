@@ -35,8 +35,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
+const model = "gpt-5-mini";
+
 async function main() {
-  console.log("🔍 DeepCitation Basic Example - OpenAI\n");
+  console.log(`🔍 DeepCitation Basic Example - OpenAI (${model})\n`);
 
   // ============================================
   // STEP 1: PRE-PROMPT
@@ -107,8 +109,13 @@ provided documents accurately and cite your sources.`;
   // Convert image to base64 for OpenAI vision API
   const imageBase64 = sampleDocument.toString("base64");
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+  console.log("📝 LLM Response (raw with citations):");
+  console.log("─".repeat(50));
+
+  // Stream the response
+  const stream = await openai.chat.completions.create({
+    model,
+    stream: true,
     messages: [
       { role: "system", content: enhancedSystemPrompt },
       {
@@ -131,11 +138,13 @@ provided documents accurately and cite your sources.`;
     ],
   });
 
-  const llmResponse = completion.choices[0].message.content!;
-  console.log("📝 LLM Response (raw with citations):");
-  console.log("─".repeat(50));
-  console.log(llmResponse);
-  console.log("─".repeat(50) + "\n");
+  let llmResponse = "";
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content || "";
+    process.stdout.write(content);
+    llmResponse += content;
+  }
+  console.log("\n" + "─".repeat(50) + "\n");
 
   // ============================================
   // STEP 3: VERIFY CITATIONS
@@ -164,7 +173,6 @@ provided documents accurately and cite your sources.`;
   }
   console.log();
 
-  // Now verify only the parsed citations (raw LLM output is not sent)
   const verificationResult = await deepcitation.verifyCitations(
     fileId,
     parsedCitations

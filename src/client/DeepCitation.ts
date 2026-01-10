@@ -20,7 +20,10 @@ import type {
 const DEFAULT_API_URL = "https://api.deepcitation.com";
 
 /** Convert File/Blob/Buffer to a Blob suitable for FormData */
-function toBlob(file: File | Blob | Buffer, filename?: string): { blob: Blob; name: string } {
+function toBlob(
+  file: File | Blob | Buffer,
+  filename?: string
+): { blob: Blob; name: string } {
   if (typeof Buffer !== "undefined" && Buffer.isBuffer(file)) {
     const uint8 = Uint8Array.from(file);
     return { blob: new Blob([uint8]), name: filename || "document" };
@@ -35,9 +38,15 @@ function toBlob(file: File | Blob | Buffer, filename?: string): { blob: Blob; na
 }
 
 /** Extract error message from API response */
-async function extractErrorMessage(response: Response, fallbackAction: string): Promise<string> {
+async function extractErrorMessage(
+  response: Response,
+  fallbackAction: string
+): Promise<string> {
   const error = await response.json().catch(() => ({}));
-  return error?.error?.message || `${fallbackAction} failed with status ${response.status}`;
+  return (
+    error?.error?.message ||
+    `${fallbackAction} failed with status ${response.status}`
+  );
 }
 
 /**
@@ -68,21 +77,6 @@ async function extractErrorMessage(response: Response, fallbackAction: string): 
 export class DeepCitation {
   private readonly apiKey: string;
   private readonly apiUrl: string;
-
-  /**
-   * Stores mapping of user-provided fileId to internal attachmentId
-   * This allows users to reference files by their own IDs
-   */
-  private fileIdMap: Map<string, { attachmentId: string }> = new Map();
-
-  /** Store file mapping and return public response */
-  private storeAndReturnResponse(
-    apiResponse: UploadFileResponse & { attachmentId: string }
-  ): UploadFileResponse {
-    this.fileIdMap.set(apiResponse.fileId, { attachmentId: apiResponse.attachmentId });
-    const { attachmentId: _, ...publicResponse } = apiResponse;
-    return publicResponse;
-  }
 
   /**
    * Create a new DeepCitation client instance.
@@ -144,7 +138,7 @@ export class DeepCitation {
       throw new Error(await extractErrorMessage(response, "Upload"));
     }
 
-    return this.storeAndReturnResponse(await response.json());
+    return (await response.json()) as UploadFileResponse;
   }
 
   /**
@@ -219,12 +213,7 @@ export class DeepCitation {
       throw new Error(await extractErrorMessage(response, "Conversion"));
     }
 
-    const apiResponse = (await response.json()) as ConvertFileResponse & {
-      attachmentId: string;
-    };
-    this.fileIdMap.set(apiResponse.fileId, { attachmentId: apiResponse.attachmentId });
-    const { attachmentId: _, ...publicResponse } = apiResponse;
-    return publicResponse;
+    return (await response.json()) as ConvertFileResponse;
   }
 
   /**
@@ -250,13 +239,6 @@ export class DeepCitation {
   async prepareConvertedFile(
     options: PrepareConvertedFileOptions
   ): Promise<UploadFileResponse> {
-    const fileInfo = this.fileIdMap.get(options.fileId);
-    if (!fileInfo) {
-      throw new Error(
-        `File ID "${options.fileId}" not found. Make sure to call convertToPdf() first.`
-      );
-    }
-
     const response = await fetch(`${this.apiUrl}/prepareFile`, {
       method: "POST",
       headers: {
@@ -264,7 +246,6 @@ export class DeepCitation {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        attachmentId: fileInfo.attachmentId,
         fileId: options.fileId,
       }),
     });
@@ -273,7 +254,7 @@ export class DeepCitation {
       throw new Error(await extractErrorMessage(response, "Prepare"));
     }
 
-    return this.storeAndReturnResponse(await response.json());
+    return (await response.json()) as UploadFileResponse;
   }
 
   /**
@@ -351,15 +332,6 @@ export class DeepCitation {
     citations: CitationInput,
     options?: VerifyCitationsOptions
   ): Promise<VerifyCitationsResponse> {
-    // Look up the internal IDs from our map
-    const fileInfo = this.fileIdMap.get(fileId);
-
-    if (!fileInfo) {
-      throw new Error(
-        `File ID "${fileId}" not found. Make sure to upload the file first with uploadFile().`
-      );
-    }
-
     // Normalize citations to a map with citation keys
     const citationMap: Record<string, Citation> = {};
 
@@ -383,26 +355,30 @@ export class DeepCitation {
       throw new Error("Invalid citations format");
     }
 
-    const response = await fetch(`${this.apiUrl}/verifyCitation`, {
+    const requestUrl = `${this.apiUrl}/verifyCitations`;
+    const requestBody = {
+      data: {
+        fileId,
+        citations: citationMap,
+        outputImageFormat: options?.outputImageFormat || "avif",
+      },
+    };
+
+    const response = await fetch(requestUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        data: {
-          attachmentId: fileInfo.attachmentId,
-          citations: citationMap,
-          outputImageFormat: options?.outputImageFormat || "avif",
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       throw new Error(await extractErrorMessage(response, "Verification"));
     }
 
-    return (await response.json()) as VerifyCitationsResponse;
+    const result = (await response.json()) as VerifyCitationsResponse;
+    return result;
   }
 
   /**
@@ -438,10 +414,6 @@ export class DeepCitation {
       return { foundHighlights: {} };
     }
 
-    // Note: fileDataParts is now only used to identify which files to verify
-    // The mapping from fileId to attachmentId must be registered via uploadFile() or prepareFiles()
-    // in the same session. For Zero Data Retention scenarios, use verifyCitations() directly.
-
     // Group citations by fileId
     const citationsByFile = new Map<string, Record<string, Citation>>();
     for (const [key, citation] of Object.entries(citations)) {
@@ -452,10 +424,10 @@ export class DeepCitation {
       citationsByFile.get(fileId)![key] = citation;
     }
 
-    // Filter to only registered files and verify in parallel
+    // Verify all files in parallel
     const verificationPromises: Promise<VerifyCitationsResponse>[] = [];
     for (const [fileId, fileCitations] of citationsByFile) {
-      if (this.fileIdMap.has(fileId)) {
+      if (fileId) {
         verificationPromises.push(
           this.verifyCitations(fileId, fileCitations, { outputImageFormat })
         );
@@ -469,24 +441,5 @@ export class DeepCitation {
     }
 
     return { foundHighlights: allHighlights };
-  }
-
-  /**
-   * Register a file that was uploaded separately (e.g., via direct API call).
-   * This allows you to use verifyCitations with files not uploaded via uploadFile().
-   *
-   * @param fileId - Your file ID
-   * @param attachmentId - The internal attachment ID
-   */
-  registerFile(fileId: string, attachmentId: string): void {
-    this.fileIdMap.set(fileId, { attachmentId });
-  }
-
-  /**
-   * Clear the internal file ID mapping.
-   * Useful for cleanup or when working with many files.
-   */
-  clearFileMap(): void {
-    this.fileIdMap.clear();
   }
 }
