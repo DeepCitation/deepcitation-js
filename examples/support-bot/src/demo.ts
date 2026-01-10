@@ -5,33 +5,13 @@
  */
 
 import "dotenv/config";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import { SupportBot } from "./support-bot.js";
 
-const KNOWLEDGE_BASE = `
-ACME Support Knowledge Base
-===========================
-
-REFUND POLICY
--------------
-All purchases are eligible for a full refund within 30 days of purchase.
-After 30 days, customers may receive store credit for unused products.
-Digital products are non-refundable after download or activation.
-To request a refund, contact support@acme.com or call 1-800-ACME-HELP.
-
-SHIPPING INFORMATION
---------------------
-Standard shipping: 5-7 business days ($5.99)
-Express shipping: 2-3 business days ($12.99)
-Overnight shipping: Next business day ($24.99)
-Free standard shipping on orders over $50.
-International shipping available to 40+ countries.
-
-WARRANTY INFORMATION
---------------------
-All hardware products include a 2-year manufacturer warranty.
-Warranty covers defects in materials and workmanship.
-Extended warranty available for purchase within 30 days of product purchase.
-`;
+// Get current directory for loading sample file
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function main() {
   console.log("🤖 DeepCitation Support Bot Demo\n");
@@ -43,14 +23,16 @@ async function main() {
   });
 
   console.log("📚 Loading knowledge base...");
-  await bot.loadKnowledgeBase(KNOWLEDGE_BASE, "support-kb.txt");
+  // Load the sample medical chart image from shared assets
+  const chartImage = readFileSync(resolve(__dirname, "../../assets/john-doe-50-m-chart.jpg"));
+  await bot.loadKnowledgeBase(chartImage, "john-doe-50-m-chart.jpg");
   console.log("✅ Knowledge base loaded\n");
 
-  // Test questions
+  // Test questions about the medical chart
   const questions = [
-    "What is your refund policy?",
-    "How much does express shipping cost?",
-    "How long is the warranty on hardware products?",
+    "What is the patient's diagnosis?",
+    "What medications is the patient on?",
+    "What is the treatment plan?",
   ];
 
   for (const question of questions) {

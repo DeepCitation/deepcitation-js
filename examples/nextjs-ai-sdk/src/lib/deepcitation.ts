@@ -67,12 +67,12 @@ export async function verifyCitations(
     return {};
   }
 
-  const result = await dc.verifyCitations({
+  const result = await dc.verifyCitationsFromLlmOutput({
     llmOutput,
     fileDataParts,
   });
 
-  return result.citations;
+  return result.foundHighlights;
 }
 
 export function enhancePrompts(
