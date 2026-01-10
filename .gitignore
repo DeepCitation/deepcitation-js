@@ -20,3 +20,4 @@ bundle-stats*
 examples/**/.env
 examples/**/bun.lock
 examples/**/package-lock.json
+examples/**/local.tgz
