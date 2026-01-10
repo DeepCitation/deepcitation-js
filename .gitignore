@@ -18,3 +18,5 @@ test-failure-*.png
 bundle-stats*
 
 examples/**/.env
+examples/**/bun.lock
+examples/**/package-lock.json
