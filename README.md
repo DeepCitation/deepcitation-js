@@ -68,7 +68,7 @@ const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles([
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
   systemPrompt: "You are a helpful assistant...",
   userPrompt: "Analyze this document",
-  deepTextPromptPortion: deepTextPromptPortion,
+  deepTextPromptPortion,
 });
 
 // Call your LLM

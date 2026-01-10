@@ -45,7 +45,7 @@ const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles([...]);
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
   systemPrompt,
   userPrompt: question,
-  deepTextPromptPortion: deepTextPromptPortion, // Pass file content directly
+  deepTextPromptPortion, 
 });
 
 // 3. Call LLM with enhanced prompts

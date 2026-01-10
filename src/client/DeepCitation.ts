@@ -356,7 +356,7 @@ export class DeepCitation {
    * const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
    *   systemPrompt,
    *   userPrompt,
-   *   deepTextPromptPortion: deepTextPromptPortion
+   *   deepTextPromptPortion
    * });
    *
    * // Use fileDataParts later for verification

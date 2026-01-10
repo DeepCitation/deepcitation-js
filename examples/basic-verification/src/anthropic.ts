@@ -66,7 +66,7 @@ provided documents accurately and cite your sources.`;
   const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
     systemPrompt,
     userPrompt: userQuestion,
-    deepTextPromptPortion: deepTextPromptPortion, // Pass file content directly
+    deepTextPromptPortion,
   });
 
   // ============================================

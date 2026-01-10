@@ -93,7 +93,7 @@ Before calling the LLM, prompts are enhanced with citation instructions:
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
   systemPrompt,
   userPrompt: question,
-  deepTextPromptPortion: deepTextPromptPortion, // Pass file content directly
+  deepTextPromptPortion, 
 });
 ```
 

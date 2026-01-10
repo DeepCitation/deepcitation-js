@@ -118,7 +118,7 @@ If information is not available in the knowledge base, say so honestly.`;
     const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
       systemPrompt,
       userPrompt: question,
-      deepTextPromptPortion: this.deepTextPromptPortion, // Pass file content directly
+      deepTextPromptPortion: this.deepTextPromptPortion,
     });
 
     // Step 2: Get response from LLM
