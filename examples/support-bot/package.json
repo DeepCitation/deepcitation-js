@@ -4,11 +4,11 @@
   "description": "Support bot example with invisible citation verification",
   "type": "module",
   "scripts": {
-    "start": "tsx src/server.ts",
-    "demo": "tsx src/demo.ts"
+    "start": "bun run src/server.ts",
+    "demo": "bun run src/demo.ts"
   },
   "dependencies": {
-    "@deepcitation/deepcitation-js": "latest",
+    "@deepcitation/deepcitation-js": "file:../..",
     "openai": "^4.0.0",
     "express": "^4.18.0"
   },

@@ -10,6 +10,9 @@
  */
 
 import "dotenv/config";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   DeepCitation,
@@ -17,6 +20,9 @@ import {
   getCitationStatus,
   removeCitations,
 } from "@deepcitation/deepcitation-js";
+
+// Get current directory for loading sample file
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Initialize clients
 const deepcitation = new DeepCitation({
@@ -37,45 +43,22 @@ async function main() {
 
   console.log("📄 Step 1: Uploading document and preparing prompts...\n");
 
-  // Sample document content (replace with your own PDF)
-  const sampleDocument = Buffer.from(`
-    ACME Corporation Annual Report 2024
-
-    Executive Summary
-    ACME Corporation achieved record revenue of $4.2 billion in fiscal year 2024,
-    representing a 23% increase from the previous year. Net profit margin improved
-    to 18.5%, up from 15.2% in 2023.
-
-    Key Highlights:
-    - Total revenue: $4.2 billion (up 23% YoY)
-    - Net profit margin: 18.5%
-    - Customer base grew to 2.3 million active users
-    - Launched 12 new products across 3 categories
-    - Employee count reached 8,500 globally
-
-    Regional Performance:
-    North America contributed 45% of total revenue ($1.89B), while Europe
-    accounted for 30% ($1.26B). Asia-Pacific showed the strongest growth
-    at 35% YoY, now representing 25% of revenue ($1.05B).
-
-    Outlook for 2025:
-    Management projects revenue growth of 15-20% for fiscal year 2025,
-    with continued expansion in Asia-Pacific markets.
-  `);
+  // Load the sample chart image from shared assets
+  const sampleDocument = readFileSync(resolve(__dirname, "../../assets/john-doe-50-m-chart.jpg"));
 
   // Upload documents to DeepCitation
   const { fileDataParts, fileDeepTexts } = await deepcitation.prepareFiles([
-    { file: sampleDocument, filename: "annual-report-2024.pdf" },
+    { file: sampleDocument, filename: "john-doe-50-m-chart.jpg" },
   ]);
 
   console.log("✅ Document uploaded successfully");
   console.log(`   File ID: ${fileDataParts[0].fileId}\n`);
 
   // Wrap your prompts with citation instructions
-  const systemPrompt = `You are a financial analyst assistant. Answer questions
-about the provided documents accurately and cite your sources.`;
+  const systemPrompt = `You are a helpful assistant. Answer questions about the
+provided documents accurately and cite your sources.`;
 
-  const userQuestion = "What was ACME's revenue growth and which region performed best?";
+  const userQuestion = "Summarize the key information shown in this document.";
 
   const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
     systemPrompt,
@@ -106,7 +89,7 @@ about the provided documents accurately and cite your sources.`;
   console.log("─".repeat(50) + "\n");
 
   // Verify all citations against the source document
-  const verificationResult = await deepcitation.verifyCitations({
+  const verificationResult = await deepcitation.verifyCitationsFromLlmOutput({
     llmOutput: llmResponse,
     fileDataParts,
   });
@@ -118,14 +101,14 @@ about the provided documents accurately and cite your sources.`;
 
   console.log("✨ Step 3: Verification Results\n");
 
-  const citations = Object.entries(verificationResult.citations);
+  const highlights = Object.entries(verificationResult.foundHighlights);
 
-  if (citations.length === 0) {
+  if (highlights.length === 0) {
     console.log("⚠️  No citations found in the response.\n");
   } else {
-    console.log(`Found ${citations.length} citation(s):\n`);
+    console.log(`Found ${highlights.length} citation(s):\n`);
 
-    for (const [key, highlight] of citations) {
+    for (const [key, highlight] of highlights) {
       const status = getCitationStatus(highlight);
       const statusIcon = status.isVerified
         ? status.isPartialMatch
@@ -151,13 +134,15 @@ about the provided documents accurately and cite your sources.`;
   console.log("─".repeat(50) + "\n");
 
   // Summary statistics
-  const verified = citations.filter(([, h]) => getCitationStatus(h).isVerified).length;
-  const missed = citations.filter(([, h]) => getCitationStatus(h).isMiss).length;
+  const verified = highlights.filter(([, h]) => getCitationStatus(h).isVerified).length;
+  const missed = highlights.filter(([, h]) => getCitationStatus(h).isMiss).length;
 
   console.log("📊 Summary:");
-  console.log(`   Total citations: ${citations.length}`);
-  console.log(`   Verified: ${verified} (${((verified / citations.length) * 100).toFixed(0)}%)`);
-  console.log(`   Not found: ${missed}`);
+  console.log(`   Total citations: ${highlights.length}`);
+  if (highlights.length > 0) {
+    console.log(`   Verified: ${verified} (${((verified / highlights.length) * 100).toFixed(0)}%)`);
+    console.log(`   Not found: ${missed}`);
+  }
 }
 
 main().catch(console.error);

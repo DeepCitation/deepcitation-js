@@ -4,12 +4,12 @@
   "description": "Basic example showing DeepCitation verification workflow",
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts",
-    "start:openai": "tsx src/openai.ts",
-    "start:anthropic": "tsx src/anthropic.ts"
+    "start": "bun run src/index.ts",
+    "start:openai": "bun run src/openai.ts",
+    "start:anthropic": "bun run src/anthropic.ts"
   },
   "dependencies": {
-    "@deepcitation/deepcitation-js": "latest",
+    "@deepcitation/deepcitation-js": "file:../..",
     "openai": "^4.0.0",
     "@anthropic-ai/sdk": "^0.30.0"
   },

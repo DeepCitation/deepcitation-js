@@ -26,8 +26,14 @@ export {
   groupCitationsByFileId,
   groupCitationsByFileIdObject,
 } from "./parsing/parseCitation.js";
-export { normalizeCitations, getCitationPageNumber } from "./parsing/normalizeCitation.js";
-export { isGeminiGarbage, cleanRepeatingLastSentence } from "./parsing/parseWorkAround.js";
+export {
+  normalizeCitations,
+  getCitationPageNumber,
+} from "./parsing/normalizeCitation.js";
+export {
+  isGeminiGarbage,
+  cleanRepeatingLastSentence,
+} from "./parsing/parseWorkAround.js";
 
 // Types
 export type {
@@ -38,7 +44,10 @@ export type {
   OutputImageFormat,
 } from "./types/citation.js";
 
-export { VERIFICATION_VERSION_NUMBER, DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
+export {
+  VERIFICATION_VERSION_NUMBER,
+  DEFAULT_OUTPUT_IMAGE_FORMAT,
+} from "./types/citation.js";
 
 export type { FoundHighlightLocation } from "./types/foundHighlight.js";
 
@@ -49,7 +58,12 @@ export {
   deterministicIdFromHighlightLocation,
 } from "./types/foundHighlight.js";
 
-export type { SearchState, SearchStatus, SearchMethod, SearchAttempt } from "./types/search.js";
+export type {
+  SearchState,
+  SearchStatus,
+  SearchMethod,
+  SearchAttempt,
+} from "./types/search.js";
 
 export type { ScreenBox, PdfSpaceItem, IVertex } from "./types/boxes.js";
 
@@ -75,10 +89,15 @@ export type {
   WrapCitationPromptResult,
 } from "./prompts/citationPrompts.js";
 
-export { removeLineIdMetadata, removePageNumberMetadata, removeCitations } from "./parsing/normalizeCitation.js";
+export {
+  removeLineIdMetadata,
+  removePageNumberMetadata,
+  removeCitations,
+} from "./parsing/normalizeCitation.js";
 
-export { compressPromptIds, decompressPromptIds } from "./prompts/promptCompression.js";
+export {
+  compressPromptIds,
+  decompressPromptIds,
+} from "./prompts/promptCompression.js";
 
 export type { CompressedResult } from "./prompts/types.js";
-
-export { CitationComponent } from "./react/CitationComponent.js";

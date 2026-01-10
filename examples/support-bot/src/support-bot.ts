@@ -126,13 +126,13 @@ If information is not available in the knowledge base, say so honestly.`;
     const rawResponse = completion.choices[0].message.content!;
 
     // Step 3: Verify citations against knowledge base
-    const verificationResult = await this.dc.verifyCitations({
+    const verificationResult = await this.dc.verifyCitationsFromLlmOutput({
       llmOutput: rawResponse,
       fileDataParts: this.fileDataParts,
     });
 
     // Step 4: Calculate confidence score
-    const citations = Object.values(verificationResult.citations);
+    const citations = Object.values(verificationResult.foundHighlights);
     const totalCitations = citations.length;
     const verifiedCitations = citations.filter(
       (c) => getCitationStatus(c).isVerified
@@ -151,7 +151,7 @@ If information is not available in the knowledge base, say so honestly.`;
       needsReview: confidence < this.minConfidenceThreshold,
       totalCitations,
       verifiedCitations,
-      verificationDetails: verificationResult.citations,
+      verificationDetails: verificationResult.foundHighlights,
     };
   }
 

@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npm pack:*)",
       "Bash(npm run build:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(bun run start:openai:*)",
+      "Bash(bun install:*)",
+      "WebSearch",
+      "Bash(bun run demo:*)"
     ]
   }
 }

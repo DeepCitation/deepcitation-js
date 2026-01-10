@@ -16,3 +16,5 @@ test-failure-*.png
 *.spec.png
 
 bundle-stats*
+
+examples/**/.env
