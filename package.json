@@ -77,7 +77,12 @@
             "import": "./lib/react/index.js",
             "require": "./lib/react/index.js"
         },
-        "./react/styles.css": "./lib/react/styles.css"
+        "./react/styles.css": "./lib/react/styles.css",
+        "./cli": {
+            "types": "./lib/cli/index.d.ts",
+            "import": "./lib/cli/index.js",
+            "require": "./lib/cli/index.js"
+        }
     },
     "keywords": [
         "citation",
