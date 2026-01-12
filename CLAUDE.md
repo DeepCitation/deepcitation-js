@@ -105,7 +105,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
 <CitationComponent
   citation={citation}
-  foundCitation={verification}
+  verification={verification}
   displayCitationValue={true}
 />
 ```

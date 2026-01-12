@@ -39,7 +39,7 @@ export type { CitationVariant } from "./types.js";
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, fullPhrase: "Revenue grew by 25%" }}
- *   foundCitation={verificationResult}
+ *   verification={verificationResult}
  * />
  * // Renders: [1✓] with blue text
  * ```
@@ -48,7 +48,7 @@ export type { CitationVariant } from "./types.js";
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, value: "25% growth" }}
- *   foundCitation={verificationResult}
+ *   verification={verificationResult}
  *   variant="numeric"
  * />
  * // Renders: 1✓
@@ -58,7 +58,7 @@ export type { CitationVariant } from "./types.js";
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, value: "25% growth" }}
- *   foundCitation={verificationResult}
+ *   verification={verificationResult}
  *   variant="text"
  * />
  * // Renders: 25% growth✓
@@ -68,7 +68,7 @@ export type { CitationVariant } from "./types.js";
  * ```tsx
  * <CitationComponent
  *   citation={citation}
- *   foundCitation={verificationResult}
+ *   verification={verificationResult}
  *   variant="minimal"
  * />
  * // Renders: Revenue grew...✓
@@ -78,7 +78,7 @@ export type { CitationVariant } from "./types.js";
  * ```tsx
  * <CitationComponent
  *   citation={citation}
- *   foundCitation={verificationResult}
+ *   verification={verificationResult}
  *   variant="indicator"
  * />
  * // Renders: ✓
@@ -88,7 +88,7 @@ export type { CitationVariant } from "./types.js";
  * ```tsx
  * <CitationComponent
  *   citation={citation}
- *   foundCitation={verificationResult}
+ *   verification={verificationResult}
  *   popoverPosition="hidden"
  * />
  * ```
@@ -98,7 +98,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    * Verification result from the DeepCitation API.
    * Contains match snippet, page number, and verification image.
    */
-  foundCitation?: Verification | null;
+  verification?: Verification | null;
 
   /**
    * Display variant for the citation.
@@ -145,7 +145,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    */
   renderPopoverContent?: (props: {
     citation: BaseCitationProps["citation"];
-    foundCitation: Verification | null;
+    verification: Verification | null;
     status: CitationStatus;
   }) => ReactNode;
 }
@@ -228,13 +228,13 @@ function getFoundStatusClass(status: CitationStatus): string {
 const StatusTooltipContent = ({
   citation,
   status,
-  foundCitation,
+  verification,
   isExpanded,
   onToggleExpand,
 }: {
   citation: BaseCitationProps["citation"];
   status: CitationStatus;
-  foundCitation: Verification | null;
+  verification: Verification | null;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }) => {
@@ -242,8 +242,8 @@ const StatusTooltipContent = ({
 
   if (!isMiss && !isPartialMatch) return null;
 
-  // Get search attempts from foundCitation
-  const searchAttempts = foundCitation?.searchState?.searchAttempts;
+  // Get search attempts from verification
+  const searchAttempts = verification?.searchState?.searchAttempts;
   const failedAttempts = searchAttempts?.filter((a) => !a.success) || [];
 
   // Collect all unique phrases tried
@@ -309,7 +309,7 @@ const StatusTooltipContent = ({
 
   if (isPartialMatch) {
     const expectedText = citation.fullPhrase || citation.value || "";
-    const actualText = foundCitation?.matchSnippet || "";
+    const actualText = verification?.matchSnippet || "";
     const truncatedExpected =
       expectedText.length > 100
         ? expectedText.slice(0, 100) + "…"
@@ -404,26 +404,26 @@ const ImageOverlay = ({
  * Shows verification image if available, otherwise shows text info.
  */
 const DefaultPopoverContent = ({
-  foundCitation,
+  verification,
   status,
   onImageClick,
 }: {
   citation: BaseCitationProps["citation"];
-  foundCitation: Verification | null;
+  verification: Verification | null;
   status: CitationStatus;
   onImageClick?: (imageSrc: string) => void;
 }) => {
-  const hasImage = foundCitation?.verificationImageBase64;
+  const hasImage = verification?.verificationImageBase64;
 
   const handleImageClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (hasImage && onImageClick) {
-        onImageClick(foundCitation.verificationImageBase64 as string);
+        onImageClick(verification.verificationImageBase64 as string);
       }
     },
-    [hasImage, foundCitation?.verificationImageBase64, onImageClick]
+    [hasImage, verification?.verificationImageBase64, onImageClick]
   );
 
   // If we have a verification image, show only the image
@@ -436,7 +436,7 @@ const DefaultPopoverContent = ({
         aria-label="Click to view full size"
       >
         <img
-          src={foundCitation.verificationImageBase64 as string}
+          src={verification.verificationImageBase64 as string}
           alt="Citation verification"
           className="dc-popover-image"
           loading="lazy"
@@ -448,8 +448,8 @@ const DefaultPopoverContent = ({
   // No image - show text info
   const statusLabel = getStatusLabel(status);
   const statusClass = getPopoverStatusClass(status);
-  const hasSnippet = foundCitation?.matchSnippet;
-  const pageNumber = foundCitation?.pageNumber;
+  const hasSnippet = verification?.matchSnippet;
+  const pageNumber = verification?.pageNumber;
 
   if (!hasSnippet && !statusLabel) {
     return null;
@@ -464,7 +464,7 @@ const DefaultPopoverContent = ({
       )}
       {hasSnippet && (
         <span className="dc-popover-snippet">
-          "{foundCitation.matchSnippet}"
+          "{verification.matchSnippet}"
         </span>
       )}
       {pageNumber && pageNumber > 0 && (
@@ -505,7 +505,7 @@ export const CitationComponent = forwardRef<
       className,
       displayCitationValue = false,
       fallbackDisplay,
-      foundCitation,
+      verification,
       variant = "brackets",
       eventHandlers,
       isMobile = false,
@@ -589,14 +589,14 @@ export const CitationComponent = forwardRef<
         e.stopPropagation();
 
         // If we have a verification image
-        if (foundCitation?.verificationImageBase64) {
+        if (verification?.verificationImageBase64) {
           if (expandedImageSrc) {
             // Image is open - close it and unpin
             setExpandedImageSrc(null);
             setIsTooltipExpanded(false);
           } else if (isTooltipExpanded) {
             // Already pinned - second click expands image
-            setExpandedImageSrc(foundCitation.verificationImageBase64);
+            setExpandedImageSrc(verification.verificationImageBase64);
           } else {
             // First click - just pin the popover open
             setIsTooltipExpanded(true);
@@ -613,13 +613,13 @@ export const CitationComponent = forwardRef<
         eventHandlers,
         citation,
         citationKey,
-        foundCitation?.verificationImageBase64,
+        verification?.verificationImageBase64,
         expandedImageSrc,
         isTooltipExpanded,
       ]
     );
 
-    const status = getCitationStatus(foundCitation ?? null);
+    const status = getCitationStatus(verification ?? null);
     // const { isVerified, isPending } = status;
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
@@ -778,8 +778,8 @@ export const CitationComponent = forwardRef<
     const isPopoverHidden = popoverPosition === "hidden";
     const shouldShowPopover =
       !isPopoverHidden &&
-      foundCitation &&
-      (foundCitation.verificationImageBase64 || foundCitation.matchSnippet);
+      verification &&
+      (verification.verificationImageBase64 || verification.matchSnippet);
     // Determine if status tooltip should be shown (miss/partial without full verification)
     const shouldShowStatusTooltip =
       !isPopoverHidden && (isMiss || isPartialMatch) && !shouldShowPopover;
@@ -792,13 +792,13 @@ export const CitationComponent = forwardRef<
         {renderPopoverContent ? (
           renderPopoverContent({
             citation,
-            foundCitation: foundCitation ?? null,
+            verification: verification ?? null,
             status,
           })
         ) : (
           <DefaultPopoverContent
             citation={citation}
-            foundCitation={foundCitation ?? null}
+            verification={verification ?? null}
             status={status}
             onImageClick={handleImageClick}
           />
@@ -811,7 +811,7 @@ export const CitationComponent = forwardRef<
       <StatusTooltipContent
         citation={citation}
         status={status}
-        foundCitation={foundCitation ?? null}
+        verification={verification ?? null}
         isExpanded={isPhrasesExpanded}
         onToggleExpand={handleTogglePhrases}
       />
@@ -831,7 +831,7 @@ export const CitationComponent = forwardRef<
         data-citation-id={citationKey}
         data-citation-instance={citationInstanceId}
         data-tooltip-expanded={isTooltipExpanded}
-        data-has-image={!!foundCitation?.verificationImageBase64}
+        data-has-image={!!verification?.verificationImageBase64}
         className={classNames(
           "dc-citation",
           `dc-citation--${variant}`,

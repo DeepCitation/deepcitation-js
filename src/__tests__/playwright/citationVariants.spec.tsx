@@ -61,7 +61,7 @@ test.describe("ChipCitation", () => {
 
   test("renders with verified state", async ({ mount, page }) => {
     await mount(
-      <ChipCitation citation={baseCitation} foundCitation={verification} />
+      <ChipCitation citation={baseCitation} verification={verification} />
     );
     const chip = page.locator(".citation-chip");
 
@@ -71,7 +71,7 @@ test.describe("ChipCitation", () => {
 
   test("renders with miss state", async ({ mount, page }) => {
     await mount(
-      <ChipCitation citation={baseCitation} foundCitation={missFoundCitation} />
+      <ChipCitation citation={baseCitation} verification={missFoundCitation} />
     );
     const chip = page.locator(".citation-chip");
 
@@ -82,7 +82,7 @@ test.describe("ChipCitation", () => {
     await mount(
       <ChipCitation
         citation={baseCitation}
-        foundCitation={partialFoundCitation}
+        verification={partialFoundCitation}
       />
     );
     const chip = page.locator(".citation-chip");
@@ -95,7 +95,7 @@ test.describe("ChipCitation", () => {
     await mount(
       <ChipCitation
         citation={baseCitation}
-        foundCitation={pendingFoundCitation}
+        verification={pendingFoundCitation}
       />
     );
     const chip = page.locator(".citation-chip");
@@ -167,7 +167,7 @@ test.describe("SuperscriptCitation", () => {
     await mount(
       <SuperscriptCitation
         citation={baseCitation}
-        foundCitation={verification}
+        verification={verification}
       />
     );
     const sup = page.locator(".citation-superscript");
@@ -183,7 +183,7 @@ test.describe("SuperscriptCitation", () => {
       <SuperscriptCitation
         citation={baseCitation}
         showBrackets={true}
-        foundCitation={verification}
+        verification={verification}
       />
     );
     const sup = page.locator(".citation-superscript");
@@ -206,7 +206,7 @@ test.describe("SuperscriptCitation", () => {
     await mount(
       <SuperscriptCitation
         citation={baseCitation}
-        foundCitation={missFoundCitation}
+        verification={missFoundCitation}
       />
     );
     const sup = page.locator(".citation-superscript");
@@ -263,7 +263,7 @@ test.describe("FootnoteCitation", () => {
 
   test("renders with verified state", async ({ mount, page }) => {
     await mount(
-      <FootnoteCitation citation={baseCitation} foundCitation={verification} />
+      <FootnoteCitation citation={baseCitation} verification={verification} />
     );
     const footnote = page.locator(".citation-footnote");
 
@@ -319,7 +319,7 @@ test.describe("InlineCitation", () => {
 
   test("renders with verified state", async ({ mount, page }) => {
     await mount(
-      <InlineCitation citation={baseCitation} foundCitation={verification} />
+      <InlineCitation citation={baseCitation} verification={verification} />
     );
     const inline = page.locator(".citation-inline");
 
@@ -330,7 +330,7 @@ test.describe("InlineCitation", () => {
     await mount(
       <InlineCitation
         citation={baseCitation}
-        foundCitation={pendingFoundCitation}
+        verification={pendingFoundCitation}
       />
     );
     const inline = page.locator(".citation-inline");
@@ -356,7 +356,7 @@ test.describe("MinimalCitation", () => {
 
   test("renders with verified state", async ({ mount, page }) => {
     await mount(
-      <MinimalCitation citation={baseCitation} foundCitation={verification} />
+      <MinimalCitation citation={baseCitation} verification={verification} />
     );
     const minimal = page.locator(".citation-minimal");
 
@@ -365,7 +365,7 @@ test.describe("MinimalCitation", () => {
 
   test("shows status indicator by default", async ({ mount, page }) => {
     await mount(
-      <MinimalCitation citation={baseCitation} foundCitation={verification} />
+      <MinimalCitation citation={baseCitation} verification={verification} />
     );
     const minimal = page.locator(".citation-minimal");
 
@@ -379,7 +379,7 @@ test.describe("MinimalCitation", () => {
     await mount(
       <MinimalCitation
         citation={baseCitation}
-        foundCitation={verification}
+        verification={verification}
         showStatusIndicator={false}
       />
     );
@@ -392,7 +392,7 @@ test.describe("MinimalCitation", () => {
     await mount(
       <MinimalCitation
         citation={baseCitation}
-        foundCitation={missFoundCitation}
+        verification={missFoundCitation}
       />
     );
     const minimal = page.locator(".citation-minimal");
@@ -507,7 +507,7 @@ test.describe("Accessibility", () => {
 
   test("verified icon is aria-hidden", async ({ mount, page }) => {
     await mount(
-      <ChipCitation citation={baseCitation} foundCitation={verification} />
+      <ChipCitation citation={baseCitation} verification={verification} />
     );
     const chip = page.locator(".citation-chip");
 
