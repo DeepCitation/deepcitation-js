@@ -9,7 +9,8 @@
       "WebSearch",
       "Bash(bun run demo:*)",
       "Bash(npm test:*)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(bun test:*)"
     ]
   }
 }

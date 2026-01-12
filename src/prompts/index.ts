@@ -1,3 +1,3 @@
-export * from "./promptCompression";
-export * from "./citationPrompts";
-export * from "./types";
+export * from "./promptCompression.js";
+export * from "./citationPrompts.js";
+export * from "./types.js";

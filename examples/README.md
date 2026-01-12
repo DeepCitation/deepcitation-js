@@ -97,7 +97,7 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 const result = streamText({
-  model: openai("gpt-4o"),
+  model: openai("gpt-5-mini"),
   system: enhancedSystemPrompt,
   messages: enhancedMessages,
   async onFinish({ text }) {

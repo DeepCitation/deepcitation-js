@@ -1,4 +1,4 @@
-import type { Citation, FoundHighlightLocation } from "../types/index";
+import type { Citation, FoundHighlightLocation } from "../types/index.js";
 
 /**
  * Configuration options for the DeepCitation client

@@ -1,4 +1,4 @@
-export { DeepCitation } from "./DeepCitation";
+export { DeepCitation } from "./DeepCitation.js";
 export type {
   DeepCitationConfig,
   UploadFileResponse,
@@ -13,4 +13,4 @@ export type {
   ConvertFileInput,
   ConvertFileResponse,
   PrepareConvertedFileOptions,
-} from "./types";
+} from "./types.js";

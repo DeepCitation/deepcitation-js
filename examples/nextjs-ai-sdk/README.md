@@ -31,14 +31,14 @@ A complete chat application built with Next.js, Vercel AI SDK, and DeepCitation.
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Set up environment variables
 cp .env.example .env.local
 # Edit .env.local with your API keys
 
 # Run development server
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -104,7 +104,7 @@ The AI SDK streams the response in real-time:
 ```typescript
 // src/app/api/chat/route.ts
 const result = streamText({
-  model: openai("gpt-4o"),
+  model: openai("gpt-5-mini"),
   system: enhancedSystemPrompt,
   messages: enhancedMessages,
 });

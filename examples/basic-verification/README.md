@@ -12,16 +12,16 @@ A minimal example demonstrating the DeepCitation 3-step workflow for verifying A
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Copy environment file and add your API keys
 cp .env.example .env
 
 # Run with OpenAI
-npm run start:openai
+bun run start:openai
 
 # Or run with Anthropic Claude
-npm run start:anthropic
+bun run start:anthropic
 ```
 
 ## Required API Keys

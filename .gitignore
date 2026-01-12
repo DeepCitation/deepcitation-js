@@ -21,3 +21,5 @@ examples/**/.env
 examples/**/bun.lock
 examples/**/package-lock.json
 examples/**/local.tgz
+examples/**/.next
+examples/**/next-env.d.ts
