@@ -342,7 +342,7 @@ function processContentWithCitations(
               value: citation?.value,
               pageNumber: citation?.pageNumber,
             }}
-            foundCitation={verificationData}
+            verification={verificationData}
             variant="brackets"
             popoverPosition="top"
           />

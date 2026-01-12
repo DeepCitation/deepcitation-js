@@ -160,7 +160,7 @@ export interface CitationContentProps extends BaseCitationProps {
   /** Unique instance ID for this citation render */
   citationInstanceId: string;
   /** Found citation highlight data */
-  foundCitation: Verification | null | undefined;
+  verification: Verification | null | undefined;
   /** Current search state */
   searchState: SearchState | undefined | null;
   /** Actual page number where citation was found */

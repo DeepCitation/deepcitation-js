@@ -107,7 +107,7 @@ function Response({ citations, verifications }) {
       Revenue grew by
       <CitationComponent
         citation={citations["1"]}
-        foundCitation={verifications["1"]}
+        verification={verifications["1"]}
       />
       this quarter.
     </p>

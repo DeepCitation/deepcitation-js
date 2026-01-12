@@ -29,7 +29,7 @@ const TWO_DOTS_THINKING_CONTENT = "..";
  */
 export interface CitationVariantProps extends BaseCitationProps {
   /** Found citation highlight location data */
-  foundCitation?: Verification | null;
+  verification?: Verification | null;
   /** Current search state for the citation */
   searchState?: SearchState | null;
   /** Event handlers */
@@ -48,11 +48,11 @@ export interface CitationVariantProps extends BaseCitationProps {
 
 /**
  * Hook to get common citation data.
- * NOTE: Status is not memoized because foundCitation may be mutated in place.
+ * NOTE: Status is not memoized because verification may be mutated in place.
  */
 function useCitationData(
   citation: Citation,
-  foundCitation?: Verification | null
+  verification?: Verification | null
 ) {
   const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
   const citationInstanceId = useMemo(
@@ -60,7 +60,7 @@ function useCitationData(
     [citationKey]
   );
   // Don't memoize - object reference as dependency causes stale values on mutation
-  const status = getCitationStatus(foundCitation ?? null);
+  const status = getCitationStatus(verification ?? null);
   return { citationKey, citationInstanceId, status };
 }
 
@@ -101,7 +101,7 @@ export interface ChipCitationProps extends CitationVariantProps {
  *
  * @example
  * ```tsx
- * <ChipCitation citation={citation} foundCitation={found} size="md" />
+ * <ChipCitation citation={citation} verification={found} size="md" />
  * ```
  */
 export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
@@ -112,7 +112,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
       className,
       displayCitationValue = false,
       fallbackDisplay,
-      foundCitation,
+      verification,
       eventHandlers,
       isMobile = false,
       preventTooltips = false,
@@ -127,7 +127,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(
       citation,
-      foundCitation
+      verification
     );
     const { isVerified, isMiss, isPartialMatch, isPending } = status;
 
@@ -236,7 +236,7 @@ export interface SuperscriptCitationProps extends CitationVariantProps {
  *
  * @example
  * ```tsx
- * <SuperscriptCitation citation={citation} foundCitation={found} />
+ * <SuperscriptCitation citation={citation} verification={found} />
  * // Renders: Text content¹
  * ```
  */
@@ -251,7 +251,7 @@ export const SuperscriptCitation = forwardRef<
       className,
       displayCitationValue = false,
       fallbackDisplay,
-      foundCitation,
+      verification,
       eventHandlers,
       isMobile = false,
       preventTooltips = false,
@@ -264,7 +264,7 @@ export const SuperscriptCitation = forwardRef<
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(
       citation,
-      foundCitation
+      verification
     );
     const { isVerified, isMiss, isPartialMatch, isPending } = status;
 
@@ -367,7 +367,7 @@ export const FootnoteCitation = forwardRef<
       children,
       className,
       fallbackDisplay,
-      foundCitation,
+      verification,
       eventHandlers,
       preventTooltips = false,
       pendingContent = TWO_DOTS_THINKING_CONTENT,
@@ -380,7 +380,7 @@ export const FootnoteCitation = forwardRef<
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(
       citation,
-      foundCitation
+      verification
     );
     const { isVerified, isMiss, isPartialMatch, isPending } = status;
 
@@ -478,7 +478,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
       className,
       displayCitationValue = true, // Default to merged for inline
       fallbackDisplay,
-      foundCitation,
+      verification,
       eventHandlers,
       preventTooltips = false,
       pendingContent = TWO_DOTS_THINKING_CONTENT,
@@ -490,7 +490,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(
       citation,
-      foundCitation
+      verification
     );
     const { isVerified, isMiss, isPartialMatch, isPending } = status;
 
@@ -597,7 +597,7 @@ export const MinimalCitation = forwardRef<
       className,
       displayCitationValue = false,
       fallbackDisplay,
-      foundCitation,
+      verification,
       eventHandlers,
       preventTooltips = false,
       pendingContent = TWO_DOTS_THINKING_CONTENT,
@@ -609,7 +609,7 @@ export const MinimalCitation = forwardRef<
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(
       citation,
-      foundCitation
+      verification
     );
     const { isVerified, isMiss, isPartialMatch, isPending } = status;
 

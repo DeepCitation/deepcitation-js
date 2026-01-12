@@ -32,7 +32,7 @@ interface CitationContextValue {
   citationKey: string;
   citationInstanceId: string;
   status: CitationStatus;
-  foundCitation: Verification | null;
+  verification: Verification | null;
   searchState: SearchState | null;
   config: {
     displayCitationValue: boolean;
@@ -59,7 +59,7 @@ export function useCitationContextSafe(): CitationContextValue | null {
 
 export interface CitationRootProps {
   citation: CitationType;
-  foundCitation?: Verification | null;
+  verification?: Verification | null;
   searchState?: SearchState | null;
   children: ReactNode;
   displayCitationValue?: boolean;
@@ -75,7 +75,7 @@ export const CitationRoot = forwardRef<
   (
     {
       citation,
-      foundCitation = null,
+      verification = null,
       searchState = null,
       children,
       displayCitationValue = false,
@@ -94,7 +94,7 @@ export const CitationRoot = forwardRef<
       () => generateCitationInstanceId(citationKey),
       [citationKey]
     );
-    const status = getCitationStatus(foundCitation);
+    const status = getCitationStatus(verification);
 
     const contextValue = useMemo<CitationContextValue>(
       () => ({
@@ -102,7 +102,7 @@ export const CitationRoot = forwardRef<
         citationKey,
         citationInstanceId,
         status,
-        foundCitation,
+        verification,
         searchState,
         config: {
           displayCitationValue,
@@ -115,7 +115,7 @@ export const CitationRoot = forwardRef<
         citationKey,
         citationInstanceId,
         status,
-        foundCitation,
+        verification,
         searchState,
         displayCitationValue,
         fallbackDisplay,
