@@ -1,6 +1,6 @@
-import { getAllCitationsFromLlmOutput } from "../parsing/parseCitation";
-import { generateCitationKey } from "../react/utils";
-import type { Citation } from "../types/index";
+import { getAllCitationsFromLlmOutput } from "../parsing/parseCitation.js";
+import { generateCitationKey } from "../react/utils.js";
+import type { Citation } from "../types/index.js";
 import type {
   CitationInput,
   ConvertFileInput,
@@ -15,7 +15,7 @@ import type {
   VerifyCitationsFromLlmOutput,
   VerifyCitationsOptions,
   VerifyCitationsResponse,
-} from "./types";
+} from "./types.js";
 
 const DEFAULT_API_URL = "https://api.deepcitation.com";
 

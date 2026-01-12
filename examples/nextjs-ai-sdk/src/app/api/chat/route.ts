@@ -1,4 +1,5 @@
 import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
 import {
   enhancePrompts,
@@ -10,8 +11,20 @@ import {
 
 export const maxDuration = 60;
 
+// Available models - using fast/cheap models for examples
+const MODELS = {
+  openai: openai("gpt-5-mini"),
+  gemini: google("gemini-2.0-flash-lite"),
+} as const;
+
+type ModelProvider = keyof typeof MODELS;
+
 export async function POST(req: Request) {
-  const { messages, sessionId = "default" } = await req.json();
+  const {
+    messages,
+    sessionId = "default",
+    provider = "openai", // Default to OpenAI, can be "openai" or "gemini"
+  } = await req.json();
 
   const hasDocuments = getSessionFiles(sessionId).length > 0;
 
@@ -22,24 +35,40 @@ export async function POST(req: Request) {
 
   // Prepare system prompt
   const baseSystemPrompt = `You are a helpful assistant that answers questions accurately.
-${hasDocuments ? "When referencing information from the provided documents, cite your sources." : ""}`;
+${
+  hasDocuments
+    ? "When referencing information from the provided documents, cite your sources."
+    : ""
+}`;
 
   // Enhance prompts with citation instructions if documents are uploaded
   const { enhancedSystemPrompt, enhancedUserPrompt } = hasDocuments
-    ? enhancePrompts(baseSystemPrompt, lastUserMessage?.content || "", sessionId)
-    : { enhancedSystemPrompt: baseSystemPrompt, enhancedUserPrompt: lastUserMessage?.content || "" };
+    ? enhancePrompts(
+        baseSystemPrompt,
+        lastUserMessage?.content || "",
+        sessionId
+      )
+    : {
+        enhancedSystemPrompt: baseSystemPrompt,
+        enhancedUserPrompt: lastUserMessage?.content || "",
+      };
 
   // Replace the last user message with enhanced version
-  const enhancedMessages = messages.map((m: { role: string; content: string }, i: number) => {
-    if (i === messages.length - 1 && m.role === "user" && hasDocuments) {
-      return { ...m, content: enhancedUserPrompt };
+  const enhancedMessages = messages.map(
+    (m: { role: string; content: string }, i: number) => {
+      if (i === messages.length - 1 && m.role === "user" && hasDocuments) {
+        return { ...m, content: enhancedUserPrompt };
+      }
+      return m;
     }
-    return m;
-  });
+  );
+
+  // Select model based on provider
+  const selectedModel = MODELS[provider as ModelProvider] || MODELS.openai;
 
   // Stream the response
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: selectedModel,
     system: enhancedSystemPrompt,
     messages: enhancedMessages,
     async onFinish({ text }) {
@@ -57,7 +86,7 @@ ${hasDocuments ? "When referencing information from the provided documents, cite
           const totalCount = Object.keys(citations).length;
 
           console.log(
-            `[${sessionId}] Verified ${verifiedCount}/${totalCount} citations`
+            `[${sessionId}] Verified ${verifiedCount}/${totalCount} citations (${provider})`
           );
         } catch (error) {
           console.error("Citation verification failed:", error);

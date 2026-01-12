@@ -1,4 +1,4 @@
-import { CompressedResult } from "./types";
+import { CompressedResult } from "./types.js";
 
 const MIN_PREFIX_LENGTH = 4;
 const MIN_CHARACTERS_PER_PREFIX_WITH_AT_LEAST_ONE_DIGIT = 3;

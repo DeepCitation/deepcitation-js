@@ -1,7 +1,7 @@
 import { sha1Hash } from "../utils/sha.js";
-import { type Citation } from "./citation";
-import { type SearchState } from "./search";
-import { type PdfSpaceItem } from "./boxes";
+import { type Citation } from "./citation.js";
+import { type SearchState } from "./search.js";
+import { type PdfSpaceItem } from "./boxes.js";
 
 export const NOT_FOUND_HIGHLIGHT_INDEX = -1;
 export const PENDING_HIGHLIGHT_INDEX = -2;

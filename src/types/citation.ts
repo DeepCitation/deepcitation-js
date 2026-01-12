@@ -1,5 +1,5 @@
-import { type ScreenBox } from "./boxes";
-import { type FoundHighlightLocation } from "./foundHighlight";
+import { type ScreenBox } from "./boxes.js";
+import { type FoundHighlightLocation } from "./foundHighlight.js";
 
 export type OutputImageFormat = "jpeg" | "png" | "avif" | undefined | null;
 

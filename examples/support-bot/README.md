@@ -15,16 +15,16 @@ Customer-facing AI assistants need to be accurate, but visible citations like `[
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Copy environment file and add your API keys
 cp .env.example .env
 
 # Run the demo (no server)
-npm run demo
+bun run demo
 
 # Or start the API server
-npm start
+bun start
 ```
 
 ## Demo Output
