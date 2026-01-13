@@ -204,9 +204,6 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
         >
           {showIcon &&
             (icon || <span className="citation-chip__icon">📄</span>)}
-          {keySpanText && !displayKeySpan && (
-            <span className="citation-chip__keySpan">{keySpanText}</span>
-          )}
           <span className="citation-chip__text">{displayText}</span>
           {isPartialMatch && renderPartialIndicator(status)}
           {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}

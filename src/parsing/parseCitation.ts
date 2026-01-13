@@ -201,11 +201,10 @@ export const parseCitation = (
     pageNumber,
     startPageKey: `page_number_${pageNumber || 1}_index_${pageIndex || 0}`,
     fullPhrase,
-    keySpan,
+    keySpan: keySpan || value,
     citationNumber,
     lineIds,
     beforeCite,
-    value,
     timestamps,
     reasoning,
   };
@@ -273,9 +272,8 @@ const parseJsonCitation = (
     fullPhrase,
     citationNumber,
     lineIds,
-    keySpan,
+    keySpan: keySpan || value,
     reasoning,
-    value,
   };
 
   return citation;

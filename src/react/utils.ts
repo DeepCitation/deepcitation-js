@@ -24,7 +24,7 @@ export function generateCitationKey(citation: Citation): string {
  * Combines the citation key with a random suffix for uniqueness.
  */
 export function generateCitationInstanceId(citationKey: string): string {
-  const randomSuffix = Math.random().toString(36).substr(2, 9);
+  const randomSuffix = Math.random().toString(36).slice(2, 11);
   return `${citationKey}-${randomSuffix}`;
 }
 

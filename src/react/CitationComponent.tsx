@@ -260,7 +260,8 @@ const StatusTooltipContent = ({
 
   // Fallback to citation text if no phrases recorded
   if (allPhrases.length === 0) {
-    const searchedText = citation.fullPhrase || citation.value || "";
+    const searchedText =
+      citation.fullPhrase || citation.keySpan?.toString() || "";
     if (searchedText) {
       allPhrases.push(searchedText);
     }
@@ -308,7 +309,8 @@ const StatusTooltipContent = ({
   }
 
   if (isPartialMatch) {
-    const expectedText = citation.fullPhrase || citation.value || "";
+    const expectedText =
+      citation.fullPhrase || citation.keySpan?.toString() || "";
     const actualText = verification?.matchSnippet || "";
     const truncatedExpected =
       expectedText.length > 100

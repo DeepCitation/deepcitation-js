@@ -304,7 +304,7 @@ export const CitationNumber = forwardRef<HTMLSpanElement, CitationNumberProps>(
 
       if (config.displayKeySpan) {
         return (
-          citation.value ||
+          citation.keySpan?.toString() ||
           citation.citationNumber?.toString() ||
           config.fallbackDisplay ||
           ""
@@ -355,8 +355,8 @@ export const CitationValue = forwardRef<HTMLSpanElement, CitationValueProps>(
 
     const displayValue = useMemo(() => {
       if (value !== undefined) return value;
-      if (config.displayKeySpan) return "";
-      return citation.value || "";
+      if (!config.displayKeySpan) return "";
+      return citation.keySpan?.toString() || "";
     }, [value, citation, config]);
 
     if (!displayValue) return null;
