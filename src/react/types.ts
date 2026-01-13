@@ -115,7 +115,7 @@ export interface BaseCitationProps {
   /** Class name for controlling inner content width */
   innerWidthClassName?: string;
   /** When true, displays value/citationNumber merged in the bracket */
-  displayCitationValue?: boolean;
+  displayKeySpan?: boolean;
   /** Fallback display text when citation value is empty */
   fallbackDisplay?: string | null;
   /** Display variant for the citation */

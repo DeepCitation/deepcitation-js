@@ -126,9 +126,7 @@ test.describe("ChipCitation", () => {
   });
 
   test("renders with merged value", async ({ mount, page }) => {
-    await mount(
-      <ChipCitation citation={baseCitation} displayCitationValue={true} />
-    );
+    await mount(<ChipCitation citation={baseCitation} displayKeySpan={true} />);
     const chip = page.locator(".citation-chip");
 
     await expect(chip).toContainText("Test Value");
@@ -313,7 +311,7 @@ test.describe("InlineCitation", () => {
     await mount(<InlineCitation citation={baseCitation} />);
     const inline = page.locator(".citation-inline");
 
-    // InlineCitation defaults to displayCitationValue=true
+    // InlineCitation defaults to displayKeySpan=true
     await expect(inline).toContainText("Test Value");
   });
 

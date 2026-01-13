@@ -110,7 +110,7 @@
 .citation-chip--pending { background-color: var(--citation-bg-pending); color: var(--citation-color-pending); }
 
 .citation-chip__icon { font-size: 0.9em; }
-.citation-chip__value { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.citation-chip__keySpan { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .citation-chip__text { font-weight: var(--citation-font-weight); }
 .citation-chip__pending { opacity: 0.7; }
 

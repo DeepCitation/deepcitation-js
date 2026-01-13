@@ -7,10 +7,8 @@ export const NOT_FOUND_VERIFICATION_INDEX = -1;
 export const PENDING_VERIFICATION_INDEX = -2;
 
 export const BLANK_VERIFICATION: Verification = {
+  fileId: null,
   pageNumber: NOT_FOUND_VERIFICATION_INDEX,
-  regex: null,
-  lowerCaseSearchTerm: null,
-  attachmentId: null,
   matchSnippet: null,
   source: null,
   citation: {
@@ -25,10 +23,9 @@ export const BLANK_VERIFICATION: Verification = {
 };
 
 export interface Verification {
-  regex?: RegExp | null;
-  lowerCaseSearchTerm: string | null; // e.g. "ca013c03-0001"
+  fileId?: string | null;
+
   label?: string | null; //e.g. "Invoice"
-  attachmentId?: string | null;
   pageNumber?: number | null;
   timestamp?: number | null;
 

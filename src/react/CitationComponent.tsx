@@ -503,7 +503,7 @@ export const CitationComponent = forwardRef<
       citation,
       children,
       className,
-      displayCitationValue = false,
+      displayKeySpan = false,
       fallbackDisplay,
       verification,
       variant = "brackets",
@@ -630,14 +630,14 @@ export const CitationComponent = forwardRef<
       }
       // For text/minimal/brackets, show the value or fullPhrase
       return getCitationDisplayText(citation, {
-        displayCitationValue:
+        displayKeySpan:
           variant === "text" ||
           variant === "minimal" ||
           variant === "brackets" ||
-          displayCitationValue,
+          displayKeySpan,
         fallbackDisplay,
       });
-    }, [citation, variant, displayCitationValue, fallbackDisplay]);
+    }, [citation, variant, displayKeySpan, fallbackDisplay]);
 
     // Found status class for text styling (blue for found, gray for miss)
     const foundStatusClass = useMemo(
@@ -669,7 +669,7 @@ export const CitationComponent = forwardRef<
     if (
       fallbackDisplay !== null &&
       fallbackDisplay !== undefined &&
-      displayCitationValue &&
+      displayKeySpan &&
       isMiss
     ) {
       return (
@@ -714,9 +714,7 @@ export const CitationComponent = forwardRef<
           citationKey,
           displayText,
           isMergedDisplay:
-            variant === "text" ||
-            variant === "brackets" ||
-            displayCitationValue,
+            variant === "text" || variant === "brackets" || displayKeySpan,
         });
       }
 

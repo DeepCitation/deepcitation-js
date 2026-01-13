@@ -34,15 +34,15 @@ export function generateCitationInstanceId(citationKey: string): string {
 export function getCitationDisplayText(
   citation: Citation,
   options: {
-    displayCitationValue?: boolean;
+    displayKeySpan?: boolean;
     fallbackDisplay?: string | null;
   } = {}
 ): string {
-  const { displayCitationValue = false, fallbackDisplay } = options;
+  const { displayKeySpan = false, fallbackDisplay } = options;
 
-  if (displayCitationValue) {
+  if (displayKeySpan) {
     return (
-      citation.value ||
+      citation.keySpan?.toString() ||
       citation.citationNumber?.toString() ||
       fallbackDisplay ||
       ""
@@ -53,21 +53,21 @@ export function getCitationDisplayText(
 }
 
 /**
- * Gets the value text to display before the citation bracket.
+ * Gets the keySpan text to display before the citation bracket.
  */
-export function getCitationValueText(
+export function getCitationKeySpanText(
   citation: Citation,
   options: {
-    displayCitationValue?: boolean;
+    displayKeySpan?: boolean;
   } = {}
 ): string {
-  const { displayCitationValue = false } = options;
+  const { displayKeySpan = false } = options;
 
-  if (displayCitationValue) {
+  if (displayKeySpan) {
     return "";
   }
 
-  return citation.value || "";
+  return citation.keySpan?.toString() || "";
 }
 
 /**

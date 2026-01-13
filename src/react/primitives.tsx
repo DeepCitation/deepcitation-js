@@ -35,7 +35,7 @@ interface CitationContextValue {
   verification: Verification | null;
   searchState: SearchState | null;
   config: {
-    displayCitationValue: boolean;
+    displayKeySpan: boolean;
     fallbackDisplay: string | null;
     pendingContent: ReactNode;
   };
@@ -62,7 +62,7 @@ export interface CitationRootProps {
   verification?: Verification | null;
   searchState?: SearchState | null;
   children: ReactNode;
-  displayCitationValue?: boolean;
+  displayKeySpan?: boolean;
   fallbackDisplay?: string | null;
   pendingContent?: ReactNode;
 }
@@ -78,7 +78,7 @@ export const CitationRoot = forwardRef<
       verification = null,
       searchState = null,
       children,
-      displayCitationValue = false,
+      displayKeySpan = false,
       fallbackDisplay = null,
       pendingContent = "..",
       className,
@@ -105,7 +105,7 @@ export const CitationRoot = forwardRef<
         verification,
         searchState,
         config: {
-          displayCitationValue,
+          displayKeySpan,
           fallbackDisplay,
           pendingContent,
         },
@@ -117,7 +117,7 @@ export const CitationRoot = forwardRef<
         status,
         verification,
         searchState,
-        displayCitationValue,
+        displayKeySpan,
         fallbackDisplay,
         pendingContent,
       ]
@@ -302,7 +302,7 @@ export const CitationNumber = forwardRef<HTMLSpanElement, CitationNumberProps>(
     const displayNumber = useMemo(() => {
       if (number !== undefined) return String(number);
 
-      if (config.displayCitationValue) {
+      if (config.displayKeySpan) {
         return (
           citation.value ||
           citation.citationNumber?.toString() ||
@@ -355,7 +355,7 @@ export const CitationValue = forwardRef<HTMLSpanElement, CitationValueProps>(
 
     const displayValue = useMemo(() => {
       if (value !== undefined) return value;
-      if (config.displayCitationValue) return "";
+      if (config.displayKeySpan) return "";
       return citation.value || "";
     }, [value, citation, config]);
 

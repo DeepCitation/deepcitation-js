@@ -3,7 +3,7 @@ import {
   generateCitationKey,
   generateCitationInstanceId,
   getCitationDisplayText,
-  getCitationValueText,
+  getCitationKeySpanText,
   classNames,
   CITATION_X_PADDING,
   CITATION_Y_PADDING,
@@ -15,7 +15,7 @@ describe("react utils", () => {
     fileId: "file-1",
     pageNumber: 4,
     fullPhrase: "Hello",
-    value: "$10",
+    keySpan: "$10",
     citationNumber: 2,
     lineIds: [1, 2],
   };
@@ -23,7 +23,7 @@ describe("react utils", () => {
   it("generates deterministic keys", () => {
     const key = generateCitationKey(citation);
     expect(key).toHaveLength(16);
-    expect(generateCitationKey({ ...citation, value: "$11" })).not.toBe(key);
+    expect(generateCitationKey({ ...citation, keySpan: "$11" })).not.toBe(key);
   });
 
   it("creates unique instance ids with a random suffix", () => {
@@ -36,10 +36,17 @@ describe("react utils", () => {
 
   it("returns display and value text based on merge option", () => {
     expect(getCitationDisplayText(citation)).toBe("2");
-    expect(getCitationDisplayText(citation, { displayCitationValue: true })).toBe("$10");
-    expect(getCitationDisplayText({ ...citation, value: null }, { displayCitationValue: true })).toBe("2");
-    expect(getCitationValueText(citation)).toBe("$10");
-    expect(getCitationValueText(citation, { displayCitationValue: true })).toBe("");
+    expect(getCitationDisplayText(citation, { displayKeySpan: true })).toBe(
+      "$10"
+    );
+    expect(
+      getCitationDisplayText(
+        { ...citation, keySpan: null },
+        { displayKeySpan: true }
+      )
+    ).toBe("2");
+    expect(getCitationKeySpanText(citation)).toBe("$10");
+    expect(getCitationKeySpanText(citation, { displayKeySpan: true })).toBe("");
   });
 
   it("joins class names safely", () => {
