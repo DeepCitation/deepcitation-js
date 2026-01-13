@@ -4,6 +4,7 @@ import {
   NOT_FOUND_VERIFICATION_INDEX,
   PENDING_VERIFICATION_INDEX,
   Verification,
+  deterministicIdFromVerification,
 } from "../types/verification.js";
 
 describe("verification helpers", () => {
@@ -14,5 +15,18 @@ describe("verification helpers", () => {
     expect(BLANK_VERIFICATION.citation?.pageNumber).toBe(
       NOT_FOUND_VERIFICATION_INDEX
     );
+  });
+
+  it("builds deterministic ids from verification attributes", () => {
+    const verification: Verification = {
+      label: "phrase",
+      fileId: "file-1",
+      pageNumber: 3,
+      hitIndexWithinPage: 2,
+      matchSnippet: "snippet",
+    };
+    const first = deterministicIdFromVerification(verification);
+    const second = deterministicIdFromVerification(verification);
+    expect(first).toBe(second);
   });
 });

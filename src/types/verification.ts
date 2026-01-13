@@ -22,6 +22,13 @@ export const BLANK_VERIFICATION: Verification = {
   },
 };
 
+export function deterministicIdFromVerification(
+  verification: Verification
+): string {
+  return sha1Hash(
+    `${verification.label}-${verification.fileId}-${verification.pageNumber}-${verification.hitIndexWithinPage}-${verification.matchSnippet}-${verification?.hitIndexWithinPage}`
+  );
+}
 export interface Verification {
   fileId?: string | null;
 

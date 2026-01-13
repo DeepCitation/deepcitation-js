@@ -46,7 +46,10 @@ export type {
 
 export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
 
-export type { Verification } from "./types/verification.js";
+export type {
+  Verification,
+  deterministicIdFromVerification,
+} from "./types/verification.js";
 
 export {
   NOT_FOUND_VERIFICATION_INDEX,
