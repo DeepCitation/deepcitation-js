@@ -62,7 +62,7 @@
 .citation-number { font-weight: var(--citation-font-weight); }
 .citation-number--pending { opacity: 0.6; }
 
-.citation-value { font-style: italic; }
+.citation-key-span { font-style: italic; }
 
 .citation-indicator {
   display: inline;
@@ -110,7 +110,6 @@
 .citation-chip--pending { background-color: var(--citation-bg-pending); color: var(--citation-color-pending); }
 
 .citation-chip__icon { font-size: 0.9em; }
-.citation-chip__value { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .citation-chip__text { font-weight: var(--citation-font-weight); }
 .citation-chip__pending { opacity: 0.7; }
 
@@ -241,7 +240,7 @@
 .citation--pending { color: var(--citation-color-pending); }
 
 .citation-fallback {}
-.citation-value { font-style: italic; }
+.citation-key-span { font-style: italic; }
 
 .cursor-pointer { cursor: pointer; }
 .cursor-zoom-in { cursor: zoom-in; }

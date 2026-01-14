@@ -35,7 +35,7 @@ export type { CitationVariant } from "./types.js";
 /**
  * Props for the CitationComponent.
  *
- * @example Brackets variant (default) - shows value/number in brackets with blue styling
+ * @example Brackets variant (default) - shows keySpan/number in brackets with blue styling
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, fullPhrase: "Revenue grew by 25%" }}
@@ -47,17 +47,17 @@ export type { CitationVariant } from "./types.js";
  * @example Numeric variant - shows just the citation number with indicator
  * ```tsx
  * <CitationComponent
- *   citation={{ citationNumber: 1, value: "25% growth" }}
+ *   citation={{ citationNumber: 1, keySpan: "25% growth" }}
  *   verification={verificationResult}
  *   variant="numeric"
  * />
  * // Renders: 1✓
  * ```
  *
- * @example Text variant - shows the value without styling
+ * @example Text variant - shows the keySpan without styling
  * ```tsx
  * <CitationComponent
- *   citation={{ citationNumber: 1, value: "25% growth" }}
+ *   citation={{ citationNumber: 1, keySpan: "25% growth" }}
  *   verification={verificationResult}
  *   variant="text"
  * />
@@ -102,9 +102,9 @@ export interface CitationComponentProps extends BaseCitationProps {
 
   /**
    * Display variant for the citation.
-   * - `brackets`: Shows value/number in brackets, blue text styling (default)
+   * - `brackets`: Shows keySpan/number in brackets, blue text styling (default)
    * - `numeric`: Shows citation number with indicator, no brackets
-   * - `text`: Shows the value, no text styling, no truncate, shows indicator
+   * - `text`: Shows the keySpan, no text styling, no truncate, shows indicator
    * - `minimal`: No brackets, just display text with indicator
    * - `indicator`: Only the status indicator (checkmark/warning), no text
    */
@@ -260,7 +260,8 @@ const StatusTooltipContent = ({
 
   // Fallback to citation text if no phrases recorded
   if (allPhrases.length === 0) {
-    const searchedText = citation.fullPhrase || citation.value || "";
+    const searchedText =
+      citation.fullPhrase || citation.keySpan?.toString() || "";
     if (searchedText) {
       allPhrases.push(searchedText);
     }
@@ -308,7 +309,8 @@ const StatusTooltipContent = ({
   }
 
   if (isPartialMatch) {
-    const expectedText = citation.fullPhrase || citation.value || "";
+    const expectedText =
+      citation.fullPhrase || citation.keySpan?.toString() || "";
     const actualText = verification?.matchSnippet || "";
     const truncatedExpected =
       expectedText.length > 100
@@ -503,7 +505,7 @@ export const CitationComponent = forwardRef<
       citation,
       children,
       className,
-      displayCitationValue = false,
+      displayKeySpan = false,
       fallbackDisplay,
       verification,
       variant = "brackets",
@@ -628,16 +630,16 @@ export const CitationComponent = forwardRef<
       if (variant === "numeric") {
         return citation.citationNumber?.toString() ?? "";
       }
-      // For text/minimal/brackets, show the value or fullPhrase
+      // For text/minimal variants, always show keySpan
+      // For brackets variant, show keySpan only if displayKeySpan prop is true
       return getCitationDisplayText(citation, {
-        displayCitationValue:
+        displayKeySpan:
           variant === "text" ||
           variant === "minimal" ||
-          variant === "brackets" ||
-          displayCitationValue,
+          displayKeySpan,
         fallbackDisplay,
       });
-    }, [citation, variant, displayCitationValue, fallbackDisplay]);
+    }, [citation, variant, displayKeySpan, fallbackDisplay]);
 
     // Found status class for text styling (blue for found, gray for miss)
     const foundStatusClass = useMemo(
@@ -669,7 +671,7 @@ export const CitationComponent = forwardRef<
     if (
       fallbackDisplay !== null &&
       fallbackDisplay !== undefined &&
-      displayCitationValue &&
+      displayKeySpan &&
       isMiss
     ) {
       return (
@@ -685,10 +687,11 @@ export const CitationComponent = forwardRef<
         return renderIndicator(status);
       }
 
-      if (isVerified) {
-        return <DefaultVerifiedIndicator />;
-      } else if (isPartialMatch) {
+      // Check partial match first since isVerified includes isPartialMatch
+      if (isPartialMatch) {
         return <DefaultPartialIndicator />;
+      } else if (isVerified) {
+        return <DefaultVerifiedIndicator />;
       } else if (isPending) {
         return (
           <span
@@ -714,9 +717,7 @@ export const CitationComponent = forwardRef<
           citationKey,
           displayText,
           isMergedDisplay:
-            variant === "text" ||
-            variant === "brackets" ||
-            displayCitationValue,
+            variant === "text" || variant === "brackets" || displayKeySpan,
         });
       }
 
@@ -727,7 +728,7 @@ export const CitationComponent = forwardRef<
         );
       }
 
-      // Text variant - no special styling, shows value with indicator
+      // Text variant - no special styling, shows keySpan with indicator
       if (variant === "text") {
         return (
           <span className="dc-citation-text dc-citation-text--plain">
@@ -757,7 +758,7 @@ export const CitationComponent = forwardRef<
         );
       }
 
-      // Brackets variant (default) - value/number in brackets with styling
+      // Brackets variant (default) - keySpan/number in brackets with styling
       return (
         <span
           className="dc-citation-bracket"

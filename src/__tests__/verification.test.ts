@@ -19,8 +19,8 @@ describe("verification helpers", () => {
 
   it("builds deterministic ids from verification attributes", () => {
     const verification: Verification = {
-      lowerCaseSearchTerm: "phrase",
-      attachmentId: "file-1",
+      label: "phrase",
+      fileId: "file-1",
       pageNumber: 3,
       hitIndexWithinPage: 2,
       matchSnippet: "snippet",

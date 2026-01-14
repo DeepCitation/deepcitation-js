@@ -1,17 +1,19 @@
 import { sha1Hash } from "../utils/sha.js";
 import type { Citation } from "../types/citation.js";
+import { getCitationPageNumber } from "../parsing/normalizeCitation.js";
 
 /**
  * Generates a unique, deterministic key for a citation based on its content.
  * Uses a hash of the citation's identifying properties.
  */
 export function generateCitationKey(citation: Citation): string {
+  const pageNumber =
+    citation.pageNumber || getCitationPageNumber(citation.startPageKey);
   const keyParts = [
     citation.fileId || "",
-    citation.pageNumber?.toString() || "",
+    pageNumber?.toString() || "",
     citation.fullPhrase || "",
     citation.keySpan?.toString() || "",
-    citation.value || "",
     citation.lineIds?.join(",") || "",
     citation.timestamps?.startTime || "",
     citation.timestamps?.endTime || "",
@@ -25,7 +27,7 @@ export function generateCitationKey(citation: Citation): string {
  * Combines the citation key with a random suffix for uniqueness.
  */
 export function generateCitationInstanceId(citationKey: string): string {
-  const randomSuffix = Math.random().toString(36).substr(2, 9);
+  const randomSuffix = Math.random().toString(36).slice(2, 11);
   return `${citationKey}-${randomSuffix}`;
 }
 
@@ -35,15 +37,15 @@ export function generateCitationInstanceId(citationKey: string): string {
 export function getCitationDisplayText(
   citation: Citation,
   options: {
-    displayCitationValue?: boolean;
+    displayKeySpan?: boolean;
     fallbackDisplay?: string | null;
   } = {}
 ): string {
-  const { displayCitationValue = false, fallbackDisplay } = options;
+  const { displayKeySpan = false, fallbackDisplay } = options;
 
-  if (displayCitationValue) {
+  if (displayKeySpan) {
     return (
-      citation.value ||
+      citation.keySpan?.toString() ||
       citation.citationNumber?.toString() ||
       fallbackDisplay ||
       ""
@@ -54,21 +56,21 @@ export function getCitationDisplayText(
 }
 
 /**
- * Gets the value text to display before the citation bracket.
+ * Gets the keySpan text to display before the citation bracket.
  */
-export function getCitationValueText(
+export function getCitationKeySpanText(
   citation: Citation,
   options: {
-    displayCitationValue?: boolean;
+    displayKeySpan?: boolean;
   } = {}
 ): string {
-  const { displayCitationValue = false } = options;
+  const { displayKeySpan = false } = options;
 
-  if (displayCitationValue) {
+  if (displayKeySpan) {
     return "";
   }
 
-  return citation.value || "";
+  return citation.keySpan?.toString() || "";
 }
 
 /**

@@ -7,10 +7,8 @@ export const NOT_FOUND_VERIFICATION_INDEX = -1;
 export const PENDING_VERIFICATION_INDEX = -2;
 
 export const BLANK_VERIFICATION: Verification = {
+  fileId: null,
   pageNumber: NOT_FOUND_VERIFICATION_INDEX,
-  regex: null,
-  lowerCaseSearchTerm: null,
-  attachmentId: null,
   matchSnippet: null,
   source: null,
   citation: {
@@ -28,15 +26,13 @@ export function deterministicIdFromVerification(
   verification: Verification
 ): string {
   return sha1Hash(
-    `${verification.lowerCaseSearchTerm}-${verification.attachmentId}-${verification.pageNumber}-${verification.hitIndexWithinPage}-${verification.matchSnippet}-${verification?.hitIndexWithinPage}`
+    `${verification.label}-${verification.fileId}-${verification.pageNumber}-${verification.hitIndexWithinPage}-${verification.matchSnippet}-${verification?.hitIndexWithinPage}`
   );
 }
-
 export interface Verification {
-  regex?: RegExp | null;
-  lowerCaseSearchTerm: string | null; // e.g. "ca013c03-0001"
+  fileId?: string | null;
+
   label?: string | null; //e.g. "Invoice"
-  attachmentId?: string | null;
   pageNumber?: number | null;
   timestamp?: number | null;
 
@@ -45,6 +41,8 @@ export interface Verification {
   searchState?: SearchState | null;
 
   hitIndexWithinPage?: number | null;
+
+  highlightColor?: string | null;
 
   matchSnippet?: string | null;
 

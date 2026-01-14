@@ -27,14 +27,19 @@ export type {
 } from "./types.js";
 
 // URL Utilities - For handling URL citation metadata
-export { extractDomain, isBlockedStatus, isErrorStatus, isVerifiedStatus } from "./UrlCitationComponent.js";
+export {
+  extractDomain,
+  isBlockedStatus,
+  isErrorStatus,
+  isVerifiedStatus,
+} from "./UrlCitationComponent.js";
 
 // Utilities - For generating citation keys and display text
 export {
   generateCitationKey,
   generateCitationInstanceId,
   getCitationDisplayText,
-  getCitationValueText,
+  getCitationKeySpanText,
   classNames,
   CITATION_X_PADDING,
   CITATION_Y_PADDING,

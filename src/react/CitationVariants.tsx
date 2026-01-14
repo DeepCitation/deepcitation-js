@@ -13,7 +13,7 @@ import {
   generateCitationKey,
   generateCitationInstanceId,
   getCitationDisplayText,
-  getCitationValueText,
+  getCitationKeySpanText,
   classNames,
 } from "./utils.js";
 import type {
@@ -110,7 +110,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
       citation,
       children,
       className,
-      displayCitationValue = false,
+      displayKeySpan = false,
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -134,18 +134,18 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayCitationValue,
+          displayKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayCitationValue, fallbackDisplay]
+      [citation, displayKeySpan, fallbackDisplay]
     );
 
-    const valueText = useMemo(
+    const keySpanText = useMemo(
       () =>
-        getCitationValueText(citation, {
-          displayCitationValue,
+        getCitationKeySpanText(citation, {
+          displayKeySpan,
         }),
-      [citation, displayCitationValue]
+      [citation, displayKeySpan]
     );
 
     const handleClick = useCallback(
@@ -204,9 +204,6 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
         >
           {showIcon &&
             (icon || <span className="citation-chip__icon">📄</span>)}
-          {valueText && !displayCitationValue && (
-            <span className="citation-chip__value">{valueText}</span>
-          )}
           <span className="citation-chip__text">{displayText}</span>
           {isPartialMatch && renderPartialIndicator(status)}
           {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
@@ -249,7 +246,7 @@ export const SuperscriptCitation = forwardRef<
       citation,
       children,
       className,
-      displayCitationValue = false,
+      displayKeySpan = false,
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -271,10 +268,10 @@ export const SuperscriptCitation = forwardRef<
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayCitationValue,
+          displayKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayCitationValue, fallbackDisplay]
+      [citation, displayKeySpan, fallbackDisplay]
     );
 
     const handleClick = useCallback(
@@ -476,7 +473,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
       citation,
       children,
       className,
-      displayCitationValue = true, // Default to merged for inline
+      displayKeySpan = true, // Default to merged for inline
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -497,10 +494,10 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayCitationValue,
+          displayKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayCitationValue, fallbackDisplay]
+      [citation, displayKeySpan, fallbackDisplay]
     );
 
     const handleClick = useCallback(
@@ -595,7 +592,7 @@ export const MinimalCitation = forwardRef<
       citation,
       children,
       className,
-      displayCitationValue = false,
+      displayKeySpan = false,
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -616,10 +613,10 @@ export const MinimalCitation = forwardRef<
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayCitationValue,
+          displayKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayCitationValue, fallbackDisplay]
+      [citation, displayKeySpan, fallbackDisplay]
     );
 
     const handleClick = useCallback(
