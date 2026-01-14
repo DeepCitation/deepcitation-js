@@ -752,7 +752,7 @@ export const CitationComponent = forwardRef<
 
         const context = getBehaviorContext();
 
-        // If custom onClick handler is provided, it REPLACES default behavior
+        // If custom onClick handler is provided via behaviorConfig, it REPLACES default behavior
         if (behaviorConfig?.onClick) {
           const result = behaviorConfig.onClick(context, e);
 
@@ -767,7 +767,14 @@ export const CitationComponent = forwardRef<
           return;
         }
 
-        // Default click behavior (only runs when no custom onClick is provided)
+        // If eventHandlers.onClick is provided, disable default click behavior
+        // (no popover pinning, no image expansion) - just call the handler
+        if (eventHandlers?.onClick) {
+          eventHandlers.onClick(citation, citationKey, e);
+          return;
+        }
+
+        // Default click behavior (only runs when no click handlers are provided)
         if (verification?.verificationImageBase64) {
           if (expandedImageSrc) {
             // Image is open - close it and unpin
@@ -785,8 +792,6 @@ export const CitationComponent = forwardRef<
           setIsTooltipExpanded((prev) => !prev);
           setIsPhrasesExpanded((prev) => !prev);
         }
-
-        eventHandlers?.onClick?.(citation, citationKey, e);
       },
       [
         eventHandlers,

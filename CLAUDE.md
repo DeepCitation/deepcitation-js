@@ -132,7 +132,7 @@ The CitationComponent has built-in default behaviors:
 - **Click 2**: Opens full-size image overlay (if image available)
 - **Click 3**: Closes image and unpins popover
 
-**Key principle**: When you provide `onClick` or `onHover` in `behaviorConfig`, they REPLACE the defaults. Use `eventHandlers` for side effects (analytics, logging) that should run alongside defaults.
+**Key principle**: When you provide `onClick` in `eventHandlers` OR `behaviorConfig`, the default click behavior is disabled (no popover pinning, no image expansion). Use `behaviorConfig.onClick` to implement custom click actions, or `eventHandlers.onClick` for simple handlers that disable defaults.
 
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
@@ -206,7 +206,7 @@ interface CitationBehaviorConfig {
 }
 ```
 
-Note: `eventHandlers.onClick/onMouseEnter/onMouseLeave` always run regardless of `behaviorConfig`, so use them for side effects alongside defaults.
+Note: When `eventHandlers.onClick` is provided, the default click behavior is disabled. Use `onMouseEnter/onMouseLeave` for hover side effects that run alongside defaults.
 
 ## API Endpoints
 
