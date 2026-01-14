@@ -5,16 +5,16 @@ import type { SearchState } from "../types/search.js";
 /**
  * Available citation display variants.
  *
- * - `brackets`: Shows value/number in brackets with blue text styling (default)
+ * - `brackets`: Shows keySpan/number in brackets with blue text styling (default)
  * - `numeric`: Shows citation number with indicator, no brackets
- * - `text`: Shows the value, no text styling, no truncate, shows indicator
+ * - `text`: Shows the keySpan, no text styling, no truncate, shows indicator
  * - `minimal`: No brackets, just display text with indicator
  * - `indicator`: Only the status indicator (checkmark/warning), no text
  */
 export type CitationVariant =
-  | "brackets" // [value✓] with blue text styling
+  | "brackets" // [keySpan✓] with blue text styling
   | "numeric" // 1✓ - citation number with indicator
-  | "text" // value✓ - no special styling
+  | "text" // keySpan✓ - no special styling
   | "minimal" // text✓ - just text with indicator
   | "indicator"; // ✓ - only the indicator
 
