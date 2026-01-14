@@ -47,22 +47,22 @@ export type { CitationVariant } from "./types.js";
  * // Renders: [Revenue grew by 25%✓] with blue text
  * ```
  *
- * @example Numeric only - use displayKeySpan=false with brackets variant
+ * @example Numeric only - use hideKeySpan=true with brackets variant
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, keySpan: "25% growth" }}
  *   verification={verificationResult}
- *   displayKeySpan={false}
+ *   hideKeySpan={true}
  * />
  * // Renders: [1✓]
  * ```
  *
- * @example Without brackets - use displayBrackets=false
+ * @example Without brackets - use hideBrackets=true
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, keySpan: "25% growth" }}
  *   verification={verificationResult}
- *   displayBrackets={false}
+ *   hideBrackets={true}
  * />
  * // Renders: 25% growth✓ (no brackets)
  * ```
@@ -147,11 +147,11 @@ export interface CitationComponentProps extends BaseCitationProps {
   variant?: CitationVariant;
 
   /**
-   * Whether to show square brackets around the citation.
+   * Whether to hide square brackets around the citation.
    * Only applies to the `brackets` variant.
-   * @default true
+   * @default false
    */
-  displayBrackets?: boolean;
+  hideBrackets?: boolean;
 
   /**
    * Event handlers for citation interactions.
@@ -187,7 +187,7 @@ export interface CitationComponentProps extends BaseCitationProps {
 
   /**
    * Custom render function for the entire citation content.
-   * When provided, takes full control of rendering (ignores format, showBrackets).
+   * When provided, takes full control of rendering.
    */
   renderContent?: (props: CitationRenderProps) => ReactNode;
 
@@ -634,8 +634,8 @@ export const CitationComponent = forwardRef<
       citation,
       children,
       className,
-      displayKeySpan = true,
-      displayBrackets = true,
+      hideKeySpan = false,
+      hideBrackets = false,
       fallbackDisplay,
       verification,
       variant = "brackets",
@@ -752,7 +752,7 @@ export const CitationComponent = forwardRef<
 
         const context = getBehaviorContext();
 
-        // If custom onClick handler is provided, it REPLACES default behavior
+        // If custom onClick handler is provided via behaviorConfig, it REPLACES default behavior
         if (behaviorConfig?.onClick) {
           const result = behaviorConfig.onClick(context, e);
 
@@ -767,7 +767,14 @@ export const CitationComponent = forwardRef<
           return;
         }
 
-        // Default click behavior (only runs when no custom onClick is provided)
+        // If eventHandlers.onClick is provided, disable default click behavior
+        // (no popover pinning, no image expansion) - just call the handler
+        if (eventHandlers?.onClick) {
+          eventHandlers.onClick(citation, citationKey, e);
+          return;
+        }
+
+        // Default click behavior (only runs when no click handlers are provided)
         if (verification?.verificationImageBase64) {
           if (expandedImageSrc) {
             // Image is open - close it and unpin
@@ -785,8 +792,6 @@ export const CitationComponent = forwardRef<
           setIsTooltipExpanded((prev) => !prev);
           setIsPhrasesExpanded((prev) => !prev);
         }
-
-        eventHandlers?.onClick?.(citation, citationKey, e);
       },
       [
         eventHandlers,
@@ -806,16 +811,16 @@ export const CitationComponent = forwardRef<
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
     const displayText = useMemo(() => {
-      // For text/minimal variants, always show keySpan
-      // For brackets variant, show keySpan based on displayKeySpan prop
+      // For text/minimal variants, always show keySpan (hideKeySpan is ignored)
+      // For brackets variant, show keySpan based on hideKeySpan prop
       return getCitationDisplayText(citation, {
-        displayKeySpan:
-          variant === "text" ||
-          variant === "minimal" ||
-          displayKeySpan,
+        hideKeySpan:
+          variant !== "text" &&
+          variant !== "minimal" &&
+          hideKeySpan,
         fallbackDisplay,
       });
-    }, [citation, variant, displayKeySpan, fallbackDisplay]);
+    }, [citation, variant, hideKeySpan, fallbackDisplay]);
 
     // Found status class for text styling (blue for found, gray for miss)
     const foundStatusClass = useMemo(
@@ -855,7 +860,7 @@ export const CitationComponent = forwardRef<
     if (
       fallbackDisplay !== null &&
       fallbackDisplay !== undefined &&
-      displayKeySpan &&
+      !hideKeySpan &&
       isMiss
     ) {
       return (
@@ -901,7 +906,7 @@ export const CitationComponent = forwardRef<
           citationKey,
           displayText,
           isMergedDisplay:
-            variant === "text" || variant === "brackets" || displayKeySpan,
+            variant === "text" || variant === "brackets" || !hideKeySpan,
         });
       }
 
@@ -939,12 +944,12 @@ export const CitationComponent = forwardRef<
           aria-hidden="true"
           role="presentation"
         >
-          {displayBrackets && "["}
+          {!hideBrackets && "["}
           <span className="dc-citation-text">
             {displayText}
             {renderStatusIndicator()}
           </span>
-          {displayBrackets && "]"}
+          {!hideBrackets && "]"}
         </span>
       );
     };
