@@ -159,18 +159,6 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
   behaviorConfig={{ onClick: () => false }}
 />
 
-// Add analytics while keeping default behavior
-// Use eventHandlers - it always runs regardless of behaviorConfig
-<CitationComponent
-  citation={citation}
-  verification={verification}
-  eventHandlers={{
-    onClick: (citation, key, event) => {
-      analytics.track('citation_clicked', { key });
-    }
-  }}
-/>
-
 // Custom hover behavior (replaces default)
 <CitationComponent
   citation={citation}

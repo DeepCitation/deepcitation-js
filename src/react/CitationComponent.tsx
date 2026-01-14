@@ -113,7 +113,6 @@ export type { CitationVariant } from "./types.js";
  *   verification={verificationResult}
  *   behaviorConfig={{
  *     onClick: (context, event) => {
- *       // Custom behavior - this replaces the default
  *       if (context.hasImage) {
  *         return { setImageExpanded: true };
  *       }
@@ -128,20 +127,6 @@ export type { CitationVariant } from "./types.js";
  *   citation={citation}
  *   verification={verificationResult}
  *   behaviorConfig={{ onClick: () => false }}
- * />
- * ```
- *
- * @example Add analytics while keeping default behavior
- * ```tsx
- * // Use eventHandlers for side effects - defaults still run
- * <CitationComponent
- *   citation={citation}
- *   verification={verificationResult}
- *   eventHandlers={{
- *     onClick: (citation, key, event) => {
- *       analytics.track('citation_clicked', { key });
- *     }
- *   }}
  * />
  * ```
  */

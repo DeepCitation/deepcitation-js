@@ -278,12 +278,7 @@ export interface CitationHoverBehavior {
  * Configuration for customizing default citation behaviors.
  *
  * When you provide `onClick` or `onHover`, they REPLACE the corresponding default behaviors.
- * Use `eventHandlers` for side effects (analytics, etc.) that should run alongside defaults.
- *
- * @example Use defaults (no config needed)
- * ```tsx
- * <CitationComponent citation={citation} verification={verification} />
- * ```
+ * Use `eventHandlers` for side effects that should run alongside defaults.
  *
  * @example Custom click behavior (replaces default)
  * ```tsx
@@ -292,25 +287,9 @@ export interface CitationHoverBehavior {
  *   verification={verification}
  *   behaviorConfig={{
  *     onClick: (context, event) => {
- *       // Custom behavior: always open image immediately
  *       if (context.hasImage) {
  *         return { setImageExpanded: true };
  *       }
- *       return false; // Prevent any action
- *     }
- *   }}
- * />
- * ```
- *
- * @example Add analytics while keeping default behavior
- * ```tsx
- * // Use eventHandlers for side effects - it always runs regardless of behaviorConfig
- * <CitationComponent
- *   citation={citation}
- *   verification={verification}
- *   eventHandlers={{
- *     onClick: (citation, key, event) => {
- *       analytics.track('citation_clicked', { key });
  *     }
  *   }}
  * />
@@ -321,9 +300,7 @@ export interface CitationHoverBehavior {
  * <CitationComponent
  *   citation={citation}
  *   verification={verification}
- *   behaviorConfig={{
- *     onClick: () => false  // Return false to prevent any action
- *   }}
+ *   behaviorConfig={{ onClick: () => false }}
  * />
  * ```
  */
@@ -335,17 +312,11 @@ export interface CitationBehaviorConfig {
    * - `CitationBehaviorActions`: Apply specific state changes
    * - `false`: Prevent any state changes
    * - `void`/`undefined`: No state changes
-   *
-   * For side effects (analytics, logging) that should run alongside defaults,
-   * use `eventHandlers.onClick` instead - it always fires regardless of this handler.
    */
   onClick?: CitationClickBehavior;
 
   /**
    * Custom hover behavior handlers. When provided, REPLACE the default hover behavior.
-   *
-   * For side effects that should run alongside defaults,
-   * use `eventHandlers.onMouseEnter/onMouseLeave` instead.
    */
   onHover?: CitationHoverBehavior;
 }
