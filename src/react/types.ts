@@ -114,9 +114,9 @@ export interface BaseCitationProps {
   className?: string;
   /** Class name for controlling inner content width */
   innerWidthClassName?: string;
-  /** When true, displays value/citationNumber merged in the bracket */
+  /** When true, displays keySpan/citationNumber merged in the bracket */
   displayKeySpan?: boolean;
-  /** Fallback display text when citation value is empty */
+  /** Fallback display text when citation keySpan is empty */
   fallbackDisplay?: string | null;
   /** Display variant for the citation */
   variant?: CitationVariant;
@@ -195,7 +195,7 @@ export interface CitationRenderProps {
   citationKey: string;
   /** Display text for the citation */
   displayText: string;
-  /** Whether this is a merged value display */
+  /** Whether this is a merged keySpan display */
   isMergedDisplay: boolean;
 }
 
