@@ -47,22 +47,22 @@ export type { CitationVariant } from "./types.js";
  * // Renders: [Revenue grew by 25%✓] with blue text
  * ```
  *
- * @example Numeric only - use displayKeySpan=false with brackets variant
+ * @example Numeric only - use showKeySpan=false with brackets variant
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, keySpan: "25% growth" }}
  *   verification={verificationResult}
- *   displayKeySpan={false}
+ *   showKeySpan={false}
  * />
  * // Renders: [1✓]
  * ```
  *
- * @example Without brackets - use displayBrackets=false
+ * @example Without brackets - use showBrackets=false
  * ```tsx
  * <CitationComponent
  *   citation={{ citationNumber: 1, keySpan: "25% growth" }}
  *   verification={verificationResult}
- *   displayBrackets={false}
+ *   showBrackets={false}
  * />
  * // Renders: 25% growth✓ (no brackets)
  * ```
@@ -151,7 +151,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    * Only applies to the `brackets` variant.
    * @default true
    */
-  displayBrackets?: boolean;
+  showBrackets?: boolean;
 
   /**
    * Event handlers for citation interactions.
@@ -187,7 +187,7 @@ export interface CitationComponentProps extends BaseCitationProps {
 
   /**
    * Custom render function for the entire citation content.
-   * When provided, takes full control of rendering (ignores format, showBrackets).
+   * When provided, takes full control of rendering.
    */
   renderContent?: (props: CitationRenderProps) => ReactNode;
 
@@ -634,8 +634,8 @@ export const CitationComponent = forwardRef<
       citation,
       children,
       className,
-      displayKeySpan = true,
-      displayBrackets = true,
+      showKeySpan = true,
+      showBrackets = true,
       fallbackDisplay,
       verification,
       variant = "brackets",
@@ -807,15 +807,15 @@ export const CitationComponent = forwardRef<
 
     const displayText = useMemo(() => {
       // For text/minimal variants, always show keySpan
-      // For brackets variant, show keySpan based on displayKeySpan prop
+      // For brackets variant, show keySpan based on showKeySpan prop
       return getCitationDisplayText(citation, {
-        displayKeySpan:
+        showKeySpan:
           variant === "text" ||
           variant === "minimal" ||
-          displayKeySpan,
+          showKeySpan,
         fallbackDisplay,
       });
-    }, [citation, variant, displayKeySpan, fallbackDisplay]);
+    }, [citation, variant, showKeySpan, fallbackDisplay]);
 
     // Found status class for text styling (blue for found, gray for miss)
     const foundStatusClass = useMemo(
@@ -855,7 +855,7 @@ export const CitationComponent = forwardRef<
     if (
       fallbackDisplay !== null &&
       fallbackDisplay !== undefined &&
-      displayKeySpan &&
+      showKeySpan &&
       isMiss
     ) {
       return (
@@ -901,7 +901,7 @@ export const CitationComponent = forwardRef<
           citationKey,
           displayText,
           isMergedDisplay:
-            variant === "text" || variant === "brackets" || displayKeySpan,
+            variant === "text" || variant === "brackets" || showKeySpan,
         });
       }
 
@@ -939,12 +939,12 @@ export const CitationComponent = forwardRef<
           aria-hidden="true"
           role="presentation"
         >
-          {displayBrackets && "["}
+          {showBrackets && "["}
           <span className="dc-citation-text">
             {displayText}
             {renderStatusIndicator()}
           </span>
-          {displayBrackets && "]"}
+          {showBrackets && "]"}
         </span>
       );
     };

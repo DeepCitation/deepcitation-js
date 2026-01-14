@@ -6,8 +6,8 @@ import type { SearchState } from "../types/search.js";
  * Available citation display variants.
  *
  * - `brackets`: Shows keySpan/number in brackets with blue text styling (default).
- *               Use displayKeySpan=false for numeric-only display.
- *               Use displayBrackets=false to hide the square brackets.
+ *               Use showKeySpan=false for numeric-only display.
+ *               Use showBrackets=false to hide the square brackets.
  * - `text`: Shows the keySpan, inherits parent text styling, no truncation, shows indicator
  * - `minimal`: No brackets, just display text with indicator
  * - `indicator`: Only the status indicator (checkmark/warning), no text
@@ -118,7 +118,7 @@ export interface BaseCitationProps {
    * When true, displays keySpan text. When false, displays citation number only.
    * @default true
    */
-  displayKeySpan?: boolean;
+  showKeySpan?: boolean;
   /** Fallback display text when citation keySpan is empty */
   fallbackDisplay?: string | null;
   /** Display variant for the citation */

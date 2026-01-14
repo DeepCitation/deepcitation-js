@@ -46,6 +46,7 @@ export interface CitationVariantProps extends BaseCitationProps {
   renderPartialIndicator?: (status: CitationStatus) => ReactNode;
 }
 
+
 /**
  * Hook to get common citation data.
  * NOTE: Status is not memoized because verification may be mutated in place.
@@ -110,7 +111,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
       citation,
       children,
       className,
-      displayKeySpan = false,
+      showKeySpan = false,
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -134,18 +135,18 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayKeySpan,
+          showKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayKeySpan, fallbackDisplay]
+      [citation, showKeySpan, fallbackDisplay]
     );
 
     const keySpanText = useMemo(
       () =>
         getCitationKeySpanText(citation, {
-          displayKeySpan,
+          showKeySpan,
         }),
-      [citation, displayKeySpan]
+      [citation, showKeySpan]
     );
 
     const handleClick = useCallback(
@@ -246,7 +247,7 @@ export const SuperscriptCitation = forwardRef<
       citation,
       children,
       className,
-      displayKeySpan = false,
+      showKeySpan = false,
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -268,10 +269,10 @@ export const SuperscriptCitation = forwardRef<
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayKeySpan,
+          showKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayKeySpan, fallbackDisplay]
+      [citation, showKeySpan, fallbackDisplay]
     );
 
     const handleClick = useCallback(
@@ -473,7 +474,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
       citation,
       children,
       className,
-      displayKeySpan = true, // Default to merged for inline
+      showKeySpan = true, // Default to merged for inline
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -494,10 +495,10 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayKeySpan,
+          showKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayKeySpan, fallbackDisplay]
+      [citation, showKeySpan, fallbackDisplay]
     );
 
     const handleClick = useCallback(
@@ -592,7 +593,7 @@ export const MinimalCitation = forwardRef<
       citation,
       children,
       className,
-      displayKeySpan = false,
+      showKeySpan = false,
       fallbackDisplay,
       verification,
       eventHandlers,
@@ -613,10 +614,10 @@ export const MinimalCitation = forwardRef<
     const displayText = useMemo(
       () =>
         getCitationDisplayText(citation, {
-          displayKeySpan,
+          showKeySpan,
           fallbackDisplay,
         }),
-      [citation, displayKeySpan, fallbackDisplay]
+      [citation, showKeySpan, fallbackDisplay]
     );
 
     const handleClick = useCallback(

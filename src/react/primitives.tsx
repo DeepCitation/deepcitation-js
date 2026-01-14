@@ -35,7 +35,7 @@ interface CitationContextValue {
   verification: Verification | null;
   searchState: SearchState | null;
   config: {
-    displayKeySpan: boolean;
+    showKeySpan: boolean;
     fallbackDisplay: string | null;
     pendingContent: ReactNode;
   };
@@ -62,7 +62,7 @@ export interface CitationRootProps {
   verification?: Verification | null;
   searchState?: SearchState | null;
   children: ReactNode;
-  displayKeySpan?: boolean;
+  showKeySpan?: boolean;
   fallbackDisplay?: string | null;
   pendingContent?: ReactNode;
 }
@@ -78,7 +78,7 @@ export const CitationRoot = forwardRef<
       verification = null,
       searchState = null,
       children,
-      displayKeySpan = false,
+      showKeySpan = false,
       fallbackDisplay = null,
       pendingContent = "..",
       className,
@@ -105,7 +105,7 @@ export const CitationRoot = forwardRef<
         verification,
         searchState,
         config: {
-          displayKeySpan,
+          showKeySpan,
           fallbackDisplay,
           pendingContent,
         },
@@ -117,7 +117,7 @@ export const CitationRoot = forwardRef<
         status,
         verification,
         searchState,
-        displayKeySpan,
+        showKeySpan,
         fallbackDisplay,
         pendingContent,
       ]
@@ -302,7 +302,7 @@ export const CitationNumber = forwardRef<HTMLSpanElement, CitationNumberProps>(
     const displayNumber = useMemo(() => {
       if (number !== undefined) return String(number);
 
-      if (config.displayKeySpan) {
+      if (config.showKeySpan) {
         return (
           citation.keySpan?.toString() ||
           citation.citationNumber?.toString() ||
@@ -355,7 +355,7 @@ export const CitationKeySpan = forwardRef<HTMLSpanElement, CitationKeySpanProps>
 
     const displayKeySpan = useMemo(() => {
       if (keySpan !== undefined) return keySpan;
-      if (!config.displayKeySpan) return "";
+      if (!config.showKeySpan) return "";
       return citation.keySpan?.toString() || "";
     }, [keySpan, citation, config]);
 

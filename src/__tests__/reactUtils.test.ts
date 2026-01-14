@@ -36,17 +36,17 @@ describe("react utils", () => {
 
   it("returns display and value text based on merge option", () => {
     expect(getCitationDisplayText(citation)).toBe("2");
-    expect(getCitationDisplayText(citation, { displayKeySpan: true })).toBe(
+    expect(getCitationDisplayText(citation, { showKeySpan: true })).toBe(
       "$10"
     );
     expect(
       getCitationDisplayText(
         { ...citation, keySpan: null },
-        { displayKeySpan: true }
+        { showKeySpan: true }
       )
     ).toBe("2");
     expect(getCitationKeySpanText(citation)).toBe("$10");
-    expect(getCitationKeySpanText(citation, { displayKeySpan: true })).toBe("");
+    expect(getCitationKeySpanText(citation, { showKeySpan: true })).toBe("");
   });
 
   it("joins class names safely", () => {
