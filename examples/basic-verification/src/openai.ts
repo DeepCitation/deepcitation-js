@@ -52,18 +52,17 @@ async function main() {
     resolve(__dirname, "../../assets/john-doe-50-m-chart.jpg")
   );
 
-  let fileId: string | null = null; //this can be set to preserve your fileId or we will assign one for you
-
   // Upload documents to DeepCitation
   const { fileDataParts, deepTextPromptPortion } =
     await deepcitation.prepareFiles([
       { file: sampleDocument, filename: "john-doe-50-m-chart.jpg" },
     ]);
 
-  fileId = fileDataParts[0].fileId;
+  // DeepCitation assigns a 20-character alphanumeric attachmentId - save this to use for verification
+  const attachmentId = fileDataParts[0].attachmentId;
 
   console.log("✅ Document uploaded successfully");
-  console.log(`   File ID: ${fileId}\n`);
+  console.log(`   Attachment ID: ${attachmentId}\n`);
 
   // Wrap your prompts with citation instructions
   const systemPrompt = `You are a helpful assistant. Answer questions about the
@@ -174,7 +173,7 @@ provided documents accurately and cite your sources.`;
   console.log();
 
   const verificationResult = await deepcitation.verifyCitations(
-    fileId,
+    attachmentId,
     parsedCitations
   );
 

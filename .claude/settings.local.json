@@ -25,7 +25,8 @@
       "Bash(find:*)",
       "Bash(node -e:*)",
       "Bash(python3:*)",
-      "WebFetch(domain:developers.intercom.com)"
+      "WebFetch(domain:developers.intercom.com)",
+      "Bash(grep:*)"
     ]
   }
 }

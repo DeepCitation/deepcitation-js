@@ -58,8 +58,11 @@ async function main() {
       { file: sampleDocument, filename: "john-doe-50-m-chart.jpg" },
     ]);
 
+  // DeepCitation assigns a 20-character alphanumeric attachmentId - save this to use for verification
+  const attachmentId = fileDataParts[0].attachmentId;
+
   console.log("✅ Document uploaded successfully");
-  console.log(`   File ID: ${fileDataParts[0].fileId}\n`);
+  console.log(`   Attachment ID: ${attachmentId}\n`);
 
   // Wrap your prompts with citation instructions
   const systemPrompt = `You are a helpful assistant. Answer questions about the

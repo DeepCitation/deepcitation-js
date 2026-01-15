@@ -41,7 +41,7 @@ bun run start:anthropic
 🤖 Step 2: Calling OpenAI and verifying citations...
 📝 LLM Response (raw with citations):
 ──────────────────────────────────────────────────
-ACME Corporation achieved revenue growth of 23% in 2024 <cite file_id='abc123'
+ACME Corporation achieved revenue growth of 23% in 2024 <cite attachment_id='abc123'
 full_phrase='representing a 23% increase from the previous year' line_ids='5-6'/>.
 The Asia-Pacific region performed best with 35% year-over-year growth <cite.../>
 ──────────────────────────────────────────────────

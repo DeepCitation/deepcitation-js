@@ -1,17 +1,26 @@
 export const removeCitations = (
   pageText: string,
-  leaveValueBehind?: boolean
+  leaveKeySpanBehind?: boolean
 ): string => {
   const citationRegex =
-    /<cite\s+(?:fileId|attachmentId)='(\w{0,25})'\s+start_page[\_a-zA-Z]*='page[\_a-zA-Z]*(\d+)_index_(\d+)'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+line(?:_ids|Ids)='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
+    /<cite\s+(?:fileId|attachmentId)='(\w{0,25})'\s+start_page[\_a-zA-Z]*='page[\_a-zA-Z]*(\d+)_index_(\d+)'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+key_span='((?:[^'\\]|\\.)*)'\s+line(?:_ids|Ids)='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
 
   return pageText.replace(
     citationRegex,
-    (match, attachmentId, pageNumber, index, fullPhrase, lineIds, value) => {
+    (
+      match,
+      attachmentId,
+      pageNumber,
+      index,
+      fullPhrase,
+      keySpan,
+      lineIds,
+      value
+    ) => {
       //it is still value= so we need to remove the value=
 
-      if (leaveValueBehind) {
-        return value?.replace(/value=['"]|['"]/g, "") || "";
+      if (leaveKeySpanBehind) {
+        return keySpan?.replace(/key_span=['"]|['"]/g, "") || "";
       } else {
         return "";
       }
@@ -69,18 +78,33 @@ const normalizeCitationContent = (input: string): string => {
   normalized = normalized.replace(/><\/cite>/g, "/>");
 
   const canonicalizeCiteAttributeKey = (key: string): string => {
-    if (key === "fullPhrase" || key === "full_phrase") return "full_phrase";
-    if (key === "lineIds" || key === "line_ids") return "line_ids";
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === "fullphrase" || lowerKey === "full_phrase")
+      return "full_phrase";
+    if (lowerKey === "lineids" || lowerKey === "line_ids") return "line_ids";
     if (
-      key === "startPageKey" ||
-      key === "start_pageKey" ||
-      key === "start_page_key"
+      lowerKey === "startpagekey" ||
+      lowerKey === "start_pagekey" ||
+      lowerKey === "start_page_key"
     )
       return "start_page_key";
-    if (key === "fileID" || key === "fileId" || key === "file_id" || key === "attachmentId" || key === "attachment_id")
-      return "file_id";
-    if (key === "keySpan" || key === "key_span") return "key_span";
-    return key;
+    if (
+      lowerKey === "fileid" ||
+      lowerKey === "file_id" ||
+      lowerKey === "attachmentid" ||
+      lowerKey === "attachment_id"
+    )
+      return "attachment_id";
+    if (lowerKey === "keyspan" || lowerKey === "key_span") return "key_span";
+    if (lowerKey === "reasoning" || lowerKey === "value") return lowerKey;
+    if (
+      lowerKey === "timestamps" ||
+      lowerKey === "timestamp" ||
+      lowerKey === "timestamps"
+    )
+      return "timestamps";
+
+    return lowerKey;
   };
 
   // Helper to decode HTML entities (simple implementation, expand if needed)
@@ -203,14 +227,14 @@ const normalizeCitationContent = (input: string): string => {
     const ordered: string[] = [];
 
     // Shared first
-    if (attrs.file_id) ordered.push("file_id");
+    if (attrs.attachment_id) ordered.push("attachment_id");
 
     if (hasTimestamps) {
-      // AV citations: fileId, full_phrase, timestamps, (optional reasoning/value), then any extras
+      // AV citations: attachment_id, full_phrase, timestamps, (optional reasoning/value), then any extras
       if (attrs.full_phrase) ordered.push("full_phrase");
       ordered.push("timestamps");
     } else {
-      // Document citations: fileId, start_page*, full_phrase, key_span, line_ids, (optional reasoning/value), then any extras
+      // Document citations: attachment_id, start_page*, full_phrase, key_span, line_ids, (optional reasoning/value), then any extras
       if (startPageKeys.includes("start_page_key"))
         ordered.push("start_page_key");
       startPageKeys
