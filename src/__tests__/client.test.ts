@@ -106,7 +106,9 @@ describe("DeepCitation Client", () => {
       } as Response);
 
       const blob = new Blob(["content"]);
-      const result = await client.uploadFile(blob, { attachmentId: "custom_id" });
+      const result = await client.uploadFile(blob, {
+        attachmentId: "custom_id",
+      });
 
       expect(result.attachmentId).toBe("custom_id");
     });
@@ -291,7 +293,7 @@ describe("DeepCitation Client", () => {
       } as Response);
 
       const llmOutput =
-        "The company showed strong growth. <cite file_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Revenue grew 15%' key_span='15%' line_ids='1' />";
+        "The company showed strong growth. <cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Revenue grew 15%' key_span='15%' line_ids='1' />";
 
       const result = await client.verifyCitationsFromLlmOutput({
         llmOutput,
@@ -321,7 +323,7 @@ describe("DeepCitation Client", () => {
 
       const result = await client.verifyCitationsFromLlmOutput({
         llmOutput:
-          "<cite file_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' key_span='Test' line_ids='1' />",
+          "<cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' key_span='Test' line_ids='1' />",
       });
 
       expect(result.verifications).toBeDefined();
@@ -353,7 +355,11 @@ describe("DeepCitation Client", () => {
       } as Response);
 
       const result = await client.verifyCitations("file_abc", {
-        "1": { pageNumber: 1, fullPhrase: "test phrase", attachmentId: "file_abc" },
+        "1": {
+          pageNumber: 1,
+          fullPhrase: "test phrase",
+          attachmentId: "file_abc",
+        },
       });
 
       expect(result.verifications["1"].searchState.status).toBe("found");

@@ -231,7 +231,7 @@ describe("getCitationStatus", () => {
 describe("parseCitation", () => {
   it("parses document citations with optional values", () => {
     const fragment =
-      "Before <cite file_id='short' start_page_key='page_number_5_index_0' full_phrase='Hello\\'s world' key_span='world' line_ids='3,1' value='USD 12' /> after";
+      "Before <cite attachment_id='short' start_page_key='page_number_5_index_0' full_phrase='Hello\\'s world' key_span='world' line_ids='3,1' value='USD 12' /> after";
     const parsed = parseCitation(fragment, "override-attachment");
     const { citation } = parsed;
 
@@ -246,7 +246,7 @@ describe("parseCitation", () => {
 
   it("parses key_span attribute correctly", () => {
     const fragment =
-      "<cite file_id='file123456789012345' start_page_key='page_number_2_index_0' full_phrase='The quick brown fox jumps over the lazy dog' key_span='quick brown fox' line_ids='1,2' />";
+      "<cite attachment_id='file123456789012345' start_page_key='page_number_2_index_0' full_phrase='The quick brown fox jumps over the lazy dog' key_span='quick brown fox' line_ids='1,2' />";
     const parsed = parseCitation(fragment);
     const { citation } = parsed;
 
@@ -258,7 +258,7 @@ describe("parseCitation", () => {
 
   it("parses key_span with special characters", () => {
     const fragment =
-      "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='The total is $500 USD' key_span='$500 USD' line_ids='1' />";
+      "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='The total is $500 USD' key_span='$500 USD' line_ids='1' />";
     const parsed = parseCitation(fragment);
     const { citation } = parsed;
 
@@ -268,7 +268,7 @@ describe("parseCitation", () => {
 
   it("parses AV citations with timestamps", () => {
     const fragment =
-      "<cite file_id='av123' full_phrase='Audio clip' timestamps='00:00:01.000-00:00:03.000' reasoning='Because' />";
+      "<cite attachment_id='av123' full_phrase='Audio clip' timestamps='00:00:01.000-00:00:03.000' reasoning='Because' />";
     const parsed = parseCitation(fragment);
     const { citation } = parsed;
 
@@ -312,35 +312,35 @@ describe("parseCitation", () => {
     it("uses attachmentId when it is exactly 20 characters", () => {
       // 20-char attachmentId should be used as attachmentId
       const twentyCharId = "12345678901234567890";
-      const fragment = `<cite file_id='${twentyCharId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
+      const fragment = `<cite attachment_id='${twentyCharId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
       const parsed = parseCitation(fragment, "fallback-attachment");
       expect(parsed.citation.attachmentId).toBe(twentyCharId);
     });
 
     it("uses mdAttachmentId when attachmentId is shorter than 20 characters", () => {
       const shortId = "short123";
-      const fragment = `<cite file_id='${shortId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
+      const fragment = `<cite attachment_id='${shortId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
       const parsed = parseCitation(fragment, "fallback-attachment");
       expect(parsed.citation.attachmentId).toBe("fallback-attachment");
     });
 
     it("uses mdAttachmentId when attachmentId is longer than 20 characters", () => {
-      const longId = "this_is_a_very_long_file_id_over_20_chars";
-      const fragment = `<cite file_id='${longId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
+      const longId = "this_is_a_very_long_attachment_id_over_20_chars";
+      const fragment = `<cite attachment_id='${longId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
       const parsed = parseCitation(fragment, "fallback-attachment");
       expect(parsed.citation.attachmentId).toBe("fallback-attachment");
     });
 
     it("falls back to original fileId when no mdAttachmentId provided and attachmentId is not 20 chars", () => {
       const shortId = "short123";
-      const fragment = `<cite file_id='${shortId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
+      const fragment = `<cite attachment_id='${shortId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
       const parsed = parseCitation(fragment);
       expect(parsed.citation.attachmentId).toBe(shortId);
     });
 
     it("uses null mdAttachmentId correctly", () => {
       const shortId = "short123";
-      const fragment = `<cite file_id='${shortId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
+      const fragment = `<cite attachment_id='${shortId}' start_page_key='page_number_1_index_0' full_phrase='test' key_span='test' line_ids='1' />`;
       const parsed = parseCitation(fragment, null);
       expect(parsed.citation.attachmentId).toBe(shortId);
     });
@@ -349,13 +349,13 @@ describe("parseCitation", () => {
   describe("AV citation attachment id fallback", () => {
     it("uses 20-char attachmentId for AV citations", () => {
       const twentyCharId = "12345678901234567890";
-      const fragment = `<cite file_id='${twentyCharId}' full_phrase='audio' timestamps='00:00:01-00:00:05' />`;
+      const fragment = `<cite attachment_id='${twentyCharId}' full_phrase='audio' timestamps='00:00:01-00:00:05' />`;
       const parsed = parseCitation(fragment, "fallback");
       expect(parsed.citation.attachmentId).toBe(twentyCharId);
     });
 
     it("uses mdAttachmentId for AV citations with short attachmentId", () => {
-      const fragment = `<cite file_id='short' full_phrase='audio' timestamps='00:00:01-00:00:05' />`;
+      const fragment = `<cite attachment_id='short' full_phrase='audio' timestamps='00:00:01-00:00:05' />`;
       const parsed = parseCitation(fragment, "av-fallback");
       expect(parsed.citation.attachmentId).toBe("av-fallback");
     });
@@ -364,7 +364,7 @@ describe("parseCitation", () => {
   describe("value vs reasoning precedence", () => {
     it("parses value attribute when present", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' value='$100' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' value='$100' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.keySpan).toBe("phrase");
       expect(parsed.citation.reasoning).toBeUndefined();
@@ -372,7 +372,7 @@ describe("parseCitation", () => {
 
     it("parses reasoning attribute when present", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' reasoning='This is because...' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' reasoning='This is because...' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.reasoning).toBe("This is because...");
       expect(parsed.citation.keySpan).toBe("phrase");
@@ -380,7 +380,7 @@ describe("parseCitation", () => {
 
     it("parses AV citation with value attribute", () => {
       const fragment =
-        "<cite file_id='av12345678901234567' full_phrase='audio' timestamps='00:01-00:02' value='transcript' />";
+        "<cite attachment_id='av12345678901234567' full_phrase='audio' timestamps='00:01-00:02' value='transcript' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.keySpan).toBe("transcript");
       expect(parsed.citation.reasoning).toBeUndefined();
@@ -388,7 +388,7 @@ describe("parseCitation", () => {
 
     it("parses AV citation with reasoning attribute", () => {
       const fragment =
-        "<cite file_id='av12345678901234567' full_phrase='audio' timestamps='00:01-00:02' reasoning='Speaker said this' />";
+        "<cite attachment_id='av12345678901234567' full_phrase='audio' timestamps='00:01-00:02' reasoning='Speaker said this' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.reasoning).toBe("Speaker said this");
       expect(parsed.citation.keySpan).toBeUndefined();
@@ -399,7 +399,7 @@ describe("parseCitation", () => {
     it("increments citation counter when provided", () => {
       const counterRef = { current: 1 };
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' />";
 
       const parsed1 = parseCitation(fragment, null, counterRef);
       expect(parsed1.citation.citationNumber).toBe(1);
@@ -412,7 +412,7 @@ describe("parseCitation", () => {
 
     it("returns undefined citationNumber when no counter provided", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.citationNumber).toBeUndefined();
     });
@@ -421,42 +421,42 @@ describe("parseCitation", () => {
   describe("line_ids parsing edge cases", () => {
     it("sorts line_ids in ascending order", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='5,2,8,1,3' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='5,2,8,1,3' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.lineIds).toEqual([1, 2, 3, 5, 8]);
     });
 
     it("handles line_ids with invalid values by filtering them", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1,abc,3,def,5' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1,abc,3,def,5' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.lineIds).toEqual([1, 3, 5]);
     });
 
     it("returns undefined lineIds when empty", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.lineIds).toBeUndefined();
     });
 
     it("handles single line range format like '20-20'", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='20-20' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='20-20' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.lineIds).toEqual([20]);
     });
 
     it("handles multi-line range format like '5-10'", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='5-10' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='5-10' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.lineIds).toEqual([5, 6, 7, 8, 9, 10]);
     });
 
     it("handles mixed comma and range format like '1,5-7,10'", () => {
       const fragment =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1,5-7,10' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='phrase' key_span='phrase' line_ids='1,5-7,10' />";
       const parsed = parseCitation(fragment);
       expect(parsed.citation.lineIds).toEqual([1, 5, 6, 7, 10]);
     });
@@ -501,7 +501,7 @@ describe("getAllCitationsFromLlmOutput", () => {
   describe("XML citation extraction from strings", () => {
     it("extracts single XML citation from string", () => {
       const input =
-        "Here is text <cite file_id='file123456789012345' start_page_key='page_number_2_index_0' full_phrase='important text' key_span='important' line_ids='1,2' /> more text";
+        "Here is text <cite attachment_id='file123456789012345' start_page_key='page_number_2_index_0' full_phrase='important text' key_span='important' line_ids='1,2' /> more text";
       const result = getAllCitationsFromLlmOutput(input);
 
       expect(Object.keys(result)).toHaveLength(1);
@@ -514,9 +514,9 @@ describe("getAllCitationsFromLlmOutput", () => {
 
     it("extracts multiple XML citations from string", () => {
       const input = `
-        First citation <cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='first phrase' key_span='first' line_ids='1' />
-        Second citation <cite file_id='file123456789012345' start_page_key='page_number_3_index_0' full_phrase='second phrase' key_span='second' line_ids='5' />
-        Third citation <cite file_id='file123456789012345' start_page_key='page_number_5_index_0' full_phrase='third phrase' key_span='third' line_ids='10' />
+        First citation <cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='first phrase' key_span='first' line_ids='1' />
+        Second citation <cite attachment_id='file123456789012345' start_page_key='page_number_3_index_0' full_phrase='second phrase' key_span='second' line_ids='5' />
+        Third citation <cite attachment_id='file123456789012345' start_page_key='page_number_5_index_0' full_phrase='third phrase' key_span='third' line_ids='10' />
       `;
       const result = getAllCitationsFromLlmOutput(input);
 
@@ -530,7 +530,7 @@ describe("getAllCitationsFromLlmOutput", () => {
 
     it("extracts XML citation with value attribute", () => {
       const input =
-        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='price line' key_span='price' line_ids='1' value='$100.00' />";
+        "<cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='price line' key_span='price' line_ids='1' value='$100.00' />";
       const result = getAllCitationsFromLlmOutput(input);
 
       expect(Object.keys(result)).toHaveLength(1);
@@ -541,7 +541,7 @@ describe("getAllCitationsFromLlmOutput", () => {
 
     it("extracts AV citation with timestamps", () => {
       const input =
-        "<cite file_id='av12345678901234567' full_phrase='audio transcript' timestamps='00:01:30-00:02:45' />";
+        "<cite attachment_id='av12345678901234567' full_phrase='audio transcript' timestamps='00:01:30-00:02:45' />";
       const result = getAllCitationsFromLlmOutput(input);
 
       expect(Object.keys(result)).toHaveLength(1);
@@ -620,7 +620,9 @@ describe("getAllCitationsFromLlmOutput", () => {
         level1: {
           level2: {
             level3: {
-              citations: [{ fullPhrase: "deep citation", attachmentId: "deep1" }],
+              citations: [
+                { fullPhrase: "deep citation", attachmentId: "deep1" },
+              ],
             },
           },
         },
@@ -720,7 +722,7 @@ describe("getAllCitationsFromLlmOutput", () => {
     it("extracts both XML embedded in strings and JSON citations", () => {
       const input = {
         markdown:
-          "Text with <cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='xml phrase' key_span='xml' line_ids='1' />",
+          "Text with <cite attachment_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='xml phrase' key_span='xml' line_ids='1' />",
         citations: [{ fullPhrase: "json phrase", attachmentId: "json1" }],
       };
       const result = getAllCitationsFromLlmOutput(input);
@@ -734,7 +736,7 @@ describe("getAllCitationsFromLlmOutput", () => {
     it("handles object with stringified JSON containing XML citations", () => {
       const input = {
         content:
-          "Response with <cite file_id='f12345678901234567890' start_page_key='page_number_2_index_0' full_phrase='embedded' key_span='embedded' line_ids='1' />",
+          "Response with <cite attachment_id='f12345678901234567890' start_page_key='page_number_2_index_0' full_phrase='embedded' key_span='embedded' line_ids='1' />",
       };
       const result = getAllCitationsFromLlmOutput(input);
 
@@ -782,8 +784,14 @@ describe("getAllCitationsFromLlmOutput", () => {
     });
 
     it("generates same key for identical citations", () => {
-      const citation1: Citation = { fullPhrase: "same phrase", attachmentId: "same" };
-      const citation2: Citation = { fullPhrase: "same phrase", attachmentId: "same" };
+      const citation1: Citation = {
+        fullPhrase: "same phrase",
+        attachmentId: "same",
+      };
+      const citation2: Citation = {
+        fullPhrase: "same phrase",
+        attachmentId: "same",
+      };
 
       const result1 = getAllCitationsFromLlmOutput(citation1);
       const result2 = getAllCitationsFromLlmOutput(citation2);
@@ -912,8 +920,8 @@ describe("getAllCitationsFromLlmOutput", () => {
       expect(Object.values(result)[0].lineIds).toEqual([2, 5, 8]);
     });
 
-    it("detects object with file_id (snake_case)", () => {
-      const input = { file_id: "my_file_123", full_phrase: "test" };
+    it("detects object with attachment_id (snake_case)", () => {
+      const input = { attachment_id: "my_file_123", full_phrase: "test" };
       const result = getAllCitationsFromLlmOutput(input);
       expect(Object.keys(result)).toHaveLength(1);
       expect(Object.values(result)[0].attachmentId).toBe("my_file_123");
@@ -921,7 +929,7 @@ describe("getAllCitationsFromLlmOutput", () => {
 
     it("parses full snake_case citation object", () => {
       const input = {
-        file_id: "doc123",
+        attachment_id: "doc123",
         full_phrase: "The quick brown fox",
         start_page_key: "page_number_7_index_2",
         line_ids: [10, 5, 15],
@@ -940,8 +948,8 @@ describe("getAllCitationsFromLlmOutput", () => {
 
     it("parses array of snake_case citations", () => {
       const input = [
-        { full_phrase: "first citation", file_id: "f1" },
-        { full_phrase: "second citation", file_id: "f2" },
+        { full_phrase: "first citation", attachment_id: "f1" },
+        { full_phrase: "second citation", attachment_id: "f2" },
       ];
       const result = getAllCitationsFromLlmOutput(input);
 
@@ -955,7 +963,11 @@ describe("getAllCitationsFromLlmOutput", () => {
       const input = {
         response: "Some text",
         citations: [
-          { full_phrase: "nested snake", file_id: "n1", line_ids: [1, 2] },
+          {
+            full_phrase: "nested snake",
+            attachment_id: "n1",
+            line_ids: [1, 2],
+          },
         ],
       };
       const result = getAllCitationsFromLlmOutput(input);
@@ -969,7 +981,7 @@ describe("getAllCitationsFromLlmOutput", () => {
     it("handles mixed camelCase and snake_case in same object", () => {
       const input = {
         fullPhrase: "mixed case test",
-        file_id: "mixed123",
+        attachment_id: "mixed123",
         start_page_key: "page_number_2_index_0",
         lineIds: [3, 1, 2],
       };
@@ -988,7 +1000,7 @@ describe("getAllCitationsFromLlmOutput", () => {
         fullPhrase: "camelCase wins",
         full_phrase: "snake_case loses",
         attachmentId: "camelId",
-        file_id: "snakeId",
+        attachment_id: "snakeId",
       };
       const result = getAllCitationsFromLlmOutput(input);
 
@@ -1019,7 +1031,7 @@ describe("getAllCitationsFromLlmOutput", () => {
       const input = {
         full_phrase: "The quick brown fox jumps over the lazy dog",
         key_span: "quick brown fox",
-        file_id: "file123",
+        attachment_id: "file123",
       };
       const result = getAllCitationsFromLlmOutput(input);
 
@@ -1101,6 +1113,90 @@ describe("getAllCitationsFromLlmOutput", () => {
         .map((c) => c.citationNumber)
         .sort((a, b) => (a || 0) - (b || 0));
       expect(numbers).toEqual([1, 2, 3]);
+    });
+  });
+
+  describe("backwards compatibility with fileId/file_id", () => {
+    it("extracts XML citation with fileId attribute", () => {
+      const input =
+        "Here is text <cite fileId='file123456789012345' start_page_key='page_number_2_index_0' full_phrase='important text' key_span='important' line_ids='1,2' /> more text";
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("important text");
+      expect(citation.keySpan).toBe("important");
+      expect(citation.pageNumber).toBe(2);
+    });
+
+    it("extracts XML citation with file_id attribute", () => {
+      const input =
+        "<cite file_id='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='test phrase' key_span='test' line_ids='5' />";
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("test phrase");
+      expect(citation.pageNumber).toBe(1);
+    });
+
+    it("extracts AV citation with fileId attribute", () => {
+      const input =
+        "<cite fileId='av12345678901234567' full_phrase='audio transcript' timestamps='00:01:30-00:02:45' />";
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("audio transcript");
+      expect(citation.timestamps).toEqual({
+        startTime: "00:01:30",
+        endTime: "00:02:45",
+      });
+    });
+
+    it("parses JSON citation with fileId property", () => {
+      const input: Citation = {
+        fullPhrase: "test phrase",
+        fileId: "file123456789012345",
+        startPageKey: "page_number_3_index_0",
+        lineIds: [1, 2, 3],
+      };
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("test phrase");
+      expect(citation.attachmentId).toBe("file123456789012345");
+      expect(citation.pageNumber).toBe(3);
+    });
+
+    it("parses JSON citation with file_id property (snake_case)", () => {
+      const input = {
+        full_phrase: "snake case test",
+        file_id: "file123456789012345",
+        start_page_key: "page_number_5_index_0",
+        line_ids: [1, 2],
+      };
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("snake case test");
+      expect(citation.attachmentId).toBe("file123456789012345");
+      expect(citation.pageNumber).toBe(5);
+    });
+
+    it("handles mixed fileId and attachmentId in same response", () => {
+      const input = `
+        <cite fileId='file123456789012345' start_page_key='page_number_1_index_0' full_phrase='first phrase' key_span='first' line_ids='1' />
+        <cite attachment_id='att1234567890123456' start_page_key='page_number_2_index_0' full_phrase='second phrase' key_span='second' line_ids='2' />
+      `;
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result).length).toBe(2);
+      const phrases = Object.values(result).map((c) => c.fullPhrase);
+      expect(phrases).toContain("first phrase");
+      expect(phrases).toContain("second phrase");
     });
   });
 });

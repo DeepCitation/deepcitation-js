@@ -16,7 +16,7 @@ import crypto from "crypto";
 // Mock implementations for dependencies
 const mockPrepareFiles = mock(() =>
   Promise.resolve({
-    fileDataParts: [{ fileId: "file_123" }],
+    fileDataParts: [{ attachmentId: "ABCDEFghij1234567890" }],
     deepTextPromptPortion: ["[Page 1]\n[L1] Test content"],
   })
 );

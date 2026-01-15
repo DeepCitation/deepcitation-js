@@ -10,9 +10,13 @@ import {
 
 describe("citation prompts", () => {
   it("includes guidance for citation markdown syntax", () => {
-    expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("<cite file_id='attachment_id'");
+    expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain(
+      "<cite attachment_id='attachment_id'"
+    );
     expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("line_ids");
-    expect(AV_CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("timestamps='HH:MM:SS.SSS");
+    expect(AV_CITATION_MARKDOWN_SYNTAX_PROMPT).toContain(
+      "timestamps='HH:MM:SS.SSS"
+    );
   });
 
   it("defines required fields for text-based citations", () => {
@@ -27,7 +31,8 @@ describe("citation prompts", () => {
   });
 
   it("defines timestamp requirements for AV citations", () => {
-    const timestamps = CITATION_AV_BASED_JSON_OUTPUT_FORMAT.properties?.timestamps;
+    const timestamps =
+      CITATION_AV_BASED_JSON_OUTPUT_FORMAT.properties?.timestamps;
     expect(timestamps?.required).toEqual(["startTime", "endTime"]);
   });
 });
@@ -38,10 +43,12 @@ describe("wrapSystemCitationPrompt", () => {
     const result = wrapSystemCitationPrompt({ systemPrompt });
 
     expect(result).toContain("You are a helpful assistant.");
-    expect(result).toContain("<cite file_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='attachment_id'");
     expect(result).toContain("line_ids");
     // By default, system prompt comes first
-    expect(result.indexOf("You are a helpful assistant.")).toBeLessThan(result.indexOf("<cite"));
+    expect(result.indexOf("You are a helpful assistant.")).toBeLessThan(
+      result.indexOf("<cite")
+    );
   });
 
   it("prepends citation instructions when prependCitationInstructions is true", () => {
@@ -52,9 +59,11 @@ describe("wrapSystemCitationPrompt", () => {
     });
 
     expect(result).toContain("You are a helpful assistant.");
-    expect(result).toContain("<cite file_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='attachment_id'");
     // Citation instructions come first
-    expect(result.indexOf("<cite")).toBeLessThan(result.indexOf("You are a helpful assistant."));
+    expect(result.indexOf("<cite")).toBeLessThan(
+      result.indexOf("You are a helpful assistant.")
+    );
   });
 
   it("uses AV citation format when isAudioVideo is true", () => {
@@ -80,7 +89,7 @@ describe("wrapSystemCitationPrompt", () => {
   it("handles empty system prompt", () => {
     const result = wrapSystemCitationPrompt({ systemPrompt: "" });
 
-    expect(result).toContain("<cite file_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='attachment_id'");
   });
 });
 
@@ -91,8 +100,12 @@ describe("wrapCitationPrompt", () => {
       userPrompt: "Analyze this document.",
     });
 
-    expect(result.enhancedSystemPrompt).toContain("You are a helpful assistant.");
-    expect(result.enhancedSystemPrompt).toContain("<cite file_id='attachment_id'");
+    expect(result.enhancedSystemPrompt).toContain(
+      "You are a helpful assistant."
+    );
+    expect(result.enhancedSystemPrompt).toContain(
+      "<cite attachment_id='attachment_id'"
+    );
     expect(result.enhancedUserPrompt).toContain("Analyze this document.");
   });
 
@@ -127,7 +140,9 @@ describe("wrapCitationPrompt", () => {
     });
 
     // User prompt should be returned as-is (or with minimal modifications)
-    expect(result.enhancedUserPrompt).toContain("Analyze this document: [content here]");
+    expect(result.enhancedUserPrompt).toContain(
+      "Analyze this document: [content here]"
+    );
   });
 
   it("handles empty prompts", () => {
@@ -156,29 +171,34 @@ More content.`;
 
     const result = wrapCitationPrompt({ systemPrompt, userPrompt });
 
-    expect(result.enhancedSystemPrompt).toContain("analyze documents carefully");
+    expect(result.enhancedSystemPrompt).toContain(
+      "analyze documents carefully"
+    );
     expect(result.enhancedUserPrompt).toContain("Page 1:");
     expect(result.enhancedUserPrompt).toContain("Page 2:");
   });
 
   describe("deepTextPromptPortion handling", () => {
     it("includes single string deepTextPromptPortion in user prompt", () => {
-      const deepTextPromptPortion = "<file_text>\n[L1] This is the document content.\n[L2] Second line here.\n</file_text>";
+      const deepTextPromptPortion =
+        "<attachment_text>\n[L1] This is the document content.\n[L2] Second line here.\n</attachment_text>";
       const result = wrapCitationPrompt({
         systemPrompt: "You are a helpful assistant.",
         userPrompt: "Summarize this document.",
         deepTextPromptPortion,
       });
 
-      expect(result.enhancedUserPrompt).toContain("This is the document content.");
+      expect(result.enhancedUserPrompt).toContain(
+        "This is the document content."
+      );
       expect(result.enhancedUserPrompt).toContain("Second line here.");
       expect(result.enhancedUserPrompt).toContain("Summarize this document.");
     });
 
     it("includes array of deepTextPromptPortion strings in user prompt", () => {
       const deepTextPromptPortion = [
-        "<file_text file_id='file1'>\n[L1] Content from first file.\n</file_text>",
-        "<file_text file_id='file2'>\n[L1] Content from second file.\n</file_text>",
+        "<attachment_text attachment_id='file1'>\n[L1] Content from first file.\n</attachment_text>",
+        "<attachment_text attachment_id='file2'>\n[L1] Content from second file.\n</attachment_text>",
       ];
       const result = wrapCitationPrompt({
         systemPrompt: "You are a helpful assistant.",
@@ -199,8 +219,11 @@ More content.`;
         deepTextPromptPortion,
       });
 
-      const fileContentIndex = result.enhancedUserPrompt.indexOf("[FILE CONTENT HERE]");
-      const userPromptIndex = result.enhancedUserPrompt.indexOf("User question");
+      const fileContentIndex = result.enhancedUserPrompt.indexOf(
+        "[FILE CONTENT HERE]"
+      );
+      const userPromptIndex =
+        result.enhancedUserPrompt.indexOf("User question");
       expect(fileContentIndex).toBeLessThan(userPromptIndex);
     });
 

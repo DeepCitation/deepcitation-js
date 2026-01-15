@@ -122,10 +122,10 @@ export const parseCitation = (
   // 4: full_phrase content (escaped)
   // 5: key_span content (escaped)
   // 6: line_ids content
-  // 6: Optional Key (value|reasoning)
-  // 7: Optional Value content (escaped)
+  // 7: Optional Key (value|reasoning)
+  // 8: Optional Value content (escaped)
   const citationRegex =
-    /<cite\s+file(?:_id|Id)='(\w{0,25})'\s+start_page[\_a-zA-Z]*='page[\_a-zA-Z]*(\d+)_index_(\d+)'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+key_span='((?:[^'\\]|\\.)*)'\s+line(?:_ids|Ids)='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
+    /<cite\s+(?:attachment_id|attachmentId|file_id|fileId)='(\w{0,25})'\s+start_page[\_a-zA-Z]*='page[\_a-zA-Z]*(\d+)_index_(\d+)'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+key_span='((?:[^'\\]|\\.)*)'\s+line(?:_ids|Ids)='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
 
   const citationMatches = [...middleCite.matchAll(citationRegex)];
   const match = citationMatches?.[0];
@@ -170,7 +170,7 @@ export const parseCitation = (
   // 4: Optional Key (value|reasoning)
   // 5: Optional Value content (escaped)
   const avCitationRegex =
-    /<cite\s+file(?:_id|Id)='(\w{0,25})'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+timestamps='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
+    /<cite\s+(?:attachment_id|attachmentId|file_id|fileId)='(\w{0,25})'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+timestamps='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
 
   const avCitationMatches = [...middleCite.matchAll(avCitationRegex)];
   const avMatch = avCitationMatches?.[0];
