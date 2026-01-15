@@ -419,7 +419,9 @@ const StatusTooltipContent = ({
             {truncatedExpected && (
               <span className="dc-status-searched">
                 <span className="dc-status-label">Expected</span>
-                <span className="dc-status-text">{truncatedExpected}</span>
+                <span className="dc-status-text dc-status-text--expected">
+                  {truncatedExpected}
+                </span>
               </span>
             )}
             {truncatedActual && (
@@ -434,7 +436,9 @@ const StatusTooltipContent = ({
           <span className="dc-status-searched">
             <span className="dc-status-label">Page</span>
             <span className="dc-status-text">
-              Expected {expectedPage}, found {actualPage}
+              <span className="dc-status-text--expected">{expectedPage}</span>
+              {" → "}
+              {actualPage}
             </span>
           </span>
         )}
@@ -442,7 +446,10 @@ const StatusTooltipContent = ({
           <span className="dc-status-searched">
             <span className="dc-status-label">Line</span>
             <span className="dc-status-text">
-              Expected {expectedLineIds?.join(", ")}, found{" "}
+              <span className="dc-status-text--expected">
+                {expectedLineIds?.join(", ")}
+              </span>
+              {" → "}
               {actualLineIds?.join(", ")}
             </span>
           </span>
@@ -566,7 +573,9 @@ const DiffDetails = ({
           {truncatedExpected && (
             <span className="dc-status-searched">
               <span className="dc-status-label">Expected</span>
-              <span className="dc-status-text">{truncatedExpected}</span>
+              <span className="dc-status-text dc-status-text--expected">
+                {truncatedExpected}
+              </span>
             </span>
           )}
           {isPartialMatch && truncatedActual && (
@@ -589,7 +598,9 @@ const DiffDetails = ({
         <span className="dc-status-searched">
           <span className="dc-status-label">Page</span>
           <span className="dc-status-text">
-            Expected {expectedPage}, found {actualPage}
+            <span className="dc-status-text--expected">{expectedPage}</span>
+            {" → "}
+            {actualPage}
           </span>
         </span>
       )}
@@ -597,7 +608,10 @@ const DiffDetails = ({
         <span className="dc-status-searched">
           <span className="dc-status-label">Line</span>
           <span className="dc-status-text">
-            Expected {expectedLineIds?.join(", ")}, found{" "}
+            <span className="dc-status-text--expected">
+              {expectedLineIds?.join(", ")}
+            </span>
+            {" → "}
             {actualLineIds?.join(", ")}
           </span>
         </span>
