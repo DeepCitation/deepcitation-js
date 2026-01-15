@@ -25,6 +25,7 @@ export function deterministicIdFromVerification(
     `${verification.label}-${verification.attachmentId}-${verification.pageNumber}-${verification.hitIndexWithinPage}-${verification.matchSnippet}-${verification?.hitIndexWithinPage}`
   );
 }
+
 export interface Verification {
   attachmentId?: string | null;
 
