@@ -128,8 +128,8 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
 The component displays different indicators based on `verification.status`:
 
-| Status        | Indicator          | Color  | `status` values                                          |
-|---------------|--------------------| -------|----------------------------------------------------------|
+| Status        | Indicator          | Color  | `status` values                              |
+|---------------|--------------------| -------|----------------------------------------------|
 | **Pending**   | Spinner ◌          | Gray   | `"pending"`, `"loading"`, or `null`/`undefined`          |
 | **Verified**  | Checkmark ✓        | Green  | `"found"`, `"found_key_span_only"`, `"found_phrase_missed_value"` |
 | **Partial**   | Checkmark ✓        | Amber  | `"found_on_other_page"`, `"found_on_other_line"`, `"partial_text_found"`, `"first_word_found"` |
@@ -175,11 +175,10 @@ Control how the citation text and indicator are displayed:
 
 ### 6. Interaction Behavior
 
-The CitationComponent has built-in default behaviors:
-- **Hover**: Shows popover with verification image/details; cursor changes to `zoom-in` when pinned with image
-- **Click 1**: Pins the popover open (stays visible without hover)
-- **Click 2**: Opens full-size image overlay (if image available)
-- **Click 3**: Closes image and unpins popover
+The CitationComponent has simple, predictable default behaviors:
+- **Hover**: Shows popover with verification image/details
+- **Click**: Opens full-size image overlay (zooms the image)
+- **Escape / Click overlay**: Closes the image overlay
 
 The popover uses a portal to render at the document body level, so it won't be clipped by parent `overflow:hidden` containers.
 
@@ -189,7 +188,7 @@ The component uses **Tailwind CSS** classes. Make sure your project has Tailwind
 
 ### 8. Customizing Click/Hover Behavior
 
-**Key principle**: When you provide `onClick` in `eventHandlers` OR `behaviorConfig`, the default click behavior is disabled (no popover pinning, no image expansion). Use `behaviorConfig.onClick` to implement custom click actions, or `eventHandlers.onClick` for simple handlers that disable defaults.
+**Key principle**: When you provide `onClick` in `eventHandlers` OR `behaviorConfig`, the default click behavior is disabled. Use `behaviorConfig.onClick` to implement custom click actions.
 
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
@@ -200,11 +199,10 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
   verification={verification}
   behaviorConfig={{
     onClick: (context, event) => {
-      // Open image immediately on first click
-      if (context.hasImage && !context.isImageExpanded) {
-        return { setImageExpanded: true };
-      }
-      // Return false to prevent any action, or return actions object
+      // Your custom action
+      console.log('Clicked:', context.citationKey);
+      // Return actions to control state
+      return { setImageExpanded: true };
     }
   }}
 />
@@ -216,18 +214,14 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
   behaviorConfig={{ onClick: () => false }}
 />
 
-// Custom hover behavior (replaces default)
+// Custom hover callbacks (run alongside default hover behavior)
 <CitationComponent
   citation={citation}
   verification={verification}
   behaviorConfig={{
     onHover: {
-      onEnter: (context) => {
-        console.log('Hovering citation:', context.citationKey);
-      },
-      onLeave: (context) => {
-        console.log('Left citation:', context.citationKey);
-      }
+      onEnter: (context) => console.log('Hovering:', context.citationKey),
+      onLeave: (context) => console.log('Left:', context.citationKey),
     }
   }}
 />
@@ -241,19 +235,17 @@ interface CitationBehaviorContext {
   citation: Citation;
   citationKey: string;
   verification: Verification | null;
-  isTooltipExpanded: boolean;  // Is popover pinned open?
+  isTooltipExpanded: boolean;  // Is popover currently showing (hover)?
   isImageExpanded: boolean;    // Is full-size image showing?
   hasImage: boolean;           // Is verification image available?
 }
 
 // Actions you can return from onClick
 interface CitationBehaviorActions {
-  setTooltipExpanded?: boolean;        // Pin/unpin popover
   setImageExpanded?: boolean | string; // Open/close image (or provide src)
-  setPhrasesExpanded?: boolean;        // Expand/collapse search phrases
 }
 
-// Config interface - provide onClick/onHover to REPLACE defaults
+// Config interface
 interface CitationBehaviorConfig {
   onClick?: (context, event) => CitationBehaviorActions | false | void;
   onHover?: {
@@ -262,8 +254,6 @@ interface CitationBehaviorConfig {
   };
 }
 ```
-
-Note: When `eventHandlers.onClick` is provided, the default click behavior is disabled. Use `onMouseEnter/onMouseLeave` for hover side effects that run alongside defaults.
 
 ## API Endpoints
 
