@@ -3,6 +3,14 @@ import type { Verification } from "../types/verification.js";
 import { sha1Hash } from "../utils/sha.js";
 import { getCitationPageNumber } from "../parsing/normalizeCitation.js";
 
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+export function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
+
 /**
  * Generates a unique, deterministic key for a citation based on its content.
  *  @param citation - The citation to generate a key for

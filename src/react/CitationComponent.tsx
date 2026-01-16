@@ -9,7 +9,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { type CitationStatus } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { CheckIcon, WarningIcon } from "./icons.js";
+import { CheckIcon, SpinnerIcon, WarningIcon } from "./icons.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./Popover.js";
 import type {
   BaseCitationProps,
@@ -107,14 +107,6 @@ export interface CitationComponentProps extends BaseCitationProps {
   }) => React.ReactNode;
 }
 
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
-
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(" ");
-}
-
 function getStatusLabel(status: CitationStatus): string {
   if (status.isVerified && !status.isPartialMatch) return "Verified";
   if (status.isPartialMatch) return "Partial Match";
@@ -127,12 +119,19 @@ function getStatusLabel(status: CitationStatus): string {
  * Derive citation status from a Verification object.
  * The status comes from verification.status.
  */
-function getStatusFromVerification(verification: Verification | null | undefined): CitationStatus {
+function getStatusFromVerification(
+  verification: Verification | null | undefined
+): CitationStatus {
   const status = verification?.status;
 
   // No verification or no status = pending
   if (!verification || !status) {
-    return { isVerified: false, isMiss: false, isPartialMatch: false, isPending: true };
+    return {
+      isVerified: false,
+      isMiss: false,
+      isPartialMatch: false,
+      isPending: true,
+    };
   }
 
   const isMiss = status === "not_found";
@@ -213,56 +212,42 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 // Use `renderIndicator` prop to customize. Use `variant="indicator"` to show only the icon.
 // =============================================================================
 
-/** Spinner component for loading/pending state */
-const Spinner = ({ className }: { className?: string }) => (
-  <svg
-    className={cn("animate-spin", className)}
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    width="12"
-    height="12"
-  >
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    />
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-    />
-  </svg>
-);
-
 /** Verified indicator - green checkmark for exact matches */
 const VerifiedIndicator = () => (
-  <span className="inline-flex relative ml-0.5 text-green-600 dark:text-green-500" aria-hidden="true">
+  <span
+    className="inline-flex relative ml-0.5 text-green-600 dark:text-green-500"
+    aria-hidden="true"
+  >
     <CheckIcon />
   </span>
 );
 
 /** Partial match indicator - amber checkmark for partial/relocated matches */
 const PartialIndicator = () => (
-  <span className="inline-flex relative ml-0.5 text-amber-600 dark:text-amber-500" aria-hidden="true">
+  <span
+    className="inline-flex relative ml-0.5 text-amber-600 dark:text-amber-500"
+    aria-hidden="true"
+  >
     <CheckIcon />
   </span>
 );
 
 /** Pending indicator - spinner for loading state */
 const PendingIndicator = () => (
-  <span className="inline-flex ml-1 text-gray-400 dark:text-gray-500" aria-hidden="true">
-    <Spinner />
+  <span
+    className="inline-flex ml-1 text-gray-400 dark:text-gray-500"
+    aria-hidden="true"
+  >
+    <SpinnerIcon />
   </span>
 );
 
 /** Miss indicator - red warning triangle for not found */
 const MissIndicator = () => (
-  <span className="inline-flex relative ml-0.5 text-red-500 dark:text-red-400" aria-hidden="true">
+  <span
+    className="inline-flex relative ml-0.5 text-red-500 dark:text-red-400"
+    aria-hidden="true"
+  >
     <WarningIcon />
   </span>
 );
@@ -309,7 +294,11 @@ function DefaultPopoverContent({
           />
         </button>
         {(isMiss || isPartialMatch) && (
-          <DiffDetails citation={citation} verification={verification} status={status} />
+          <DiffDetails
+            citation={citation}
+            verification={verification}
+            status={status}
+          />
         )}
       </div>
     );
@@ -328,7 +317,9 @@ function DefaultPopoverContent({
         <span
           className={cn(
             "text-xs font-medium",
-            status.isVerified && !status.isPartialMatch && "text-green-600 dark:text-green-500",
+            status.isVerified &&
+              !status.isPartialMatch &&
+              "text-green-600 dark:text-green-500",
             status.isPartialMatch && "text-amber-600 dark:text-amber-500",
             status.isMiss && "text-red-600 dark:text-red-500",
             status.isPending && "text-gray-500 dark:text-gray-400"
@@ -343,10 +334,16 @@ function DefaultPopoverContent({
         </span>
       )}
       {pageNumber && pageNumber > 0 && (
-        <span className="text-xs text-gray-500 dark:text-gray-400">Page {pageNumber}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Page {pageNumber}
+        </span>
       )}
       {(isMiss || isPartialMatch) && (
-        <DiffDetails citation={citation} verification={verification} status={status} />
+        <DiffDetails
+          citation={citation}
+          verification={verification}
+          status={status}
+        />
       )}
     </div>
   );
@@ -371,11 +368,15 @@ function DiffDetails({
 }) {
   const { isMiss, isPartialMatch } = status;
 
-  const expectedText = citation.fullPhrase || citation.keySpan?.toString() || "";
+  const expectedText =
+    citation.fullPhrase || citation.keySpan?.toString() || "";
   const actualText = verification?.verifiedMatchSnippet || "";
 
   // Use the diff library for smart word-level diffing
-  const { diffResult, hasDiff, isHighVariance } = useSmartDiff(expectedText, actualText);
+  const { diffResult, hasDiff, isHighVariance } = useSmartDiff(
+    expectedText,
+    actualText
+  );
 
   if (!isMiss && !isPartialMatch) return null;
 
@@ -388,7 +389,8 @@ function DiffDetails({
 
   const expectedPage = citation.pageNumber;
   const actualPage = verification?.verifiedPageNumber;
-  const pageDiffers = expectedPage != null && actualPage != null && expectedPage !== actualPage;
+  const pageDiffers =
+    expectedPage != null && actualPage != null && expectedPage !== actualPage;
 
   // For "not_found" status, show expected text and "Not found" message
   if (isMiss) {
@@ -396,14 +398,20 @@ function DiffDetails({
       <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 text-xs space-y-2">
         {expectedText && (
           <div>
-            <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">Expected</span>
+            <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">
+              Expected
+            </span>
             <p className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] break-words text-red-600 dark:text-red-400 line-through opacity-70">
-              {expectedText.length > 100 ? expectedText.slice(0, 100) + "…" : expectedText}
+              {expectedText.length > 100
+                ? expectedText.slice(0, 100) + "…"
+                : expectedText}
             </p>
           </div>
         )}
         <div>
-          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">Found</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">
+            Found
+          </span>
           <p className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] text-amber-600 dark:text-amber-500 italic">
             Not found in source
           </p>
@@ -417,21 +425,31 @@ function DiffDetails({
     <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 text-xs space-y-2">
       {expectedText && actualText && hasDiff ? (
         <div>
-          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">Diff</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">
+            Diff
+          </span>
           <div className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] break-words text-gray-700 dark:text-gray-300">
             {/* If high variance, show side-by-side instead of inline diff */}
             {isHighVariance ? (
               <div className="space-y-2">
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">Expected: </span>
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">
+                    Expected:{" "}
+                  </span>
                   <span className="text-red-600 dark:text-red-400 line-through opacity-70">
-                    {expectedText.length > 100 ? expectedText.slice(0, 100) + "…" : expectedText}
+                    {expectedText.length > 100
+                      ? expectedText.slice(0, 100) + "…"
+                      : expectedText}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">Found: </span>
+                  <span className="text-gray-500 dark:text-gray-400 text-[10px]">
+                    Found:{" "}
+                  </span>
                   <span className="text-green-600 dark:text-green-400">
-                    {actualText.length > 100 ? actualText.slice(0, 100) + "…" : actualText}
+                    {actualText.length > 100
+                      ? actualText.slice(0, 100) + "…"
+                      : actualText}
                   </span>
                 </div>
               </div>
@@ -474,17 +492,25 @@ function DiffDetails({
       ) : expectedText && !hasDiff ? (
         // Text matches exactly (partial match is due to location difference)
         <div>
-          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">Text</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">
+            Text
+          </span>
           <p className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] break-words text-gray-700 dark:text-gray-300">
-            {expectedText.length > 100 ? expectedText.slice(0, 100) + "…" : expectedText}
+            {expectedText.length > 100
+              ? expectedText.slice(0, 100) + "…"
+              : expectedText}
           </p>
         </div>
       ) : null}
       {pageDiffers && (
         <div>
-          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">Page</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">
+            Page
+          </span>
           <p className="mt-1 font-mono text-[11px] text-gray-700 dark:text-gray-300">
-            <span className="text-red-600 dark:text-red-400 line-through opacity-70">{expectedPage}</span>
+            <span className="text-red-600 dark:text-red-400 line-through opacity-70">
+              {expectedPage}
+            </span>
             {" → "}
             {actualPage}
           </p>
@@ -492,9 +518,13 @@ function DiffDetails({
       )}
       {lineIdDiffers && (
         <div>
-          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">Line</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium uppercase text-[10px]">
+            Line
+          </span>
           <p className="mt-1 font-mono text-[11px] text-gray-700 dark:text-gray-300">
-            <span className="text-red-600 dark:text-red-400 line-through opacity-70">{expectedLineIds?.join(", ")}</span>
+            <span className="text-red-600 dark:text-red-400 line-through opacity-70">
+              {expectedLineIds?.join(", ")}
+            </span>
             {" → "}
             {actualLineIds?.join(", ")}
           </p>
@@ -522,7 +552,10 @@ function DiffDetails({
  * Use `behaviorConfig.onClick` to completely replace the click behavior,
  * or `eventHandlers.onClick` to add side effects (which disables defaults).
  */
-export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentProps>(
+export const CitationComponent = forwardRef<
+  HTMLSpanElement,
+  CitationComponentProps
+>(
   (
     {
       citation,
@@ -544,16 +577,24 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     ref
   ) => {
     const [isHovering, setIsHovering] = useState(false);
-    const [expandedImageSrc, setExpandedImageSrc] = useState<string | null>(null);
+    const [expandedImageSrc, setExpandedImageSrc] = useState<string | null>(
+      null
+    );
 
-    const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
+    const citationKey = useMemo(
+      () => generateCitationKey(citation),
+      [citation]
+    );
     const citationInstanceId = useMemo(
       () => generateCitationInstanceId(citationKey),
       [citationKey]
     );
 
     // Derive status from verification object
-    const status = useMemo(() => getStatusFromVerification(verification), [verification]);
+    const status = useMemo(
+      () => getStatusFromVerification(verification),
+      [verification]
+    );
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
     const displayText = useMemo(() => {
@@ -582,7 +623,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         if (actions.setImageExpanded !== undefined) {
           if (typeof actions.setImageExpanded === "string") {
             setExpandedImageSrc(actions.setImageExpanded);
-          } else if (actions.setImageExpanded === true && verification?.verificationImageBase64) {
+          } else if (
+            actions.setImageExpanded === true &&
+            verification?.verificationImageBase64
+          ) {
             setExpandedImageSrc(verification.verificationImageBase64);
           } else if (actions.setImageExpanded === false) {
             setExpandedImageSrc(null);
@@ -639,7 +683,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         behaviorConfig.onHover.onEnter(getBehaviorContext());
       }
       eventHandlers?.onMouseEnter?.(citation, citationKey);
-    }, [eventHandlers, behaviorConfig, citation, citationKey, getBehaviorContext]);
+    }, [
+      eventHandlers,
+      behaviorConfig,
+      citation,
+      citationKey,
+      getBehaviorContext,
+    ]);
 
     const handleMouseLeave = useCallback(() => {
       setIsHovering(false);
@@ -647,7 +697,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         behaviorConfig.onHover.onLeave(getBehaviorContext());
       }
       eventHandlers?.onMouseLeave?.(citation, citationKey);
-    }, [eventHandlers, behaviorConfig, citation, citationKey, getBehaviorContext]);
+    }, [
+      eventHandlers,
+      behaviorConfig,
+      citation,
+      citationKey,
+      getBehaviorContext,
+    ]);
 
     // Touch handler for mobile
     const handleTouchEnd = useCallback(
@@ -662,7 +718,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     );
 
     // Early return for miss with fallback display
-    if (fallbackDisplay !== null && fallbackDisplay !== undefined && !hideKeySpan && isMiss) {
+    if (
+      fallbackDisplay !== null &&
+      fallbackDisplay !== undefined &&
+      !hideKeySpan &&
+      isMiss
+    ) {
       return (
         <span className={cn("text-gray-400 dark:text-gray-500", className)}>
           {fallbackDisplay}
@@ -673,7 +734,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Status classes for text styling
     const statusClasses = cn(
       // Found status (text color) - verified or partial match
-      (isVerified || isPartialMatch) && variant === "brackets" && "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline",
+      (isVerified || isPartialMatch) &&
+        variant === "brackets" &&
+        "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline",
       isMiss && "opacity-70 line-through text-gray-400 dark:text-gray-500",
       isPending && "text-gray-500 dark:text-gray-400"
     );
@@ -701,7 +764,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           status,
           citationKey,
           displayText,
-          isMergedDisplay: variant === "text" || variant === "brackets" || !hideKeySpan,
+          isMergedDisplay:
+            variant === "text" || variant === "brackets" || !hideKeySpan,
         });
       }
 
@@ -720,7 +784,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
       if (variant === "minimal") {
         return (
-          <span className={cn("max-w-80 overflow-hidden text-ellipsis", statusClasses)}>
+          <span
+            className={cn(
+              "max-w-80 overflow-hidden text-ellipsis",
+              statusClasses
+            )}
+          >
             {displayText}
             {renderStatusIndicator()}
           </span>
@@ -739,7 +808,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           aria-hidden="true"
         >
           {!hideBrackets && "["}
-          <span className={cn("max-w-80 overflow-hidden text-ellipsis", statusClasses)}>
+          <span
+            className={cn(
+              "max-w-80 overflow-hidden text-ellipsis",
+              statusClasses
+            )}
+          >
             {displayText}
             {renderStatusIndicator()}
           </span>
@@ -753,7 +827,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const shouldShowPopover =
       !isPopoverHidden &&
       verification &&
-      (verification.verificationImageBase64 || verification.verifiedMatchSnippet);
+      (verification.verificationImageBase64 ||
+        verification.verifiedMatchSnippet);
 
     const hasImage = !!verification?.verificationImageBase64;
 

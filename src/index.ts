@@ -71,6 +71,9 @@ export {
 } from "./react/utils.js";
 export { CITATION_X_PADDING, CITATION_Y_PADDING } from "./react/utils.js";
 
+// Icons
+export { CheckIcon, SpinnerIcon, WarningIcon } from "./react/icons.js";
+
 // Prompts
 export {
   CITATION_JSON_OUTPUT_FORMAT,
