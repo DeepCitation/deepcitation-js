@@ -68,14 +68,8 @@ function computeDiff(
   }
 
   // Extract the differing middle portions
-  const oldMiddle = oldTokens.slice(
-    commonPrefixLen,
-    oldLen - commonSuffixLen,
-  );
-  const newMiddle = newTokens.slice(
-    commonPrefixLen,
-    newLen - commonSuffixLen,
-  );
+  const oldMiddle = oldTokens.slice(commonPrefixLen, oldLen - commonSuffixLen);
+  const newMiddle = newTokens.slice(commonPrefixLen, newLen - commonSuffixLen);
 
   // If middles are empty, we only have common prefix/suffix
   if (oldMiddle.length === 0 && newMiddle.length === 0) {
@@ -266,131 +260,199 @@ function splitLines(text: string): string[] {
 }
 
 /**
- * Extended word character pattern.
- * Matches letters, numbers, underscores, and extended Unicode characters.
- * This is similar to jsdiff's approach.
+ * Extended word character class - matches jsdiff's extendedWordChars.
+ * Includes: a-zA-Z0-9_, soft hyphen, Latin Extended-A/B, IPA Extensions,
+ * Spacing Modifier Letters, and Latin Extended Additional.
+ *
+ * @see https://github.com/kpdecker/jsdiff/blob/master/src/diff/word.ts
  */
-const WORD_CHAR_REGEX = /[\w\u00C0-\u024F\u1E00-\u1EFF]/;
+const EXTENDED_WORD_CHARS =
+  "a-zA-Z0-9_\\u00AD\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02C6\\u02C8-\\u02D7\\u02DE-\\u02FF\\u1E00-\\u1EFF";
 
 /**
- * Split text into words and whitespace tokens.
- * Each token is one of:
- * - A word (letters, numbers, underscores, extended chars)
- * - Punctuation
- * - Whitespace
- *
- * This approach is inspired by jsdiff's word tokenization.
+ * Tokenization regex matching jsdiff's approach.
+ * Matches: word character runs, whitespace runs, or single non-word chars.
  */
-function splitWordsWithSpace(text: string): string[] {
+const TOKENIZE_REGEX = new RegExp(
+  `[${EXTENDED_WORD_CHARS}]+|\\s+|[^${EXTENDED_WORD_CHARS}]`,
+  "gu",
+);
+
+/**
+ * Split text into tokens using jsdiff's tokenization approach.
+ * Each token is one of:
+ * - A word (extended word characters)
+ * - A whitespace run
+ * - A single punctuation/symbol character
+ */
+function tokenizeWords(text: string): string[] {
   if (!text) return [];
-
-  const tokens: string[] = [];
-  let current = "";
-  let currentType: "word" | "space" | "punct" | null = null;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    let charType: "word" | "space" | "punct";
-
-    if (/\s/.test(char)) {
-      charType = "space";
-    } else if (WORD_CHAR_REGEX.test(char)) {
-      charType = "word";
-    } else {
-      charType = "punct";
-    }
-
-    if (currentType === null) {
-      current = char;
-      currentType = charType;
-    } else if (charType === currentType) {
-      current += char;
-    } else {
-      tokens.push(current);
-      current = char;
-      currentType = charType;
-    }
-  }
-
-  if (current.length > 0) {
-    tokens.push(current);
-  }
-
-  return tokens;
+  return text.match(TOKENIZE_REGEX) || [];
 }
 
 /**
- * Post-process word diff to clean up whitespace in consecutive changes.
- * When we have a removal followed by an addition, the whitespace can get duplicated.
- * This deduplicates it similar to jsdiff's postProcess.
+ * Find the longest common prefix between two strings.
  */
-function postProcessWordDiff(changes: Change[]): Change[] {
+function longestCommonPrefix(a: string, b: string): string {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) {
+    i++;
+  }
+  return a.slice(0, i);
+}
+
+/**
+ * Find the longest common suffix between two strings.
+ */
+function longestCommonSuffix(a: string, b: string): string {
+  let i = 0;
+  while (
+    i < a.length &&
+    i < b.length &&
+    a[a.length - 1 - i] === b[b.length - 1 - i]
+  ) {
+    i++;
+  }
+  return a.slice(a.length - i);
+}
+
+/**
+ * Check if a string is only whitespace.
+ */
+function isWhitespace(str: string): boolean {
+  return /^\s*$/.test(str);
+}
+
+/**
+ * Deduplicate whitespace in change objects.
+ * This is a simplified version of jsdiff's dedupeWhitespaceInChangeObjects.
+ *
+ * Handles three main scenarios:
+ * 1. Deletion followed by insertion - extract common leading/trailing whitespace
+ * 2. Lone insertion after unchanged - strip duplicate leading whitespace
+ * 3. Lone deletion between unchanged - distribute whitespace properly
+ */
+function dedupeWhitespaceInChangeObjects(changes: Change[]): Change[] {
   const result: Change[] = [];
 
   for (let i = 0; i < changes.length; i++) {
     const change = changes[i];
-    const nextChange = changes[i + 1];
 
-    // Look for removal followed by addition
-    if (change.removed && nextChange?.added) {
-      const removedValue = change.value;
-      const addedValue = nextChange.value;
+    // Scenario 1: Deletion followed by insertion
+    if (change.removed && changes[i + 1]?.added) {
+      const deletion = change;
+      const insertion = changes[i + 1];
 
-      // Find common leading whitespace
-      let leadingWs = "";
-      let ri = 0;
-      let ai = 0;
+      // Find common prefix (must be whitespace)
+      const commonPrefix = longestCommonPrefix(deletion.value, insertion.value);
+      const wsPrefix = commonPrefix.match(/^\s*/)?.[0] || "";
 
-      while (
-        ri < removedValue.length &&
-        ai < addedValue.length &&
-        /\s/.test(removedValue[ri]) &&
-        removedValue[ri] === addedValue[ai]
-      ) {
-        leadingWs += removedValue[ri];
-        ri++;
-        ai++;
+      // Find common suffix (must be whitespace)
+      const delWithoutPrefix = deletion.value.slice(wsPrefix.length);
+      const insWithoutPrefix = insertion.value.slice(wsPrefix.length);
+      const commonSuffix = longestCommonSuffix(delWithoutPrefix, insWithoutPrefix);
+      const wsSuffix = commonSuffix.match(/\s*$/)?.[0] || "";
+
+      // Build the cleaned changes
+      if (wsPrefix) {
+        result.push({ value: wsPrefix, count: 1 });
       }
 
-      // Find common trailing whitespace
-      let trailingWs = "";
-      let rj = removedValue.length - 1;
-      let aj = addedValue.length - 1;
+      const cleanedDel = deletion.value.slice(
+        wsPrefix.length,
+        deletion.value.length - wsSuffix.length,
+      );
+      const cleanedIns = insertion.value.slice(
+        wsPrefix.length,
+        insertion.value.length - wsSuffix.length,
+      );
 
-      while (
-        rj >= ri &&
-        aj >= ai &&
-        /\s/.test(removedValue[rj]) &&
-        removedValue[rj] === addedValue[aj]
-      ) {
-        trailingWs = removedValue[rj] + trailingWs;
-        rj--;
-        aj--;
+      if (cleanedDel) {
+        result.push({ value: cleanedDel, removed: true, count: 1 });
+      }
+      if (cleanedIns) {
+        result.push({ value: cleanedIns, added: true, count: 1 });
       }
 
-      // Build cleaned changes
-      if (leadingWs) {
-        result.push({ value: leadingWs, count: 1 });
+      if (wsSuffix) {
+        result.push({ value: wsSuffix, count: 1 });
       }
 
-      const cleanedRemoved = removedValue.slice(ri, rj + 1);
-      const cleanedAdded = addedValue.slice(ai, aj + 1);
-
-      if (cleanedRemoved) {
-        result.push({ value: cleanedRemoved, removed: true, count: 1 });
-      }
-      if (cleanedAdded) {
-        result.push({ value: cleanedAdded, added: true, count: 1 });
-      }
-
-      if (trailingWs) {
-        result.push({ value: trailingWs, count: 1 });
-      }
-
-      i++; // Skip the next change since we processed it
-    } else {
-      result.push(change);
+      i++; // Skip the insertion since we processed it
+      continue;
     }
+
+    // Scenario 2: Lone insertion after unchanged text
+    if (change.added && i > 0 && !changes[i - 1].added && !changes[i - 1].removed) {
+      const prev = result[result.length - 1];
+      if (prev && !prev.added && !prev.removed) {
+        // Check for duplicate leading whitespace
+        const leadingWs = change.value.match(/^\s*/)?.[0] || "";
+        const trailingWs = prev.value.match(/\s*$/)?.[0] || "";
+
+        if (leadingWs && trailingWs) {
+          const overlap = longestCommonSuffix(trailingWs, leadingWs);
+          if (overlap) {
+            // Remove overlap from the insertion
+            result.push({
+              value: change.value.slice(overlap.length),
+              added: true,
+              count: 1,
+            });
+            continue;
+          }
+        }
+      }
+    }
+
+    // Scenario 3: Lone deletion between unchanged text
+    if (
+      change.removed &&
+      !changes[i + 1]?.added &&
+      i > 0 &&
+      !changes[i - 1]?.added &&
+      !changes[i - 1]?.removed
+    ) {
+      const prev = result[result.length - 1];
+      const next = changes[i + 1];
+
+      if (prev && next && !next.added && !next.removed) {
+        const leadingWs = change.value.match(/^\s*/)?.[0] || "";
+        const trailingWs = change.value.match(/\s*$/)?.[0] || "";
+        const prevTrailingWs = prev.value.match(/\s*$/)?.[0] || "";
+        const nextLeadingWs = next.value.match(/^\s*/)?.[0] || "";
+
+        // If deletion starts/ends with whitespace that overlaps with neighbors
+        if (leadingWs && prevTrailingWs) {
+          const overlap = longestCommonSuffix(prevTrailingWs, leadingWs);
+          if (overlap.length === leadingWs.length) {
+            // Leading whitespace is already in prev, strip it
+            result.push({
+              value: change.value.slice(leadingWs.length),
+              removed: true,
+              count: 1,
+            });
+            continue;
+          }
+        }
+
+        if (trailingWs && nextLeadingWs) {
+          const overlap = longestCommonPrefix(trailingWs, nextLeadingWs);
+          if (overlap.length === trailingWs.length) {
+            // Trailing whitespace will be in next, strip it
+            result.push({
+              value: change.value.slice(0, -trailingWs.length) || change.value,
+              removed: true,
+              count: 1,
+            });
+            continue;
+          }
+        }
+      }
+    }
+
+    // Default: just add the change as-is
+    result.push({ ...change });
   }
 
   return mergeConsecutiveChanges(result);
@@ -411,14 +473,15 @@ export function diffLines(oldStr: string, newStr: string): Change[] {
  * Compare two strings word by word, preserving whitespace.
  * Similar to Diff.diffWordsWithSpace from the 'diff' package.
  *
- * Improvements over basic implementation:
- * - Separates punctuation from words for better diffs
- * - Post-processes to deduplicate whitespace in consecutive changes
+ * Features matching jsdiff:
+ * - Extended Unicode word character support
+ * - Proper tokenization (words, whitespace runs, single punctuation)
+ * - Whitespace deduplication in consecutive changes
  */
 export function diffWordsWithSpace(oldStr: string, newStr: string): Change[] {
-  const oldWords = splitWordsWithSpace(oldStr);
-  const newWords = splitWordsWithSpace(newStr);
+  const oldWords = tokenizeWords(oldStr);
+  const newWords = tokenizeWords(newStr);
 
   const diff = computeDiff(oldWords, newWords);
-  return postProcessWordDiff(diff);
+  return dedupeWhitespaceInChangeObjects(diff);
 }
