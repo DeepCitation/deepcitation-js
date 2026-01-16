@@ -13,15 +13,13 @@
     },
     "main": "./lib/index.js",
     "types": "./lib/index.d.ts",
-    "sideEffects": [
-        "*.css"
-    ],
+    "sideEffects": false,
     "files": [
         "lib",
         "LICENSE"
     ],
     "scripts": {
-        "build": "rimraf lib && tsc && cp src/react/styles.css lib/react/styles.css",
+        "build": "rimraf lib && tsc",
         "build:watch": "rimraf lib && tsc --watch",
         "test": "bun test ./src/__tests__/*.test.ts ./src/__tests__/*.test.tsx",
         "test:jest": "jest",
@@ -33,18 +31,28 @@
     "engines": {
         "node": ">=22"
     },
-    "dependencies": {
-        "diff": "^8.0.2"
-    },
     "peerDependencies": {
-        "react": ">=17.0.0"
+        "react": ">=17.0.0",
+        "react-dom": ">=17.0.0",
+        "@radix-ui/react-popover": "^1.0.0",
+        "diff": "^8.0.0"
     },
     "peerDependenciesMeta": {
         "react": {
             "optional": true
+        },
+        "react-dom": {
+            "optional": true
+        },
+        "@radix-ui/react-popover": {
+            "optional": true
+        },
+        "diff": {
+            "optional": true
         }
     },
     "devDependencies": {
+        "diff": "^8.0.2",
         "@happy-dom/global-registrator": "^20.0.11",
         "@playwright/experimental-ct-react": "^1.57.0",
         "@playwright/test": "^1.57.0",
@@ -59,6 +67,7 @@
         "happy-dom": "^20.0.11",
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^29.7.0",
+        "@radix-ui/react-popover": "^1.1.14",
         "react": "19.2.3",
         "react-dom": "19.2.3",
         "rimraf": "^5.0.5",
@@ -76,8 +85,7 @@
             "types": "./lib/react/index.d.ts",
             "import": "./lib/react/index.js",
             "require": "./lib/react/index.js"
-        },
-        "./react/styles.css": "./lib/react/styles.css"
+        }
     },
     "keywords": [
         "citation",

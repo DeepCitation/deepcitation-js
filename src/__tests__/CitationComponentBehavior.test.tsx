@@ -29,20 +29,20 @@ describe("CitationComponent behaviorConfig", () => {
 
   const verificationWithImage: Verification = {
     verificationImageBase64: "data:image/png;base64,iVBORw0KGgo=",
-    verifiedMatchSnippet: "test citation phrase",
-    verifiedPageNumber: 1,
+    matchSnippet: "test citation phrase",
+    pageNumber: 1,
     status: "found",
   };
 
   const verificationWithoutImage: Verification = {
-    verifiedMatchSnippet: "test citation phrase",
-    verifiedPageNumber: 1,
+    matchSnippet: "test citation phrase",
+    pageNumber: 1,
     status: "found",
   };
 
   const missVerification: Verification = {
-    verifiedMatchSnippet: "",
-    verifiedPageNumber: 0,
+    matchSnippet: "",
+    pageNumber: 0,
     status: "not_found",
   };
 
@@ -51,73 +51,51 @@ describe("CitationComponent behaviorConfig", () => {
   };
 
   // ==========================================================================
-  // DEFAULT BEHAVIOR TESTS
+  // STATUS DERIVATION TESTS
+  // Status is derived from verification.status
   // ==========================================================================
 
-  describe("default click behavior", () => {
-    it("pins popover on first click when image is available", () => {
+  describe("status derivation from verification", () => {
+    it("shows spinner for pending status", () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
-          verification={verificationWithImage}
+          verification={pendingVerification}
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
-      expect(citation).toBeInTheDocument();
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
-
-      // First click should pin the popover
-      fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
+      // Should have a spinner (svg with animate-spin class)
+      const spinner = container.querySelector("svg.animate-spin");
+      expect(spinner).toBeInTheDocument();
     });
 
-    it("expands image on second click when image is available", () => {
+    it("shows spinner when verification is null", () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
-          verification={verificationWithImage}
+          verification={null}
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
-
-      // First click - pin popover
-      fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
-
-      // Second click - should show image overlay
-      fireEvent.click(citation!);
-
-      // Image overlay should be visible
-      const overlay = container.querySelector(".dc-overlay");
-      expect(overlay).toBeInTheDocument();
+      // Should have a spinner for pending state
+      const spinner = container.querySelector("svg.animate-spin");
+      expect(spinner).toBeInTheDocument();
     });
 
-    it("closes image and unpins on third click", () => {
+    it("shows spinner when verification has no status", () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
-          verification={verificationWithImage}
+          verification={{}}
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
-
-      // First click - pin popover
-      fireEvent.click(citation!);
-
-      // Second click - expand image
-      fireEvent.click(citation!);
-      expect(container.querySelector(".dc-overlay")).toBeInTheDocument();
-
-      // Third click - close everything
-      fireEvent.click(citation!);
-      expect(container.querySelector(".dc-overlay")).not.toBeInTheDocument();
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+      // Should have a spinner for pending state
+      const spinner = container.querySelector("svg.animate-spin");
+      expect(spinner).toBeInTheDocument();
     });
 
-    it("toggles popover when no image is available", () => {
+    it("shows check icon for found status", () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
@@ -125,15 +103,112 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      // Should NOT have a spinner
+      const spinner = container.querySelector("svg.animate-spin");
+      expect(spinner).not.toBeInTheDocument();
 
-      // First click - should toggle tooltip
-      fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
+      // Should have green check (text-green-600 class)
+      const greenCheck = container.querySelector(".text-green-600");
+      expect(greenCheck).toBeInTheDocument();
+    });
 
-      // Second click - should toggle back
+    it("shows warning icon for not_found status", () => {
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={missVerification}
+        />
+      );
+
+      // Should NOT have a spinner
+      const spinner = container.querySelector("svg.animate-spin");
+      expect(spinner).not.toBeInTheDocument();
+
+      // Should have red warning (text-red-500 class)
+      const warningIcon = container.querySelector(".text-red-500");
+      expect(warningIcon).toBeInTheDocument();
+    });
+
+    it("shows amber check for partial match status", () => {
+      const partialVerification: Verification = {
+        matchSnippet: "partial text",
+        pageNumber: 2,
+        status: "found_on_other_page",
+      };
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={partialVerification}
+        />
+      );
+
+      // Should have amber check (text-amber-600 class)
+      const amberCheck = container.querySelector(".text-amber-600");
+      expect(amberCheck).toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
+  // DEFAULT BEHAVIOR TESTS
+  // New simplified behavior:
+  // - Hover: shows popover
+  // - Click: opens image overlay directly (if image available)
+  // ==========================================================================
+
+  describe("default click behavior", () => {
+    it("opens image overlay on click when image is available", () => {
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      expect(citation).toBeInTheDocument();
+
+      // Click should open image overlay directly
       fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+
+      // Image overlay should be visible
+      const overlay = container.querySelector("[role='dialog']");
+      expect(overlay).toBeInTheDocument();
+    });
+
+    it("closes image overlay when clicking overlay", () => {
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // Click to open image
+      fireEvent.click(citation!);
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+
+      // Click overlay to close
+      const overlay = container.querySelector("[role='dialog']");
+      fireEvent.click(overlay!);
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+    });
+
+    it("does nothing on click when no image is available", () => {
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithoutImage}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // Click should not open overlay (no image)
+      fireEvent.click(citation!);
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("always calls eventHandlers.onClick", () => {
@@ -147,7 +222,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       expect(onClick).toHaveBeenCalledTimes(1);
@@ -164,7 +239,7 @@ describe("CitationComponent behaviorConfig", () => {
   // ==========================================================================
 
   describe("onClick replaces default behavior", () => {
-    it("prevents popover from pinning when onClick is provided (returns void)", () => {
+    it("prevents image from opening when onClick is provided (returns void)", () => {
       const customOnClick = jest.fn();
 
       const { container } = render(
@@ -175,17 +250,16 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+      const citation = container.querySelector("[data-citation-id]");
 
-      // Click should not pin the popover (onClick replaces default behavior)
+      // Click should not open image (onClick replaces default behavior)
       fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
       expect(customOnClick).toHaveBeenCalledTimes(1);
     });
 
-    it("prevents image from expanding when onClick is provided", () => {
-      const customOnClick = jest.fn();
+    it("prevents image from opening when onClick returns false", () => {
+      const customOnClick = jest.fn(() => false);
 
       const { container } = render(
         <CitationComponent
@@ -195,14 +269,14 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
       // Multiple clicks should not show image overlay
       fireEvent.click(citation!);
       fireEvent.click(citation!);
       fireEvent.click(citation!);
 
-      expect(container.querySelector(".dc-overlay")).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
       expect(customOnClick).toHaveBeenCalledTimes(3);
     });
 
@@ -219,89 +293,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
-      fireEvent.click(citation!);
-
-      expect(customOnClick).toHaveBeenCalledTimes(1);
-      expect(eventHandlerOnClick).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  // ==========================================================================
-  // CUSTOM onClick TO DISABLE SPECIFIC BEHAVIORS
-  // ==========================================================================
-
-  describe("custom onClick to disable specific behaviors", () => {
-    it("can disable image expand while keeping popover pin", () => {
-      // Custom onClick that only pins popover, never expands image
-      const customOnClick = jest.fn(
-        (context: CitationBehaviorContext): CitationBehaviorActions | false => {
-          if (context.isImageExpanded) {
-            // Close image and unpin
-            return { setImageExpanded: false, setTooltipExpanded: false };
-          } else if (context.isTooltipExpanded) {
-            // Already pinned - do nothing (don't expand image)
-            return false;
-          } else {
-            // First click - pin popover
-            return { setTooltipExpanded: true };
-          }
-        }
-      );
-
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={{ onClick: customOnClick }}
-        />
-      );
-
-      const citation = container.querySelector(".dc-citation");
-
-      // First click - pin popover
-      fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
-
-      // Second click - should NOT show image overlay (custom behavior)
-      fireEvent.click(citation!);
-      expect(container.querySelector(".dc-overlay")).not.toBeInTheDocument();
-
-      // Popover should still be pinned
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
-    });
-
-    it("can disable popover pinning entirely", () => {
-      const customOnClick = jest.fn(() => false);
-
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={{ onClick: customOnClick }}
-        />
-      );
-
-      const citation = container.querySelector(".dc-citation");
-
-      fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
-    });
-
-    it("still calls eventHandlers.onClick when custom onClick returns false", () => {
-      const eventHandlerOnClick = jest.fn();
-      const customOnClick = jest.fn(() => false);
-
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={{ onClick: customOnClick }}
-          eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
-      );
-
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       expect(customOnClick).toHaveBeenCalledTimes(1);
@@ -325,7 +317,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       expect(customOnClick).toHaveBeenCalledTimes(1);
@@ -334,7 +326,7 @@ describe("CitationComponent behaviorConfig", () => {
       expect(context.citation).toEqual(baseCitation);
       expect(context.citationKey).toBeDefined();
       expect(context.verification).toEqual(verificationWithImage);
-      expect(context.isTooltipExpanded).toBe(false);
+      expect(context.isTooltipExpanded).toBe(false); // Not hovering
       expect(context.isImageExpanded).toBe(false);
       expect(context.hasImage).toBe(true);
     });
@@ -352,14 +344,14 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       // Custom handler was called
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // No state changes occurred (onClick replaces defaults)
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("prevents any state changes when returning false", () => {
@@ -373,17 +365,17 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       // Custom handler was called
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // Default behavior should NOT have occurred
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
-    it("applies returned actions instead of default behavior", () => {
+    it("applies returned actions to open image", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: true,
@@ -398,35 +390,11 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
-      // Custom action: image should be expanded immediately
-      expect(container.querySelector(".dc-overlay")).toBeInTheDocument();
-
-      // Default behavior (pinning first) was skipped
-      // Note: popover is NOT pinned because we returned custom actions
-    });
-
-    it("can apply setTooltipExpanded action", () => {
-      const customOnClick = jest.fn(
-        (): CitationBehaviorActions => ({
-          setTooltipExpanded: true,
-        })
-      );
-
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={{ onClick: customOnClick }}
-        />
-      );
-
-      const citation = container.querySelector(".dc-citation");
-      fireEvent.click(citation!);
-
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
+      // Custom action: image should be expanded
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("can apply setImageExpanded with string src", () => {
@@ -445,56 +413,39 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
-      const overlayImage = container.querySelector(".dc-overlay-image");
+      const overlayImage = container.querySelector("[role='dialog'] img");
       expect(overlayImage).toBeInTheDocument();
       expect(overlayImage?.getAttribute("src")).toBe(customImageSrc);
     });
 
     it("can close image with setImageExpanded: false", () => {
-      // First, render and expand the image normally
-      const { container, rerender } = render(
+      const { container } = render(
         <CitationComponent
           citation={baseCitation}
           verification={verificationWithImage}
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
-      // Click twice to expand image
+      // Click to open image
       fireEvent.click(citation!);
-      fireEvent.click(citation!);
-      expect(container.querySelector(".dc-overlay")).toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
 
-      // Now add a custom handler that closes the image
-      const customOnClick = jest.fn(
-        (): CitationBehaviorActions => ({
-          setImageExpanded: false,
-        })
-      );
-
-      rerender(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={{ onClick: customOnClick }}
-        />
-      );
-
-      // Click again with custom handler
-      fireEvent.click(citation!);
-
-      expect(container.querySelector(".dc-overlay")).not.toBeInTheDocument();
+      // Click overlay to close
+      const overlay = container.querySelector("[role='dialog']");
+      fireEvent.click(overlay!);
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("still calls eventHandlers.onClick when custom handler returns actions", () => {
       const eventHandlerOnClick = jest.fn();
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
-          setTooltipExpanded: true,
+          setImageExpanded: true,
         })
       );
 
@@ -507,7 +458,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       expect(customOnClick).toHaveBeenCalledTimes(1);
@@ -527,7 +478,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       expect(customOnClick).toHaveBeenCalledTimes(1);
@@ -540,7 +491,7 @@ describe("CitationComponent behaviorConfig", () => {
   // ==========================================================================
 
   describe("eventHandlers for analytics", () => {
-    it("eventHandlers.onClick disables default behavior (no popover pinning)", () => {
+    it("eventHandlers.onClick disables default behavior (no image opening)", () => {
       const trackingData: string[] = [];
 
       const { container } = render(
@@ -555,19 +506,13 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
-      // First click - analytics tracked but default behavior is disabled
+      // Click - analytics tracked but default behavior is disabled
       fireEvent.click(citation!);
       expect(trackingData).toHaveLength(1);
-      // Default behavior (tooltip expansion) should NOT happen
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
-
-      // Second click - analytics tracked, still no default behavior
-      fireEvent.click(citation!);
-      expect(trackingData).toHaveLength(2);
-      // Image overlay should NOT appear since defaults are disabled
-      expect(container.querySelector(".dc-overlay")).not.toBeInTheDocument();
+      // Default behavior (image opening) should NOT happen
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("eventHandlers.onClick runs even when behaviorConfig.onClick is provided", () => {
@@ -581,7 +526,7 @@ describe("CitationComponent behaviorConfig", () => {
           behaviorConfig={{
             onClick: (context) => {
               behaviorConfigCalls.push("behavior");
-              return { setTooltipExpanded: true };
+              return { setImageExpanded: true };
             },
           }}
           eventHandlers={{
@@ -592,7 +537,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       // Both handlers were called
@@ -617,7 +562,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
 
       expect(onEnter).toHaveBeenCalledTimes(1);
@@ -634,7 +579,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseLeave(citation!);
 
       expect(onLeave).toHaveBeenCalledTimes(1);
@@ -651,7 +596,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
 
       const context = onEnter.mock.calls[0][0] as CitationBehaviorContext;
@@ -672,7 +617,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseLeave(citation!);
 
       const context = onLeave.mock.calls[0][0] as CitationBehaviorContext;
@@ -693,7 +638,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
 
       expect(behaviorOnEnter).toHaveBeenCalledTimes(1);
@@ -713,7 +658,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseLeave(citation!);
 
       expect(behaviorOnLeave).toHaveBeenCalledTimes(1);
@@ -731,7 +676,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
       // Should not throw when leaving without onLeave handler
       fireEvent.mouseEnter(citation!);
@@ -751,7 +696,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
       // Should not throw when entering without onEnter handler
       fireEvent.mouseEnter(citation!);
@@ -766,10 +711,10 @@ describe("CitationComponent behaviorConfig", () => {
   // ==========================================================================
 
   describe("combined configurations", () => {
-    it("custom onClick returning actions always applies them", () => {
+    it("custom onClick returning actions applies them", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
-          setTooltipExpanded: true,
+          setImageExpanded: true,
         })
       );
 
@@ -783,11 +728,11 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       // Custom action was applied
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("onHover works independently of click configuration", () => {
@@ -806,7 +751,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
       fireEvent.mouseEnter(citation!);
       expect(onEnter).toHaveBeenCalledTimes(1);
@@ -817,7 +762,7 @@ describe("CitationComponent behaviorConfig", () => {
       // Click behavior is replaced by custom onClick (which does nothing)
       fireEvent.click(citation!);
       expect(customOnClick).toHaveBeenCalledTimes(1);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("false");
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("context is updated between clicks when using custom onClick", () => {
@@ -825,13 +770,11 @@ describe("CitationComponent behaviorConfig", () => {
       const customOnClick = jest.fn(
         (context: CitationBehaviorContext): CitationBehaviorActions => {
           contexts.push({ ...context });
-          // Manually implement the default behavior
+          // Toggle image
           if (context.isImageExpanded) {
-            return { setImageExpanded: false, setTooltipExpanded: false };
-          } else if (context.isTooltipExpanded) {
-            return { setImageExpanded: true };
+            return { setImageExpanded: false };
           } else {
-            return { setTooltipExpanded: true };
+            return { setImageExpanded: true };
           }
         }
       );
@@ -844,22 +787,17 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
-      // First click - tooltip not expanded yet
+      // First click - image not expanded yet
       fireEvent.click(citation!);
-      expect(contexts[0].isTooltipExpanded).toBe(false);
       expect(contexts[0].isImageExpanded).toBe(false);
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
 
-      // Second click - tooltip should now be expanded
+      // Second click - image should now be expanded
       fireEvent.click(citation!);
-      expect(contexts[1].isTooltipExpanded).toBe(true);
-      expect(contexts[1].isImageExpanded).toBe(false);
-
-      // Third click - image should now be expanded
-      fireEvent.click(citation!);
-      expect(contexts[2].isTooltipExpanded).toBe(true);
-      expect(contexts[2].isImageExpanded).toBe(true);
+      expect(contexts[1].isImageExpanded).toBe(true);
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
   });
 
@@ -877,11 +815,11 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
       // Should work with default behavior
       fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("handles empty behaviorConfig object", () => {
@@ -893,11 +831,11 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
 
       // Should work with default behavior
       fireEvent.click(citation!);
-      expect(citation?.getAttribute("data-tooltip-expanded")).toBe("true");
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("handles verification without image correctly in context", () => {
@@ -911,7 +849,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
 
       const context = onEnter.mock.calls[0][0] as CitationBehaviorContext;
@@ -929,7 +867,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
 
       const context = onEnter.mock.calls[0][0] as CitationBehaviorContext;
@@ -948,7 +886,7 @@ describe("CitationComponent behaviorConfig", () => {
         />
       );
 
-      const citation = container.querySelector(".dc-citation");
+      const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       const context = customOnClick.mock.calls[0][0] as CitationBehaviorContext;
