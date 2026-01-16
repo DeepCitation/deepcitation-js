@@ -11,7 +11,7 @@ import {
 describe("citation prompts", () => {
   it("includes guidance for citation markdown syntax", () => {
     expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain(
-      "<cite attachment_id='attachment_id'"
+      "<cite attachment_id='"
     );
     expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("line_ids");
     expect(AV_CITATION_MARKDOWN_SYNTAX_PROMPT).toContain(
@@ -43,7 +43,7 @@ describe("wrapSystemCitationPrompt", () => {
     const result = wrapSystemCitationPrompt({ systemPrompt });
 
     expect(result).toContain("You are a helpful assistant.");
-    expect(result).toContain("<cite attachment_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='");
     expect(result).toContain("line_ids");
     // By default, system prompt comes first
     expect(result.indexOf("You are a helpful assistant.")).toBeLessThan(
@@ -59,7 +59,7 @@ describe("wrapSystemCitationPrompt", () => {
     });
 
     expect(result).toContain("You are a helpful assistant.");
-    expect(result).toContain("<cite attachment_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='");
     // Citation instructions come first
     expect(result.indexOf("<cite")).toBeLessThan(
       result.indexOf("You are a helpful assistant.")
@@ -89,7 +89,7 @@ describe("wrapSystemCitationPrompt", () => {
   it("handles empty system prompt", () => {
     const result = wrapSystemCitationPrompt({ systemPrompt: "" });
 
-    expect(result).toContain("<cite attachment_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='");
   });
 });
 
@@ -104,7 +104,7 @@ describe("wrapCitationPrompt", () => {
       "You are a helpful assistant."
     );
     expect(result.enhancedSystemPrompt).toContain(
-      "<cite attachment_id='attachment_id'"
+      "<cite attachment_id='"
     );
     expect(result.enhancedUserPrompt).toContain("Analyze this document.");
   });

@@ -29,9 +29,13 @@ bun add @deepcitation/deepcitation-js
 ```typescript
 import {
   wrapSystemCitationPrompt,      // Wrap LLM system prompts with citation instructions
+  wrapCitationPrompt,            // Wrap both system and user prompts
   CITATION_JSON_OUTPUT_FORMAT,   // JSON schema for structured output LLMs
+  CITATION_REMINDER,             // Short reminder for reinforcement in user prompts
   getAllCitationsFromLlmOutput,  // Extract citations from LLM response text
 } from "@deepcitation/deepcitation-js";
+
+import type { CitationPosition } from "@deepcitation/deepcitation-js";
 ```
 
 ### React Components (from /react)
@@ -59,7 +63,42 @@ Returns: `attachmentId`, `promptContent` with page/line IDs.
 import { wrapSystemCitationPrompt } from "@deepcitation/deepcitation-js";
 
 const systemPrompt = `You are a helpful assistant...`;
+
+// Default (append) - instructions at end of system prompt
 const enhanced = wrapSystemCitationPrompt({ systemPrompt });
+
+// Prepend - recommended for large system prompts (highest priority)
+const enhanced = wrapSystemCitationPrompt({ systemPrompt, position: 'prepend' });
+
+// Wrap - maximum emphasis (instructions at start AND reminder at end)
+const enhanced = wrapSystemCitationPrompt({ systemPrompt, position: 'wrap' });
+```
+
+#### Position Options
+
+| Position   | Description                                      | Best For                        |
+|------------|--------------------------------------------------|---------------------------------|
+| `'append'` | Instructions at end (default)                    | Short system prompts            |
+| `'prepend'`| Instructions at start                            | Large system prompts            |
+| `'wrap'`   | Full instructions at start + reminder at end     | Maximum reliability             |
+
+#### Citation Reminders
+
+For additional reinforcement, you can add reminders to user prompts:
+
+```typescript
+import { wrapCitationPrompt, CITATION_REMINDER } from "@deepcitation/deepcitation-js";
+
+// Using wrapCitationPrompt with addUserReminder
+const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
+  systemPrompt,
+  userPrompt,
+  position: 'prepend',           // Instructions at start of system prompt
+  addUserReminder: true,         // Add reminder to end of user prompt
+});
+
+// Or manually add CITATION_REMINDER where needed
+const userPromptWithReminder = `${userPrompt}\n\n${CITATION_REMINDER}`;
 ```
 
 For structured JSON output:

@@ -77,11 +77,14 @@ export {
   CITATION_MARKDOWN_SYNTAX_PROMPT,
   AV_CITATION_MARKDOWN_SYNTAX_PROMPT,
   CITATION_AV_BASED_JSON_OUTPUT_FORMAT,
+  CITATION_REMINDER,
+  CITATION_AV_REMINDER,
   wrapSystemCitationPrompt,
   wrapCitationPrompt,
 } from "./prompts/citationPrompts.js";
 
 export type {
+  CitationPosition,
   WrapSystemPromptOptions,
   WrapCitationPromptOptions,
   WrapCitationPromptResult,

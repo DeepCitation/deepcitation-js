@@ -1,22 +1,77 @@
 export const CITATION_MARKDOWN_SYNTAX_PROMPT = `
-Citation syntax to use within Markdown:
-• To support any ideas or information that requires a citation from the provided content, use the following citation syntax:
-<cite attachment_id='attachment_id' start_page_key='page_number_PAGE_index_INDEX' full_phrase='the verbatim text of the terse phrase inside <attachment_text />; remember to escape quotes and newlines inside the full_phrase to remain as valid JSON' key_span='the verbatim 1-3 words within full_phrase that best support the citation' line_ids='2-6' reasoning='the terse logic used to conclude the citation' />
+<citation-instructions priority="critical">
+## REQUIRED: Citation Format
 
-• Very important: for page numbers, only use the page number and page index info from the page_number_PAGE_index_INDEX format (e.g. <page_number_1_index_0>) and never from the contents inside the page.
-• start_page_key, full_phrase, and line_ids are required for each citation.
-• Infer line_ids, as we only provide the first, last, and every 5th line. When copying a previous <cite />, use the full info from the previous citation without changing the start_page_key, line_ids, or any other <cite /> attributes.
-• Use refer to line_ids inclusively, and use a range (or single) for each citation, split multiple sequential line_ids into multiple citations.
-• These citations will be replaced and displayed in-line as a numeric element (e.g. [1]), the markdown preceding <cite /> should read naturally with only one <cite /> per sentence with rare exceptions for two <cite /> in a sentence. <cite /> often present best at the end of the sentence, and are not grouped at the end of the document.
-• The full_phrase should be the exact verbatim text of the phrase or paragraph from the source document to support the insight or idea.
-• We do NOT put the full_phrase inside <cite ...></cite>; we only use full_phrase inside the full_phrase attribute.
+You MUST cite sources using this exact syntax:
+
+<cite attachment_id='ID' start_page_key='page_number_N_index_I' full_phrase='verbatim quote' key_span='1-3 key words' line_ids='X-Y' reasoning='why this supports the claim' />
+
+### Syntax Rules (MUST follow)
+
+1. **attachment_id**: Use the exact ID from the source document
+2. **start_page_key**: ONLY use format \`page_number_N_index_I\` from page tags (e.g., \`<page_number_1_index_0>\`). Never extract page numbers from document content.
+3. **full_phrase**: Copy text VERBATIM from source. Escape quotes (\\') and newlines (\\n).
+4. **key_span**: The 1-3 most important words from full_phrase
+5. **line_ids**: Inclusive range (e.g., '2-6' or '4'). Infer intermediate lines since only every 5th line is shown.
+6. **reasoning**: Brief explanation of why this citation supports your claim
+
+### Placement Rules
+
+- Place <cite /> inline within sentences, typically at the end
+- One citation per sentence (rarely two if needed)
+- Do NOT group citations at the end of the document
+- The <cite /> tag is self-closing - never use <cite>...</cite>
+
+### Example
+
+The company reported strong growth<cite attachment_id='abc123' start_page_key='page_number_2_index_1' full_phrase='Revenue increased 45% year-over-year to $2.3 billion' key_span='increased 45%' line_ids='12-14' reasoning='directly states revenue growth percentage' />
+
+</citation-instructions>
 `;
 
 export const AV_CITATION_MARKDOWN_SYNTAX_PROMPT = `
-• To support any ideas or information that requires a citation from the provided content, use the following citation syntax:
-<cite attachment_id='attachment_id' full_phrase='the verbatim text of the phrase; remember to escape quotes and newlines inside the full_phrase to remain as valid JSON' timestamps='HH:MM:SS.SSS-HH:MM:SS.SSS' reasoning='the logic connecting the form section requirements to the supporting source citation' />
-• These citations are displayed in-line or in the relevant list item, and are not grouped at the end of the document.
+<citation-instructions priority="critical">
+## REQUIRED: Audio/Video Citation Format
+
+You MUST cite sources using this exact syntax:
+
+<cite attachment_id='ID' full_phrase='verbatim transcript quote' timestamps='HH:MM:SS.SSS-HH:MM:SS.SSS' reasoning='why this supports the claim' />
+
+### Syntax Rules (MUST follow)
+
+1. **attachment_id**: Use the exact ID from the source
+2. **full_phrase**: Copy transcript text VERBATIM. Escape quotes (\\') and newlines (\\n).
+3. **timestamps**: Start and end time with milliseconds (e.g., '00:01:23.456-00:01:45.789')
+4. **reasoning**: Brief explanation of why this citation supports your claim
+
+### Placement Rules
+
+- Place <cite /> inline within sentences, typically at the end
+- One citation per sentence (rarely two if needed)
+- Do NOT group citations at the end of the document
+- The <cite /> tag is self-closing - never use <cite>...</cite>
+
+</citation-instructions>
 `;
+
+/**
+ * A brief reminder to reinforce citation requirements in user messages.
+ * Use this when you want to add emphasis without repeating full instructions.
+ */
+export const CITATION_REMINDER = `<citation-reminder>Remember: You MUST use <cite /> tags with all required attributes for every claim from source documents.</citation-reminder>`;
+
+/**
+ * Audio/video version of the citation reminder.
+ */
+export const CITATION_AV_REMINDER = `<citation-reminder>Remember: You MUST use <cite /> tags with timestamps for every claim from source media.</citation-reminder>`;
+
+/**
+ * Position options for citation instructions in the system prompt.
+ * - 'prepend': Instructions at the start (highest priority)
+ * - 'append': Instructions at the end (default, backwards compatible)
+ * - 'wrap': Instructions at both start AND end for maximum reinforcement
+ */
+export type CitationPosition = "prepend" | "append" | "wrap";
 
 export interface WrapSystemPromptOptions {
   /** The original system prompt to wrap with citation instructions */
@@ -24,6 +79,18 @@ export interface WrapSystemPromptOptions {
   /** Whether to use audio/video citation format (with timestamps) instead of text-based (with line IDs) */
   isAudioVideo?: boolean;
 
+  /**
+   * Where to place citation instructions relative to your system prompt.
+   * - 'prepend': At the start (recommended for large system prompts)
+   * - 'append': At the end (default for backwards compatibility)
+   * - 'wrap': Both start and end (maximum emphasis, uses reminder at end)
+   * @default 'append'
+   */
+  position?: CitationPosition;
+
+  /**
+   * @deprecated Use `position: 'prepend'` instead
+   */
   prependCitationInstructions?: boolean;
 }
 
@@ -36,6 +103,20 @@ export interface WrapCitationPromptOptions {
   deepTextPromptPortion?: string | string[];
   /** Whether to use audio/video citation format (with timestamps) instead of text-based (with line IDs) */
   isAudioVideo?: boolean;
+  /**
+   * Where to place citation instructions relative to your system prompt.
+   * - 'prepend': At the start (recommended for large system prompts)
+   * - 'append': At the end (default for backwards compatibility)
+   * - 'wrap': Both start and end (maximum emphasis)
+   * @default 'append'
+   */
+  position?: CitationPosition;
+  /**
+   * Whether to add a citation reminder to the user prompt.
+   * Useful for reinforcing citation requirements.
+   * @default false
+   */
+  addUserReminder?: boolean;
 }
 
 export interface WrapCitationPromptResult {
@@ -54,7 +135,15 @@ export interface WrapCitationPromptResult {
  * import { wrapSystemCitationPrompt } from '@deepcitation/deepcitation-js';
  *
  * const systemPrompt = "You are a helpful assistant that analyzes documents.";
+ *
+ * // Default (append) - backwards compatible
  * const enhanced = wrapSystemCitationPrompt({ systemPrompt });
+ *
+ * // Prepend - recommended for large system prompts
+ * const enhanced = wrapSystemCitationPrompt({ systemPrompt, position: 'prepend' });
+ *
+ * // Wrap - maximum emphasis with instructions at start and reminder at end
+ * const enhanced = wrapSystemCitationPrompt({ systemPrompt, position: 'wrap' });
  *
  * // Use enhanced prompt with your LLM
  * const response = await openai.chat.completions.create({
@@ -69,6 +158,7 @@ export function wrapSystemCitationPrompt(
   const {
     systemPrompt,
     isAudioVideo = false,
+    position,
     prependCitationInstructions = false,
   } = options;
 
@@ -76,16 +166,27 @@ export function wrapSystemCitationPrompt(
     ? AV_CITATION_MARKDOWN_SYNTAX_PROMPT
     : CITATION_MARKDOWN_SYNTAX_PROMPT;
 
-  if (prependCitationInstructions) {
-    return `${citationPrompt.trim()}
+  const reminder = isAudioVideo ? CITATION_AV_REMINDER : CITATION_REMINDER;
 
-${systemPrompt.trim()}`;
+  // Determine effective position (support deprecated option)
+  const effectivePosition: CitationPosition = position
+    ? position
+    : prependCitationInstructions
+      ? "prepend"
+      : "append";
+
+  switch (effectivePosition) {
+    case "prepend":
+      return `${citationPrompt.trim()}\n\n${systemPrompt.trim()}`;
+
+    case "wrap":
+      // Full instructions at start, brief reminder at end
+      return `${citationPrompt.trim()}\n\n${systemPrompt.trim()}\n\n${reminder}`;
+
+    case "append":
+    default:
+      return `${systemPrompt.trim()}\n\n${citationPrompt.trim()}`;
   }
-
-  //append
-  return `${systemPrompt.trim()}
-
-${citationPrompt.trim()}`;
 }
 
 /**
@@ -127,11 +228,14 @@ export function wrapCitationPrompt(
     userPrompt,
     deepTextPromptPortion,
     isAudioVideo = false,
+    position,
+    addUserReminder = false,
   } = options;
 
   const enhancedSystemPrompt = wrapSystemCitationPrompt({
     systemPrompt,
     isAudioVideo,
+    position,
   });
 
   // Build enhanced user prompt with file content if provided
@@ -151,6 +255,12 @@ export function wrapCitationPrompt(
       .join("\n\n");
 
     enhancedUserPrompt = `${fileContent}\n\n${userPrompt}`;
+  }
+
+  // Add reminder to user prompt if requested
+  if (addUserReminder) {
+    const reminder = isAudioVideo ? CITATION_AV_REMINDER : CITATION_REMINDER;
+    enhancedUserPrompt = `${enhancedUserPrompt}\n\n${reminder}`;
   }
 
   return {
