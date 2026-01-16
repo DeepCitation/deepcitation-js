@@ -89,13 +89,13 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       {/* Citation List */}
       <div className="flex-1 overflow-y-auto">
         {Object.entries(verifications).map(([key, v]: [string, any]) => {
-          const isVerified = v.searchState?.status === "found";
+          const isVerified = v.status === "found";
           const isPartial = [
             "partial_text_found",
             "found_on_other_page",
             "found_on_other_line",
-          ].includes(v.searchState?.status);
-          const isMiss = v.searchState?.status === "not_found";
+          ].includes(v.status);
+          const isMiss = v.status === "not_found";
           const isExpanded = expandedCitation === key;
 
           return (
@@ -124,7 +124,7 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                     Citation [{key}]
                   </div>
                   <div className="text-xs text-gray-500 truncate">
-                    {v.searchState?.status || "pending"}
+                    {v.status || "pending"}
                     {v.pageNumber && ` • Page ${v.pageNumber}`}
                   </div>
                 </div>
@@ -174,13 +174,13 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                     </div>
                   )}
 
-                  {v.searchState?.actualPage !==
-                    v.searchState?.expectedPage && (
-                    <div className="text-xs text-yellow-600">
-                      Found on page {v.searchState?.actualPage} (expected{" "}
-                      {v.searchState?.expectedPage})
-                    </div>
-                  )}
+                  {v.pageNumber !== v.citation?.pageNumber &&
+                    v.citation?.pageNumber && (
+                      <div className="text-xs text-yellow-600">
+                        Found on page {v.pageNumber} (expected{" "}
+                        {v.citation?.pageNumber})
+                      </div>
+                    )}
                 </div>
               )}
             </div>

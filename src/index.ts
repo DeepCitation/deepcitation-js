@@ -56,7 +56,6 @@ export {
 } from "./types/verification.js";
 
 export type {
-  SearchState,
   SearchStatus,
   SearchMethod,
   SearchAttempt,

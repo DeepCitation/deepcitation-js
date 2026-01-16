@@ -21,28 +21,24 @@ const citationWithoutKeySpan: Citation = {
 };
 
 const verifiedVerification: Verification = {
-  lowerCaseSearchTerm: "25% revenue growth",
   pageNumber: 5,
-  searchState: { status: "found" },
+  status: "found",
 };
 
 const partialVerification: Verification = {
-  lowerCaseSearchTerm: "25% revenue",
   pageNumber: 5,
-  searchState: { status: "partial_text_found" },
+  status: "partial_text_found",
   matchSnippet: "25% revenue increase",
 };
 
 const missVerification: Verification = {
-  lowerCaseSearchTerm: "25% revenue growth",
   pageNumber: -1,
-  searchState: { status: "not_found" },
+  status: "not_found",
 };
 
 const pendingVerification: Verification = {
-  lowerCaseSearchTerm: "25% revenue growth",
   pageNumber: null,
-  searchState: { status: "pending" },
+  status: "pending",
 };
 
 // =============================================================================

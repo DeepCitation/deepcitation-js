@@ -1,6 +1,6 @@
 import { sha1Hash } from "../utils/sha.js";
 import { type Citation } from "./citation.js";
-import { type SearchState } from "./search.js";
+import { type SearchStatus, type SearchAttempt } from "./search.js";
 import { type PdfSpaceItem } from "./boxes.js";
 
 export const NOT_FOUND_VERIFICATION_INDEX = -1;
@@ -13,9 +13,7 @@ export const BLANK_VERIFICATION: Verification = {
   citation: {
     pageNumber: NOT_FOUND_VERIFICATION_INDEX,
   },
-  searchState: {
-    status: "not_found",
-  },
+  status: "not_found",
 };
 
 export function deterministicIdFromVerification(
@@ -33,11 +31,15 @@ export interface Verification {
 
   citation?: Citation;
 
-  searchState?: SearchState | null;
+  // Search status (moved from SearchState)
+  status?: SearchStatus | null;
+
+  // Search attempts (moved from SearchState)
+  searchAttempts?: SearchAttempt[];
 
   highlightColor?: string | null;
 
-  //actual (i.e. not expected)
+  // Actual results (i.e. not expected - expected values are in citation)
   pageNumber?: number | null;
 
   lineIds?: number[] | null;

@@ -187,7 +187,7 @@ provided documents accurately and cite your sources.`;
         : "❌";
 
       console.log(`Citation [${key}]: ${statusIcon}`);
-      console.log(`  Status: ${verification.searchState?.status}`);
+      console.log(`  Status: ${verification.status}`);
       console.log(`  Page: ${verification.pageNumber ?? "N/A"}`);
       console.log(`  Match: "${verification.matchSnippet?.slice(0, 80)}..."`);
       console.log(

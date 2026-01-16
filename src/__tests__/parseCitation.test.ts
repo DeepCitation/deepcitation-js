@@ -17,7 +17,7 @@ describe("getCitationStatus", () => {
         attachmentId: "file",
       },
       pageNumber: 2,
-      searchState: { status: "found" },
+      status: "found",
       matchSnippet: "snippet",
     };
     const status = getCitationStatus(found);
@@ -33,7 +33,7 @@ describe("getCitationStatus", () => {
         attachmentId: "file",
       },
       pageNumber: NOT_FOUND_VERIFICATION_INDEX,
-      searchState: { status: "not_found" },
+      status: "not_found",
       matchSnippet: "snippet",
     };
     const status = getCitationStatus(miss);
@@ -54,7 +54,7 @@ describe("getCitationStatus", () => {
           pageNumber: 4,
         },
         pageNumber: 5,
-        searchState: { status: "found_on_other_page" },
+        status: "found_on_other_page",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -74,12 +74,8 @@ describe("getCitationStatus", () => {
           lineIds: [1, 2, 3],
         },
         pageNumber: 3,
-
-        searchState: {
-          status: "found_on_other_line",
-          actualLineIds: [2, 3],
-          expectedLineIds: [1, 2, 3],
-        },
+        status: "found_on_other_line",
+        lineIds: [2, 3],
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -96,7 +92,7 @@ describe("getCitationStatus", () => {
           pageNumber: 1,
         },
         pageNumber: 1,
-        searchState: { status: "first_word_found" },
+        status: "first_word_found",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -112,7 +108,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         pageNumber: 2,
-        searchState: { status: "partial_text_found" },
+        status: "partial_text_found",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -128,7 +124,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         pageNumber: 2,
-        searchState: { status: "found_key_span_only" },
+        status: "found_key_span_only",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -144,7 +140,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         pageNumber: 2,
-        searchState: { status: "found_phrase_missed_value" },
+        status: "found_phrase_missed_value",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -160,7 +156,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         pageNumber: 2,
-        searchState: { status: "loading" },
+        status: "loading",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -177,7 +173,7 @@ describe("getCitationStatus", () => {
           pageNumber: 2,
         },
         pageNumber: 2,
-        searchState: { status: "pending" },
+        status: "pending",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -193,7 +189,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         pageNumber: NOT_FOUND_VERIFICATION_INDEX,
-        searchState: { status: "not_found" },
+        status: "not_found",
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -202,7 +198,7 @@ describe("getCitationStatus", () => {
       expect(status.isPartialMatch).toBe(false);
     });
 
-    it("treats null searchState as pending", () => {
+    it("treats null status as pending", () => {
       const verification: Verification = {
         citation: {
           keySpan: "term",
@@ -211,7 +207,7 @@ describe("getCitationStatus", () => {
           pageNumber: 2,
         },
         pageNumber: 2,
-        searchState: null,
+        status: null,
         matchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
