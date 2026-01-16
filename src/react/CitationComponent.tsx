@@ -16,6 +16,7 @@ import type {
   CitationBehaviorActions,
   CitationBehaviorConfig,
   CitationBehaviorContext,
+  CitationContent,
   CitationEventHandlers,
   CitationRenderProps,
   CitationVariant,
@@ -28,8 +29,50 @@ import {
 } from "./utils.js";
 import { useSmartDiff } from "./useSmartDiff.js";
 
-// Re-export CitationVariant for convenience
-export type { CitationVariant } from "./types.js";
+// Re-export types for convenience
+export type { CitationVariant, CitationContent } from "./types.js";
+
+/**
+ * Get the default content type based on variant.
+ */
+function getDefaultContent(variant: CitationVariant): CitationContent {
+  switch (variant) {
+    case "chip":
+    case "text":
+      return "keySpan";
+    case "brackets":
+    case "superscript":
+    case "minimal":
+    default:
+      return "number";
+  }
+}
+
+/**
+ * Get display text based on content type and citation data.
+ * Returns "1" as fallback if no citation number is available.
+ */
+function getDisplayText(
+  citation: BaseCitationProps["citation"],
+  content: CitationContent,
+  fallbackDisplay?: string | null
+): string {
+  if (content === "indicator") {
+    return "";
+  }
+
+  if (content === "keySpan") {
+    return (
+      citation.keySpan?.toString() ||
+      citation.citationNumber?.toString() ||
+      fallbackDisplay ||
+      "1"
+    );
+  }
+
+  // content === "number"
+  return citation.citationNumber?.toString() || "1";
+}
 
 // =============================================================================
 // TYPES
@@ -76,15 +119,28 @@ export interface CitationComponentProps extends BaseCitationProps {
   /** Verification result from the DeepCitation API */
   verification?: Verification | null;
   /**
-   * Display variant for the citation.
-   * - `brackets`: [keySpan✓] with styling (default)
-   * - `text`: keySpan✓ inherits parent styling
-   * - `minimal`: text with indicator, no brackets
-   * - `indicator`: only the status indicator
+   * Visual style variant for the citation.
+   * - `chip`: Pill/badge style with background color
+   * - `brackets`: [text✓] with square brackets (default)
+   * - `text`: Plain text, inherits parent styling
+   * - `superscript`: Small raised text like footnotes¹
+   * - `minimal`: Compact text with indicator, truncated
    */
   variant?: CitationVariant;
-  /** Hide square brackets (only for brackets variant) */
-  hideBrackets?: boolean;
+  /**
+   * What content to display in the citation.
+   * - `keySpan`: Descriptive text (e.g., "Revenue Growth")
+   * - `number`: Citation number (e.g., "1", "2", "3")
+   * - `indicator`: Only the status icon, no text
+   *
+   * Defaults based on variant:
+   * - `chip` → `keySpan`
+   * - `brackets` → `number`
+   * - `text` → `keySpan`
+   * - `superscript` → `number`
+   * - `minimal` → `number`
+   */
+  content?: CitationContent;
   /** Event handlers for citation interactions */
   eventHandlers?: CitationEventHandlers;
   /**
@@ -562,11 +618,10 @@ export const CitationComponent = forwardRef<
       citation,
       children,
       className,
-      hideKeySpan = false,
-      hideBrackets = false,
       fallbackDisplay,
       verification,
       variant = "brackets",
+      content: contentProp,
       eventHandlers,
       behaviorConfig,
       isMobile = false,
@@ -577,6 +632,11 @@ export const CitationComponent = forwardRef<
     },
     ref
   ) => {
+    // Resolve content: explicit content prop or default for variant
+    const resolvedContent: CitationContent = useMemo(() => {
+      if (contentProp) return contentProp;
+      return getDefaultContent(variant);
+    }, [contentProp, variant]);
     const [isHovering, setIsHovering] = useState(false);
     const [expandedImageSrc, setExpandedImageSrc] = useState<string | null>(
       null
@@ -599,11 +659,8 @@ export const CitationComponent = forwardRef<
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
     const displayText = useMemo(() => {
-      return getCitationDisplayText(citation, {
-        hideKeySpan: variant !== "text" && variant !== "minimal" && hideKeySpan,
-        fallbackDisplay,
-      });
-    }, [citation, variant, hideKeySpan, fallbackDisplay]);
+      return getDisplayText(citation, resolvedContent, fallbackDisplay);
+    }, [citation, resolvedContent, fallbackDisplay]);
 
     // Behavior context for custom handlers
     const getBehaviorContext = useCallback(
@@ -718,11 +775,11 @@ export const CitationComponent = forwardRef<
       [eventHandlers, citation, citationKey, isMobile]
     );
 
-    // Early return for miss with fallback display
+    // Early return for miss with fallback display (only when showing keySpan)
     if (
       fallbackDisplay !== null &&
       fallbackDisplay !== undefined &&
-      !hideKeySpan &&
+      resolvedContent === "keySpan" &&
       isMiss
     ) {
       return (
@@ -765,15 +822,62 @@ export const CitationComponent = forwardRef<
           status,
           citationKey,
           displayText,
-          isMergedDisplay:
-            variant === "text" || variant === "brackets" || !hideKeySpan,
+          isMergedDisplay: resolvedContent === "keySpan",
         });
       }
 
-      if (variant === "indicator") {
+      // Content type: indicator only
+      if (resolvedContent === "indicator") {
         return <span>{renderStatusIndicator()}</span>;
       }
 
+      // Variant: chip (pill/badge style)
+      if (variant === "chip") {
+        const chipStatusClasses = cn(
+          isVerified && !isPartialMatch && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+          isPartialMatch && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+          isMiss && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 line-through",
+          isPending && "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+          !isVerified && !isMiss && !isPending && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+        );
+        return (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium",
+              chipStatusClasses
+            )}
+          >
+            <span className="max-w-60 overflow-hidden text-ellipsis whitespace-nowrap">
+              {displayText}
+            </span>
+            {renderStatusIndicator()}
+          </span>
+        );
+      }
+
+      // Variant: superscript (footnote style)
+      if (variant === "superscript") {
+        const supStatusClasses = cn(
+          isVerified && !isPartialMatch && "text-green-600 dark:text-green-500",
+          isPartialMatch && "text-amber-600 dark:text-amber-500",
+          isMiss && "text-red-500 dark:text-red-400 line-through",
+          isPending && "text-gray-400 dark:text-gray-500",
+          !isVerified && !isMiss && !isPending && "text-blue-600 dark:text-blue-400"
+        );
+        return (
+          <sup
+            className={cn(
+              "text-xs font-medium transition-colors hover:underline",
+              supStatusClasses
+            )}
+          >
+            [{displayText}
+            {renderStatusIndicator()}]
+          </sup>
+        );
+      }
+
+      // Variant: text (inherits parent styling)
       if (variant === "text") {
         return (
           <span className={statusClasses}>
@@ -783,6 +887,7 @@ export const CitationComponent = forwardRef<
         );
       }
 
+      // Variant: minimal (compact with truncation)
       if (variant === "minimal") {
         return (
           <span
@@ -797,7 +902,7 @@ export const CitationComponent = forwardRef<
         );
       }
 
-      // brackets variant (default)
+      // Variant: brackets (default)
       return (
         <span
           className={cn(
@@ -808,8 +913,7 @@ export const CitationComponent = forwardRef<
           )}
           aria-hidden="true"
         >
-          {!hideBrackets && "["}
-          <span
+          [<span
             className={cn(
               "max-w-80 overflow-hidden text-ellipsis",
               statusClasses
@@ -817,8 +921,7 @@ export const CitationComponent = forwardRef<
           >
             {displayText}
             {renderStatusIndicator()}
-          </span>
-          {!hideBrackets && "]"}
+          </span>]
         </span>
       );
     };

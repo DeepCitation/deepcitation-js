@@ -44,9 +44,6 @@ export type {
   OutputImageFormat,
 } from "./types/citation.js";
 
-// Icons
-export { DeepCitationIcon } from "./react/icons.js";
-
 export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
 
 export type { Verification } from "./types/verification.js";

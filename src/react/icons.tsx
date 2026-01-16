@@ -24,9 +24,9 @@ export const DeepCitationIcon = ({ className }: { className?: string }) => (
 /**
  * Check icon SVG (no dependencies)
  */
-export const CheckIcon = () => (
+export const CheckIcon = ({ className }: { className?: string }) => (
   <svg
-    className={"dc-check-icon"}
+    className={cn("w-[0.7em] h-[0.7em]", className)}
     viewBox="0 0 256 256"
     fill="currentColor"
     aria-hidden="true"
@@ -42,9 +42,9 @@ export const CheckIcon = () => (
 /**
  * Warning icon SVG (no dependencies)
  */
-export const WarningIcon = () => (
+export const WarningIcon = ({ className }: { className?: string }) => (
   <svg
-    className="dc-status-icon"
+    className={cn("w-[0.7em] h-[0.7em]", className)}
     viewBox="0 0 256 256"
     fill="currentColor"
     aria-hidden="true"
@@ -56,12 +56,10 @@ export const WarningIcon = () => (
 /** Spinner component for loading/pending state */
 export const SpinnerIcon = ({ className }: { className?: string }) => (
   <svg
-    className={cn("animate-spin", className)}
+    className={cn("w-[0.7em] h-[0.7em] animate-spin", className)}
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
-    width="12"
-    height="12"
   >
     <circle
       className="opacity-25"
