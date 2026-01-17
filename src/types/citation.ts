@@ -15,6 +15,33 @@ export interface VerifyCitationRequest {
   apiKey?: string; // Optional API key for authentication
 }
 
+/**
+ * Web source metadata for URL-based citations (Gemini-style).
+ * Used when citing web pages, articles, videos, etc.
+ */
+export interface WebSource {
+  /** The full URL of the source */
+  url: string;
+  /** Display domain (e.g., "example.com", "fitandwell.com") */
+  domain?: string;
+  /** Page/article title */
+  title?: string;
+  /** Brief description or snippet from the page */
+  description?: string;
+  /** Favicon URL for the source */
+  faviconUrl?: string;
+  /** Platform name (e.g., "Twitch", "YouTube", "Reddit") */
+  platform?: string;
+  /** Author name if available */
+  author?: string;
+  /** Publication date */
+  publishedAt?: Date | string;
+  /** Open Graph or social media image URL */
+  imageUrl?: string;
+  /** Site name (e.g., "Fit&Well", "Garage Gym Reviews") */
+  siteName?: string;
+}
+
 export interface Citation {
   attachmentId?: string;
   fullPhrase?: string | null;
@@ -37,6 +64,9 @@ export interface Citation {
   };
 
   beforeCite?: string;
+
+  /** Web source metadata for URL-based citations */
+  webSource?: WebSource;
 }
 
 export interface CitationStatus {

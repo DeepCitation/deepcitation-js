@@ -80,6 +80,9 @@ export {
   CheckIcon,
   SpinnerIcon,
   WarningIcon,
+  LinkIcon,
+  ExternalLinkIcon,
+  CloseIcon,
 } from "./icons.js";
 
 // Sources List Components (Anthropic-style aggregated citations)

@@ -80,7 +80,7 @@ export interface Verification {
 
   verifiedAt?: Date;
 
-  // ==========================================================================
+// ==========================================================================
   // URL/Web Content Verification Fields
   // Used when verifying AI-generated URL claims (e.g., "According to example.com...")
   // ==========================================================================
@@ -117,4 +117,23 @@ export interface Verification {
 
   /** Error message if URL verification failed */
   urlVerificationError?: string | null;
+
+  /**
+   * Web source metadata fetched from the URL (for URL-based citations).
+   * Contains display metadata like title, description, favicon for UI display.
+   */
+  verifiedWebSource?: {
+    url: string;
+    domain?: string;
+    title?: string;
+    description?: string;
+    faviconUrl?: string;
+    platform?: string;
+    siteName?: string;
+    author?: string;
+    publishedAt?: Date | string;
+    imageUrl?: string;
+    /** Content type of the fetched URL */
+    contentType?: string;
+  };
 }

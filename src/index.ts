@@ -46,6 +46,8 @@ export type {
   SourceCitation,
   SourceType,
   SourceMeta,
+  // Web source metadata for URL citations
+  WebSource,
 } from "./types/citation.js";
 
 export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
