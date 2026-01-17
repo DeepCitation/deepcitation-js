@@ -11,21 +11,22 @@ import {
 describe("citation prompts", () => {
   it("includes guidance for citation markdown syntax", () => {
     expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain(
-      "<cite attachment_id='attachment_id'"
+      "<cite attachment_id='"
     );
     expect(CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("line_ids");
     expect(AV_CITATION_MARKDOWN_SYNTAX_PROMPT).toContain(
       "timestamps='HH:MM:SS.SSS"
     );
+    expect(AV_CITATION_MARKDOWN_SYNTAX_PROMPT).toContain("key_span");
   });
 
   it("defines required fields for text-based citations", () => {
     expect(CITATION_JSON_OUTPUT_FORMAT.required).toEqual([
       "attachmentId",
-      "startPageKey",
       "reasoning",
-      "fullPhrase",
       "keySpan",
+      "fullPhrase",
+      "startPageKey",
       "lineIds",
     ]);
   });
@@ -38,31 +39,21 @@ describe("citation prompts", () => {
 });
 
 describe("wrapSystemCitationPrompt", () => {
-  it("appends citation instructions to system prompt by default", () => {
+  it("wraps system prompt with citation instructions at start and reminder at end", () => {
     const systemPrompt = "You are a helpful assistant.";
     const result = wrapSystemCitationPrompt({ systemPrompt });
 
     expect(result).toContain("You are a helpful assistant.");
-    expect(result).toContain("<cite attachment_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='");
     expect(result).toContain("line_ids");
-    // By default, system prompt comes first
-    expect(result.indexOf("You are a helpful assistant.")).toBeLessThan(
-      result.indexOf("<cite")
-    );
-  });
-
-  it("prepends citation instructions when prependCitationInstructions is true", () => {
-    const systemPrompt = "You are a helpful assistant.";
-    const result = wrapSystemCitationPrompt({
-      systemPrompt,
-      prependCitationInstructions: true,
-    });
-
-    expect(result).toContain("You are a helpful assistant.");
-    expect(result).toContain("<cite attachment_id='attachment_id'");
-    // Citation instructions come first
+    expect(result).toContain("<citation-reminder>");
+    // Citation instructions come first (wrap mode)
     expect(result.indexOf("<cite")).toBeLessThan(
       result.indexOf("You are a helpful assistant.")
+    );
+    // Reminder comes after system prompt
+    expect(result.indexOf("You are a helpful assistant.")).toBeLessThan(
+      result.indexOf("<citation-reminder>")
     );
   });
 
@@ -89,7 +80,7 @@ describe("wrapSystemCitationPrompt", () => {
   it("handles empty system prompt", () => {
     const result = wrapSystemCitationPrompt({ systemPrompt: "" });
 
-    expect(result).toContain("<cite attachment_id='attachment_id'");
+    expect(result).toContain("<cite attachment_id='");
   });
 });
 
@@ -104,7 +95,7 @@ describe("wrapCitationPrompt", () => {
       "You are a helpful assistant."
     );
     expect(result.enhancedSystemPrompt).toContain(
-      "<cite attachment_id='attachment_id'"
+      "<cite attachment_id='"
     );
     expect(result.enhancedUserPrompt).toContain("Analyze this document.");
   });
