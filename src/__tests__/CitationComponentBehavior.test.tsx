@@ -72,7 +72,7 @@ describe("CitationComponent behaviorConfig", () => {
       );
 
       // Should have a spinner (svg with animate-spin class)
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).toBeInTheDocument();
     });
 
@@ -85,7 +85,7 @@ describe("CitationComponent behaviorConfig", () => {
       );
 
       // Should NOT have a spinner by default - use isLoading prop to show spinner
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).not.toBeInTheDocument();
     });
 
@@ -98,7 +98,7 @@ describe("CitationComponent behaviorConfig", () => {
       );
 
       // Should NOT have a spinner by default - use isLoading prop to show spinner
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).not.toBeInTheDocument();
     });
 
@@ -112,7 +112,7 @@ describe("CitationComponent behaviorConfig", () => {
       );
 
       // Should have a spinner when isLoading is true
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).toBeInTheDocument();
     });
 
@@ -127,7 +127,7 @@ describe("CitationComponent behaviorConfig", () => {
 
       // A definitive verification status should override isLoading
       // This prevents stuck spinners when we already have a result
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).not.toBeInTheDocument();
 
       // Should show the verified indicator instead
@@ -144,7 +144,7 @@ describe("CitationComponent behaviorConfig", () => {
       );
 
       // Should NOT have a spinner
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).not.toBeInTheDocument();
 
       // Should have green check (text-green-600 class)
@@ -161,7 +161,7 @@ describe("CitationComponent behaviorConfig", () => {
       );
 
       // Should NOT have a spinner
-      const spinner = container.querySelector("svg.animate-spin");
+      const spinner = container.querySelector(".animate-spin svg");
       expect(spinner).not.toBeInTheDocument();
 
       // Should have red warning (text-red-500 class)
