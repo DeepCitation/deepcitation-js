@@ -368,3 +368,127 @@ export interface CitationTooltipProps {
   verification?: Verification | null;
   shouldShowTooltip: boolean;
 }
+
+// ============================================================================
+// Sources List Types (Anthropic-style aggregated citations)
+// ============================================================================
+
+/**
+ * Visual variant for sources list display.
+ *
+ * | Variant    | Description                                              |
+ * |------------|----------------------------------------------------------|
+ * | `panel`    | Collapsible panel inline with content                    |
+ * | `drawer`   | Bottom sheet/drawer modal (mobile-friendly)              |
+ * | `modal`    | Centered modal overlay                                   |
+ * | `inline`   | Inline list without container styling                    |
+ */
+export type SourcesListVariant = "panel" | "drawer" | "modal" | "inline";
+
+/**
+ * Props for individual source item in the sources list.
+ */
+export interface SourcesListItemProps {
+  /** Unique identifier for this source */
+  id: string;
+  /** The source URL */
+  url: string;
+  /** Page/document title */
+  title: string;
+  /** Display domain (e.g., "Twitch", "LinkedIn") */
+  domain: string;
+  /** Platform/source type for icon selection */
+  sourceType?: import("../types/citation.js").SourceType;
+  /** Favicon URL (falls back to Google favicon service) */
+  faviconUrl?: string;
+  /** Citation numbers that reference this source */
+  citationNumbers?: number[];
+  /** Verification status */
+  verificationStatus?: "verified" | "partial" | "pending" | "failed" | "unknown";
+  /** Click handler */
+  onClick?: (source: SourcesListItemProps, event: React.MouseEvent) => void;
+  /** Additional class name */
+  className?: string;
+  /** Whether to show the verification indicator */
+  showVerificationIndicator?: boolean;
+  /** Whether to show citation numbers as badges */
+  showCitationBadges?: boolean;
+  /** Custom render for the favicon */
+  renderFavicon?: (props: SourcesListItemProps) => React.ReactNode;
+}
+
+/**
+ * Header configuration for sources list.
+ */
+export interface SourcesListHeaderConfig {
+  /** Title text (default: "Sources") */
+  title?: string;
+  /** Whether to show close button */
+  showCloseButton?: boolean;
+  /** Whether to show source count badge */
+  showCount?: boolean;
+  /** Custom header render */
+  renderHeader?: (props: { title: string; count: number; onClose?: () => void }) => React.ReactNode;
+}
+
+/**
+ * Props for the SourcesListComponent.
+ *
+ * Displays an aggregated list of sources at the end of AI-generated content,
+ * similar to Claude's "Sources" panel.
+ */
+export interface SourcesListProps {
+  /** Array of sources to display */
+  sources: SourcesListItemProps[];
+  /** Visual variant for display */
+  variant?: SourcesListVariant;
+  /** Whether the list is visible/open */
+  isOpen?: boolean;
+  /** Callback when visibility changes */
+  onOpenChange?: (isOpen: boolean) => void;
+  /** Header configuration */
+  header?: SourcesListHeaderConfig;
+  /** Whether sources are still loading */
+  isLoading?: boolean;
+  /** Empty state message */
+  emptyMessage?: string;
+  /** Maximum height before scrolling (panel/inline variants) */
+  maxHeight?: string | number;
+  /** Additional class name for container */
+  className?: string;
+  /** Class name for the list items container */
+  listClassName?: string;
+  /** Click handler for source items */
+  onSourceClick?: (source: SourcesListItemProps, event: React.MouseEvent) => void;
+  /** Whether to show verification indicators on items */
+  showVerificationIndicators?: boolean;
+  /** Whether to show citation number badges on items */
+  showCitationBadges?: boolean;
+  /** Group sources by domain/platform */
+  groupByDomain?: boolean;
+  /** Custom render for source items */
+  renderItem?: (props: SourcesListItemProps, index: number) => React.ReactNode;
+  /** Custom render for empty state */
+  renderEmpty?: () => React.ReactNode;
+  /** Custom render for loading state */
+  renderLoading?: () => React.ReactNode;
+}
+
+/**
+ * Props for the compact sources trigger button.
+ * Shows favicon icons and opens the full sources list.
+ */
+export interface SourcesTriggerProps {
+  /** Sources to show as preview favicons */
+  sources: SourcesListItemProps[];
+  /** Maximum number of favicon icons to show */
+  maxIcons?: number;
+  /** Click handler to open sources list */
+  onClick?: () => void;
+  /** Label text (default: "Sources") */
+  label?: string;
+  /** Additional class name */
+  className?: string;
+  /** Whether the sources list is currently open */
+  isOpen?: boolean;
+}

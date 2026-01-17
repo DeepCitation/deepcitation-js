@@ -32,6 +32,12 @@ export type {
   CitationBehaviorActions,
   CitationClickBehavior,
   CitationHoverBehavior,
+  // Sources list types (Anthropic-style aggregated citations)
+  SourcesListVariant,
+  SourcesListItemProps,
+  SourcesListHeaderConfig,
+  SourcesListProps,
+  SourcesTriggerProps,
 } from "./types.js";
 
 // URL Utilities - For handling URL citation metadata
@@ -69,3 +75,18 @@ export {
   SpinnerIcon,
   WarningIcon,
 } from "./icons.js";
+
+// Sources List Components (Anthropic-style aggregated citations)
+export {
+  SourcesListComponent,
+  MemoizedSourcesListComponent,
+  SourcesListItem,
+  MemoizedSourcesListItem,
+  SourcesTrigger,
+  MemoizedSourcesTrigger,
+  // Utilities
+  sourceCitationsToListItems,
+  useSourcesList,
+  detectSourceType,
+  getPlatformName,
+} from "./SourcesListComponent.js";

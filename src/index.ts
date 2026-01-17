@@ -42,6 +42,10 @@ export type {
   VerifyCitationRequest,
   VerifyCitationResponse,
   OutputImageFormat,
+  // Anthropic-style source citations
+  SourceCitation,
+  SourceType,
+  SourceMeta,
 } from "./types/citation.js";
 
 export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
