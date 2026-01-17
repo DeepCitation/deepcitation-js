@@ -252,13 +252,13 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in-0"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in-0 duration-[50ms]"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Full size verification image"
     >
-      <div className="relative max-w-[95vw] max-h-[95vh] cursor-zoom-out">
+      <div className="relative max-w-[95vw] max-h-[95vh] cursor-zoom-out animate-in zoom-in-95 duration-[50ms]">
         <img
           src={src}
           alt={alt}
@@ -1221,7 +1221,7 @@ export const CitationComponent = forwardRef<
         "px-0.5 -mx-0.5 rounded-sm",
         "transition-all duration-[50ms]",
         "hover:bg-blue-500/10 dark:hover:bg-blue-400/10",
-        hasImage && "cursor-zoom-in hover:scale-[1.02]",
+        hasImage && "cursor-zoom-in",
         className
       ),
       onMouseEnter: handleMouseEnter,
