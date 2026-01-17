@@ -1,31 +1,173 @@
+import type { Verification } from "../types/verification.js";
+import { getCitationStatus } from "./parseCitation.js";
+
+export interface ReplaceCitationsOptions {
+  /**
+   * If true, leaves the key_span text behind when removing citations.
+   * @default false
+   */
+  leaveKeySpanBehind?: boolean;
+
+  /**
+   * Map of citation keys to verification results.
+   * Used to determine verification status for each citation.
+   */
+  verifications?: Record<string, Verification>;
+
+  /**
+   * If true and verifications are provided, appends a verification status indicator.
+   * Uses: ✓ (verified), ⚠ (partial), ✗ (not found), ◌ (pending)
+   * @default false
+   */
+  showVerificationStatus?: boolean;
+}
+
+/**
+ * Parse attributes from a cite tag in any order.
+ * Returns an object with all found attributes.
+ */
+const parseCiteAttributes = (
+  citeTag: string
+): Record<string, string | undefined> => {
+  const attrs: Record<string, string | undefined> = {};
+
+  // Match attribute patterns: key='value' or key="value"
+  const attrRegex =
+    /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
+  let match;
+
+  while ((match = attrRegex.exec(citeTag)) !== null) {
+    const key = match[1]
+      .toLowerCase()
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .toLowerCase();
+    const value = match[3];
+
+    // Normalize key names
+    const normalizedKey =
+      key === "fileid" || key === "file_id" || key === "attachmentid"
+        ? "attachment_id"
+        : key === "keyspan"
+          ? "key_span"
+          : key === "fullphrase"
+            ? "full_phrase"
+            : key === "lineids"
+              ? "line_ids"
+              : key === "startpagekey" || key === "start_pagekey"
+                ? "start_page_key"
+                : key;
+
+    attrs[normalizedKey] = value;
+  }
+
+  return attrs;
+};
+
+/**
+ * Get verification status indicator character.
+ */
+const getVerificationIndicator = (
+  verification: Verification | null | undefined
+): string => {
+  if (!verification) return "◌"; // pending
+
+  const status = getCitationStatus(verification);
+
+  if (status.isPending) return "◌";
+  if (status.isMiss) return "✗";
+  if (status.isPartialMatch) return "⚠";
+  if (status.isVerified) return "✓";
+
+  return "◌";
+};
+
+/**
+ * Replaces citation tags in markdown text with optional replacement content.
+ *
+ * @param markdownWithCitations - The text containing <cite /> tags
+ * @param options - Configuration options
+ * @returns The text with citations replaced
+ *
+ * @example
+ * ```typescript
+ * // Remove all citations
+ * const clean = replaceCitations(llmOutput);
+ *
+ * // Leave key_span text behind
+ * const withKeySpans = replaceCitations(llmOutput, { leaveKeySpanBehind: true });
+ *
+ * // Show verification status indicators
+ * const withStatus = replaceCitations(llmOutput, {
+ *   leaveKeySpanBehind: true,
+ *   verifications: verificationMap,
+ *   showVerificationStatus: true,
+ * });
+ * // Output: "Revenue grew 45% year-over-year Revenue Growth✓"
+ * ```
+ */
+export const replaceCitations = (
+  markdownWithCitations: string,
+  options: ReplaceCitationsOptions = {}
+): string => {
+  const {
+    leaveKeySpanBehind = false,
+    verifications,
+    showVerificationStatus = false,
+  } = options;
+
+  // Track citation index for matching with numbered verification keys
+  let citationIndex = 0;
+
+  // Flexible regex that matches any <cite ... /> tag
+  const citationRegex = /<cite\s+[^>]*?\/>/g;
+
+  return markdownWithCitations.replace(citationRegex, (match) => {
+    citationIndex++;
+    const attrs = parseCiteAttributes(match);
+
+    // Determine what to output
+    let output = "";
+
+    if (leaveKeySpanBehind && attrs.key_span) {
+      // Unescape the key_span value
+      output = attrs.key_span.replace(/\\'/g, "'").replace(/\\"/g, '"');
+    }
+
+    // Add verification status if requested
+    if (showVerificationStatus && verifications) {
+      // Try to find verification by various key strategies
+      let verification: Verification | undefined;
+
+      // Strategy 1: Try numbered keys (1, 2, 3, etc.) - most common
+      const numericKey = String(citationIndex);
+      verification = verifications[numericKey];
+
+      // Strategy 2: Match by attachment_id
+      if (!verification && attrs.attachment_id) {
+        for (const [, v] of Object.entries(verifications)) {
+          if (v.attachmentId === attrs.attachment_id) {
+            verification = v;
+            break;
+          }
+        }
+      }
+
+      const indicator = getVerificationIndicator(verification);
+      output = output ? `${output}${indicator}` : indicator;
+    }
+
+    return output;
+  });
+};
+
+/**
+ * @deprecated Use `replaceCitations` instead. This function is kept for backward compatibility.
+ */
 export const removeCitations = (
-  pageText: string,
+  markdownWithCitations: string,
   leaveKeySpanBehind?: boolean
 ): string => {
-  const citationRegex =
-    /<cite\s+(?:fileId|attachmentId)='(\w{0,25})'\s+start_page[\_a-zA-Z]*='page[\_a-zA-Z]*(\d+)_index_(\d+)'\s+full_phrase='((?:[^'\\]|\\.)*)'\s+key_span='((?:[^'\\]|\\.)*)'\s+line(?:_ids|Ids)='([^']+)'(?:\s+(value|reasoning)='((?:[^'\\]|\\.)*)')?\s*\/>/g;
-
-  return pageText.replace(
-    citationRegex,
-    (
-      match,
-      attachmentId,
-      pageNumber,
-      index,
-      fullPhrase,
-      keySpan,
-      lineIds,
-      value
-    ) => {
-      //it is still value= so we need to remove the value=
-
-      if (leaveKeySpanBehind) {
-        return keySpan?.replace(/key_span=['"]|['"]/g, "") || "";
-      } else {
-        return "";
-      }
-    }
-  );
+  return replaceCitations(markdownWithCitations, { leaveKeySpanBehind });
 };
 
 export const removePageNumberMetadata = (pageText: string): string => {
