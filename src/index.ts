@@ -93,7 +93,10 @@ export {
   removeLineIdMetadata,
   removePageNumberMetadata,
   removeCitations,
+  replaceCitations,
 } from "./parsing/normalizeCitation.js";
+
+export type { ReplaceCitationsOptions } from "./parsing/normalizeCitation.js";
 
 export {
   compressPromptIds,

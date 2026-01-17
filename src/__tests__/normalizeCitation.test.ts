@@ -2,7 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import {
   getCitationPageNumber,
   normalizeCitations,
+  replaceCitations,
+  removeCitations,
 } from "../parsing/normalizeCitation.js";
+import type { Verification } from "../types/verification.js";
 
 describe("getCitationPageNumber", () => {
   it("parses page numbers from standard keys", () => {
@@ -280,5 +283,135 @@ line three' line_ids='1' />`;
       const result = normalizeCitations(input);
       expect(result).toContain("line_ids='1,2,3'");
     });
+  });
+});
+
+describe("replaceCitations", () => {
+  describe("basic replacement", () => {
+    it("removes citations completely by default", () => {
+      const input = `Revenue grew 45%<cite attachment_id='abc123' key_span='Revenue Growth' full_phrase='Revenue grew 45%' start_page_key='page_1_index_0' line_ids='1-3' /> last year.`;
+      const result = replaceCitations(input);
+      expect(result).toBe("Revenue grew 45% last year.");
+    });
+
+    it("removes citations with new attribute ordering (reasoning first)", () => {
+      const input = `Revenue grew 45%<cite attachment_id='abc123' reasoning='supports claim' key_span='Revenue Growth' full_phrase='Revenue grew 45%' start_page_key='page_1_index_0' line_ids='1-3' /> last year.`;
+      const result = replaceCitations(input);
+      expect(result).toBe("Revenue grew 45% last year.");
+    });
+
+    it("leaves key_span behind when requested", () => {
+      const input = `Revenue grew 45%<cite attachment_id='abc123' key_span='Revenue Growth' full_phrase='Revenue grew 45%' start_page_key='page_1_index_0' line_ids='1-3' /> last year.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe("Revenue grew 45%Revenue Growth last year.");
+    });
+
+    it("handles multiple citations", () => {
+      const input = `First claim<cite attachment_id='a' key_span='first' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' /> and second<cite attachment_id='b' key_span='second' full_phrase='s' start_page_key='page_2_index_0' line_ids='2' />.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe("First claimfirst and secondsecond.");
+    });
+  });
+
+  describe("with verification status", () => {
+    const verifications: Record<string, Verification> = {
+      "1": { status: "found", attachmentId: "abc123" },
+      "2": { status: "partial_text_found", attachmentId: "def456" },
+      "3": { status: "not_found", attachmentId: "ghi789" },
+      "4": { status: "pending", attachmentId: "jkl012" },
+    };
+
+    it("shows verification status indicators", () => {
+      const input = `Claim 1<cite attachment_id='abc123' key_span='claim1' full_phrase='f1' start_page_key='page_1_index_0' line_ids='1' /> and claim 2<cite attachment_id='def456' key_span='claim2' full_phrase='f2' start_page_key='page_2_index_0' line_ids='2' />.`;
+      const result = replaceCitations(input, {
+        verifications,
+        showVerificationStatus: true,
+      });
+      expect(result).toBe("Claim 1✓ and claim 2⚠.");
+    });
+
+    it("shows key_span with verification status", () => {
+      const input = `Claim<cite attachment_id='abc123' key_span='Revenue Growth' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+      const result = replaceCitations(input, {
+        leaveKeySpanBehind: true,
+        verifications,
+        showVerificationStatus: true,
+      });
+      expect(result).toBe("ClaimRevenue Growth✓.");
+    });
+
+    it("shows not found indicator", () => {
+      const input = `Claim<cite attachment_id='ghi789' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+      // This will match verification "3" (third citation)
+      const result = replaceCitations(input, {
+        verifications: { "1": { status: "not_found", attachmentId: "ghi789" } },
+        showVerificationStatus: true,
+      });
+      expect(result).toBe("Claim✗.");
+    });
+
+    it("shows pending indicator when no verification found", () => {
+      const input = `Claim<cite attachment_id='unknown' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+      const result = replaceCitations(input, {
+        verifications: {},
+        showVerificationStatus: true,
+      });
+      expect(result).toBe("Claim◌.");
+    });
+
+    it("shows pending indicator for null status", () => {
+      const input = `Claim<cite attachment_id='abc' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+      const result = replaceCitations(input, {
+        verifications: { "1": { status: null } },
+        showVerificationStatus: true,
+      });
+      expect(result).toBe("Claim◌.");
+    });
+  });
+
+  describe("attribute ordering flexibility", () => {
+    it("handles old ordering (attachment_id, start_page_key, full_phrase, key_span, line_ids)", () => {
+      const input = `Text<cite attachment_id='abc' start_page_key='page_1_index_0' full_phrase='test phrase' key_span='test' line_ids='1-3' />.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe("Texttest.");
+    });
+
+    it("handles new ordering (attachment_id, reasoning, key_span, full_phrase, start_page_key, line_ids)", () => {
+      const input = `Text<cite attachment_id='abc' reasoning='supports claim' key_span='test' full_phrase='test phrase' start_page_key='page_1_index_0' line_ids='1-3' />.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe("Texttest.");
+    });
+
+    it("handles mixed orderings in same text", () => {
+      const input = `First<cite attachment_id='a' key_span='one' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' /> second<cite attachment_id='b' reasoning='r' key_span='two' full_phrase='f' start_page_key='page_2_index_0' line_ids='2' />.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe("Firstone secondtwo.");
+    });
+  });
+
+  describe("escaped characters in key_span", () => {
+    it("unescapes single quotes in key_span", () => {
+      const input = `Text<cite attachment_id='abc' key_span='it\\'s great' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe("Textit's great.");
+    });
+
+    it("unescapes double quotes in key_span", () => {
+      const input = `Text<cite attachment_id='abc' key_span='said \\"hello\\"' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+      const result = replaceCitations(input, { leaveKeySpanBehind: true });
+      expect(result).toBe(`Textsaid "hello".`);
+    });
+  });
+});
+
+describe("removeCitations (backward compatibility)", () => {
+  it("removes citations like replaceCitations", () => {
+    const input = `Text<cite attachment_id='abc' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+    expect(removeCitations(input)).toBe("Text.");
+  });
+
+  it("supports leaveKeySpanBehind parameter", () => {
+    const input = `Text<cite attachment_id='abc' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
+    expect(removeCitations(input, true)).toBe("Texttest.");
   });
 });
