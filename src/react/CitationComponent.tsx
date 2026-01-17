@@ -336,6 +336,85 @@ interface PopoverContentProps {
   verification: Verification | null;
   status: CitationStatus;
   onImageClick?: () => void;
+  isLoading?: boolean;
+}
+
+/**
+ * Component to display searched phrases from search attempts
+ */
+function SearchedPhrasesInfo({
+  citation,
+  verification,
+}: {
+  citation: BaseCitationProps["citation"];
+  verification: Verification | null;
+}) {
+  // Collect all unique searched phrases from search attempts
+  const searchedPhrases = useMemo(() => {
+    const phrases = new Set<string>();
+
+    // Add phrases from search attempts
+    if (verification?.searchAttempts) {
+      for (const attempt of verification.searchAttempts) {
+        if (attempt.searchPhrases) {
+          for (const phrase of attempt.searchPhrases) {
+            if (phrase) phrases.add(phrase);
+          }
+        }
+      }
+    }
+
+    // Fallback to citation phrases if no search attempts
+    if (phrases.size === 0) {
+      if (citation.fullPhrase) phrases.add(citation.fullPhrase);
+      if (citation.keySpan) phrases.add(citation.keySpan.toString());
+    }
+
+    return Array.from(phrases);
+  }, [citation, verification]);
+
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (searchedPhrases.length === 0) return null;
+
+  const displayCount = isExpanded ? searchedPhrases.length : 1;
+  const hiddenCount = searchedPhrases.length - 1;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 uppercase font-medium">
+        <span>Searched {searchedPhrases.length} phrase{searchedPhrases.length !== 1 ? 's' : ''}</span>
+        {hiddenCount > 0 && !isExpanded && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 lowercase"
+          >
+            +{hiddenCount} more
+          </button>
+        )}
+        {isExpanded && hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(false)}
+            className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 lowercase"
+          >
+            collapse
+          </button>
+        )}
+      </div>
+      <div className="mt-1 space-y-1">
+        {searchedPhrases.slice(0, displayCount).map((phrase, index) => (
+          <p
+            key={index}
+            className="p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] break-words text-gray-700 dark:text-gray-300 border-l-2 border-red-400 dark:border-red-500"
+          >
+            "{phrase.length > 80 ? phrase.slice(0, 80) + '…' : phrase}"
+          </p>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function DefaultPopoverContent({
@@ -343,9 +422,10 @@ function DefaultPopoverContent({
   verification,
   status,
   onImageClick,
+  isLoading = false,
 }: PopoverContentProps) {
   const hasImage = verification?.verificationImageBase64;
-  const { isMiss, isPartialMatch } = status;
+  const { isMiss, isPartialMatch, isPending } = status;
 
   // Image view
   if (hasImage) {
@@ -379,7 +459,47 @@ function DefaultPopoverContent({
     );
   }
 
-  // Text-only view
+  // Loading/pending state view
+  if (isLoading || isPending) {
+    const searchingPhrase = citation.fullPhrase || citation.keySpan?.toString();
+    return (
+      <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
+        <div className="flex items-center gap-2">
+          <SpinnerIcon />
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            Searching...
+          </span>
+        </div>
+        {searchingPhrase && (
+          <p className="p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] break-words text-gray-600 dark:text-gray-400 italic">
+            "{searchingPhrase.length > 80 ? searchingPhrase.slice(0, 80) + '…' : searchingPhrase}"
+          </p>
+        )}
+        {citation.pageNumber && citation.pageNumber > 0 && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            Looking on page {citation.pageNumber}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // Miss state view (no image, but show what was searched)
+  if (isMiss) {
+    return (
+      <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
+        <div className="flex items-center gap-2">
+          <WarningIcon />
+          <span className="text-xs font-medium text-red-600 dark:text-red-500">
+            Not found in source
+          </span>
+        </div>
+        <SearchedPhrasesInfo citation={citation} verification={verification} />
+      </div>
+    );
+  }
+
+  // Text-only view (verified/partial match without image)
   const statusLabel = getStatusLabel(status);
   const hasSnippet = verification?.verifiedMatchSnippet;
   const pageNumber = verification?.verifiedPageNumber;
@@ -1068,11 +1188,22 @@ export const CitationComponent = forwardRef<
 
     // Popover visibility
     const isPopoverHidden = popoverPosition === "hidden";
+    // Show popover for:
+    // 1. Verification with image or snippet (verified cases)
+    // 2. Loading/pending states (informative searching message)
+    // 3. Miss states (show what was searched)
     const shouldShowPopover =
       !isPopoverHidden &&
-      verification &&
-      (verification.verificationImageBase64 ||
-        verification.verifiedMatchSnippet);
+      (
+        // Has verification with image or snippet
+        (verification && (verification.verificationImageBase64 || verification.verifiedMatchSnippet)) ||
+        // Loading/pending state
+        shouldShowSpinner ||
+        isPending ||
+        isLoading ||
+        // Miss state (show what was searched)
+        isMiss
+      );
 
     const hasImage = !!verification?.verificationImageBase64;
 
@@ -1117,6 +1248,7 @@ export const CitationComponent = forwardRef<
           citation={citation}
           verification={verification ?? null}
           status={status}
+          isLoading={isLoading || shouldShowSpinner}
           onImageClick={() => {
             if (verification?.verificationImageBase64) {
               setExpandedImageSrc(verification.verificationImageBase64);
