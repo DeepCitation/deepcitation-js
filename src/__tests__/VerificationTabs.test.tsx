@@ -18,7 +18,10 @@ describe("VerificationTabs", () => {
     it("shows check icon for exact match", () => {
       const { container } = render(<VerificationTabs expected="Test" actual="Test" />);
 
-      const checkIcon = container.querySelector(".dc-check-icon");
+      // CheckIcon is rendered inside .dc-exact-match-badge as an svg
+      const exactMatchBadge = container.querySelector(".dc-exact-match-badge");
+      expect(exactMatchBadge).toBeInTheDocument();
+      const checkIcon = exactMatchBadge?.querySelector("svg");
       expect(checkIcon).toBeInTheDocument();
     });
 
