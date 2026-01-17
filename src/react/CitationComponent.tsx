@@ -465,7 +465,7 @@ function DefaultPopoverContent({
     return (
       <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-          <SpinnerIcon className="inline-block align-baseline mr-1.5" />
+          <SpinnerIcon className="inline-block align-text-bottom mr-1.5" />
           Searching...
         </span>
         {searchingPhrase && (
@@ -487,7 +487,7 @@ function DefaultPopoverContent({
     return (
       <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
         <span className="text-xs font-medium text-red-600 dark:text-red-500">
-          <WarningIcon className="inline-block align-baseline mr-1.5" />
+          <WarningIcon className="inline-block align-text-bottom mr-1.5" />
           Not found in source
         </span>
         <SearchedPhrasesInfo citation={citation} verification={verification} />
