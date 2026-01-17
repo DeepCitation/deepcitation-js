@@ -1219,9 +1219,9 @@ export const CitationComponent = forwardRef<
       className: cn(
         "relative inline-flex items-baseline cursor-pointer",
         "px-0.5 -mx-0.5 rounded-sm",
-        "transition-all duration-150",
+        "transition-all duration-[50ms]",
         "hover:bg-blue-500/10 dark:hover:bg-blue-400/10",
-        hasImage && "hover:cursor-zoom-in",
+        hasImage && "cursor-zoom-in hover:scale-[1.02]",
         className
       ),
       onMouseEnter: handleMouseEnter,
