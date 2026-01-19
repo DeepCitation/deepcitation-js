@@ -2,7 +2,8 @@ export const CITATION_MARKDOWN_SYNTAX_PROMPT = `
 <citation-instructions priority="critical">
 ## REQUIRED: Citation Format
 
-For every claim, value, or fact; you MUST cite the attachment using this exact syntax:
+### Scope (Where to use)
+For every claim, value, or fact in your chat response; you MUST cite the attachment using this exact syntax:
 
 <cite attachment_id='ID' reasoning='why this supports the claim' full_phrase='verbatim quote' key_span='1-3 key words' start_page_key='page_number_N_index_I' line_ids='X-Y' />
 
@@ -29,8 +30,8 @@ The company reported strong growth<cite attachment_id='abc123' reasoning='direct
 ### Example Citation 2
 
 The total amount is $500 USD <cite attachment_id='abc123' reasoning='directly states the total amount' full_phrase='The total amount is $500 USD' key_span='$500 USD' start_page_key='page_number_2_index_1' line_ids='12-14' />
-
 </citation-instructions>
+
 `;
 
 export const AV_CITATION_MARKDOWN_SYNTAX_PROMPT = `
@@ -63,12 +64,12 @@ For every claim, value, or fact; you MUST cite the attachment using this exact s
  * A brief reminder to reinforce citation requirements in user messages.
  * Use this when you want to add emphasis without repeating full instructions.
  */
-export const CITATION_REMINDER = `<citation-reminder>Remember: You MUST use <cite /> tags with all required attributes for every claim, value, or fact from attachments.</citation-reminder>`;
+export const CITATION_REMINDER = `<citation-reminder>STOP and CHECK: Did you use <cite /> tags with all required attributes for every claim, value, or fact from attachments?</citation-reminder>`;
 
 /**
  * Audio/video version of the citation reminder.
  */
-export const CITATION_AV_REMINDER = `<citation-reminder>Remember: You MUST use <cite /> tags with timestamps for every claim, value, or fact from source media.</citation-reminder>`;
+export const CITATION_AV_REMINDER = `<citation-reminder>STOP and CHECK: Did you use <cite /> tags with timestamps for every claim, value, or fact from source media?</citation-reminder>`;
 
 export interface WrapSystemPromptOptions {
   /** The original system prompt to wrap with citation instructions */

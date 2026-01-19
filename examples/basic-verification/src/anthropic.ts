@@ -21,6 +21,7 @@ import {
   getCitationStatus,
   replaceCitations,
   getAllCitationsFromLlmOutput,
+  getVerificationTextIndicator,
 } from "@deepcitation/deepcitation-js";
 
 // Get current directory for loading sample file
@@ -71,11 +72,33 @@ provided documents accurately and cite your sources.`;
 
   const userQuestion = process.env.USER_PROMPT || "Summarize the key information shown in this document.";
 
+  // Show before prompts
+  console.log("📋 System Prompt (BEFORE):");
+  console.log("─".repeat(50));
+  console.log(systemPrompt);
+  console.log("─".repeat(50) + "\n");
+
+  console.log("📋 User Prompt (BEFORE):");
+  console.log("─".repeat(50));
+  console.log(userQuestion);
+  console.log("─".repeat(50) + "\n");
+
   const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
     systemPrompt,
     userPrompt: userQuestion,
     deepTextPromptPortion,
   });
+
+  // Show after prompts
+  console.log("📋 System Prompt (AFTER):");
+  console.log("─".repeat(50));
+  console.log(enhancedSystemPrompt);
+  console.log("─".repeat(50) + "\n");
+
+  console.log("📋 User Prompt (AFTER):");
+  console.log("─".repeat(50));
+  console.log(enhancedUserPrompt);
+  console.log("─".repeat(50) + "\n");
 
   // ============================================
   // STEP 2: CALL LLM
@@ -185,24 +208,10 @@ provided documents accurately and cite your sources.`;
 
     for (const [key, verification] of verifications) {
       const status = getCitationStatus(verification);
-      const statusIcon = status.isVerified
-        ? status.isPartialMatch
-          ? "⚠️ "
-          : "✅"
-        : status.isPending
-        ? "⏳"
-        : "❌";
-
-      const statusLabel = status.isVerified
-        ? status.isPartialMatch
-          ? "PARTIAL MATCH"
-          : "VERIFIED"
-        : status.isPending
-        ? "PENDING"
-        : "NOT FOUND";
+      const statusIndicator = getVerificationTextIndicator(verification);
 
       console.log(`${"═".repeat(60)}`);
-      console.log(`Citation [${key}]: ${statusIcon} ${statusLabel}`);
+      console.log(`Citation [${key}]: ${statusIndicator} ${status}`);
       console.log(`${"─".repeat(60)}`);
 
       // Original citation from LLM
@@ -236,7 +245,6 @@ provided documents accurately and cite your sources.`;
   console.log("─".repeat(50));
   console.log(
     replaceCitations(llmResponse, {
-      leaveKeySpanBehind: true,
       verifications: verificationResult.verifications,
       showVerificationStatus: true,
     })
@@ -246,6 +254,9 @@ provided documents accurately and cite your sources.`;
   // Summary statistics
   const verified = verifications.filter(
     ([, h]) => getCitationStatus(h).isVerified
+  ).length;
+  const partial = verifications.filter(
+    ([, h]) => getCitationStatus(h).isPartialMatch
   ).length;
   const missed = verifications.filter(
     ([, h]) => getCitationStatus(h).isMiss
@@ -259,6 +270,11 @@ provided documents accurately and cite your sources.`;
         (verified / verifications.length) *
         100
       ).toFixed(0)}%)`
+    );
+    console.log(`   Partial: ${partial} (${(
+      (partial / verifications.length) *
+      100
+    ).toFixed(0)}%)`
     );
     console.log(`   Not found: ${missed}`);
   }
