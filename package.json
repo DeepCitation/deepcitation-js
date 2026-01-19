@@ -20,6 +20,7 @@
     "sideEffects": false,
     "files": [
         "lib",
+        "src/tailwind.css",
         "LICENSE"
     ],
     "scripts": {
@@ -123,7 +124,8 @@
             "types": "./lib/types/index.d.ts",
             "import": "./lib/types/index.js",
             "require": "./lib/types/index.cjs"
-        }
+        },
+        "./tailwind.css": "./src/tailwind.css"
     },
     "keywords": [
         "citation",
