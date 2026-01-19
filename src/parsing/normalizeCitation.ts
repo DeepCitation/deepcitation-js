@@ -243,6 +243,15 @@ export const getCitationPageNumber = (
 export const normalizeCitations = (response: string): string => {
   let trimmedResponse = response?.trim() || "";
 
+  // Fix missing < before cite tags
+  // LLMs sometimes output 'cite' without the leading '<'
+  // Match 'cite' followed by a space and attribute pattern, but NOT preceded by '<' or a letter
+  // This avoids matching words like "excite" or "recite"
+  trimmedResponse = trimmedResponse.replace(
+    /(?<![<a-zA-Z])cite\s+(attachment_id|file_id|fileId|attachmentId)\s*=/gi,
+    "<cite $1="
+  );
+
   const citationParts = trimmedResponse.split(
     /(<cite[\s\S]*?(?:\/>|<\/cite>))/gm
   );
