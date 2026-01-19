@@ -349,7 +349,7 @@ describe("replaceCitations", () => {
         verifications,
         showVerificationStatus: true,
       });
-      expect(result).toBe("Claim 1✓ and claim 2⚠.");
+      expect(result).toBe("Claim 1☑️ and claim 2✅.");
     });
 
     it("shows key_span with verification status", () => {
@@ -359,7 +359,7 @@ describe("replaceCitations", () => {
         verifications,
         showVerificationStatus: true,
       });
-      expect(result).toBe("ClaimRevenue Growth✓.");
+      expect(result).toBe("ClaimRevenue Growth☑️.");
     });
 
     it("shows not found indicator", () => {
@@ -369,7 +369,7 @@ describe("replaceCitations", () => {
         verifications: { "1": { status: "not_found", attachmentId: "ghi789" } },
         showVerificationStatus: true,
       });
-      expect(result).toBe("Claim✗.");
+      expect(result).toBe("Claim❌.");
     });
 
     it("shows pending indicator when no verification found", () => {
@@ -378,7 +378,7 @@ describe("replaceCitations", () => {
         verifications: {},
         showVerificationStatus: true,
       });
-      expect(result).toBe("Claim◌.");
+      expect(result).toBe("Claim⌛.");
     });
 
     it("shows pending indicator for null status", () => {
@@ -387,7 +387,7 @@ describe("replaceCitations", () => {
         verifications: { "1": { status: null } },
         showVerificationStatus: true,
       });
-      expect(result).toBe("Claim◌.");
+      expect(result).toBe("Claim⌛.");
     });
   });
 
@@ -495,9 +495,9 @@ describe("replaceCitations with citationKey matching", () => {
     });
 
     // Each citation should have its own correct indicator
-    // citation1 = found (✓), citation2 = not_found (✗), citation3 = partial (⚠)
+    // citation1 = found (☑️), citation2 = not_found (❌), citation3 = partial (✅)
     expect(result).toBe(
-      `${citation1.fullPhrase}✓ and ${citation2.fullPhrase}✗ and ${citation3.fullPhrase}⚠.`
+      `${citation1.fullPhrase}☑️ and ${citation2.fullPhrase}❌ and ${citation3.fullPhrase}✅.`
     );
   });
 
@@ -525,7 +525,7 @@ describe("replaceCitations with citationKey matching", () => {
       showVerificationStatus: true,
     });
 
-    expect(result).toBe("Quote✓.");
+    expect(result).toBe("Quote☑️.");
   });
 
   it("falls back to numeric key when citationKey does not match", () => {
@@ -542,7 +542,7 @@ describe("replaceCitations with citationKey matching", () => {
       showVerificationStatus: true,
     });
 
-    expect(result).toBe("First✓ second✗.");
+    expect(result).toBe("First☑️ second❌.");
   });
 
   it("shows pending indicator when neither citationKey nor numeric key matches", () => {
@@ -557,7 +557,7 @@ describe("replaceCitations with citationKey matching", () => {
       showVerificationStatus: true,
     });
 
-    expect(result).toBe("Claim◌.");
+    expect(result).toBe("Claim⌛.");
   });
 
   it("correctly handles real-world medical chart scenario with 5+ citations", () => {
@@ -600,9 +600,9 @@ describe("replaceCitations with citationKey matching", () => {
     });
 
     // Verify each citation gets its correct indicator
-    // found=✓, not_found=✗, partial=⚠
+    // found=☑️, not_found=❌, partial=✅
     expect(result).toBe(
-      "Patient: John Doe, 50/M✓ Allergies: NKDA✓ Heparin 12 u/hr✗ Dobutamine 2.5 mcg/kg⚠ Na+ 138✓"
+      "Patient: John Doe, 50/M☑️ Allergies: NKDA☑️ Heparin 12 u/hr❌ Dobutamine 2.5 mcg/kg✅ Na+ 138☑️"
     );
   });
 });

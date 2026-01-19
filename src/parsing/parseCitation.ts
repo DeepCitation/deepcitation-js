@@ -61,24 +61,12 @@ export function getCitationStatus(
 ): CitationStatus {
   const status = verification?.status;
 
-  const isMiss = status === "not_found";
-  const isFullMatchWithMissedValue = status === "found_phrase_missed_value";
-  const isFoundValueMissedFullMatch = status === "found_key_span_only";
+  const isMiss = ["not_found"].includes(status || "");
+  
+  const isVerified =  ["found", "found_key_span_only", "found_phrase_missed_value"].includes(status || "");
+  const isPartialMatch = ["partial_text_found", "found_on_other_page", "found_on_other_line", "first_word_found"].includes(status || "");
 
-  const isPartialMatch =
-    status === "partial_text_found" ||
-    status === "found_on_other_page" ||
-    status === "found_on_other_line" ||
-    status === "first_word_found";
-
-  const isVerified =
-    status === "found" ||
-    isFoundValueMissedFullMatch ||
-    isPartialMatch ||
-    isFullMatchWithMissedValue;
-
-  const isPending =
-    status === "pending" || status === "loading" || !status;
+  const isPending = ["pending", "loading", null, undefined].includes(status || "");
 
   return { isVerified, isMiss, isPartialMatch, isPending };
 }
