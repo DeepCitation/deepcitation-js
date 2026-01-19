@@ -45,7 +45,7 @@ describe("getCitationStatus", () => {
   });
 
   describe("explicit status coverage", () => {
-    it("treats found_on_other_page as partial match and verified", () => {
+    it("treats found_on_other_page as partial match but not verified", () => {
       const verification: Verification = {
         citation: {
           keySpan: "term",
@@ -59,12 +59,12 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(true);
+      expect(status.isVerified).toBe(false);
       expect(status.isMiss).toBe(false);
       expect(status.isPending).toBe(false);
     });
 
-    it("treats found_on_other_line as partial match and verified", () => {
+    it("treats found_on_other_line as partial match but not verified", () => {
       const verification: Verification = {
         citation: {
           keySpan: "term",
@@ -80,10 +80,10 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(true);
+      expect(status.isVerified).toBe(false);
     });
 
-    it("treats first_word_found as partial match and verified", () => {
+    it("treats first_word_found as partial match but not verified", () => {
       const verification: Verification = {
         citation: {
           keySpan: "term",
@@ -97,10 +97,10 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(true);
+      expect(status.isVerified).toBe(false);
     });
 
-    it("treats partial_text_found as partial match and verified", () => {
+    it("treats partial_text_found as partial match but not verified", () => {
       const verification: Verification = {
         citation: {
           keySpan: "term",
@@ -113,7 +113,7 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(true);
+      expect(status.isVerified).toBe(false);
     });
 
     it("treats found_key_span_only as verified but not partial", () => {

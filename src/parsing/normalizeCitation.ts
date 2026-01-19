@@ -67,7 +67,7 @@ const parseCiteAttributes = (
 
 /**
  * Get verification status indicator character for plain text/terminal output.
- * Returns: ✓ (verified), ⚠ (partial), ✗ (not found), ◌ (pending)
+ * Returns: ☑️ (fully verified), ✅ (partial match), ❌ (not found), ⌛ (pending/null), ◌ (unknown)
  *
  * For web UI, use the React CitationComponent instead which provides
  * proper styled indicators with colors and accessibility.
@@ -75,14 +75,17 @@ const parseCiteAttributes = (
 export const getVerificationTextIndicator = (
   verification: Verification | null | undefined
 ): string => {
-  if (!verification) return "◌"; // pending
+  if (!verification) return "⌛";
 
   const status = getCitationStatus(verification);
 
-  if (status.isPending) return "◌";
-  if (status.isMiss) return "✗";
-  if (status.isPartialMatch) return "⚠";
-  if (status.isVerified) return "✓";
+  if (status.isMiss) return "❌";
+  // Check for fully verified (not partial) first
+  if (status.isVerified && !status.isPartialMatch) return "☑️";
+  // Then check for partial match
+  if (status.isPartialMatch) return "✅";
+
+  if (status.isPending) return "⌛";
 
   return "◌";
 };
@@ -156,7 +159,25 @@ export const replaceCitations = (
 
       const parseLineIds = (lineIdsStr?: string): number[] | undefined => {
         if (!lineIdsStr) return undefined;
-        const nums = lineIdsStr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+
+        // First expand ranges (e.g., "62-63" -> "62,63")
+        let expanded = lineIdsStr.replace(
+          /(\d+)-(\d+)/g,
+          (_match, start, end) => {
+            const startNum = parseInt(start, 10);
+            const endNum = parseInt(end, 10);
+            if (startNum <= endNum) {
+              const range = [];
+              for (let i = startNum; i <= endNum; i++) {
+                range.push(i);
+              }
+              return range.join(",");
+            }
+            return start;
+          }
+        );
+
+        const nums = expanded.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
         return nums.length > 0 ? nums : undefined;
       };
 
