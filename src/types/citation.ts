@@ -48,17 +48,17 @@ export interface CitationStatus {
 
 /**
  * Extended citation type for Anthropic-style web search citations.
- * Includes URL, title, and context metadata for aggregated sources display.
+ * Includes URL, title, and source metadata for aggregated sources display.
+ *
+ * Maps to existing Citation fields:
+ * - `fullPhrase` = the context/excerpt from the source
+ * - `keySpan` = the specific cited text (the key phrase being referenced)
  */
 export interface SourceCitation extends Citation {
   /** The source URL */
   url?: string;
-  /** Page/document title */
+  /** Page/document title (e.g., "Q4 Financial Report") */
   title?: string;
-  /** Relevant excerpt or context from the source */
-  context?: string;
-  /** The specific text being cited */
-  citedText?: string;
   /** Display domain (e.g., "example.com") */
   domain?: string;
   /** Platform/source type for grouping and display */

@@ -27,11 +27,16 @@ function getFaviconUrl(url: string, customFaviconUrl?: string): string {
  * Detects source type from URL domain.
  */
 export function detectSourceType(url: string): SourceType {
+  // Validate URL format
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return "unknown";
+  }
+
   try {
     const domain = extractDomain(url).toLowerCase();
 
     // Social media
-    if (domain.includes("twitter.com") || domain.includes("x.com")) return "social";
+    if (domain.includes("twitter.com") || domain === "x.com" || domain.endsWith(".x.com")) return "social";
     if (domain.includes("facebook.com") || domain.includes("instagram.com")) return "social";
     if (domain.includes("linkedin.com")) return "social";
     if (domain.includes("threads.net") || domain.includes("mastodon")) return "social";
@@ -81,7 +86,7 @@ export function detectSourceType(url: string): SourceType {
  * Gets a human-readable platform name from domain.
  */
 export function getPlatformName(url: string, domain?: string): string {
-  const d = domain || extractDomain(url);
+  const d = (domain || extractDomain(url)).toLowerCase();
 
   // Map known domains to platform names
   const platformMap: Record<string, string> = {
@@ -112,9 +117,9 @@ export function getPlatformName(url: string, domain?: string): string {
   // Check for exact match first
   if (platformMap[d]) return platformMap[d];
 
-  // Check if domain contains any key
+  // Check if domain ends with or equals a known domain (e.g., "en.wikipedia.org" matches "wikipedia.org")
   for (const [key, name] of Object.entries(platformMap)) {
-    if (d.includes(key.split(".")[0])) return name;
+    if (d === key || d.endsWith("." + key)) return name;
   }
 
   // Capitalize first letter of domain

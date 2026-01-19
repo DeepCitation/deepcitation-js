@@ -460,16 +460,14 @@ For web search / URL-based citations, use the extended `SourceCitation` type:
 import type { SourceCitation, SourceMeta } from "@deepcitation/deepcitation-js";
 
 const citation: SourceCitation = {
-  // Base Citation fields
-  fullPhrase: "The revenue grew by 15%",
-  keySpan: "revenue growth",
+  // Base Citation fields (inherited from Citation)
+  fullPhrase: "According to the Q4 report, revenue grew by 15%...",  // Context/excerpt
+  keySpan: "revenue grew by 15%",  // Specific cited text
   citationNumber: 1,
   // Extended source fields
   url: "https://example.com/report",
   title: "Q4 Financial Report",
   domain: "example.com",
-  context: "According to the latest financial report...",
-  citedText: "revenue grew by 15%",
   sourceType: "news",
   faviconUrl: "https://example.com/favicon.ico",
   accessedAt: new Date(),
