@@ -44,6 +44,9 @@ const STATUS_ICONS: Record<UrlFetchStatus, { icon: string; label: string; classN
   verified: { icon: "✓", label: "Verified", className: "text-green-600 dark:text-green-500" },
   partial: { icon: "~", label: "Partial match", className: "text-amber-600 dark:text-amber-500" },
   pending: { icon: "…", label: "Verifying", className: "text-gray-400 dark:text-gray-500" },
+  accessible: { icon: "○", label: "Accessible", className: "text-blue-500 dark:text-blue-400" },
+  redirected: { icon: "↪", label: "Redirected", className: "text-amber-600 dark:text-amber-500" },
+  redirected_valid: { icon: "↪✓", label: "Redirected (valid)", className: "text-green-600 dark:text-green-500" },
   blocked_antibot: { icon: "🛡", label: "Blocked by anti-bot", className: "text-amber-600 dark:text-amber-500" },
   blocked_login: { icon: "🔒", label: "Login required", className: "text-amber-600 dark:text-amber-500" },
   blocked_paywall: { icon: "💳", label: "Paywall", className: "text-amber-600 dark:text-amber-500" },
@@ -71,10 +74,24 @@ export function isErrorStatus(status: UrlFetchStatus): boolean {
 }
 
 /**
+ * Checks if status indicates the URL is accessible (may not have verified content yet).
+ */
+export function isAccessibleStatus(status: UrlFetchStatus): boolean {
+  return status === "verified" || status === "partial" || status === "accessible" || status === "redirected_valid";
+}
+
+/**
+ * Checks if status indicates a redirect occurred.
+ */
+export function isRedirectedStatus(status: UrlFetchStatus): boolean {
+  return status === "redirected" || status === "redirected_valid";
+}
+
+/**
  * Checks if URL was successfully verified.
  */
 export function isVerifiedStatus(status: UrlFetchStatus): boolean {
-  return status === "verified" || status === "partial";
+  return status === "verified" || status === "partial" || status === "redirected_valid";
 }
 
 /**

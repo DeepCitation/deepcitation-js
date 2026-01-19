@@ -22,10 +22,14 @@ export type {
   CitationEventHandlers,
   CitationVariant as CitationVariantType,
   CitationContent,
+  // URL citation types
   UrlFetchStatus,
   UrlCitationMeta,
   UrlCitationProps,
   UrlCitationVariant,
+  // URL content verification types
+  ContentMatchStatus,
+  UrlVerificationMeta,
   // Behavior configuration types
   CitationBehaviorConfig,
   CitationBehaviorContext,
@@ -45,6 +49,8 @@ export {
   extractDomain,
   isBlockedStatus,
   isErrorStatus,
+  isAccessibleStatus,
+  isRedirectedStatus,
   isVerifiedStatus,
 } from "./UrlCitationComponent.js";
 

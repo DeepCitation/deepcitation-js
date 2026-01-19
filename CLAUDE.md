@@ -474,6 +474,78 @@ const citation: SourceCitation = {
 };
 ```
 
+### 10. URL/Web Content Verification
+
+When AI generates content that references URLs (e.g., "According to example.com..."), you can verify:
+1. **URL accessibility** - Does the URL return 200? Is it blocked/paywalled?
+2. **URL resolution** - Did it redirect? To where?
+3. **Content match** - Does the page contain what the AI claims?
+
+#### URL Access Status
+
+| Status | Description |
+|--------|-------------|
+| `verified` | URL accessible and content verified |
+| `partial` | URL accessible, partial content match |
+| `accessible` | URL accessible but content not yet verified |
+| `redirected` | URL redirected to different domain |
+| `redirected_valid` | URL redirected but content still valid |
+| `blocked_*` | URL blocked (antibot, login, paywall, geo, rate_limit) |
+| `error_*` | URL error (timeout, not_found, server, network) |
+
+#### Content Match Status
+
+| Status | Description |
+|--------|-------------|
+| `exact` | Content exactly matches AI's claim |
+| `partial` | Content partially matches (paraphrase, summary) |
+| `mismatch` | URL exists but content doesn't match claim |
+| `not_found` | Claimed content not found on page |
+| `not_checked` | Content not yet verified |
+| `inconclusive` | Could not determine match |
+
+#### Verification Model
+
+The `Verification` type includes URL-specific fields:
+
+```typescript
+interface Verification {
+  // ... existing document verification fields ...
+
+  // URL/Web Content Verification Fields
+  verifiedUrl?: string;           // The URL that was verified
+  resolvedUrl?: string;           // Actual URL after redirects
+  httpStatus?: number;            // HTTP status code
+  urlAccessStatus?: UrlAccessStatus;    // URL accessibility
+  contentMatchStatus?: ContentMatchStatus;  // Content verification
+  contentSimilarity?: number;     // Similarity score (0-1)
+  verifiedTitle?: string;         // Page title found
+  actualContentSnippet?: string;  // Snippet of actual content
+  webPageScreenshotBase64?: string;  // Screenshot proof
+  crawledAt?: Date | string;      // When URL was fetched
+  urlVerificationError?: string;  // Error message if failed
+}
+```
+
+#### Helper Functions
+
+```typescript
+import {
+  isBlockedStatus,
+  isErrorStatus,
+  isAccessibleStatus,
+  isRedirectedStatus,
+  isVerifiedStatus,
+} from "@deepcitation/deepcitation-js/react";
+
+// Check URL status categories
+isBlockedStatus("blocked_paywall");  // true
+isErrorStatus("error_not_found");    // true
+isAccessibleStatus("verified");      // true
+isRedirectedStatus("redirected");    // true
+isVerifiedStatus("partial");         // true
+```
+
 ## API Endpoints
 
 - `POST https://api.deepcitation.com/prepareFile` - Upload and process source documents

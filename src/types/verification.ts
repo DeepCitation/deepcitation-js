@@ -16,6 +16,34 @@ export const BLANK_VERIFICATION: Verification = {
   status: "not_found",
 };
 
+/**
+ * Content match status for URL/web content verification.
+ * Used when verifying that a URL contains what the AI claimed.
+ */
+export type ContentMatchStatus =
+  | "exact" // Content exactly matches AI's claim
+  | "partial" // Content partially matches (paraphrase, summary)
+  | "mismatch" // URL exists but content doesn't match claim
+  | "not_found" // Claimed content not found on page
+  | "not_checked" // Content not yet verified (URL inaccessible or pending)
+  | "inconclusive"; // Could not determine match (e.g., dynamic content)
+
+/**
+ * URL access status for web content verification.
+ */
+export type UrlAccessStatus =
+  | "accessible" // URL returned 200 OK
+  | "redirected" // URL redirected to different domain
+  | "redirected_same_domain" // URL redirected within same domain
+  | "not_found" // 404 error
+  | "forbidden" // 403 error
+  | "server_error" // 5xx error
+  | "timeout" // Request timed out
+  | "blocked" // Blocked by paywall/login/antibot
+  | "network_error" // DNS/connection error
+  | "pending" // Not yet checked
+  | "unknown"; // Unknown status
+
 export interface Verification {
   attachmentId?: string | null;
 
@@ -51,4 +79,42 @@ export interface Verification {
   verificationImageBase64?: string | null;
 
   verifiedAt?: Date;
+
+  // ==========================================================================
+  // URL/Web Content Verification Fields
+  // Used when verifying AI-generated URL claims (e.g., "According to example.com...")
+  // ==========================================================================
+
+  /** The URL that was verified (from SourceCitation.url) */
+  verifiedUrl?: string | null;
+
+  /** The actual URL after following redirects */
+  resolvedUrl?: string | null;
+
+  /** HTTP status code returned */
+  httpStatus?: number | null;
+
+  /** URL accessibility status */
+  urlAccessStatus?: UrlAccessStatus | null;
+
+  /** Whether the page content matches what the AI claimed */
+  contentMatchStatus?: ContentMatchStatus | null;
+
+  /** Similarity score between expected and actual content (0-1) */
+  contentSimilarity?: number | null;
+
+  /** The page title found at the URL */
+  verifiedTitle?: string | null;
+
+  /** Snippet of actual content found on the page */
+  actualContentSnippet?: string | null;
+
+  /** Screenshot of the web page as verification proof */
+  webPageScreenshotBase64?: string | null;
+
+  /** When the URL was crawled/fetched */
+  crawledAt?: Date | string | null;
+
+  /** Error message if URL verification failed */
+  urlVerificationError?: string | null;
 }

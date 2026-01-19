@@ -42,12 +42,16 @@ export type CitationContent =
   | "indicator"; // Only show status icon
 
 /**
- * URL fetch status for URL citations.
+ * URL fetch/access status for URL citations.
+ * Covers HTTP accessibility and redirect scenarios.
  */
 export type UrlFetchStatus =
-  | "verified" // URL content verified successfully
-  | "partial" // Partial content match
+  | "verified" // URL accessible and content verified
+  | "partial" // URL accessible, partial content match
   | "pending" // Verification in progress
+  | "accessible" // URL accessible but content not yet verified
+  | "redirected" // URL redirected to different domain
+  | "redirected_valid" // URL redirected but content still valid
   | "blocked_antibot" // Blocked by anti-bot protection (Cloudflare, etc.)
   | "blocked_login" // Requires login/authentication
   | "blocked_paywall" // Behind paywall
@@ -58,6 +62,27 @@ export type UrlFetchStatus =
   | "error_server" // 5xx server error
   | "error_network" // Network/DNS error
   | "unknown"; // Unknown status
+
+/**
+ * Content match status for URL verification.
+ * Used when verifying that a URL contains what the AI claimed.
+ *
+ * | Status        | Description                                              |
+ * |---------------|----------------------------------------------------------|
+ * | `exact`       | Content exactly matches AI's claim                       |
+ * | `partial`     | Content partially matches (paraphrase, summary)          |
+ * | `mismatch`    | URL exists but content doesn't match claim               |
+ * | `not_found`   | Claimed content not found on page                        |
+ * | `not_checked` | Content not yet verified (URL inaccessible or pending)   |
+ * | `inconclusive`| Could not determine match (e.g., dynamic content)        |
+ */
+export type ContentMatchStatus =
+  | "exact" // Content exactly matches AI's claim
+  | "partial" // Content partially matches (paraphrase, summary)
+  | "mismatch" // URL exists but content doesn't match claim
+  | "not_found" // Claimed content not found on page
+  | "not_checked" // Content not yet verified (URL inaccessible or pending)
+  | "inconclusive"; // Could not determine match (e.g., dynamic content)
 
 /**
  * URL citation metadata.
@@ -79,6 +104,31 @@ export interface UrlCitationMeta {
   errorMessage?: string;
   /** Favicon URL if available */
   faviconUrl?: string;
+}
+
+/**
+ * Extended URL citation metadata with content verification.
+ * Used when verifying AI-generated URL claims.
+ */
+export interface UrlVerificationMeta extends UrlCitationMeta {
+  /** The URL after following redirects (if different from original) */
+  resolvedUrl?: string;
+  /** Domain of resolved URL (if redirected) */
+  resolvedDomain?: string;
+  /** Content match status - whether the page contains what AI claimed */
+  contentMatch?: ContentMatchStatus;
+  /** The text/claim AI made about this URL (what we're verifying) */
+  expectedContent?: string;
+  /** Snippet of actual content found on the page */
+  actualContentSnippet?: string;
+  /** Similarity score between expected and actual content (0-1) */
+  contentSimilarity?: number;
+  /** The page title found (may differ from AI's claim) */
+  actualTitle?: string;
+  /** Screenshot or visual proof of the page */
+  screenshotBase64?: string;
+  /** When the page content was last crawled/fetched */
+  crawledAt?: Date | string;
 }
 
 /**
