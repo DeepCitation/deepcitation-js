@@ -102,6 +102,7 @@ export {
   removePageNumberMetadata,
   removeCitations,
   replaceCitations,
+  getVerificationTextIndicator,
 } from "./parsing/normalizeCitation.js";
 
 export type { ReplaceCitationsOptions } from "./parsing/normalizeCitation.js";
