@@ -39,7 +39,7 @@ The simplest integration showing the complete workflow:
 
 ```typescript
 // 1. Upload documents
-const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles([...]);
+const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([...]);
 
 // 2. Wrap prompts with citation instructions
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
@@ -52,7 +52,7 @@ const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
 const response = await llm.chat({ messages: [...] });
 
 // 4. Verify citations
-const result = await dc.verifyAll({ llmOutput: response });
+const result = await deepcitation.verify({ llmOutput: response });
 
 // 5. Check status
 for (const [key, verification] of Object.entries(result.verifications)) {

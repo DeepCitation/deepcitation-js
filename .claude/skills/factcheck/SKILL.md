@@ -37,7 +37,7 @@ When executing this skill, follow these steps:
 Read the source files and upload them to DeepCitation:
 ```typescript
 const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
-const { fileDataParts } = await dc.prepareFiles([
+const { fileDataParts } = await deepcitation.prepareFiles([
   { file: readFileSync(sourcePath), filename: basename(sourcePath) }
 ]);
 const attachmentId = fileDataParts[0].attachmentId;
@@ -55,7 +55,7 @@ For each claim, note the exact text and extract a key span (1-3 important words)
 ### Step 2: Verify Claims
 For each claim, use DeepCitation to verify against the sources:
 ```typescript
-const result = await dc.verify(attachmentId, {
+const result = await deepcitation.verify(attachmentId, {
   "claim-1": { fullPhrase: "exact claim text", keySpan: "key words" }
 });
 const status = getCitationStatus(result.verifications["claim-1"]);
@@ -71,7 +71,7 @@ For each claim, think adversarially and generate 2-3 counter-arguments:
 ### Step 4: Search for Counter-Evidence
 For each counter-argument search phrase, verify against sources:
 ```typescript
-const counterResult = await dc.verify(attachmentId, {
+const counterResult = await deepcitation.verify(attachmentId, {
   "counter-1": { fullPhrase: searchPhrase, keySpan: searchPhrase.split(" ").slice(0,2).join(" ") }
 });
 ```

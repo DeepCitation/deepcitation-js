@@ -254,7 +254,7 @@ describe("DeepCitation Client", () => {
     });
   });
 
-  describe("verifyAll", () => {
+  describe("verify", () => {
     it("parses and verifies citations from LLM output", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
 
@@ -295,7 +295,7 @@ describe("DeepCitation Client", () => {
       const llmOutput =
         "The company showed strong growth. <cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Revenue grew 15%' key_span='15%' line_ids='1' />";
 
-      const result = await client.verifyAll({
+      const result = await client.verify({
         llmOutput,
       });
 
@@ -321,7 +321,7 @@ describe("DeepCitation Client", () => {
         }),
       } as Response);
 
-      const result = await client.verifyAll({
+      const result = await client.verify({
         llmOutput:
           "<cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' key_span='Test' line_ids='1' />",
       });
@@ -332,7 +332,7 @@ describe("DeepCitation Client", () => {
     it("returns empty verifications when no citations in output", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
 
-      const result = await client.verifyAll({
+      const result = await client.verify({
         llmOutput: "Just plain text with no citations.",
       });
 
@@ -340,7 +340,7 @@ describe("DeepCitation Client", () => {
     });
   });
 
-  describe("verify", () => {
+  describe("verifyAttachment", () => {
     it("verifies citations with attachmentId and citation map", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
 
@@ -354,7 +354,7 @@ describe("DeepCitation Client", () => {
         }),
       } as Response);
 
-      const result = await client.verify("file_abc", {
+      const result = await client.verifyAttachment("file_abc", {
         "1": {
           pageNumber: 1,
           fullPhrase: "test phrase",
@@ -375,7 +375,7 @@ describe("DeepCitation Client", () => {
       } as Response);
 
       await expect(
-        client.verify("unknown_file", {
+        client.verifyAttachment("unknown_file", {
           "1": { fullPhrase: "test" },
         })
       ).rejects.toThrow("File not found");
@@ -384,7 +384,7 @@ describe("DeepCitation Client", () => {
     it("returns empty verifications when no citations provided", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
 
-      const result = await client.verify("file_abc", {});
+      const result = await client.verifyAttachment("file_abc", {});
 
       expect(result.verifications).toEqual({});
       expect(mockFetch).not.toHaveBeenCalled();

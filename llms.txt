@@ -101,21 +101,21 @@ For URLs or Office documents, use `convertToPdf()` followed by `prepareConverted
 const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
 
 // Convert a URL to PDF
-const result = await dc.convertToPdf("https://example.com/article");
+const result = await deepcitation.convertToPdf("https://example.com/article");
 
 // Or convert an Office document
-const result = await dc.convertToPdf({
+const result = await deepcitation.convertToPdf({
   file: docxBuffer,
   filename: "report.docx"
 });
 
 // Then prepare for citation verification
-const { deepTextPromptPortion, attachmentId } = await dc.prepareConvertedFile({
+const { deepTextPromptPortion, attachmentId } = await deepcitation.prepareConvertedFile({
   attachmentId: result.attachmentId
 });
 
 // Use deepTextPromptPortion in LLM prompt, then verify citations
-const verified = await dc.verifyCitations(attachmentId, citations);
+const verified = await deepcitation.verifyCitations(attachmentId, citations);
 ```
 
 ### `convertToPdf(input)`

@@ -153,8 +153,8 @@ provided documents accurately and cite your sources.`;
 
   console.log("🔍 Step 3: Verifying citations against source document...\n");
 
-  // Option A: Let DeepCitation parse and verify automatically (simplest)
-  // const verificationResult = await deepcitation.verifyAll({
+  // Option A: Let DeepCitation parse and verify automatically (recommended)
+  // const verificationResult = await deepcitation.verify({
   //   llmOutput: llmResponse,
   // });
 
@@ -179,7 +179,7 @@ provided documents accurately and cite your sources.`;
     return;
   }
 
-  const verificationResult = await deepcitation.verify(
+  const verificationResult = await deepcitation.verifyAttachment(
     attachmentId,
     parsedCitations
   );

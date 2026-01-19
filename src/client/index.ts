@@ -9,7 +9,9 @@ export type {
   FileInput,
   FileDataPart,
   PrepareFilesResult,
-  VerifyCitationsFromLlmOutput,
+  VerifyInput,
+  /** @deprecated Use VerifyInput instead */
+  verifyAll,
   ConvertFileInput,
   ConvertFileResponse,
   PrepareConvertedFileOptions,
