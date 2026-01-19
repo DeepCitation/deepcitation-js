@@ -64,9 +64,13 @@ const parseCiteAttributes = (
 };
 
 /**
- * Get verification status indicator character.
+ * Get verification status indicator character for plain text/terminal output.
+ * Returns: ✓ (verified), ⚠ (partial), ✗ (not found), ◌ (pending)
+ *
+ * For web UI, use the React CitationComponent instead which provides
+ * proper styled indicators with colors and accessibility.
  */
-const getVerificationIndicator = (
+export const getVerificationTextIndicator = (
   verification: Verification | null | undefined
 ): string => {
   if (!verification) return "◌"; // pending
@@ -80,6 +84,9 @@ const getVerificationIndicator = (
 
   return "◌";
 };
+
+/** @internal Used by replaceCitations */
+const getVerificationIndicator = getVerificationTextIndicator;
 
 /**
  * Replaces citation tags in markdown text with optional replacement content.
