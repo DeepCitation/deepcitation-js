@@ -66,7 +66,7 @@ export function getCitationStatus(
   const isVerified =  ["found", "found_key_span_only", "found_phrase_missed_value"].includes(status || "");
   const isPartialMatch = ["partial_text_found", "found_on_other_page", "found_on_other_line", "first_word_found"].includes(status || "");
 
-  const isPending = ["pending", "loading", null, undefined].includes(status || "");
+  const isPending = ["pending", "loading", null, undefined].includes(status);
 
   return { isVerified, isMiss, isPartialMatch, isPending };
 }
