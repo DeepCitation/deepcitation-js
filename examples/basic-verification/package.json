@@ -10,7 +10,7 @@
     "start:gemini": "bun run src/gemini.ts"
   },
   "dependencies": {
-    "@deepcitation/deepcitation-js": "latest",
+    "@deepcitation/deepcitation-js": "^1.1.41",
     "@anthropic-ai/sdk": "^0.30.1",
     "@google/generative-ai": "^0.21.0",
     "openai": "^4.104.0"
