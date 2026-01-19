@@ -1486,4 +1486,49 @@ Line 3" key_span="Line 2" start_page_key="page_number_1_index_0" line_ids="1" />
       expect(citation.lineIds).toEqual([1, 2, 3, 4]);
     });
   });
+
+  describe("malformed LLM output handling", () => {
+    it("handles missing < before cite tag", () => {
+      // LLMs sometimes output 'cite' without the leading '<'
+      const input = `- H&H: 7.5 / 25cite attachment_id='GTIkofJX4mpSVSwXzvTr' reasoning='shows values' full_phrase='H&H 7.5 25' key_span='7.5 25' start_page_key='page_number_1_index_0' line_ids='110-115' />`;
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+      const citation = Object.values(result)[0];
+      expect(citation.attachmentId).toBe("GTIkofJX4mpSVSwXzvTr");
+      expect(citation.keySpan).toBe("7.5 25");
+      expect(citation.lineIds).toEqual([110, 111, 112, 113, 114, 115]);
+    });
+
+    it("handles multiple citations with some missing < characters", () => {
+      // Real-world scenario: some citations have <, some don't
+      // Note: cite must be preceded by non-letter to avoid matching words like "excite"
+      const input = `- Sodium: 138<cite attachment_id='test1' full_phrase='Na+ 138' key_span='138' start_page_key='page_number_1_index_0' line_ids='95' />
+- H&H: 7.5 / 25cite attachment_id='test2' full_phrase='H&H 7.5' key_span='7.5' start_page_key='page_number_1_index_0' line_ids='110' />
+- Device: IABP (in place)cite attachment_id='test3' full_phrase='IABP' key_span='IABP' start_page_key='page_number_1_index_0' line_ids='90' />`;
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(3);
+      const citations = Object.values(result);
+      const attachmentIds = citations.map((c) => c.attachmentId);
+      expect(attachmentIds).toContain("test1");
+      expect(attachmentIds).toContain("test2");
+      expect(attachmentIds).toContain("test3");
+    });
+
+    it("handles cite tag with missing < but has space before it", () => {
+      const input = `Some text cite attachment_id='test' full_phrase='phrase' key_span='span' start_page_key='page_number_1_index_0' line_ids='1' />`;
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(1);
+    });
+
+    it("does not match 'cite' as part of other words", () => {
+      // Words like "excite", "recite" should not be converted to citations
+      const input = `I was excited to recite the poem. No citations here.`;
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result)).toHaveLength(0);
+    });
+  });
 });
