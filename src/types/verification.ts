@@ -85,7 +85,7 @@ export interface Verification {
   // Used when verifying AI-generated URL claims (e.g., "According to example.com...")
   // ==========================================================================
 
-  /** The URL that was verified (from SourceCitation.url) */
+  /** The URL that was verified (from Citation.url when type: "url") */
   verifiedUrl?: string | null;
 
   /** The actual URL after following redirects */
@@ -145,22 +145,4 @@ export interface Verification {
 
   /** Content type of the fetched URL (e.g., "text/html", "application/pdf") */
   contentType?: string | null;
-
-  /**
-   * @deprecated Use top-level verified fields (verifiedTitle, verifiedDomain, etc.) instead.
-   * Will be removed in a future version.
-   */
-  verifiedWebSource?: {
-    url: string;
-    domain?: string;
-    title?: string;
-    description?: string;
-    faviconUrl?: string;
-    platform?: string;
-    siteName?: string;
-    author?: string;
-    publishedAt?: Date | string;
-    imageUrl?: string;
-    contentType?: string;
-  };
 }

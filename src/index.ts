@@ -46,9 +46,6 @@ export type {
   // Source types for categorization
   SourceType,
   SourceMeta,
-  // Deprecated (use Citation with type: "url" instead)
-  SourceCitation,
-  WebSource,
 } from "./types/citation.js";
 
 export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";

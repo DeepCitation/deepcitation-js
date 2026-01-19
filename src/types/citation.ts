@@ -173,16 +173,6 @@ export interface Citation {
     startTime?: string;
     endTime?: string;
   };
-
-  // ==========================================================================
-  // Deprecated fields (kept for backwards compatibility)
-  // ==========================================================================
-
-  /**
-   * @deprecated Use top-level URL fields (url, domain, title, etc.) with type: "url" instead.
-   * Will be removed in a future version.
-   */
-  webSource?: WebSource;
 }
 
 export interface CitationStatus {
@@ -191,38 +181,6 @@ export interface CitationStatus {
   isPartialMatch: boolean;
   isPending: boolean;
 }
-
-/**
- * Web source metadata interface.
- * @deprecated Use Citation with type: "url" instead. URL fields are now on Citation directly.
- */
-export interface WebSource {
-  /** The full URL of the source */
-  url: string;
-  /** Display domain (e.g., "example.com", "fitandwell.com") */
-  domain?: string;
-  /** Page/article title */
-  title?: string;
-  /** Brief description or snippet from the page */
-  description?: string;
-  /** Favicon URL for the source */
-  faviconUrl?: string;
-  /** Platform name (e.g., "Twitch", "YouTube", "Reddit") */
-  platform?: string;
-  /** Author name if available */
-  author?: string;
-  /** Publication date */
-  publishedAt?: Date | string;
-  /** Open Graph or social media image URL */
-  imageUrl?: string;
-  /** Site name (e.g., "Fit&Well", "Garage Gym Reviews") */
-  siteName?: string;
-}
-
-/**
- * @deprecated Use Citation with type: "url" instead. All fields are now on Citation directly.
- */
-export type SourceCitation = Citation;
 
 /**
  * Metadata for a source in an aggregated sources list.
