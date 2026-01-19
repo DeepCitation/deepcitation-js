@@ -466,14 +466,21 @@ function DefaultPopoverContent({
   const { isMiss, isPartialMatch, isPending } = status;
 
   // Image view - sized for quick preview, click to expand
-  // Images display at natural size up to container max (600px from Popover)
-  // Small images stay small; wide images scale down to fit
+  // Uses a fixed container with object-cover to show a readable crop:
+  // - Container is 400x200px max
+  // - Wide images are cropped (not shrunk) to show readable content
+  // - object-position: left top to show the relevant highlighted area
+  // - Click to expand shows full image at natural size
   if (hasImage) {
+    // Determine status indicator for the image overlay
+    const isVerified = status.isVerified && !status.isPartialMatch;
+    const showCheckmark = isVerified || status.isPartialMatch;
+
     return (
       <div className="p-2">
         <button
           type="button"
-          className="group block cursor-zoom-in relative"
+          className="group block cursor-zoom-in relative overflow-hidden rounded-md max-w-sm h-[200px] bg-gray-50 dark:bg-gray-800"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -484,12 +491,30 @@ function DefaultPopoverContent({
           <img
             src={verification.verificationImageBase64 as string}
             alt="Citation verification"
-            className="max-w-full h-auto object-contain rounded-md bg-gray-50 dark:bg-gray-800"
+            className="block w-full h-full object-cover object-left-top rounded-md"
             loading="lazy"
           />
-          {/* Subtle zoom hint on hover */}
-          <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors rounded-md">
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-600 dark:text-gray-300 bg-white/90 dark:bg-gray-800/90 px-2 py-1 rounded shadow-sm">
+          {/* Bottom bar with status indicator and expand hint */}
+          <span className="absolute left-0 right-0 bottom-0 flex items-center justify-between px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/30 to-transparent rounded-b-md">
+            {/* Status indicator */}
+            <span className={`inline-flex items-center gap-1 ${
+              isVerified ? 'text-green-400' :
+              status.isPartialMatch ? 'text-amber-400' :
+              status.isMiss ? 'text-red-400' : 'text-gray-400'
+            }`}>
+              {showCheckmark && (
+                <span className="w-3 h-3">
+                  <CheckIcon />
+                </span>
+              )}
+              {status.isMiss && (
+                <span className="w-3 h-3">
+                  <WarningIcon />
+                </span>
+              )}
+            </span>
+            {/* Expand hint on hover */}
+            <span className="text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
               Click to expand
             </span>
           </span>
