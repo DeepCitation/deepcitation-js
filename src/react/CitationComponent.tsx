@@ -472,6 +472,10 @@ function DefaultPopoverContent({
   // - Maintains aspect ratio with object-cover to show most relevant content
   // - Click to expand shows full image at natural size
   if (hasImage) {
+    // Determine status indicator for the image overlay
+    const isVerified = status.isVerified && !status.isPartialMatch;
+    const showCheckmark = isVerified || status.isPartialMatch;
+
     return (
       <div className="p-2">
         <button
@@ -490,9 +494,27 @@ function DefaultPopoverContent({
             className="max-w-[400px] max-h-[200px] w-auto h-auto object-contain rounded-md bg-gray-50 dark:bg-gray-800"
             loading="lazy"
           />
-          {/* Subtle zoom hint at bottom on hover */}
-          <span className="absolute inset-x-0 bottom-0 flex justify-center pb-2 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-b-md">
-            <span className="text-xs text-white bg-black/60 px-2 py-1 rounded shadow-sm">
+          {/* Bottom bar with status indicator and expand hint */}
+          <span className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/30 to-transparent rounded-b-md">
+            {/* Status indicator */}
+            <span className={`flex items-center gap-1 text-xs font-medium ${
+              isVerified ? 'text-green-400' :
+              status.isPartialMatch ? 'text-amber-400' :
+              status.isMiss ? 'text-red-400' : 'text-gray-400'
+            }`}>
+              {showCheckmark && (
+                <span className="size-3">
+                  <CheckIcon />
+                </span>
+              )}
+              {status.isMiss && (
+                <span className="size-3">
+                  <WarningIcon />
+                </span>
+              )}
+            </span>
+            {/* Expand hint on hover */}
+            <span className="text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
               Click to expand
             </span>
           </span>
