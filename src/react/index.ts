@@ -63,7 +63,6 @@ export {
   getCitationKeySpanText,
   classNames,
   isUrlCitation,
-  isSourceCitation, // deprecated alias for isUrlCitation
   CITATION_X_PADDING,
   CITATION_Y_PADDING,
 } from "./utils.js";

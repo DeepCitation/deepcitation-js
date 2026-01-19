@@ -19,11 +19,6 @@ export function isUrlCitation(citation: Citation): boolean {
 }
 
 /**
- * @deprecated Use isUrlCitation instead
- */
-export const isSourceCitation = isUrlCitation;
-
-/**
  * Generates a unique, deterministic key for a citation based on its content.
  * Works with both document and URL citation types.
  *
