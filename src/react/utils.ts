@@ -1,4 +1,4 @@
-import type { Citation } from "../types/citation.js";
+import type { Citation, SourceCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { sha1Hash } from "../utils/sha.js";
 import { getCitationPageNumber } from "../parsing/normalizeCitation.js";
@@ -12,13 +12,26 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
 }
 
 /**
+ * Type guard to check if a citation is a SourceCitation (has URL).
+ */
+export function isSourceCitation(citation: Citation): citation is SourceCitation {
+  return "url" in citation && typeof (citation as SourceCitation).url === "string";
+}
+
+/**
  * Generates a unique, deterministic key for a citation based on its content.
- *  @param citation - The citation to generate a key for
+ * Works with both regular Citation and SourceCitation types.
+ *
+ * For SourceCitation, the URL is included in the key generation for uniqueness.
+ *
+ * @param citation - The citation to generate a key for
  * @returns A unique, deterministic key for the citation
  */
-export function generateCitationKey(citation: Citation): string {
+export function generateCitationKey(citation: Citation | SourceCitation): string {
   const pageNumber =
     citation.pageNumber || getCitationPageNumber(citation.startPageKey);
+
+  // Base key parts for all citations
   const keyParts = [
     citation.attachmentId || "",
     pageNumber?.toString() || "",
@@ -28,6 +41,15 @@ export function generateCitationKey(citation: Citation): string {
     citation.timestamps?.startTime || "",
     citation.timestamps?.endTime || "",
   ];
+
+  // Add SourceCitation-specific fields if present
+  if (isSourceCitation(citation)) {
+    keyParts.push(
+      citation.url || "",
+      citation.title || "",
+      citation.domain || "",
+    );
+  }
 
   return sha1Hash(keyParts.join("|")).slice(0, 16);
 }

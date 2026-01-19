@@ -6,10 +6,11 @@ import {
   getCitationNumber,
   getCitationKeySpanText,
   classNames,
+  isSourceCitation,
   CITATION_X_PADDING,
   CITATION_Y_PADDING,
 } from "../react/utils.js";
-import type { Citation } from "../types/citation.js";
+import type { Citation, SourceCitation } from "../types/citation.js";
 
 describe("react utils", () => {
   const citation: Citation = {
@@ -65,5 +66,59 @@ describe("react utils", () => {
   it("exposes default padding constants", () => {
     expect(CITATION_X_PADDING).toBe(4);
     expect(CITATION_Y_PADDING).toBe(1);
+  });
+
+  describe("isSourceCitation", () => {
+    it("returns true when citation has a URL string", () => {
+      const sourceCitation: SourceCitation = {
+        fullPhrase: "Test",
+        url: "https://example.com",
+      };
+      expect(isSourceCitation(sourceCitation)).toBe(true);
+    });
+
+    it("returns false when citation has no URL", () => {
+      const citation: Citation = {
+        fullPhrase: "Test",
+        pageNumber: 1,
+      };
+      expect(isSourceCitation(citation)).toBe(false);
+    });
+
+    it("returns false when URL is undefined", () => {
+      const citation = { fullPhrase: "Test" } as Citation;
+      expect(isSourceCitation(citation)).toBe(false);
+    });
+  });
+
+  describe("generateCitationKey with SourceCitation", () => {
+    it("includes URL fields in key generation for SourceCitation", () => {
+      const sourceCitation: SourceCitation = {
+        fullPhrase: "Test phrase",
+        url: "https://example.com/page",
+        title: "Example Page",
+        domain: "example.com",
+      };
+
+      const key = generateCitationKey(sourceCitation);
+      expect(key).toHaveLength(16);
+
+      // Different URL should produce different key
+      const differentUrl: SourceCitation = {
+        ...sourceCitation,
+        url: "https://other.com/page",
+      };
+      expect(generateCitationKey(differentUrl)).not.toBe(key);
+    });
+
+    it("generates same key for identical SourceCitation", () => {
+      const sourceCitation: SourceCitation = {
+        fullPhrase: "Revenue grew",
+        url: "https://example.com/report",
+        title: "Q4 Report",
+      };
+
+      expect(generateCitationKey(sourceCitation)).toBe(generateCitationKey(sourceCitation));
+    });
   });
 });

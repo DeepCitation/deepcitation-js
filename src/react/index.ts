@@ -22,16 +22,26 @@ export type {
   CitationEventHandlers,
   CitationVariant as CitationVariantType,
   CitationContent,
+  // URL citation types
   UrlFetchStatus,
   UrlCitationMeta,
   UrlCitationProps,
   UrlCitationVariant,
+  // URL content verification types
+  ContentMatchStatus,
+  UrlVerificationMeta,
   // Behavior configuration types
   CitationBehaviorConfig,
   CitationBehaviorContext,
   CitationBehaviorActions,
   CitationClickBehavior,
   CitationHoverBehavior,
+  // Sources list types (Anthropic-style aggregated citations)
+  SourcesListVariant,
+  SourcesListItemProps,
+  SourcesListHeaderConfig,
+  SourcesListProps,
+  SourcesTriggerProps,
 } from "./types.js";
 
 // URL Utilities - For handling URL citation metadata
@@ -39,6 +49,8 @@ export {
   extractDomain,
   isBlockedStatus,
   isErrorStatus,
+  isAccessibleStatus,
+  isRedirectedStatus,
   isVerifiedStatus,
 } from "./UrlCitationComponent.js";
 
@@ -69,3 +81,18 @@ export {
   SpinnerIcon,
   WarningIcon,
 } from "./icons.js";
+
+// Sources List Components (Anthropic-style aggregated citations)
+export {
+  SourcesListComponent,
+  MemoizedSourcesListComponent,
+  SourcesListItem,
+  MemoizedSourcesListItem,
+  SourcesTrigger,
+  MemoizedSourcesTrigger,
+  // Utilities
+  sourceCitationsToListItems,
+  useSourcesList,
+  detectSourceType,
+  getPlatformName,
+} from "./SourcesListComponent.js";

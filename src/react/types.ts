@@ -42,12 +42,16 @@ export type CitationContent =
   | "indicator"; // Only show status icon
 
 /**
- * URL fetch status for URL citations.
+ * URL fetch/access status for URL citations.
+ * Covers HTTP accessibility and redirect scenarios.
  */
 export type UrlFetchStatus =
-  | "verified" // URL content verified successfully
-  | "partial" // Partial content match
+  | "verified" // URL accessible and content verified
+  | "partial" // URL accessible, partial content match
   | "pending" // Verification in progress
+  | "accessible" // URL accessible but content not yet verified
+  | "redirected" // URL redirected to different domain
+  | "redirected_valid" // URL redirected but content still valid
   | "blocked_antibot" // Blocked by anti-bot protection (Cloudflare, etc.)
   | "blocked_login" // Requires login/authentication
   | "blocked_paywall" // Behind paywall
@@ -58,6 +62,27 @@ export type UrlFetchStatus =
   | "error_server" // 5xx server error
   | "error_network" // Network/DNS error
   | "unknown"; // Unknown status
+
+/**
+ * Content match status for URL verification.
+ * Used when verifying that a URL contains what the AI claimed.
+ *
+ * | Status        | Description                                              |
+ * |---------------|----------------------------------------------------------|
+ * | `exact`       | Content exactly matches AI's claim                       |
+ * | `partial`     | Content partially matches (paraphrase, summary)          |
+ * | `mismatch`    | URL exists but content doesn't match claim               |
+ * | `not_found`   | Claimed content not found on page                        |
+ * | `not_checked` | Content not yet verified (URL inaccessible or pending)   |
+ * | `inconclusive`| Could not determine match (e.g., dynamic content)        |
+ */
+export type ContentMatchStatus =
+  | "exact" // Content exactly matches AI's claim
+  | "partial" // Content partially matches (paraphrase, summary)
+  | "mismatch" // URL exists but content doesn't match claim
+  | "not_found" // Claimed content not found on page
+  | "not_checked" // Content not yet verified (URL inaccessible or pending)
+  | "inconclusive"; // Could not determine match (e.g., dynamic content)
 
 /**
  * URL citation metadata.
@@ -79,6 +104,31 @@ export interface UrlCitationMeta {
   errorMessage?: string;
   /** Favicon URL if available */
   faviconUrl?: string;
+}
+
+/**
+ * Extended URL citation metadata with content verification.
+ * Used when verifying AI-generated URL claims.
+ */
+export interface UrlVerificationMeta extends UrlCitationMeta {
+  /** The URL after following redirects (if different from original) */
+  resolvedUrl?: string;
+  /** Domain of resolved URL (if redirected) */
+  resolvedDomain?: string;
+  /** Content match status - whether the page contains what AI claimed */
+  contentMatch?: ContentMatchStatus;
+  /** The text/claim AI made about this URL (what we're verifying) */
+  expectedContent?: string;
+  /** Snippet of actual content found on the page */
+  actualContentSnippet?: string;
+  /** Similarity score between expected and actual content (0-1) */
+  contentSimilarity?: number;
+  /** The page title found (may differ from AI's claim) */
+  actualTitle?: string;
+  /** Screenshot or visual proof of the page */
+  screenshotBase64?: string;
+  /** When the page content was last crawled/fetched */
+  crawledAt?: Date | string;
 }
 
 /**
@@ -367,4 +417,128 @@ export interface CitationTooltipProps {
   citation: Citation;
   verification?: Verification | null;
   shouldShowTooltip: boolean;
+}
+
+// ============================================================================
+// Sources List Types (Anthropic-style aggregated citations)
+// ============================================================================
+
+/**
+ * Visual variant for sources list display.
+ *
+ * | Variant    | Description                                              |
+ * |------------|----------------------------------------------------------|
+ * | `panel`    | Collapsible panel inline with content                    |
+ * | `drawer`   | Bottom sheet/drawer modal (mobile-friendly)              |
+ * | `modal`    | Centered modal overlay                                   |
+ * | `inline`   | Inline list without container styling                    |
+ */
+export type SourcesListVariant = "panel" | "drawer" | "modal" | "inline";
+
+/**
+ * Props for individual source item in the sources list.
+ */
+export interface SourcesListItemProps {
+  /** Unique identifier for this source */
+  id: string;
+  /** The source URL */
+  url: string;
+  /** Page/document title */
+  title: string;
+  /** Display domain (e.g., "Twitch", "LinkedIn") */
+  domain: string;
+  /** Platform/source type for icon selection */
+  sourceType?: import("../types/citation.js").SourceType;
+  /** Favicon URL (falls back to Google favicon service) */
+  faviconUrl?: string;
+  /** Citation numbers that reference this source */
+  citationNumbers?: number[];
+  /** Verification status */
+  verificationStatus?: "verified" | "partial" | "pending" | "failed" | "unknown";
+  /** Click handler */
+  onClick?: (source: SourcesListItemProps, event: React.MouseEvent) => void;
+  /** Additional class name */
+  className?: string;
+  /** Whether to show the verification indicator */
+  showVerificationIndicator?: boolean;
+  /** Whether to show citation numbers as badges */
+  showCitationBadges?: boolean;
+  /** Custom render for the favicon */
+  renderFavicon?: (props: SourcesListItemProps) => React.ReactNode;
+}
+
+/**
+ * Header configuration for sources list.
+ */
+export interface SourcesListHeaderConfig {
+  /** Title text (default: "Sources") */
+  title?: string;
+  /** Whether to show close button */
+  showCloseButton?: boolean;
+  /** Whether to show source count badge */
+  showCount?: boolean;
+  /** Custom header render */
+  renderHeader?: (props: { title: string; count: number; onClose?: () => void }) => React.ReactNode;
+}
+
+/**
+ * Props for the SourcesListComponent.
+ *
+ * Displays an aggregated list of sources at the end of AI-generated content,
+ * similar to Claude's "Sources" panel.
+ */
+export interface SourcesListProps {
+  /** Array of sources to display */
+  sources: SourcesListItemProps[];
+  /** Visual variant for display */
+  variant?: SourcesListVariant;
+  /** Whether the list is visible/open */
+  isOpen?: boolean;
+  /** Callback when visibility changes */
+  onOpenChange?: (isOpen: boolean) => void;
+  /** Header configuration */
+  header?: SourcesListHeaderConfig;
+  /** Whether sources are still loading */
+  isLoading?: boolean;
+  /** Empty state message */
+  emptyMessage?: string;
+  /** Maximum height before scrolling (panel/inline variants) */
+  maxHeight?: string | number;
+  /** Additional class name for container */
+  className?: string;
+  /** Class name for the list items container */
+  listClassName?: string;
+  /** Click handler for source items */
+  onSourceClick?: (source: SourcesListItemProps, event: React.MouseEvent) => void;
+  /** Whether to show verification indicators on items */
+  showVerificationIndicators?: boolean;
+  /** Whether to show citation number badges on items */
+  showCitationBadges?: boolean;
+  /** Group sources by domain/platform */
+  groupByDomain?: boolean;
+  /** Custom render for source items */
+  renderItem?: (props: SourcesListItemProps, index: number) => React.ReactNode;
+  /** Custom render for empty state */
+  renderEmpty?: () => React.ReactNode;
+  /** Custom render for loading state */
+  renderLoading?: () => React.ReactNode;
+}
+
+/**
+ * Props for the compact sources trigger button.
+ * Shows favicon icons and opens the full sources list.
+ */
+export interface SourcesTriggerProps {
+  /** Sources to show as preview favicons */
+  sources: SourcesListItemProps[];
+  /** Maximum number of favicon icons to show */
+  maxIcons?: number;
+  /** Click handler to open sources list */
+  onClick?: () => void;
+  /** Label text (default: "Sources") */
+  label?: string;
+  /** Additional class name */
+  className?: string;
+  /** Whether the sources list is currently open */
+  isOpen?: boolean;
 }

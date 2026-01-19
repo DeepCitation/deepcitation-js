@@ -40,7 +40,12 @@ import type { CitationPosition } from "@deepcitation/deepcitation-js";
 
 ### React Components (from /react)
 ```typescript
-import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+import {
+  CitationComponent,
+  SourcesListComponent,
+  SourcesTrigger,
+  SourcesListItem,
+} from "@deepcitation/deepcitation-js/react";
 ```
 
 ### Types
@@ -311,6 +316,236 @@ interface CitationBehaviorConfig {
 }
 ```
 
+### 9. Aggregated Sources List (Anthropic-style)
+
+The `SourcesListComponent` displays citations in an aggregated list format, similar to Claude's "Sources" panel. This is useful for collecting all sources at the end of AI-generated content.
+
+```tsx
+import {
+  SourcesListComponent,
+  SourcesTrigger,
+  useSourcesList,
+} from "@deepcitation/deepcitation-js/react";
+
+// Basic usage with drawer (mobile-friendly)
+const { sources, isOpen, setIsOpen } = useSourcesList([
+  { id: "1", url: "https://twitch.tv/theo", title: "Theo - Twitch", domain: "twitch.tv" },
+  { id: "2", url: "https://linkedin.com/in/john", title: "John Doe - LinkedIn", domain: "linkedin.com" },
+]);
+
+// Trigger button (shows stacked favicons)
+<SourcesTrigger
+  sources={sources}
+  onClick={() => setIsOpen(true)}
+  label="Sources"
+/>
+
+// Sources list drawer
+<SourcesListComponent
+  sources={sources}
+  variant="drawer"
+  isOpen={isOpen}
+  onOpenChange={setIsOpen}
+/>
+```
+
+#### Variant (Display Mode)
+
+| Variant   | Description                                        |
+|-----------|----------------------------------------------------|
+| `"drawer"`| Bottom sheet modal (mobile-friendly, default)      |
+| `"modal"` | Centered modal overlay                             |
+| `"panel"` | Collapsible panel inline with content              |
+| `"inline"`| Inline list without modal/container styling        |
+
+#### Source Item Props
+
+Each source in the list has these properties:
+
+```typescript
+interface SourcesListItemProps {
+  id: string;           // Unique identifier
+  url: string;          // Source URL
+  title: string;        // Page/document title
+  domain: string;       // Display domain (e.g., "Twitch", "LinkedIn")
+  sourceType?: SourceType;     // Platform type for icon selection
+  faviconUrl?: string;         // Custom favicon URL
+  citationNumbers?: number[];  // Which citations reference this source
+  verificationStatus?: "verified" | "partial" | "pending" | "failed" | "unknown";
+}
+```
+
+#### Source Types
+
+The `sourceType` field categorizes sources for display:
+
+| Type        | Examples                                           |
+|-------------|----------------------------------------------------|
+| `"web"`     | Generic web pages                                  |
+| `"social"`  | Twitter/X, Facebook, LinkedIn, Instagram           |
+| `"video"`   | YouTube, Twitch, Vimeo, TikTok                     |
+| `"news"`    | Reuters, BBC, CNN, NYTimes                         |
+| `"code"`    | GitHub, GitLab, Stack Overflow                     |
+| `"academic"`| arXiv, PubMed, Google Scholar                      |
+| `"forum"`   | Reddit, Quora, Discourse                           |
+| `"reference"`| Wikipedia, Britannica                             |
+| `"pdf"`     | PDF documents                                      |
+| `"document"`| Uploaded documents                                 |
+
+#### Converting Citations to Sources
+
+```typescript
+import { sourceCitationsToListItems } from "@deepcitation/deepcitation-js/react";
+import type { SourceCitation } from "@deepcitation/deepcitation-js";
+
+// Convert array of SourceCitation to SourcesListItemProps
+const citations: SourceCitation[] = [
+  { url: "https://example.com/article", title: "Example Article", citationNumber: 1 },
+  { url: "https://example.com/article", title: "Example Article", citationNumber: 2 }, // Same URL
+];
+
+const sources = sourceCitationsToListItems(citations);
+// Results in single item with citationNumbers: [1, 2]
+```
+
+#### Customization
+
+```tsx
+// Custom header
+<SourcesListComponent
+  sources={sources}
+  header={{
+    title: "References",
+    showCount: true,
+    showCloseButton: true,
+  }}
+/>
+
+// Group by domain
+<SourcesListComponent
+  sources={sources}
+  groupByDomain={true}
+/>
+
+// Show verification badges
+<SourcesListComponent
+  sources={sources}
+  showVerificationIndicators={true}
+  showCitationBadges={true}
+/>
+
+// Custom item click handler
+<SourcesListComponent
+  sources={sources}
+  onSourceClick={(source, event) => {
+    console.log('Clicked:', source.title);
+    // Default: opens URL in new tab
+  }}
+/>
+
+// Custom item rendering
+<SourcesListComponent
+  sources={sources}
+  renderItem={(source, index) => (
+    <MyCustomSourceItem key={source.id} source={source} />
+  )}
+/>
+```
+
+#### SourceCitation Type
+
+For web search / URL-based citations, use the extended `SourceCitation` type:
+
+```typescript
+import type { SourceCitation, SourceMeta } from "@deepcitation/deepcitation-js";
+
+const citation: SourceCitation = {
+  // Base Citation fields (inherited from Citation)
+  fullPhrase: "According to the Q4 report, revenue grew by 15%...",  // Context/excerpt
+  keySpan: "revenue grew by 15%",  // Specific cited text
+  citationNumber: 1,
+  // Extended source fields
+  url: "https://example.com/report",
+  title: "Q4 Financial Report",
+  domain: "example.com",
+  sourceType: "news",
+  faviconUrl: "https://example.com/favicon.ico",
+  accessedAt: new Date(),
+};
+```
+
+### 10. URL/Web Content Verification
+
+When AI generates content that references URLs (e.g., "According to example.com..."), you can verify:
+1. **URL accessibility** - Does the URL return 200? Is it blocked/paywalled?
+2. **URL resolution** - Did it redirect? To where?
+3. **Content match** - Does the page contain what the AI claims?
+
+#### URL Access Status
+
+| Status | Description |
+|--------|-------------|
+| `verified` | URL accessible and content verified |
+| `partial` | URL accessible, partial content match |
+| `accessible` | URL accessible but content not yet verified |
+| `redirected` | URL redirected to different domain |
+| `redirected_valid` | URL redirected but content still valid |
+| `blocked_*` | URL blocked (antibot, login, paywall, geo, rate_limit) |
+| `error_*` | URL error (timeout, not_found, server, network) |
+
+#### Content Match Status
+
+| Status | Description |
+|--------|-------------|
+| `exact` | Content exactly matches AI's claim |
+| `partial` | Content partially matches (paraphrase, summary) |
+| `mismatch` | URL exists but content doesn't match claim |
+| `not_found` | Claimed content not found on page |
+| `not_checked` | Content not yet verified |
+| `inconclusive` | Could not determine match |
+
+#### Verification Model
+
+The `Verification` type includes URL-specific fields:
+
+```typescript
+interface Verification {
+  // ... existing document verification fields ...
+
+  // URL/Web Content Verification Fields
+  verifiedUrl?: string;           // The URL that was verified
+  resolvedUrl?: string;           // Actual URL after redirects
+  httpStatus?: number;            // HTTP status code
+  urlAccessStatus?: UrlAccessStatus;    // URL accessibility
+  contentMatchStatus?: ContentMatchStatus;  // Content verification
+  contentSimilarity?: number;     // Similarity score (0-1)
+  verifiedTitle?: string;         // Page title found
+  actualContentSnippet?: string;  // Snippet of actual content
+  webPageScreenshotBase64?: string;  // Screenshot proof
+  crawledAt?: Date | string;      // When URL was fetched
+  urlVerificationError?: string;  // Error message if failed
+}
+```
+
+#### Helper Functions
+
+```typescript
+import {
+  isBlockedStatus,
+  isErrorStatus,
+  isAccessibleStatus,
+  isRedirectedStatus,
+  isVerifiedStatus,
+} from "@deepcitation/deepcitation-js/react";
+
+// Check URL status categories
+isBlockedStatus("blocked_paywall");  // true
+isErrorStatus("error_not_found");    // true
+isAccessibleStatus("verified");      // true
+isRedirectedStatus("redirected");    // true
+isVerifiedStatus("partial");         // true
+```
+
 ## API Endpoints
 
 - `POST https://api.deepcitation.com/prepareFile` - Upload and process source documents
@@ -334,7 +569,8 @@ src/
 │   ├── index.ts
 │   ├── CitationComponent.tsx
 │   ├── CitationVariants.tsx
-│   └── UrlCitationComponent.tsx
+│   ├── UrlCitationComponent.tsx
+│   └── SourcesListComponent.tsx  # Anthropic-style sources list
 ├── types/                # TypeScript types
 │   ├── citation.ts
 │   ├── verification.ts
