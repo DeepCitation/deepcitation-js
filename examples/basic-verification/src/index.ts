@@ -7,6 +7,7 @@
  *   bun run start:openai     - OpenAI GPT-5 Mini
  *   bun run start:anthropic  - Anthropic Claude
  *   bun run start:gemini     - Google Gemini
+ *   bun run start:curl       - Raw API (fetch/curl)
  *
  * Make sure to copy .env.example to .env and add your API keys first!
  */
@@ -21,6 +22,10 @@ console.log(`
 ║    bun run start:openai      - Using OpenAI GPT-5 Mini     ║
 ║    bun run start:anthropic   - Using Anthropic Claude      ║
 ║    bun run start:gemini      - Using Gemini Flash Lite     ║
+║    bun run start:curl        - Raw API (fetch/curl)        ║
+║                                                            ║
+║  The curl example shows raw API calls without the          ║
+║  DeepCitation client, useful for other languages.          ║
 ║                                                            ║
 ║  Make sure to:                                             ║
 ║  1. Copy .env.example to .env                              ║

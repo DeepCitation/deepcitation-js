@@ -22,6 +22,12 @@ bun run start:openai
 
 # Or run with Anthropic Claude
 bun run start:anthropic
+
+# Or run with Google Gemini
+bun run start:gemini
+
+# Or run with raw API calls (curl/fetch)
+bun run start:curl
 ```
 
 ## Required API Keys
@@ -98,6 +104,40 @@ const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles
 | `deepcitation.verifyAttachment()` | Verify citations against a specific attachment |
 | `getCitationStatus()` | Get simplified status (isVerified, isMiss, etc.) |
 | `replaceCitations()` | Replace citation tags with optional verification status |
+
+## Raw API Usage (curl)
+
+The `start:curl` example shows how to call the DeepCitation API directly without the client SDK. This is useful for:
+- Integrating with other programming languages
+- Understanding the underlying API
+- Custom implementations
+
+### API Endpoints
+
+```bash
+# Step 1: Upload file
+curl -X POST "https://api.deepcitation.com/prepareFile" \
+  -H "Authorization: Bearer $DEEPCITATION_API_KEY" \
+  -F "file=@document.pdf"
+
+# Returns: { "attachmentId": "...", "deepTextPromptPortion": "..." }
+
+# Step 3: Verify citations
+curl -X POST "https://api.deepcitation.com/verifyCitations" \
+  -H "Authorization: Bearer $DEEPCITATION_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "attachmentId": "YOUR_ATTACHMENT_ID",
+      "citations": {
+        "1": { "fullPhrase": "exact quote from document", "pageNumber": 1 }
+      },
+      "outputImageFormat": "avif"
+    }
+  }'
+
+# Returns: { "verifications": { "1": { "status": "found", ... } } }
+```
 
 ## Next Steps
 

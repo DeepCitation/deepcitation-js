@@ -246,6 +246,9 @@ provided documents accurately and cite your sources.`;
   const verified = verifications.filter(
     ([, h]) => getCitationStatus(h).isVerified
   ).length;
+  const partial = verifications.filter(
+    ([, h]) => getCitationStatus(h).isPartialMatch
+  ).length;
   const missed = verifications.filter(
     ([, h]) => getCitationStatus(h).isMiss
   ).length;
@@ -258,6 +261,11 @@ provided documents accurately and cite your sources.`;
         (verified / verifications.length) *
         100
       ).toFixed(0)}%)`
+    );
+    console.log(`   Partial: ${partial} (${(
+      (partial / verifications.length) *
+      100
+    ).toFixed(0)}%)`
     );
     console.log(`   Not found: ${missed}`);
   }

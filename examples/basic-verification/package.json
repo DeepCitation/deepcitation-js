@@ -7,7 +7,8 @@
     "start": "bun run src/index.ts",
     "start:openai": "bun run src/openai.ts",
     "start:anthropic": "bun run src/anthropic.ts",
-    "start:gemini": "bun run src/gemini.ts"
+    "start:gemini": "bun run src/gemini.ts",
+    "start:curl": "bun run src/curl.ts"
   },
   "dependencies": {
     "@deepcitation/deepcitation-js": "latest",
