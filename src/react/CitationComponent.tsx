@@ -466,10 +466,10 @@ function DefaultPopoverContent({
   const { isMiss, isPartialMatch, isPending } = status;
 
   // Image view - sized for quick preview, click to expand
-  // Constrained to readable snippet size:
-  // - Max height 200px to show a focused excerpt without overwhelming
-  // - Max width 400px to prevent overly wide popovers
-  // - Maintains aspect ratio with object-cover to show most relevant content
+  // Uses a fixed container with object-cover to show a readable crop:
+  // - Container is 400x200px max
+  // - Wide images are cropped (not shrunk) to show readable content
+  // - object-position: left top to show the relevant highlighted area
   // - Click to expand shows full image at natural size
   if (hasImage) {
     // Determine status indicator for the image overlay
@@ -480,7 +480,7 @@ function DefaultPopoverContent({
       <div className="p-2">
         <button
           type="button"
-          className="group block cursor-zoom-in relative overflow-hidden rounded-md"
+          className="group block cursor-zoom-in relative overflow-hidden rounded-md w-[400px] h-[200px] bg-gray-50 dark:bg-gray-800"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -491,7 +491,7 @@ function DefaultPopoverContent({
           <img
             src={verification.verificationImageBase64 as string}
             alt="Citation verification"
-            className="block max-w-[400px] max-h-[200px] w-auto h-auto object-contain rounded-md bg-gray-50 dark:bg-gray-800"
+            className="block w-full h-full object-cover object-left-top rounded-md"
             loading="lazy"
           />
           {/* Bottom bar with status indicator and expand hint */}
