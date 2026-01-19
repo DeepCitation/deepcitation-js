@@ -44,7 +44,7 @@ async function main() {
     filename: doc.filename,
   }));
 
-  const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles(files);
+  const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles(files);
   console.log("✅ Knowledge base loaded\n");
 
   // Test questions
@@ -88,7 +88,7 @@ If information is not available in the knowledge base, say so honestly.`;
     const rawResponse = completion.choices[0].message.content!;
 
     // Verify citations
-    const verificationResult = await dc.verifyAll({
+    const verificationResult = await deepcitation.verify({
       llmOutput: rawResponse,
     });
 

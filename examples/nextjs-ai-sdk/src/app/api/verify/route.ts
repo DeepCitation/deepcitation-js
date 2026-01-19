@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     console.log("[verify] citations", citations);
 
     // Verify citations against the source document
-    const result = await dc.verify(attachmentId, citations, {
+    const result = await deepcitation.verifyAttachment(attachmentId, citations, {
       outputImageFormat: "avif",
     });
 

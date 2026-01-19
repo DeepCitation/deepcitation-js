@@ -417,7 +417,7 @@ export const getAllCitationsFromLlmOutput = (
  *
  * // Verify citations for each file
  * for (const [attachmentId, fileCitations] of citationsByAttachment) {
- *   const verified = await dc.verifyCitations(attachmentId, fileCitations);
+ *   const verified = await deepcitation.verifyCitations(attachmentId, fileCitations);
  *   // Process verification results...
  * }
  * ```
@@ -459,7 +459,7 @@ export function groupCitationsByAttachmentId(
  *
  * // Verify citations for each file using Promise.all
  * const verificationPromises = Object.entries(citationsByAttachment).map(
- *   ([attachmentId, fileCitations]) => dc.verifyCitations(attachmentId, fileCitations)
+ *   ([attachmentId, fileCitations]) => deepcitation.verifyCitations(attachmentId, fileCitations)
  * );
  * const results = await Promise.all(verificationPromises);
  * ```

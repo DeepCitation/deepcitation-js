@@ -80,7 +80,7 @@ export class IntercomBot {
       filename: doc.filename,
     }));
 
-    const result = await this.dc.prepareFiles(files);
+    const result = await this.deepcitation.prepareFiles(files);
 
     this.fileDataParts = result.fileDataParts;
     this.deepTextPromptPortion = result.deepTextPromptPortion;
@@ -134,7 +134,7 @@ Do not make up information that isn't in the source documents.`;
     const rawResponse = completion.choices[0].message.content!;
 
     // Step 3: Verify citations against knowledge base
-    const verificationResult = await this.dc.verifyAll({
+    const verificationResult = await this.deepcitation.verify({
       llmOutput: rawResponse,
     });
 

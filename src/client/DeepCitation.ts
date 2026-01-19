@@ -12,7 +12,7 @@ import type {
   PrepareFilesResult,
   UploadFileOptions,
   UploadFileResponse,
-  VerifyCitationsFromLlmOutput,
+  VerifyInput,
   VerifyCitationsOptions,
   VerifyCitationsResponse,
 } from "./types.js";
@@ -59,7 +59,7 @@ async function extractErrorMessage(
  * const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
  *
  * // Upload a file
- * const { attachmentId, promptContent } = await dc.uploadFile(file);
+ * const { attachmentId, promptContent } = await deepcitation.uploadFile(file);
  *
  * // Include promptContent in your LLM messages
  * const response = await llm.chat({
@@ -71,7 +71,7 @@ async function extractErrorMessage(
  *
  * // Verify citations in the LLM output
  * const citations = getAllCitationsFromLlmOutput(response);
- * const verified = await dc.verifyCitations(attachmentId, citations);
+ * const verified = await deepcitation.verifyCitations(attachmentId, citations);
  * ```
  */
 export class DeepCitation {
@@ -110,11 +110,11 @@ export class DeepCitation {
    * ```typescript
    * // Browser with File object
    * const file = document.querySelector('input[type="file"]').files[0];
-   * const result = await dc.uploadFile(file);
+   * const result = await deepcitation.uploadFile(file);
    *
    * // Node.js with Buffer
    * const buffer = fs.readFileSync('document.pdf');
-   * const result = await dc.uploadFile(buffer, { filename: 'document.pdf' });
+   * const result = await deepcitation.uploadFile(buffer, { filename: 'document.pdf' });
    * ```
    */
   async uploadFile(
@@ -159,16 +159,16 @@ export class DeepCitation {
    * @example
    * ```typescript
    * // Convert a URL to PDF
-   * const result = await dc.convertToPdf({ url: "https://example.com/article" });
+   * const result = await deepcitation.convertToPdf({ url: "https://example.com/article" });
    *
    * // Convert an Office document
-   * const result = await dc.convertToPdf({
+   * const result = await deepcitation.convertToPdf({
    *   file: docxBuffer,
    *   filename: "report.docx"
    * });
    *
    * // Then prepare the file for verification
-   * const { deepTextPromptPortion, attachmentId } = await dc.prepareConvertedFile({
+   * const { deepTextPromptPortion, attachmentId } = await deepcitation.prepareConvertedFile({
    *   attachmentId: result.attachmentId
    * });
    * ```
@@ -226,10 +226,10 @@ export class DeepCitation {
    * @example
    * ```typescript
    * // First convert the file
-   * const converted = await dc.convertToPdf({ url: "https://example.com/article" });
+   * const converted = await deepcitation.convertToPdf({ url: "https://example.com/article" });
    *
    * // Then prepare it for verification
-   * const { deepTextPromptPortion, attachmentId } = await dc.prepareConvertedFile({
+   * const { deepTextPromptPortion, attachmentId } = await deepcitation.prepareConvertedFile({
    *   attachmentId: converted.attachmentId
    * });
    *
@@ -266,7 +266,7 @@ export class DeepCitation {
    *
    * @example
    * ```typescript
-   * const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles([
+   * const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
    *   { file: pdfBuffer, filename: "report.pdf" },
    *   { file: invoiceBuffer, filename: "invoice.pdf" },
    * ]);
@@ -279,7 +279,7 @@ export class DeepCitation {
    * });
    *
    * // Use fileDataParts later for verification
-   * const result = await dc.verifyCitationsFromLlmOutput({ llmOutput, fileDataParts });
+   * const result = await deepcitation.verifyAll({ llmOutput, fileDataParts });
    * ```
    */
   async prepareFiles(files: FileInput[]): Promise<PrepareFilesResult> {
@@ -315,7 +315,11 @@ export class DeepCitation {
   }
 
   /**
-   * Verify citations against a previously uploaded file.
+   * Verify citations against a single attachment/file.
+   *
+   * For most use cases, prefer `verify()` which automatically parses citations
+   * from LLM output and handles multiple attachments. Use this method when you
+   * need fine-grained control over per-attachment verification.
    *
    * @param attachmentId - The attachment ID returned from uploadFile
    * @param citations - Citations to verify (from getAllCitationsFromLlmOutput)
@@ -327,7 +331,7 @@ export class DeepCitation {
    * import { getAllCitationsFromLlmOutput } from '@deepcitation/deepcitation-js';
    *
    * const citations = getAllCitationsFromLlmOutput(llmResponse);
-   * const verified = await dc.verify(attachmentId, citations);
+   * const verified = await deepcitation.verifyAttachment(attachmentId, citations);
    *
    * for (const [key, result] of Object.entries(verified.verifications)) {
    *   console.log(key, result.status);
@@ -335,7 +339,7 @@ export class DeepCitation {
    * }
    * ```
    */
-  async verify(
+  async verifyAttachment(
     attachmentId: string,
     citations: CitationInput,
     options?: VerifyCitationsOptions
@@ -396,14 +400,23 @@ export class DeepCitation {
 
   /**
    * Parse and verify all citations from LLM output.
-   * This is the recommended way to verify citations for new integrations.
+   *
+   * This is the recommended method for citation verification. It automatically:
+   * 1. Parses citations from LLM output (no raw content sent to our servers)
+   * 2. Groups citations by attachment ID
+   * 3. Verifies each attachment in parallel
+   *
+   * For privacy-conscious users: we only receive the parsed citation metadata,
+   * not your raw LLM output. This method is a convenience wrapper that parses
+   * locally and makes per-attachment verification calls.
    *
    * @param input - Object containing llmOutput and optional outputImageFormat
+   * @param citations - Optional pre-parsed citations (skips parsing if provided)
    * @returns Verification results with status and proof images
    *
    * @example
    * ```typescript
-   * const result = await dc.verifyAll({
+   * const result = await deepcitation.verify({
    *   llmOutput: response.content,
    * });
    *
@@ -412,8 +425,8 @@ export class DeepCitation {
    * }
    * ```
    */
-  async verifyAll(
-    input: VerifyCitationsFromLlmOutput,
+  async verify(
+    input: VerifyInput,
     citations?: { [key: string]: Citation }
   ): Promise<VerifyCitationsResponse> {
     const { llmOutput, outputImageFormat = "avif" } = input;
@@ -441,7 +454,7 @@ export class DeepCitation {
     for (const [attachmentId, fileCitations] of citationsByAttachment) {
       if (attachmentId) {
         verificationPromises.push(
-          this.verify(attachmentId, fileCitations, { outputImageFormat })
+          this.verifyAttachment(attachmentId, fileCitations, { outputImageFormat })
         );
       }
     }

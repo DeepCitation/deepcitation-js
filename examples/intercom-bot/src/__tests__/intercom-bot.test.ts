@@ -24,7 +24,7 @@ const mockPrepareFiles = mock(() =>
   })
 );
 
-const mockVerifyAll = mock(() =>
+const mockVerify = mock(() =>
   Promise.resolve({
     verifications: {
       "1": {
@@ -55,7 +55,7 @@ const mockIntercomReply = mock(() => Promise.resolve({}));
 mock.module("@deepcitation/deepcitation-js", () => ({
   DeepCitation: class {
     prepareFiles = mockPrepareFiles;
-    verifyAll = mockVerifyAll;
+    verify = mockVerify;
   },
   wrapCitationPrompt: () => ({
     enhancedSystemPrompt: "Enhanced system prompt",
@@ -95,7 +95,7 @@ describe("IntercomBot", () => {
 
   beforeEach(() => {
     mockPrepareFiles.mockClear();
-    mockVerifyCitationsFromLlmOutput.mockClear();
+    mockVerify.mockClear();
     mockOpenAICreate.mockClear();
     mockIntercomReply.mockClear();
   });
@@ -221,7 +221,7 @@ describe("IntercomBot", () => {
 
     it("flags response for review when confidence is low", async () => {
       // Mock low confidence scenario
-      mockVerifyCitationsFromLlmOutput.mockImplementationOnce(() =>
+      mockVerify.mockImplementationOnce(() =>
         Promise.resolve({
           verifications: {
             "1": {
@@ -256,7 +256,7 @@ describe("IntercomBot", () => {
         })
       );
 
-      mockVerifyCitationsFromLlmOutput.mockImplementationOnce(() =>
+      mockVerify.mockImplementationOnce(() =>
         Promise.resolve({
           verifications: {},
         })
@@ -450,7 +450,7 @@ describe("IntercomBot edge cases", () => {
 
   beforeEach(() => {
     mockPrepareFiles.mockClear();
-    mockVerifyCitationsFromLlmOutput.mockClear();
+    mockVerify.mockClear();
     mockOpenAICreate.mockClear();
     mockIntercomReply.mockClear();
   });
@@ -495,7 +495,7 @@ describe("IntercomBot edge cases", () => {
   });
 
   it("handles partial verification results", async () => {
-    mockVerifyCitationsFromLlmOutput.mockImplementationOnce(() =>
+    mockVerify.mockImplementationOnce(() =>
       Promise.resolve({
         verifications: {
           "1": { verifiedPageNumber: 1, status: "found" },

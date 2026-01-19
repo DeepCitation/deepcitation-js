@@ -44,7 +44,7 @@ async function uploadFiles(filePaths: string[]) {
 
   console.log(`Uploading ${files.length} file(s)...`);
 
-  const { fileDataParts } = await dc.prepareFiles(files);
+  const { fileDataParts } = await deepcitation.prepareFiles(files);
 
   console.log("\nUploaded files:");
   const results: Array<{ filename: string; attachmentId: string }> = [];
@@ -84,7 +84,7 @@ async function verifyCitations(
     `Verifying ${Object.keys(citations).length} citation(s) against ${attachmentId.slice(0, 8)}...`
   );
 
-  const result = await dc.verify(attachmentId, citations);
+  const result = await deepcitation.verify(attachmentId, citations);
 
   const output: Record<
     string,

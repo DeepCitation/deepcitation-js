@@ -110,9 +110,9 @@ export interface PrepareFilesResult {
 }
 
 /**
- * Input for verifyCitationsFromLlmOutput
+ * Input for verify method
  */
-export interface VerifyCitationsFromLlmOutput {
+export interface VerifyInput {
   /** The LLM response containing citations */
   llmOutput: string;
   /** Optional file references (required for Zero Data Retention or after storage expires) */
@@ -120,6 +120,11 @@ export interface VerifyCitationsFromLlmOutput {
   /** Output image format for verification screenshots */
   outputImageFormat?: "jpeg" | "png" | "avif";
 }
+
+/**
+ * @deprecated Use VerifyInput instead. This alias is kept for backwards compatibility.
+ */
+export type verifyAll = VerifyInput;
 
 /**
  * Input for convertFile - convert URL or Office file to PDF

@@ -151,8 +151,8 @@ provided documents accurately and cite your sources.`;
 
   console.log("🔍 Step 3: Verifying citations against source document...\n");
 
-  // Option A: Let DeepCitation parse and verify automatically (simplest)
-  // const verificationResult = await deepcitation.verifyAll({
+  // Option A: Let DeepCitation parse and verify automatically (recommended)
+  // const verificationResult = await deepcitation.verify({
   //   llmOutput: llmResponse,
   // });
 
@@ -177,7 +177,7 @@ provided documents accurately and cite your sources.`;
     return;
   }
 
-  const verificationResult = await deepcitation.verify(
+  const verificationResult = await deepcitation.verifyAttachment(
     attachmentId,
     parsedCitations
   );
@@ -241,6 +241,10 @@ provided documents accurately and cite your sources.`;
         console.log(`  🖼️  Proof image: Yes (${imgSize}KB)`);
       } else {
         console.log(`  🖼️  Proof image: No`);
+      }
+
+      if (!status.isVerified) {
+        console.log(`  ❌  Citation Missed (for debugging): ${JSON.stringify(originalCitation, null, 2)}`);
       }
 
       console.log();

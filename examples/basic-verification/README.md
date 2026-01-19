@@ -94,8 +94,8 @@ const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles
 |----------|---------|
 | `deepcitation.prepareFiles()` | Upload documents, get formatted text for LLM |
 | `wrapCitationPrompt()` | Add citation instructions to your prompts |
-| `deepcitation.verify()` | Verify citations against source documents |
-| `deepcitation.verifyAll()` | Parse LLM output and verify all citations |
+| `deepcitation.verify()` | Parse LLM output and verify all citations (recommended) |
+| `deepcitation.verifyAttachment()` | Verify citations against a specific attachment |
 | `getCitationStatus()` | Get simplified status (isVerified, isMiss, etc.) |
 | `replaceCitations()` | Replace citation tags with optional verification status |
 

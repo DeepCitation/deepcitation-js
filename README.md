@@ -66,7 +66,7 @@ import { DeepCitation, wrapCitationPrompt } from "@deepcitation/deepcitation-js"
 const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
 
 // Upload source files, this can be done before the user types their prompt
-const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles([
+const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
   { file: pdfBuffer, filename: "report.pdf" },
 ]);
 
@@ -91,7 +91,7 @@ const response = await llm.chat({
 Verify citations against the source documents.
 
 ```typescript
-const result = await dc.verifyAll({
+const result = await deepcitation.verify({
   llmOutput: response.content,
 });
 
@@ -149,16 +149,16 @@ const dc = new DeepCitation({
 });
 
 // Upload and prepare source files
-await dc.prepareFiles(files: FileInput[])
+await deepcitation.prepareFiles(files: FileInput[])
 
 // Convert URLs/Office docs to PDF
-await dc.convertToPdf(urlOrOptions: string | ConvertOptions)
+await deepcitation.convertToPdf(urlOrOptions: string | ConvertOptions)
 
-// Verify LLM citations (parse and verify all)
-await dc.verifyAll({ llmOutput, outputImageFormat? })
+// Verify LLM citations (recommended - parses and verifies all)
+await deepcitation.verify({ llmOutput, outputImageFormat? })
 
-// Verify pre-parsed citations against a specific file
-await dc.verify(attachmentId, citations, options?)
+// Verify pre-parsed citations against a specific attachment
+await deepcitation.verifyAttachment(attachmentId, citations, options?)
 ```
 
 ### Prompt Utilities
