@@ -75,8 +75,6 @@ const parseCiteAttributes = (
 export const getVerificationTextIndicator = (
   verification: Verification | null | undefined
 ): string => {
-  if (!verification) return "⌛";
-
   const status = getCitationStatus(verification);
 
   if (status.isMiss) return "❌";
@@ -89,9 +87,6 @@ export const getVerificationTextIndicator = (
 
   return "◌";
 };
-
-/** @internal Used by replaceCitations */
-const getVerificationIndicator = getVerificationTextIndicator;
 
 /**
  * Replaces citation tags in markdown text with optional replacement content.
@@ -184,8 +179,8 @@ export const replaceCitations = (
       const citation: Citation = {
         attachmentId: attrs.attachment_id,
         pageNumber: parsePageNumber(attrs.start_page_key),
-        fullPhrase: attrs.full_phrase?.replace(/\\'/g, "'").replace(/\\"/g, '"'),
-        keySpan: attrs.key_span?.replace(/\\'/g, "'").replace(/\\"/g, '"'),
+        fullPhrase: attrs.full_phrase,
+        keySpan: attrs.key_span,
         lineIds: parseLineIds(attrs.line_ids),
       };
 
@@ -199,7 +194,7 @@ export const replaceCitations = (
         verification = verifications[numericKey];
       }
 
-      const indicator = getVerificationIndicator(verification);
+      const indicator = getVerificationTextIndicator(verification);
       output = output ? `${output}${indicator}` : indicator;
     }
 
