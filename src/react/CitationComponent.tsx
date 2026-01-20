@@ -477,10 +477,10 @@ function DefaultPopoverContent({
     const showCheckmark = isVerified || status.isPartialMatch;
 
     return (
-      <div className="p-2">
+      <div className="p-2 max-w-full overflow-hidden">
         <button
           type="button"
-          className="group block cursor-zoom-in relative overflow-hidden rounded-md w-[384px] max-w-full h-[200px] bg-gray-50 dark:bg-gray-800"
+          className="group block cursor-zoom-in relative overflow-hidden rounded-md w-full max-w-[384px] h-[200px] bg-gray-50 dark:bg-gray-800"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
