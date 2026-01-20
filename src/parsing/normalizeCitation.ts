@@ -313,17 +313,13 @@ export const normalizeCitations = (response: string): string => {
     /(<cite[\s\S]*?(?:\/>|<\/cite>|>(?=\s*$|[\r\n])(?![\s\S]*<\/cite>)))/gm
   );
   if (citationParts.length <= 1) {
-    // Try a more aggressive pattern for unclosed citations
-    // This captures <cite ... > even when followed by content
+    // Handle unclosed citations by converting to self-closing
     const unclosedMatch = trimmedResponse.match(/<cite\s+(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^'">/])*>/g);
     if (unclosedMatch && unclosedMatch.length > 0) {
-      // Handle unclosed citations by converting them to self-closing
-      let result = trimmedResponse;
-      for (const match of unclosedMatch) {
-        // Convert <cite ... > to <cite ... />
-        const selfClosing = match.replace(/>$/, ' />');
-        result = result.replace(match, selfClosing);
-      }
+      const result = trimmedResponse.replace(
+        /<cite\s+(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^'">/])*>/g,
+        (match) => match.replace(/>$/, ' />')
+      );
       return normalizeCitationContent(result);
     }
     return normalizeCitationContent(trimmedResponse);
@@ -381,26 +377,18 @@ const normalizeCitationContent = (input: string): string => {
     return lowerKey;
   };
 
-  // Helper to decode HTML entities (simple implementation, expand if needed)
-  // Note: We decode &lt; and &gt; to their actual characters so they're preserved
-  // in the final output for display purposes
+  const htmlEntityMap: Record<string, string> = {
+    '&quot;': '"',
+    '&apos;': "'",
+    '&lt;': '<',
+    '&gt;': '>',
+    '&amp;': '&',
+  };
+  const htmlEntityRegex = /&(?:quot|apos|lt|gt|amp);/g;
   const decodeHtmlEntities = (str: string) => {
-    return str
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&amp;/g, "&");
+    return str.replace(htmlEntityRegex, (match) => htmlEntityMap[match] || match);
   };
 
-  // 2. ROBUST TEXT ATTRIBUTE PARSING (reasoning, value, full_phrase)
-  // This regex matches: Key = Quote -> Content (lazy) -> Lookahead for (Next Attribute OR End of Tag)
-  // It effectively ignores quotes inside the content during the initial capture.
-  // IMPORTANT:
-  // - The lookahead requires \s*= after attribute names to avoid matching words in content
-  //   (e.g., "The value was" should not stop at "value" thinking it's an attribute)
-  // - For tag end: matches />, '>, or "> (quote followed by >) to distinguish from &gt;
-  //   (In &gt;, the > is preceded by 't', not a quote or slash)
   const textAttributeRegex =
     /(fullPhrase|full_phrase|keySpan|key_span|reasoning|value)\s*=\s*(['"])([\s\S]*?)(?=\s+(?:line_ids|lineIds|timestamps|fileId|file_id|attachmentId|attachment_id|start_page_key|start_pageKey|startPageKey|keySpan|key_span|reasoning|value|full_phrase)\s*=|\s*\/>|['"]>)/gm;
 
@@ -409,41 +397,25 @@ const normalizeCitationContent = (input: string): string => {
     (_match, key, openQuote, rawContent) => {
       let content = rawContent;
 
-      // The lazy match usually captures the closing quote because the lookahead
-      // starts at the space *after* the attribute. We must strip it.
       if (content.endsWith(openQuote)) {
         content = content.slice(0, -1);
       }
 
-      // 1. Normalization: Flatten newlines to spaces
-      content = content.replace(/(\r?\n)+/g, " ");
+      // Flatten newlines and remove markdown markers
+      content = content.replace(/(\r?\n)+|(\*|_){2,}|\*/g, (match: string) => {
+        if (match.includes('\n') || match.includes('\r')) return ' ';
+        return '';
+      });
 
-      // 2. Decode entities to get raw text (e.g., &apos; -> ')
       content = decodeHtmlEntities(content);
 
-      // 3. Remove Markdown bold/italic markers often hallucinated by LLMs inside attributes
-      content = content.replace(/(\*|_){2,}/g, "");
-
-      // 4. Sanitize Quotes:
-      // First, unescape existing backslashed quotes to avoid double escaping (e.g. \\' -> ')
-      content = content.replace(/\\\\'/g, "'");
-      content = content.replace(/\\'/g, "'");
-      content = content.replace(/'/g, "\\'");
-
-      content = content.replace(/\\\\"/g, '"');
-      content = content.replace(/\\"/g, '"');
-      content = content.replace(/"/g, '\\"');
-
-      // 5. Remove * from the content, sometimes a md list will really mess things up here so we remove it
-      content = content.replace(/\*/g, ""); //this is a hack to remove the * from the content
+      // Normalize quotes
+      content = content.replace(/\\\\'/g, "'").replace(/\\'/g, "'").replace(/'/g, "\\'");
+      content = content.replace(/\\\\"/g, '"').replace(/\\"/g, '"').replace(/"/g, '\\"');
 
       return `${canonicalizeCiteAttributeKey(key)}='${content}'`;
     }
   );
-
-  // 3. ROBUST LINE_ID / TIMESTAMP PARSING
-  // Handles unquoted, single quoted, or double quoted numbers/ranges.
-  // Can handle line_ids appearing anywhere in the tag, not just at the end.
   normalized = normalized.replace(
     /(line_ids|lineIds|timestamps)=['"]?([\[\]\(\){}A-Za-z0-9_\-, ]+)['"]?(\s*\/?>|\s+)/gm,
     (_match, key, rawValue, trailingChars) => {

@@ -3,6 +3,17 @@ import { type Citation, type CitationStatus } from "../types/citation.js";
 import { normalizeCitations } from "./normalizeCitation.js";
 import { generateCitationKey } from "../react/utils.js";
 
+const attributeRegexCache = new Map<string, RegExp>();
+
+function getAttributeRegex(name: string): RegExp {
+  let regex = attributeRegexCache.get(name);
+  if (!regex) {
+    regex = new RegExp(`${name}='((?:[^'\\\\]|\\\\.)*)'`);
+    attributeRegexCache.set(name, regex);
+  }
+  return regex;
+}
+
 /**
  * Parses a line_ids string that may contain individual numbers, ranges, or both.
  * Examples: "1,2,3", "5-10", "1,5-7,10", "20-20"
@@ -115,11 +126,9 @@ export const parseCitation = (
     fragment.indexOf("/>") + 2
   );
 
-  // Helper function to extract attribute value by name (handles any order)
   const extractAttribute = (tag: string, attrNames: string[]): string | undefined => {
     for (const name of attrNames) {
-      // Match attribute with escaped quotes support: name='value' where value can contain \'
-      const regex = new RegExp(`${name}='((?:[^'\\\\]|\\\\.)*)'`);
+      const regex = getAttributeRegex(name);
       const match = tag.match(regex);
       if (match) {
         return match[1];

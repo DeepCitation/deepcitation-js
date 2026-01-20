@@ -20,8 +20,8 @@ export function cleanRepeatingLastSentence(text: string): string {
   const MIN_SENTENCE_CONTENT_LENGTH = 10;
 
   const sentenceEndRegex = /[.?!](?=\s+|$)/g;
-  let match;
   const sentenceEndIndices: number[] = [];
+  let match;
   while ((match = sentenceEndRegex.exec(text)) !== null) {
     sentenceEndIndices.push(match.index);
   }

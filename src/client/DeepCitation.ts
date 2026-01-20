@@ -449,13 +449,21 @@ export class DeepCitation {
       citationsByAttachment.get(attachmentId)![key] = citation;
     }
 
-    // Verify all files in parallel
     const verificationPromises: Promise<VerifyCitationsResponse>[] = [];
+    const skippedCitations: Record<string, Citation> = {};
+
     for (const [attachmentId, fileCitations] of citationsByAttachment) {
       if (attachmentId) {
         verificationPromises.push(
           this.verifyAttachment(attachmentId, fileCitations, { outputImageFormat })
         );
+      } else {
+        Object.assign(skippedCitations, fileCitations);
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn(
+            `[DeepCitation] ${Object.keys(fileCitations).length} citation(s) skipped: missing attachmentId`
+          );
+        }
       }
     }
 
@@ -463,6 +471,10 @@ export class DeepCitation {
     const allVerifications: VerifyCitationsResponse["verifications"] = {};
     for (const result of results) {
       Object.assign(allVerifications, result.verifications);
+    }
+
+    for (const key of Object.keys(skippedCitations)) {
+      allVerifications[key] = { status: "skipped" };
     }
 
     return { verifications: allVerifications };
