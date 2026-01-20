@@ -176,11 +176,16 @@ export const replaceCitations = (
         return nums.length > 0 ? nums : undefined;
       };
 
+      // Unescape quotes in fullPhrase and keySpan to match how citations are parsed
+      // by getAllCitationsFromLlmOutput (which returns unescaped values)
+      const unescapeQuotes = (str: string | undefined): string | undefined =>
+        str?.replace(/\\'/g, "'").replace(/\\"/g, '"');
+
       const citation: Citation = {
         attachmentId: attrs.attachment_id,
         pageNumber: parsePageNumber(attrs.start_page_key),
-        fullPhrase: attrs.full_phrase,
-        keySpan: attrs.key_span,
+        fullPhrase: unescapeQuotes(attrs.full_phrase),
+        keySpan: unescapeQuotes(attrs.key_span),
         lineIds: parseLineIds(attrs.line_ids),
       };
 
