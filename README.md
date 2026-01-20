@@ -2,52 +2,40 @@
 
 # @deepcitation/deepcitation-js
 
-**Deterministic AI citation verification. Eliminate hallucination risk by proving every AI citation against attachments.**
+**Instantly trustworthy AI content with eliminated hallucination risk.**
 
 [![npm version](https://img.shields.io/npm/v/@deepcitation/deepcitation-js.svg)](https://www.npmjs.com/package/@deepcitation/deepcitation-js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-[Documentation](https://deepcitation.com/docs) · [Get Free API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Discord](https://discord.gg/deepcitation)
+[Documentation](https://deepcitation.com/docs) · [New API Key](https://deepcitation.com/signup) · [Examples](./examples) 
 
 </div>
 
 ---
 
-## Why DeepCitation?
+## The Problem
 
-LLMs hallucinate. Even when given attachments, they make up quotes, invent statistics, and cite pages that don't exist. DeepCitation solves this by **deterministically verifying every citation** against your attachments—and generating visual proof.
+**Citations alone are not enough.** LLMs hallucinate citations and cite pages that do not exist. 
+
+DeepCitation solves this by deterministically verifying every citation against your sources. We provide visual proof for every claim, making content instantly trustworthy and safer to present to users.
 
 <div align="center">
-<img src="./examples/assets/deepcitation-medical-demo.gif" alt="DeepCitation medical documentation demo showing verified inline citations" width="700" />
+<img src="./examples/assets/deepcitation-medical-demo.gif" alt="DeepCitation demo showing instant certainty with verified inline citations" width="700" />
 <br />
-<em>Medical documentation with verified inline citations — certainty at a glance</em>
+<em>DeepCitation demo showing instant certainty with verified inline citations </em>
 </div>
 
-```
-Before: "Revenue grew 45% [1]"  →  ❓ Did the LLM make this up?
-After:  "Revenue grew 45% [1]"  →  ✅ Verified on page 3, line 12 (with screenshot)
-```
 
-## Features
-
-- **Deterministic Matching** – Every citation traced to its exact location. No fuzzy matching, no guessing.
-- **Visual Proof** – Automated screenshots with highlighted text show exactly where citations come from.
-- **Any LLM Provider** – Works with OpenAI, Anthropic, Google, Azure, or your own models.
-- **React Components** – Pre-built components + composable primitives for citation UIs.
-- **TypeScript Native** – Full type safety with comprehensive type definitions.
+```
+Before: "Recent results indicate 35% EF [1]"  →  ❓ Did the LLM make this up? User has to double-check.
+After:  "Recent results indicate 35% EF [1]"  →  ✅ Verified on page 1, line 12 (with screenshot)
+```
 
 ## Installation
 
 ```bash
 npm install @deepcitation/deepcitation-js
-```
-
-Get a free API key at [deepcitation.com](https://deepcitation.com/signup) — no credit card required.
-
-```bash
-# .env
-DEEPCITATION_API_KEY=sk-dc-your_api_key_here
 ```
 
 ---
@@ -63,7 +51,7 @@ Upload attachments and enhance your prompt with citation instructions.
 ```typescript
 import { DeepCitation, wrapCitationPrompt } from "@deepcitation/deepcitation-js";
 
-const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
+const deepcitation = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
 
 // Upload source files, this can be done before the user types their prompt
 const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
@@ -139,68 +127,11 @@ function Response({ llmOutput, verifications }) {
 
 ---
 
-## Core API
-
-### DeepCitation Client
-
-```typescript
-const dc = new DeepCitation({
-  apiKey: string      // Your API key (sk-dc-*)
-});
-
-// Upload and prepare source files
-await deepcitation.prepareFiles(files: FileInput[])
-
-// Convert URLs/Office docs to PDF
-await deepcitation.convertToPdf(urlOrOptions: string | ConvertOptions)
-
-// Verify LLM citations (recommended - parses and verifies all)
-await deepcitation.verify({ llmOutput, outputImageFormat? })
-
-// Verify pre-parsed citations against a specific attachment
-await deepcitation.verifyAttachment(attachmentId, citations, options?)
-```
-
-### Prompt Utilities
-
-```typescript
-import {
-  wrapCitationPrompt,              // Wrap system + user prompts
-  wrapSystemCitationPrompt,         // Wrap system prompt only
-  getAllCitationsFromLlmOutput,     // Extract citations from response
-  CITATION_JSON_OUTPUT_FORMAT,      // JSON schema for structured output
-} from "@deepcitation/deepcitation-js";
-```
-
-### React Components
-
-```typescript
-import {
-  CitationComponent,         // Primary citation display component
-  CitationVariants,          // Alternative citation styles
-  UrlCitationComponent,      // For URL-based citations
-} from "@deepcitation/deepcitation-js/react";
-```
-
-### Types
-
-```typescript
-import type {
-  Citation,
-  Verification,
-  SearchStatus,
-  SearchAttempt,
-} from "@deepcitation/deepcitation-js";
-```
-
----
-
 ## Examples
 
 Check out the [examples directory](./examples) for complete, runnable examples:
 
 - [**basic-verification**](./examples/basic-verification) – Core 3-step workflow
-- [**support-bot**](./examples/support-bot) – Customer support bot with invisible citations
 - [**nextjs-ai-sdk**](./examples/nextjs-ai-sdk) – Full-stack Next.js chat app
 
 ```bash
@@ -212,43 +143,15 @@ npm run start:openai
 
 ---
 
-## Documentation
 
-For comprehensive documentation including:
-- Full API reference
-- Integration patterns
-- Error handling
-- Advanced React components
-- TypeScript types
+## Supported Formats
+*   **Documents:** PDF (Text & Scanned), DOCX, XLSX, PPTX, HTML
+*   **Images:** JPG, PNG, TIFF, WebP, HEIC
+*   **Web:** Public URLs
 
-Visit **[deepcitation.com/docs](https://deepcitation.com/docs)**
-
----
-
-## Supported File Types
-
-**Documents:** PDF (native and scanned), URLs, Office formats (`.docx`, `.xlsx`, `.pptx`, etc.)
-**Images:** PNG, JPEG, TIFF, WebP, AVIF, HEIC
-**Media:** Audio and video (with timestamp-based citations)
-
----
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
----
+## Documentation & Examples
+*   **[Full Documentation](https://deepcitation.com/docs)** - API reference and advanced usage.
+*   **[Examples Directory](./examples)** - Runnable Next.js and Node.js examples.
 
 ## License
-
 MIT License - see [LICENSE](./LICENSE) for details.
-
----
-
-## Links
-
-- [Documentation](https://deepcitation.com/docs)
-- [Get API Key](https://deepcitation.com/signup)
-- [Discord Community](https://discord.gg/deepcitation)
-- [GitHub Issues](https://github.com/deepcitation/deepcitation-js/issues)
-- [Examples](./examples)
