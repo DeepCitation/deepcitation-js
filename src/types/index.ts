@@ -33,6 +33,4 @@ export type {
   MatchSnippetPdfItem,
   UnderlinedPdfItem,
   IVertex,
-  /** @deprecated Use MatchSnippetPdfItem instead */
-  PdfSpaceItem,
 } from "./boxes.js";

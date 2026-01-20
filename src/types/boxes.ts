@@ -7,9 +7,6 @@ export interface UnderlinedPdfItem extends ScreenBox {
   text?: string;
 }
 
-/** @deprecated Use MatchSnippetPdfItem instead */
-export type PdfSpaceItem = MatchSnippetPdfItem;
-
 export type IVertex = {
   x: number;
   y: number;
