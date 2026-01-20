@@ -2,7 +2,7 @@ import { sha1Hash } from "../utils/sha.js";
 import { type Citation } from "./citation.js";
 import { type SearchStatus, type SearchAttempt } from "./search.js";
 import {
-  type MatchSnippetPdfItem,
+  type SnippetPdfItem,
   type UnderlinedPdfItem,
 } from "./boxes.js";
 
@@ -77,7 +77,7 @@ export interface Verification {
 
   hitIndexWithinPage?: number | null;
 
-  matchSnippetPdfItem?: MatchSnippetPdfItem;
+  snippetPdfItem?: SnippetPdfItem;
 
   underlinedPdfItem?: UnderlinedPdfItem;
 

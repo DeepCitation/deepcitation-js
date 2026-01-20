@@ -70,7 +70,7 @@ export type {
 
 export type {
   ScreenBox,
-  MatchSnippetPdfItem,
+  SnippetPdfItem,
   UnderlinedPdfItem,
   IVertex,
 } from "./types/boxes.js";

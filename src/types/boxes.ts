@@ -1,5 +1,5 @@
 // PDF stores items just like ScreenBox, these are in PDF space
-export interface MatchSnippetPdfItem extends ScreenBox {
+export interface SnippetPdfItem extends ScreenBox {
   text?: string;
 }
 
