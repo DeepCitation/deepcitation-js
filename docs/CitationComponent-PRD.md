@@ -96,7 +96,8 @@ interface Verification {
   verifiedMatchSnippet?: string | null;               // ← Shown in popover/diff
 
   hitIndexWithinPage?: number | null;
-  pdfSpaceItem?: PdfSpaceItem;                        // Bounding box coordinates
+  snippetPdfItem?: SnippetPdfItem;                     // Bounding box for snippet
+  underlinedPdfItem?: UnderlinedPdfItem;              // Bounding box for underlined text
   verificationImageBase64?: string | null;            // ← Shown in popover
   verifiedAt?: Date;
 }

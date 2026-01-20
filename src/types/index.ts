@@ -28,4 +28,9 @@ export {
 export type { SearchStatus, SearchMethod, SearchAttempt } from "./search.js";
 
 // Box/geometry types
-export type { ScreenBox, PdfSpaceItem, IVertex } from "./boxes.js";
+export type {
+  ScreenBox,
+  SnippetPdfItem,
+  UnderlinedPdfItem,
+  IVertex,
+} from "./boxes.js";
