@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import { useSmartDiff } from "./useSmartDiff.js";
 import { cn } from "./utils.js";
 
@@ -10,7 +10,14 @@ interface DiffDisplayProps {
   sanitize?: (text: string) => string;
 }
 
-const DiffDisplay: React.FC<DiffDisplayProps> = ({ expected, actual, label, className, sanitize }) => {
+/**
+ * DiffDisplay renders a word-level diff between expected and actual text.
+ *
+ * PERF: Wrapped in memo to prevent unnecessary re-renders when parent
+ * components update. The diff calculation is already memoized internally
+ * via useSmartDiff, but memo prevents the entire component from re-rendering.
+ */
+const DiffDisplay: React.FC<DiffDisplayProps> = memo(({ expected, actual, label, className, sanitize }) => {
   // 1. Sanitize Inputs if sanitization function provided
   const { sanitizedExpected, sanitizedActual } = useMemo(() => {
     if (sanitize) {
@@ -84,6 +91,8 @@ const DiffDisplay: React.FC<DiffDisplayProps> = ({ expected, actual, label, clas
       </div>
     </div>
   );
-};
+});
+
+DiffDisplay.displayName = "DiffDisplay";
 
 export default DiffDisplay;

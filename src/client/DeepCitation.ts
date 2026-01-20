@@ -451,11 +451,24 @@ export class DeepCitation {
 
     // Verify all files in parallel
     const verificationPromises: Promise<VerifyCitationsResponse>[] = [];
+    const skippedCitations: Record<string, Citation> = {};
+
     for (const [attachmentId, fileCitations] of citationsByAttachment) {
       if (attachmentId) {
         verificationPromises.push(
           this.verifyAttachment(attachmentId, fileCitations, { outputImageFormat })
         );
+      } else {
+        // PERF FIX: Track citations without attachmentId instead of silently skipping.
+        // This prevents data loss and allows callers to see which citations were skipped.
+        Object.assign(skippedCitations, fileCitations);
+        if (typeof console !== "undefined" && console.warn) {
+          const citationKeys = Object.keys(fileCitations);
+          console.warn(
+            `[DeepCitation] ${citationKeys.length} citation(s) skipped due to missing attachmentId:`,
+            citationKeys
+          );
+        }
       }
     }
 
@@ -463,6 +476,16 @@ export class DeepCitation {
     const allVerifications: VerifyCitationsResponse["verifications"] = {};
     for (const result of results) {
       Object.assign(allVerifications, result.verifications);
+    }
+
+    // Add skipped citations with "not_found" status so callers know they weren't verified
+    // We use "not_found" as the status since "skipped" isn't a standard status,
+    // and store the reason in urlVerificationError (the closest existing field for error messages)
+    for (const key of Object.keys(skippedCitations)) {
+      allVerifications[key] = {
+        status: "not_found",
+        urlVerificationError: "Citation skipped: missing attachmentId",
+      };
     }
 
     return { verifications: allVerifications };

@@ -19,9 +19,12 @@ export function cleanRepeatingLastSentence(text: string): string {
   const MIN_REPETITIONS = 2;
   const MIN_SENTENCE_CONTENT_LENGTH = 10;
 
+  // PERF FIX: Create regex inside function to avoid global state bug.
+  // A module-scope regex with /g flag maintains lastIndex between calls,
+  // causing the second invocation to skip matches.
   const sentenceEndRegex = /[.?!](?=\s+|$)/g;
-  let match;
   const sentenceEndIndices: number[] = [];
+  let match;
   while ((match = sentenceEndRegex.exec(text)) !== null) {
     sentenceEndIndices.push(match.index);
   }

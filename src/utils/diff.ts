@@ -190,6 +190,10 @@ function myersDiff(
 
 /**
  * Backtrack through the trace to build the diff result.
+ *
+ * PERF FIX: Build array backwards with push() then reverse once at the end.
+ * Using unshift() in a loop is O(n²) because it shifts all existing elements
+ * right on each call. Push + reverse is O(n).
  */
 function backtrack(
   trace: Array<Record<number, number>>,
@@ -214,27 +218,28 @@ function backtrack(
     const prevX = v[prevK] ?? 0;
     const prevY = prevX - prevK;
 
-    // Add diagonal matches (unchanged)
+    // Add diagonal matches (unchanged) - push in reverse order, will reverse at end
     while (x > prevX && y > prevY) {
       x--;
       y--;
-      changes.unshift({ value: oldTokens[x], count: 1 });
+      changes.push({ value: oldTokens[x], count: 1 });
     }
 
     if (d > 0) {
       if (x === prevX) {
         // Insertion (went down)
         y--;
-        changes.unshift({ value: newTokens[y], added: true, count: 1 });
+        changes.push({ value: newTokens[y], added: true, count: 1 });
       } else {
         // Deletion (went right)
         x--;
-        changes.unshift({ value: oldTokens[x], removed: true, count: 1 });
+        changes.push({ value: oldTokens[x], removed: true, count: 1 });
       }
     }
   }
 
-  return changes;
+  // Reverse to get correct order (we built backwards for O(n) efficiency)
+  return changes.reverse();
 }
 
 /**
@@ -266,26 +271,28 @@ function mergeConsecutiveChanges(changes: Change[]): Change[] {
 /**
  * Split text into lines, preserving line endings.
  * Handles both Unix (\n) and Windows (\r\n) line endings.
+ *
+ * PERF FIX: Uses substring slicing instead of character-by-character
+ * string concatenation. String += in a loop forces O(n²) reallocation
+ * of the entire string on each iteration.
  */
 function splitLines(text: string): string[] {
   if (!text) return [];
 
   const lines: string[] = [];
-  let current = "";
+  let lineStart = 0;
 
   for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    current += char;
-
-    if (char === "\n") {
-      lines.push(current);
-      current = "";
+    if (text[i] === "\n") {
+      // Include the newline character in the line
+      lines.push(text.substring(lineStart, i + 1));
+      lineStart = i + 1;
     }
   }
 
   // Don't forget the last line if it doesn't end with newline
-  if (current.length > 0) {
-    lines.push(current);
+  if (lineStart < text.length) {
+    lines.push(text.substring(lineStart));
   }
 
   return lines;

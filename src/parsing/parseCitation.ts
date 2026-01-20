@@ -3,6 +3,24 @@ import { type Citation, type CitationStatus } from "../types/citation.js";
 import { normalizeCitations } from "./normalizeCitation.js";
 import { generateCitationKey } from "../react/utils.js";
 
+// PERF FIX: Pre-compiled regex cache for attribute extraction.
+// Creating new RegExp objects per attribute causes O(n²) overhead on large documents.
+// This cache stores compiled patterns for each attribute name.
+const attributeRegexCache = new Map<string, RegExp>();
+
+/**
+ * Get or create a cached regex for extracting an attribute value.
+ * Pattern matches: name='value' where value can contain escaped quotes.
+ */
+function getAttributeRegex(name: string): RegExp {
+  let regex = attributeRegexCache.get(name);
+  if (!regex) {
+    regex = new RegExp(`${name}='((?:[^'\\\\]|\\\\.)*)'`);
+    attributeRegexCache.set(name, regex);
+  }
+  return regex;
+}
+
 /**
  * Parses a line_ids string that may contain individual numbers, ranges, or both.
  * Examples: "1,2,3", "5-10", "1,5-7,10", "20-20"
@@ -116,10 +134,11 @@ export const parseCitation = (
   );
 
   // Helper function to extract attribute value by name (handles any order)
+  // PERF FIX: Uses pre-compiled regex cache to avoid O(n²) overhead
   const extractAttribute = (tag: string, attrNames: string[]): string | undefined => {
     for (const name of attrNames) {
-      // Match attribute with escaped quotes support: name='value' where value can contain \'
-      const regex = new RegExp(`${name}='((?:[^'\\\\]|\\\\.)*)'`);
+      // Use cached regex pattern for this attribute name
+      const regex = getAttributeRegex(name);
       const match = tag.match(regex);
       if (match) {
         return match[1];
