@@ -82,44 +82,47 @@ export function detectSourceType(url: string): SourceType {
   }
 }
 
+// Module-level constant for platform name mapping (avoids recreation on each call)
+const PLATFORM_MAP: Record<string, string> = {
+  "twitter.com": "X",
+  "x.com": "X",
+  "facebook.com": "Facebook",
+  "instagram.com": "Instagram",
+  "linkedin.com": "LinkedIn",
+  "youtube.com": "YouTube",
+  "youtu.be": "YouTube",
+  "twitch.tv": "Twitch",
+  "github.com": "GitHub",
+  "gitlab.com": "GitLab",
+  "stackoverflow.com": "Stack Overflow",
+  "reddit.com": "Reddit",
+  "wikipedia.org": "Wikipedia",
+  "arxiv.org": "arXiv",
+  "medium.com": "Medium",
+  "substack.com": "Substack",
+  "notion.so": "Notion",
+  "docs.google.com": "Google Docs",
+  "drive.google.com": "Google Drive",
+  "figma.com": "Figma",
+  "streamscharts.com": "Streams Charts",
+  "dexerto.com": "Dexerto",
+};
+
+// Pre-computed entries for suffix matching (avoids Object.entries() on each call)
+const PLATFORM_MAP_ENTRIES = Object.entries(PLATFORM_MAP);
+
 /**
  * Gets a human-readable platform name from domain.
  */
 export function getPlatformName(url: string, domain?: string): string {
   const d = (domain || extractDomain(url)).toLowerCase();
 
-  // Map known domains to platform names
-  const platformMap: Record<string, string> = {
-    "twitter.com": "X",
-    "x.com": "X",
-    "facebook.com": "Facebook",
-    "instagram.com": "Instagram",
-    "linkedin.com": "LinkedIn",
-    "youtube.com": "YouTube",
-    "youtu.be": "YouTube",
-    "twitch.tv": "Twitch",
-    "github.com": "GitHub",
-    "gitlab.com": "GitLab",
-    "stackoverflow.com": "Stack Overflow",
-    "reddit.com": "Reddit",
-    "wikipedia.org": "Wikipedia",
-    "arxiv.org": "arXiv",
-    "medium.com": "Medium",
-    "substack.com": "Substack",
-    "notion.so": "Notion",
-    "docs.google.com": "Google Docs",
-    "drive.google.com": "Google Drive",
-    "figma.com": "Figma",
-    "streamscharts.com": "Streams Charts",
-    "dexerto.com": "Dexerto",
-  };
-
   // Check for exact match first
-  if (platformMap[d]) return platformMap[d];
+  if (PLATFORM_MAP[d]) return PLATFORM_MAP[d];
 
   // Check if domain ends with or equals a known domain (e.g., "en.wikipedia.org" matches "wikipedia.org")
-  for (const [key, name] of Object.entries(platformMap)) {
-    if (d === key || d.endsWith("." + key)) return name;
+  for (const [key, name] of PLATFORM_MAP_ENTRIES) {
+    if (d.endsWith("." + key)) return name;
   }
 
   // Capitalize first letter of domain

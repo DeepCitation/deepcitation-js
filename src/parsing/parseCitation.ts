@@ -3,6 +3,14 @@ import { type Citation, type CitationStatus } from "../types/citation.js";
 import { normalizeCitations } from "./normalizeCitation.js";
 import { generateCitationKey } from "../react/utils.js";
 
+// Pre-compiled regex for extractXmlCitations (avoids recreation on each function call)
+// This regex handles > characters inside quoted attribute values and escaped quotes:
+// - '(?:[^'\\]|\\.)*' matches single-quoted strings with escaped chars
+// - "(?:[^"\\]|\\.)*" matches double-quoted strings with escaped chars
+// - [^'">/] matches any char that's not a quote, >, or /
+// - The whole pattern repeats until we hit />
+const CITE_TAG_REGEX = /<cite\s+(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^'">/])*\/>/g;
+
 const attributeRegexCache = new Map<string, RegExp>();
 
 function getAttributeRegex(name: string): RegExp {
@@ -348,14 +356,8 @@ const findJsonCitationsInObject = (obj: any, found: Citation[]): void => {
 const extractXmlCitations = (text: string): { [key: string]: Citation } => {
   const normalizedText = normalizeCitations(text);
 
-  // Find all <cite ... /> tags
-  // This regex handles > characters inside quoted attribute values and escaped quotes:
-  // - '(?:[^'\\]|\\.)*' matches single-quoted strings with escaped chars
-  // - "(?:[^"\\]|\\.)*" matches double-quoted strings with escaped chars
-  // - [^'">/] matches any char that's not a quote, >, or /
-  // - The whole pattern repeats until we hit />
-  const citeRegex = /<cite\s+(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^'">/])*\/>/g;
-  const matches = normalizedText.match(citeRegex);
+  // Find all <cite ... /> tags using pre-compiled regex
+  const matches = normalizedText.match(CITE_TAG_REGEX);
 
   if (!matches || matches.length === 0) return {};
 

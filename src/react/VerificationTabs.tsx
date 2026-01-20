@@ -45,13 +45,15 @@ export const VerificationTabs: React.FC<VerificationTabsProps> = ({
 
   const [activeTab, setActiveTab] = useState<TabType>("diff");
 
+  // Only depend on isHighVariance since it's already computed from expected/actual via useSmartDiff.
+  // This avoids unnecessary effect runs when expected/actual change but isHighVariance stays the same.
   useEffect(() => {
     if (isHighVariance) {
       setActiveTab("found");
     } else {
       setActiveTab("diff");
     }
-  }, [isHighVariance, expected, actual]);
+  }, [isHighVariance]);
 
   const renderFoundContent = () => (
     <div data-testid="tab-content-found" className="mt-3">

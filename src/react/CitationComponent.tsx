@@ -35,6 +35,20 @@ import { useCitationOverlay } from "./CitationOverlayContext.js";
 export type { CitationVariant, CitationContent } from "./types.js";
 
 /**
+ * Efficient array comparison for primitive values (numbers, strings).
+ * Avoids JSON.stringify overhead.
+ */
+function arraysEqual<T>(a: T[] | undefined, b: T[] | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/**
  * Get the default content type based on variant.
  */
 function getDefaultContent(variant: CitationVariant): CitationContent {
@@ -372,8 +386,9 @@ interface PopoverContentProps {
 
 /**
  * Component to display searched phrases from search attempts
+ * Memoized to prevent unnecessary re-renders when parent re-renders
  */
-function SearchedPhrasesInfo({
+const SearchedPhrasesInfo = memo(function SearchedPhrasesInfo({
   citation,
   verification,
   isExpanded: externalIsExpanded,
@@ -449,9 +464,9 @@ function SearchedPhrasesInfo({
         )}
       </div>
       <div className="mt-1 space-y-1">
-        {searchedPhrases.slice(0, displayCount).map((phrase, index) => (
+        {searchedPhrases.slice(0, displayCount).map((phrase) => (
           <p
-            key={index}
+            key={phrase}
             className="pl-2 py-1 font-mono text-[11px] break-words text-gray-700 dark:text-gray-300 border-l-2 border-red-400 dark:border-red-500"
           >
             "{phrase.length > 80 ? phrase.slice(0, 80) + '…' : phrase}"
@@ -460,7 +475,7 @@ function SearchedPhrasesInfo({
       </div>
     </div>
   );
-}
+});
 
 function DefaultPopoverContent({
   citation,
@@ -675,7 +690,7 @@ function DiffDetails({
   const lineIdDiffers =
     expectedLineIds &&
     actualLineIds &&
-    JSON.stringify(expectedLineIds) !== JSON.stringify(actualLineIds);
+    !arraysEqual(expectedLineIds, actualLineIds);
 
   const expectedPage = citation.pageNumber;
   const actualPage = verification?.verifiedPageNumber;

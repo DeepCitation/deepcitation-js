@@ -3,6 +3,12 @@ import type { Citation } from "../types/citation.js";
 import { getCitationStatus } from "./parseCitation.js";
 import { generateCitationKey } from "../react/utils.js";
 
+// Pre-compiled regexes for normalizeCitationContent (avoids recreation on each function call)
+const ALPHA_BRACKETS_REGEX = /[A-Za-z\[\]\(\){}]/g;
+const DIGIT_RANGE_REGEX = /(\d+)-(\d+)/g;
+const MULTIPLE_COMMAS_REGEX = /,+/g;
+const LEADING_TRAILING_COMMA_REGEX = /^,|,$/g;
+
 export interface ReplaceCitationsOptions {
   /**
    * If true, leaves the key_span text behind when removing citations.
@@ -420,11 +426,11 @@ const normalizeCitationContent = (input: string): string => {
     /(line_ids|lineIds|timestamps)=['"]?([\[\]\(\){}A-Za-z0-9_\-, ]+)['"]?(\s*\/?>|\s+)/gm,
     (_match, key, rawValue, trailingChars) => {
       // Clean up the value (remove generic text, keep numbers/separators)
-      let cleanedValue = rawValue.replace(/[A-Za-z\[\]\(\){}]/g, "");
+      let cleanedValue = rawValue.replace(ALPHA_BRACKETS_REGEX, "");
 
       // Expand ranges (e.g., "1-3" -> "1,2,3")
       cleanedValue = cleanedValue.replace(
-        /(\d+)-(\d+)/g,
+        DIGIT_RANGE_REGEX,
         (_rangeMatch: string, start: string, end: string) => {
           const startNum = parseInt(start, 10);
           const endNum = parseInt(end, 10);
@@ -444,7 +450,9 @@ const normalizeCitationContent = (input: string): string => {
       );
 
       // Normalize commas
-      cleanedValue = cleanedValue.replace(/,+/g, ",").replace(/^,|,$/g, "");
+      cleanedValue = cleanedValue
+        .replace(MULTIPLE_COMMAS_REGEX, ",")
+        .replace(LEADING_TRAILING_COMMA_REGEX, "");
 
       // Return standardized format: key='value' + preserved trailing characters (space or />)
       return `${canonicalizeCiteAttributeKey(
