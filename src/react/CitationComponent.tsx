@@ -29,6 +29,7 @@ import {
   getCitationDisplayText,
 } from "./utils.js";
 import { useSmartDiff } from "./useSmartDiff.js";
+import { useCitationOverlay } from "./CitationOverlayContext.js";
 
 // Re-export types for convenience
 export type { CitationVariant, CitationContent } from "./types.js";
@@ -262,6 +263,14 @@ interface ImageOverlayProps {
  * Click anywhere or press Escape to close.
  */
 function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
+  const { registerOverlay, unregisterOverlay } = useCitationOverlay();
+
+  // Register this overlay as open globally (blocks hover on other citations)
+  useEffect(() => {
+    registerOverlay();
+    return () => unregisterOverlay();
+  }, [registerOverlay, unregisterOverlay]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -477,10 +486,14 @@ function DefaultPopoverContent({
     const showCheckmark = isVerified || status.isPartialMatch;
 
     return (
-      <div className="p-2">
+      <div
+        className="p-2"
+        style={{ maxWidth: "100%", overflow: "hidden" }}
+      >
         <button
           type="button"
-          className="group block cursor-zoom-in relative overflow-hidden rounded-md w-[384px] max-w-full h-[200px] bg-gray-50 dark:bg-gray-800"
+          className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800"
+          style={{ width: "100%", maxWidth: "384px", height: "200px" }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -491,7 +504,13 @@ function DefaultPopoverContent({
           <img
             src={verification.verificationImageBase64 as string}
             alt="Citation verification"
-            className="block w-full h-full object-cover object-left-top rounded-md"
+            className="block rounded-md"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "left top",
+            }}
             loading="lazy"
           />
           {/* Bottom bar with status indicator and expand hint */}
@@ -849,6 +868,9 @@ export const CitationComponent = forwardRef<
     },
     ref
   ) => {
+    // Get overlay context for blocking hover when any image overlay is open
+    const { isAnyOverlayOpen } = useCitationOverlay();
+
     // Resolve content: explicit content prop or default for variant
     const resolvedContent: CitationContent = useMemo(() => {
       if (contentProp) return contentProp;
@@ -1019,6 +1041,9 @@ export const CitationComponent = forwardRef<
     }, []);
 
     const handleMouseEnter = useCallback(() => {
+      // Don't trigger hover popover if any image overlay is expanded
+      if (isAnyOverlayOpen) return;
+
       cancelHoverCloseTimeout();
       setIsHovering(true);
       if (behaviorConfig?.onHover?.onEnter) {
@@ -1032,6 +1057,7 @@ export const CitationComponent = forwardRef<
       citationKey,
       getBehaviorContext,
       cancelHoverCloseTimeout,
+      isAnyOverlayOpen,
     ]);
 
     const handleMouseLeave = useCallback(() => {
