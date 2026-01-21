@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-[Documentation](https://deepcitation.com/docs) · [Get API Key](https://deepcitation.com/signup) · [Examples](./examples)
+[Documentation](https://deepcitation.com/docs) · [New API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Agent Guide](./AGENTS.md)
 
 </div>
 
@@ -146,10 +146,13 @@ npm run start:openai
 
 - **Feature requests:** [GitHub Discussions](https://github.com/deepcitation/deepcitation-js/discussions)
 - **Bug reports:** [GitHub Issues](https://github.com/deepcitation/deepcitation-js/issues)
+- **For Coding Agents:** [Step-by-step DeepCitation implementation guide for AI code agents (Claude, Cursor, Copilot)](./AGENTS.md) 
+
 
 ## Contributing
 
 We welcome contributions! Please start a discussion in [GitHub Discussions](https://github.com/deepcitation/deepcitation-js/discussions) before submitting a pull request.
+
 
 ## License
 
