@@ -146,7 +146,7 @@ npm run start:openai
 
 - **Feature requests:** [GitHub Discussions](https://github.com/deepcitation/deepcitation-js/discussions)
 - **Bug reports:** [GitHub Issues](https://github.com/deepcitation/deepcitation-js/issues)
-- **For AI Agents:** [Agent Implementation Guide](./AGENTS.md)  Step-by-step guide for AI code agents (Claude, Cursor, Copilot).
+- **For Coding Agents:** [Step-by-step DeepCitation implementation guide for AI code agents (Claude, Cursor, Copilot)](./AGENTS.md) 
 
 
 ## Contributing
