@@ -14,21 +14,20 @@
 
 ---
 
-## The Problem
+## Overview
 
-**Citations alone are not enough.** LLMs hallucinate citations and cite pages that do not exist. 
+LLMs hallucinate citations and cite pages that don't exist. **Citations alone are not enough.**
 
 DeepCitation solves this by deterministically verifying every citation against your sources. We provide visual proof for every claim, making content instantly trustworthy and safer to present to users.
 
 <div align="center">
 <img src="./examples/assets/deepcitation-medical-demo.gif" alt="DeepCitation demo showing instant certainty with verified inline citations" width="700" />
 <br />
-<em>DeepCitation demo showing instant certainty with verified inline citations </em>
+<em>DeepCitation demo showing instant certainty with verified inline citations</em>
 </div>
 
-
 ```
-Before: "Recent results indicate 35% EF [1]"  →  ❓ Did the LLM make this up? User has to double-check.
+Before: "Recent results indicate 35% EF [1]"  →  ❓ Did the LLM make this up?
 After:  "Recent results indicate 35% EF [1]"  →  ✅ Verified on page 1, line 12 (with screenshot)
 ```
 
@@ -38,7 +37,9 @@ After:  "Recent results indicate 35% EF [1]"  →  ✅ Verified on page 1, line 
 npm install @deepcitation/deepcitation-js
 ```
 
----
+## Documentation
+
+Full documentation is available at [deepcitation.com/docs](https://deepcitation.com/docs).
 
 ## Quick Start
 
@@ -53,7 +54,7 @@ import { DeepCitation, wrapCitationPrompt } from "@deepcitation/deepcitation-js"
 
 const deepcitation = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
 
-// Upload source files, this can be done before the user types their prompt
+// Upload source files
 const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
   { file: pdfBuffer, filename: "report.pdf" },
 ]);
@@ -93,14 +94,10 @@ Parse the LLM output and render verified citations inline with React components.
 
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
-import {
-  parseCitation,
-  generateCitationKey,
-} from "@deepcitation/deepcitation-js";
+import { parseCitation, generateCitationKey } from "@deepcitation/deepcitation-js";
 import "@deepcitation/deepcitation-js/react/styles.css";
 
 function Response({ llmOutput, verifications }) {
-  // Split LLM output by citation tags and render inline
   const renderWithCitations = (text: string) => {
     const parts = text.split(/(<cite\s+[^>]*\/>)/g);
 
@@ -125,8 +122,6 @@ function Response({ llmOutput, verifications }) {
 }
 ```
 
----
-
 ## Examples
 
 Check out the [examples directory](./examples) for complete, runnable examples:
@@ -141,18 +136,24 @@ cp .env.example .env  # Add your API keys
 npm run start:openai
 ```
 
----
-
-
 ## Supported Formats
-*   **Documents:** PDF (Text & Scanned), DOCX, XLSX, PPTX, HTML
-*   **Images:** JPG, PNG, TIFF, WebP, HEIC
-*   **Web:** Public URLs
 
-## Documentation & Examples
-*   **[Full Documentation](https://deepcitation.com/docs)** - API reference and advanced usage.
-*   **[Examples Directory](./examples)** - Runnable Next.js and Node.js examples.
-*   **[Agent Implementation Guide](./AGENTS.md)** - Step-by-step guide for AI code agents (Claude, Cursor, Copilot).
+- **Documents:** PDF (Text & Scanned), DOCX, XLSX, PPTX, HTML
+- **Images:** JPG, PNG, TIFF, WebP, HEIC
+- **Web:** Public URLs
+
+## Support
+
+- **Feature requests:** [GitHub Discussions](https://github.com/deepcitation/deepcitation-js/discussions)
+- **Bug reports:** [GitHub Issues](https://github.com/deepcitation/deepcitation-js/issues)
+- **For AI Agents:** [Agent Implementation Guide](./AGENTS.md)  Step-by-step guide for AI code agents (Claude, Cursor, Copilot).
+
+
+## Contributing
+
+We welcome contributions! Please start a discussion in [GitHub Discussions](https://github.com/deepcitation/deepcitation-js/discussions) before submitting a pull request.
+
 
 ## License
+
 MIT License - see [LICENSE](./LICENSE) for details.
