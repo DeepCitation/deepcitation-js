@@ -8,6 +8,11 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+
+// React 19.2+ Activity component for prefetching - falls back to Fragment if unavailable
+const Activity =
+  (React as { Activity?: React.ComponentType<{ mode: "visible" | "hidden"; children: React.ReactNode }> }).Activity ??
+  (({ children }: { mode: "visible" | "hidden"; children: React.ReactNode }) => <>{children}</>);
 import { type CitationStatus } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { CheckIcon, SpinnerIcon, WarningIcon } from "./icons.js";
@@ -316,40 +321,40 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 // Use `renderIndicator` prop to customize. Use `variant="indicator"` to show only the icon.
 // =============================================================================
 
-/** Verified indicator - green checkmark for exact matches */
+/** Verified indicator - green checkmark for exact matches (subscript-positioned) */
 const VerifiedIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 size-2 text-green-600 dark:text-green-500"
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-green-600 dark:text-green-500"
     aria-hidden="true"
   >
     <CheckIcon />
   </span>
 );
 
-/** Partial match indicator - amber checkmark for partial/relocated matches */
+/** Partial match indicator - amber checkmark for partial/relocated matches (subscript-positioned) */
 const PartialIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 size-2 text-amber-600 dark:text-amber-500"
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-600 dark:text-amber-500"
     aria-hidden="true"
   >
     <CheckIcon />
   </span>
 );
 
-/** Pending indicator - spinner for loading state */
+/** Pending indicator - spinner for loading state (subscript-positioned) */
 const PendingIndicator = () => (
   <span
-    className="inline-flex ml-1 size-2 animate-spin text-gray-400 dark:text-gray-500"
+    className="inline-flex relative ml-1 top-[0.15em] size-2.5 animate-spin text-gray-400 dark:text-gray-500"
     aria-hidden="true"
   >
     <SpinnerIcon />
   </span>
 );
 
-/** Miss indicator - amber warning triangle for not found */
+/** Miss indicator - amber warning triangle for not found (subscript-positioned) */
 const MissIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 size-2 text-amber-500 dark:text-amber-400"
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-500 dark:text-amber-400"
     aria-hidden="true"
   >
     <WarningIcon />
@@ -368,6 +373,8 @@ interface PopoverContentProps {
   isLoading?: boolean;
   isPhrasesExpanded?: boolean;
   onPhrasesExpandChange?: (expanded: boolean) => void;
+  /** Whether the popover is currently visible (used for Activity prefetching) */
+  isVisible?: boolean;
 }
 
 /**
@@ -470,6 +477,7 @@ function DefaultPopoverContent({
   isLoading = false,
   isPhrasesExpanded,
   onPhrasesExpandChange,
+  isVisible = true,
 }: PopoverContentProps) {
   const hasImage = verification?.verificationImageBase64;
   const { isMiss, isPartialMatch, isPending } = status;
@@ -480,72 +488,57 @@ function DefaultPopoverContent({
   // - Large images: constrain to max dimensions while preserving aspect ratio
   // - Max dimensions: 70vw width, 50vh height to leave room for positioning
   // - Min dimensions: none - small images stay small
+  //
+  // React 19.2 Activity component is used to pre-render the image in "hidden" mode
+  // before the user hovers, eliminating the empty popover flash when first displayed.
   if (hasImage) {
-    // Determine status indicator for the image overlay
-    const isVerified = status.isVerified && !status.isPartialMatch;
-    const showCheckmark = isVerified || status.isPartialMatch;
-
     return (
-      <div
-        className="p-2"
-        style={{ maxWidth: "100%", overflow: "hidden" }}
-      >
-        <button
-          type="button"
-          className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onImageClick?.();
-          }}
-          aria-label="Click to view full size"
+      <Activity mode={isVisible ? "visible" : "hidden"}>
+        <div
+          className="p-2"
+          style={{ maxWidth: "100%", overflow: "hidden" }}
         >
-          <img
-            src={verification.verificationImageBase64 as string}
-            alt="Citation verification"
-            className="block rounded-md"
-            style={{
-              maxWidth: "min(70vw, 384px)",
-              maxHeight: "min(50vh, 300px)",
-              width: "auto",
-              height: "auto",
-              objectFit: "contain",
+          <button
+            type="button"
+            className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onImageClick?.();
             }}
-            loading="lazy"
-          />
-          {/* Bottom bar with status indicator and expand hint */}
-          <span className="absolute left-0 right-0 bottom-0 flex items-center justify-between px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/30 to-transparent rounded-b-md">
-            {/* Status indicator */}
-            <span className={`inline-flex items-center gap-1 ${
-              isVerified ? 'text-green-400' :
-              status.isPartialMatch ? 'text-amber-400' :
-              status.isMiss ? 'text-red-400' : 'text-gray-400'
-            }`}>
-              {showCheckmark && (
-                <span className="w-3 h-3">
-                  <CheckIcon />
-                </span>
-              )}
-              {status.isMiss && (
-                <span className="w-3 h-3">
-                  <WarningIcon />
-                </span>
-              )}
+            aria-label="Click to view full size"
+          >
+            <img
+              src={verification.verificationImageBase64 as string}
+              alt="Citation verification"
+              className="block rounded-md"
+              style={{
+                maxWidth: "min(70vw, 384px)",
+                maxHeight: "min(50vh, 300px)",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+              }}
+              // Use eager loading for prefetching, decode async to not block main thread
+              loading="eager"
+              decoding="async"
+            />
+            {/* Bottom bar with expand hint on hover */}
+            <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/30 to-transparent rounded-b-md">
+              <span className="text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                Click to expand
+              </span>
             </span>
-            {/* Expand hint on hover */}
-            <span className="text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
-              Click to expand
-            </span>
-          </span>
-        </button>
-        {(isMiss || isPartialMatch) && (
-          <DiffDetails
-            citation={citation}
-            verification={verification}
-            status={status}
-          />
-        )}
-      </div>
+          </button>
+          {(isMiss || isPartialMatch) && (
+            <DiffDetails
+              citation={citation}
+              verification={verification}
+              status={status}
+            />
+          )}
+        </div>
+      </Activity>
     );
   }
 
@@ -1396,6 +1389,7 @@ export const CitationComponent = forwardRef<
           isLoading={isLoading || shouldShowSpinner}
           isPhrasesExpanded={isPhrasesExpanded}
           onPhrasesExpandChange={setIsPhrasesExpanded}
+          isVisible={isHovering}
           onImageClick={() => {
             if (verification?.verificationImageBase64) {
               setExpandedImageSrc(verification.verificationImageBase64);
@@ -1404,9 +1398,25 @@ export const CitationComponent = forwardRef<
         />
       );
 
+      // Pre-render the image content in hidden mode when we have an image
+      // but the user isn't hovering yet. This uses React 19.2's Activity
+      // component to prefetch and decode the image before it's needed.
+      const prefetchElement = hasImage && !isHovering && !renderPopoverContent ? (
+        <DefaultPopoverContent
+          citation={citation}
+          verification={verification ?? null}
+          status={status}
+          isLoading={false}
+          isVisible={false}
+          onImageClick={() => {}}
+        />
+      ) : null;
+
       return (
         <>
           {children}
+          {/* Hidden prefetch layer - pre-renders image content using Activity */}
+          {prefetchElement}
           <Popover open={isHovering}>
             <PopoverTrigger asChild>
               <span ref={ref} {...triggerProps}>

@@ -122,3 +122,11 @@ export {
   groupCitationsBySource,
   useCitationDrawer,
 } from "./CitationDrawer.js";
+
+// Prefetch utilities (for pre-rendering images before hover)
+export {
+  PrefetchedPopoverImage,
+  MemoizedPrefetchedPopoverImage,
+  usePrefetchImage,
+  prefetchImages,
+} from "./PrefetchedPopoverImage.js";
