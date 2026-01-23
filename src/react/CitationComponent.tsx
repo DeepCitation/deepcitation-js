@@ -881,6 +881,8 @@ export const CitationComponent = forwardRef<
       null
     );
     const [isPhrasesExpanded, setIsPhrasesExpanded] = useState(false);
+    // Track if popover was already open before current interaction (for mobile tap-to-expand)
+    const wasPopoverOpenBeforeTap = useRef(false);
 
     const citationKey = useMemo(
       () => generateCitationKey(citation),
@@ -1007,6 +1009,15 @@ export const CitationComponent = forwardRef<
           return;
         }
 
+        // On mobile: first tap shows popover, second tap (when popover already open) opens image
+        // wasPopoverOpenBeforeTap is set in handleTouchStart before the click fires
+        if (isMobile && !wasPopoverOpenBeforeTap.current) {
+          // First tap on mobile: just show popover (already triggered by touch events)
+          // Don't open the image overlay yet
+          setIsHovering(true);
+          return;
+        }
+
         // Default: click opens image if available, or toggles phrases expansion for miss state
         if (verification?.verificationImageBase64) {
           setExpandedImageSrc(verification.verificationImageBase64);
@@ -1022,6 +1033,7 @@ export const CitationComponent = forwardRef<
         citationKey,
         verification?.verificationImageBase64,
         isMiss,
+        isMobile,
         getBehaviorContext,
         applyBehaviorActions,
       ]
@@ -1115,6 +1127,18 @@ export const CitationComponent = forwardRef<
         }
       };
     }, []);
+
+    // Touch start handler for mobile - captures popover state before click fires
+    const handleTouchStart = useCallback(
+      (e: React.TouchEvent<HTMLSpanElement>) => {
+        if (isMobile) {
+          // Capture whether popover was already open before this tap
+          // This is used in handleClick to determine first vs second tap behavior
+          wasPopoverOpenBeforeTap.current = isHovering;
+        }
+      },
+      [isMobile, isHovering]
+    );
 
     // Touch handler for mobile
     const handleTouchEnd = useCallback(
@@ -1376,6 +1400,7 @@ export const CitationComponent = forwardRef<
       onMouseEnter: handleMouseEnter,
       onMouseLeave: handleMouseLeave,
       onClick: handleClick,
+      onTouchStart: isMobile ? handleTouchStart : undefined,
       onTouchEndCapture: isMobile ? handleTouchEnd : undefined,
       "aria-label": displayText ? `[${displayText}]` : undefined,
     };
