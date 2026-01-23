@@ -60,13 +60,61 @@ import type {
 
 ## Integration Workflow
 
-### 1. Upload Source Files
+### 1. Prepare Source Content
+
+The `/prepareFile` endpoint handles all source types with a unified API:
+
+**Processing Times:**
+- **Images/PDFs**: <1 second
+- **URLs/Office files**: ~30 seconds (requires conversion)
+
+#### Upload a File (PDF, Image)
 ```bash
 curl -X POST https://api.deepcitation.com/prepareFile \
   -H "Authorization: Bearer $DEEPCITATION_API_KEY" \
   -F "file=@document.pdf"
 ```
-Returns: `attachmentId`, `promptContent` with page/line IDs.
+
+#### Prepare a URL
+```bash
+curl -X POST https://api.deepcitation.com/prepareFile \
+  -H "Authorization: Bearer $DEEPCITATION_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/article"}'
+```
+
+#### Using the TypeScript Client
+```typescript
+import { DeepCitation } from "@deepcitation/deepcitation-js";
+
+const deepcitation = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
+
+// For files (PDF, images) - fast (<1s)
+const { attachmentId, deepTextPromptPortion } = await deepcitation.uploadFile(buffer, {
+  filename: "document.pdf"
+});
+
+// For URLs - slower (~30s, includes conversion)
+const { attachmentId, deepTextPromptPortion } = await deepcitation.prepareUrl({
+  url: "https://example.com/article"
+});
+
+// For URLs - UNSAFE fast mode (<1s, extracts HTML text directly)
+// WARNING: Vulnerable to hidden text, fine print, and prompt injection!
+// Only use for trusted URLs where you control the content.
+const { attachmentId, deepTextPromptPortion } = await deepcitation.prepareUrl({
+  url: "https://your-trusted-site.com/article",
+  unsafeFastUrlOutput: true,
+});
+
+// For multiple files
+const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
+  { file: buffer1, filename: "doc1.pdf" },
+  { file: buffer2, filename: "doc2.pdf" },
+]);
+```
+
+Returns: `attachmentId`, `deepTextPromptPortion` with page/line IDs.
 
 ### 2. Wrap System Prompt
 ```typescript

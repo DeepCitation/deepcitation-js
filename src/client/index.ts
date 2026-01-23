@@ -3,6 +3,7 @@ export type {
   DeepCitationConfig,
   UploadFileResponse,
   UploadFileOptions,
+  PrepareUrlOptions,
   VerifyCitationsResponse,
   VerifyCitationsOptions,
   CitationInput,
