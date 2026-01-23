@@ -99,6 +99,14 @@ const { attachmentId, deepTextPromptPortion } = await deepcitation.prepareUrl({
   url: "https://example.com/article"
 });
 
+// For URLs - UNSAFE fast mode (<1s, extracts HTML text directly)
+// WARNING: Vulnerable to hidden text, fine print, and prompt injection!
+// Only use for trusted URLs where you control the content.
+const { attachmentId, deepTextPromptPortion } = await deepcitation.prepareUrl({
+  url: "https://your-trusted-site.com/article",
+  unsafeFastUrlOutput: true,
+});
+
 // For multiple files
 const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
   { file: buffer1, filename: "doc1.pdf" },

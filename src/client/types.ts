@@ -61,6 +61,18 @@ export interface PrepareUrlOptions {
   attachmentId?: string;
   /** Optional custom filename for the converted document */
   filename?: string;
+  /**
+   * UNSAFE: Skip PDF conversion and extract text directly from HTML.
+   *
+   * This is much faster (<1s vs ~30s) but VULNERABLE to:
+   * - Hidden text (CSS display:none, tiny fonts, etc.)
+   * - Fine print that users can't see
+   * - Prompt injection attacks embedded in the page
+   *
+   * Only use this for trusted URLs where you control the content.
+   * Default: false (uses safe PDF conversion)
+   */
+  unsafeFastUrlOutput?: boolean;
 }
 
 /**

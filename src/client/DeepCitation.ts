@@ -299,6 +299,7 @@ export class DeepCitation {
         url: options.url,
         attachmentId: options.attachmentId,
         filename: options.filename,
+        unsafeFastUrlOutput: options.unsafeFastUrlOutput,
       }),
     });
 

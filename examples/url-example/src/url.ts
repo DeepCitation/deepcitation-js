@@ -75,15 +75,26 @@ async function main() {
     return;
   }
 
-  console.log(`\nPreparing URL for citation verification...`);
-  console.log(`(URLs take ~30s to process vs. <1s for images/PDFs)`);
+  // Ask about fast mode
+  const fastModeInput = await prompt(
+    "Use unsafe fast mode? (y/N) [Fast but vulnerable to hidden text/prompt injection]: "
+  );
+  const unsafeFastUrlOutput = fastModeInput.toLowerCase() === "y";
+
+  if (unsafeFastUrlOutput) {
+    console.log(`\nPreparing URL (UNSAFE fast mode - <1s)...`);
+    console.log(`WARNING: Vulnerable to hidden text, fine print, and prompt injection!`);
+  } else {
+    console.log(`\nPreparing URL for citation verification...`);
+    console.log(`(URLs take ~30s to process vs. <1s for images/PDFs)`);
+  }
 
   let attachmentId: string;
   let deepTextPromptPortion: string;
 
   try {
     // Single call to prepare URL - handles conversion and text extraction
-    const result = await deepcitation.prepareUrl({ url });
+    const result = await deepcitation.prepareUrl({ url, unsafeFastUrlOutput });
 
     attachmentId = result.attachmentId;
     deepTextPromptPortion = result.deepTextPromptPortion;

@@ -112,12 +112,34 @@ const verified = await deepcitation.verifyAttachment(attachmentId, parsedCitatio
 
 ## Processing Times
 
-| Source Type | Processing Time |
-|-------------|-----------------|
-| Images (PNG, JPEG, etc.) | <1 second |
-| PDF documents | <1 second |
-| URLs (web pages) | ~30 seconds |
-| Office files (DOCX, XLSX, etc.) | ~30 seconds |
+| Source Type | Processing Time | Notes |
+|-------------|-----------------|-------|
+| Images (PNG, JPEG, etc.) | <1 second | |
+| PDF documents | <1 second | |
+| URLs (web pages) | ~30 seconds | Safe PDF conversion |
+| URLs (unsafe fast mode) | <1 second | Vulnerable to hidden text/prompt injection |
+| Office files (DOCX, XLSX, etc.) | ~30 seconds | |
+
+### Unsafe Fast Mode
+
+The example offers an "unsafe fast mode" option that extracts text directly from HTML instead of converting to PDF first. This is much faster (<1s vs ~30s) but **vulnerable to**:
+
+- Hidden text (CSS `display:none`, tiny fonts, white-on-white text)
+- Fine print that users can't see
+- Prompt injection attacks embedded in the page
+
+**Only use this for trusted URLs where you control the content.**
+
+```typescript
+// Safe mode (default) - ~30s, converts to PDF first
+const result = await deepcitation.prepareUrl({ url });
+
+// Unsafe fast mode - <1s, extracts HTML text directly
+const result = await deepcitation.prepareUrl({
+  url,
+  unsafeFastUrlOutput: true
+});
+```
 
 ## Supported URL types
 
