@@ -10,6 +10,7 @@ import type {
   FileInput,
   PrepareConvertedFileOptions,
   PrepareFilesResult,
+  PrepareUrlOptions,
   UploadFileOptions,
   UploadFileResponse,
   VerifyInput,
@@ -252,6 +253,57 @@ export class DeepCitation {
 
     if (!response.ok) {
       throw new Error(await extractErrorMessage(response, "Prepare"));
+    }
+
+    return (await response.json()) as UploadFileResponse;
+  }
+
+  /**
+   * Prepare a URL for citation verification.
+   *
+   * This is a convenience method that handles URL conversion and text extraction
+   * in a single call. The API will convert the URL to PDF and extract text content
+   * for citation verification.
+   *
+   * Note: URLs and Office files take ~30s to process vs. <1s for images/PDFs.
+   *
+   * @param options - URL and optional settings
+   * @returns Upload response with attachmentId and extracted text for LLM prompts
+   *
+   * @example
+   * ```typescript
+   * // Prepare a URL for citation verification
+   * const { attachmentId, deepTextPromptPortion } = await deepcitation.prepareUrl({
+   *   url: "https://example.com/article"
+   * });
+   *
+   * // Use deepTextPromptPortion in your LLM prompt
+   * const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
+   *   systemPrompt,
+   *   userPrompt: question,
+   *   deepTextPromptPortion,
+   * });
+   *
+   * // Verify citations
+   * const verified = await deepcitation.verifyAttachment(attachmentId, citations);
+   * ```
+   */
+  async prepareUrl(options: PrepareUrlOptions): Promise<UploadFileResponse> {
+    const response = await fetch(`${this.apiUrl}/prepareFile`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: options.url,
+        attachmentId: options.attachmentId,
+        filename: options.filename,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, "Prepare URL"));
     }
 
     return (await response.json()) as UploadFileResponse;

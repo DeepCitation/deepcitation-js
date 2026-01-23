@@ -2,10 +2,12 @@
  * DeepCitation URL Example - Interactive TUI
  *
  * This example demonstrates citation verification from web URLs:
- * 1. Prompts for a URL and converts it to PDF (async)
+ * 1. Prompts for a URL and prepares it for citation verification
  * 2. Prompts for a question about the URL content
  * 3. Gets answer from OpenAI with citations
  * 4. Verifies and displays citations with status
+ *
+ * Note: URLs and Office files take ~30s to process vs. <1s for images/PDFs.
  *
  * Run: npm run start (or bun run src/url.ts)
  */
@@ -53,7 +55,7 @@ async function main() {
   console.log(`${"=".repeat(60)}\n`);
 
   // ============================================
-  // STEP 1: Get URL and convert to PDF (async)
+  // STEP 1: Get URL and prepare for citation
   // ============================================
 
   const url = await prompt("Enter a URL to analyze: ");
@@ -73,30 +75,25 @@ async function main() {
     return;
   }
 
-  console.log(`\nConverting URL to PDF...`);
+  console.log(`\nPreparing URL for citation verification...`);
+  console.log(`(URLs take ~30s to process vs. <1s for images/PDFs)`);
 
-  // Start the conversion (async)
   let attachmentId: string;
   let deepTextPromptPortion: string;
 
   try {
-    // Step 1a: Convert URL to PDF
-    const convertResult = await deepcitation.convertToPdf({ url });
-    attachmentId = convertResult.attachmentId;
+    // Single call to prepare URL - handles conversion and text extraction
+    const result = await deepcitation.prepareUrl({ url });
 
-    console.log(`  Converted: ${convertResult.metadata.originalFilename}`);
-    console.log(`  Time: ${convertResult.metadata.conversionTimeMs}ms`);
+    attachmentId = result.attachmentId;
+    deepTextPromptPortion = result.deepTextPromptPortion;
 
-    // Step 1b: Prepare the converted file to extract text
-    console.log(`\nExtracting text content...`);
-    const prepareResult = await deepcitation.prepareConvertedFile({
-      attachmentId,
-    });
-
-    deepTextPromptPortion = prepareResult.deepTextPromptPortion;
-    console.log(`  Pages: ${prepareResult.metadata.pageCount}`);
-    console.log(`  Text size: ${Math.round(prepareResult.metadata.textByteSize / 1024)}KB`);
-    console.log(`  Attachment ID: ${attachmentId}`);
+    console.log(`  Filename: ${result.metadata.filename}`);
+    console.log(`  Pages: ${result.metadata.pageCount}`);
+    console.log(`  Text size: ${Math.round(result.metadata.textByteSize / 1024)}KB`);
+    if (result.processingTimeMs) {
+      console.log(`  Processing time: ${(result.processingTimeMs / 1000).toFixed(1)}s`);
+    }
   } catch (error) {
     console.error(`\nFailed to process URL: ${error instanceof Error ? error.message : error}`);
     rl.close();

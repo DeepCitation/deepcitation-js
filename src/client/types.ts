@@ -51,6 +51,19 @@ export interface UploadFileOptions {
 }
 
 /**
+ * Options for preparing a URL for citation verification.
+ * URLs and Office files take ~30s to process vs. <1s for images/PDFs.
+ */
+export interface PrepareUrlOptions {
+  /** The URL to convert and prepare for citation verification */
+  url: string;
+  /** Optional custom attachment ID to use instead of auto-generated one */
+  attachmentId?: string;
+  /** Optional custom filename for the converted document */
+  filename?: string;
+}
+
+/**
  * Response from verifying citations
  */
 export interface VerifyCitationsResponse {

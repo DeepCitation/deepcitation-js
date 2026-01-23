@@ -5,7 +5,7 @@ An interactive TUI (Text User Interface) that demonstrates citation verification
 ## What it does
 
 1. Prompts you to enter a URL
-2. Converts the URL to PDF and extracts text content (async)
+2. Prepares the URL for citation verification (~30s for URLs vs <1s for PDFs/images)
 3. Prompts you for a question about the content
 4. Gets an answer from OpenAI with embedded citations
 5. Verifies each citation against the source and displays results
@@ -43,14 +43,12 @@ npm run start
 
 Enter a URL to analyze: https://en.wikipedia.org/wiki/TypeScript
 
-Converting URL to PDF...
-  Converted: typescript-wikipedia.pdf
-  Time: 1234ms
-
-Extracting text content...
+Preparing URL for citation verification...
+(URLs take ~30s to process vs. <1s for images/PDFs)
+  Filename: typescript-wikipedia.pdf
   Pages: 5
   Text size: 45KB
-  Attachment ID: abc123xyz...
+  Processing time: 28.3s
 
 Enter your question about this content: What year was TypeScript first released?
 
@@ -92,28 +90,34 @@ Summary:
 
 ## How it works
 
-The example uses the DeepCitation two-step URL processing flow:
+The example uses DeepCitation's unified `prepareUrl` method:
 
 ```typescript
-// Step 1: Convert URL to PDF
-const convertResult = await deepcitation.convertToPdf({ url });
-const attachmentId = convertResult.attachmentId;
+// Single call to prepare URL - handles conversion and text extraction
+const { attachmentId, deepTextPromptPortion } = await deepcitation.prepareUrl({
+  url: "https://example.com/article"
+});
 
-// Step 2: Extract text from the converted PDF
-const prepareResult = await deepcitation.prepareConvertedFile({ attachmentId });
-const deepTextPromptPortion = prepareResult.deepTextPromptPortion;
-
-// Step 3: Use deepTextPromptPortion in LLM prompts
+// Use deepTextPromptPortion in LLM prompts
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
   systemPrompt,
   userPrompt: question,
   deepTextPromptPortion,
 });
 
-// Step 4: Call LLM and verify citations
+// Call LLM and verify citations
 const parsedCitations = getAllCitationsFromLlmOutput(llmResponse);
 const verified = await deepcitation.verifyAttachment(attachmentId, parsedCitations);
 ```
+
+## Processing Times
+
+| Source Type | Processing Time |
+|-------------|-----------------|
+| Images (PNG, JPEG, etc.) | <1 second |
+| PDF documents | <1 second |
+| URLs (web pages) | ~30 seconds |
+| Office files (DOCX, XLSX, etc.) | ~30 seconds |
 
 ## Supported URL types
 
