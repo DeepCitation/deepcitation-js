@@ -97,7 +97,7 @@ interface Verification {
 
   hitIndexWithinPage?: number | null;
   phraseMatchDeepItem?: DeepTextItem;                  // Bounding box for phrase match
-  keySpanMatchDeepItem?: DeepTextItem;                // Bounding box for key span match
+  keySpanMatchDeepItems?: DeepTextItem[];             // Multiple boxes for keySpan (spans multiple items)
   verificationImageBase64?: string | null;            // ← Shown in popover
   verifiedAt?: Date;
 }

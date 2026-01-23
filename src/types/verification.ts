@@ -76,7 +76,8 @@ export interface Verification {
 
   phraseMatchDeepItem?: DeepTextItem;
 
-  keySpanMatchDeepItem?: DeepTextItem;
+  /** Multiple boxes for keySpan highlighting when the keySpan spans multiple PDF items/words */
+  keySpanMatchDeepItems?: DeepTextItem[];
 
   verificationImageBase64?: string | null;
 
