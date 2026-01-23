@@ -81,6 +81,9 @@ export interface Verification {
 
   verificationImageBase64?: string | null;
 
+  /** Dimensions of the verification image (for coordinate mapping) */
+  verificationImageDimensions?: { width: number; height: number } | null;
+
   verifiedAt?: Date;
 
   // ==========================================================================
