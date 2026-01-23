@@ -1,0 +1,19 @@
+{
+  "name": "deepcitation-url-example",
+  "version": "1.0.0",
+  "description": "URL citation verification example with interactive TUI",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/url.ts"
+  },
+  "dependencies": {
+    "@deepcitation/deepcitation-js": "latest",
+    "openai": "^4.104.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "@types/node": "^20.19.30",
+    "dotenv": "^16.6.1"
+  }
+}
