@@ -271,6 +271,8 @@ const hasCitationProperties = (item: any): boolean =>
     "start_page_id" in item ||
     "startPageKey" in item ||
     "start_page_key" in item ||
+    "pageId" in item ||
+    "page_id" in item ||
     "anchorText" in item ||
     "anchor_text" in item ||
     "keySpan" in item ||
