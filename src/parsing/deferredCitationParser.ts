@@ -74,56 +74,6 @@ function repairJson(jsonString: string): string {
   return repaired;
 }
 
-/**
- * Raw citation data that may come from LLM in either snake_case or camelCase.
- * Internal type used for parsing before normalization.
- */
-interface RawCitationData {
-  id: number;
-  attachment_id?: string;
-  attachmentId?: string;
-  reasoning?: string;
-  full_phrase?: string;
-  fullPhrase?: string;
-  key_span?: string;
-  keySpan?: string;
-  page_key?: string;
-  pageKey?: string;
-  start_page_key?: string;
-  startPageKey?: string;
-  line_ids?: number[];
-  lineIds?: number[];
-  timestamps?: {
-    start_time?: string;
-    startTime?: string;
-    end_time?: string;
-    endTime?: string;
-  };
-}
-
-/**
- * Normalizes raw LLM citation data to use consistent snake_case field names.
- * Handles both snake_case and camelCase variations from LLM output.
- */
-function normalizeCitationData(raw: RawCitationData): CitationData {
-  return {
-    id: raw.id,
-    attachment_id: raw.attachment_id ?? raw.attachmentId,
-    reasoning: raw.reasoning,
-    full_phrase: raw.full_phrase ?? raw.fullPhrase,
-    key_span: raw.key_span ?? raw.keySpan,
-    page_key:
-      raw.page_key ?? raw.pageKey ?? raw.start_page_key ?? raw.startPageKey,
-    line_ids: raw.line_ids ?? raw.lineIds,
-    timestamps: raw.timestamps
-      ? {
-          start_time:
-            raw.timestamps.start_time ?? raw.timestamps.startTime,
-          end_time: raw.timestamps.end_time ?? raw.timestamps.endTime,
-        }
-      : undefined,
-  };
-}
 
 /**
  * Parses a citation response from an LLM.
@@ -220,8 +170,7 @@ export function parseDeferredCitationResponse(
     }
   }
 
-  // Normalize and map citations
-  citations = citations.map(normalizeCitationData);
+  // Map citations by ID for O(1) lookups
   for (const citation of citations) {
     if (typeof citation.id === "number") {
       citationMap.set(citation.id, citation);

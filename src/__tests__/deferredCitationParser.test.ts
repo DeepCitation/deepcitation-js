@@ -175,30 +175,6 @@ ${CITATION_DATA_END_DELIMITER}`;
     expect(result.citations.length).toBe(0);
   });
 
-  it("normalizes camelCase field names to snake_case", () => {
-    const response = `Test [1].
-
-${CITATION_DATA_START_DELIMITER}
-[
-  {
-    "id": 1,
-    "attachmentId": "doc123",
-    "fullPhrase": "The full phrase here",
-    "keySpan": "key span",
-    "pageKey": "page_number_1_index_0",
-    "lineIds": [1, 2, 3]
-  }
-]
-${CITATION_DATA_END_DELIMITER}`;
-
-    const result = parseDeferredCitationResponse(response);
-
-    expect(result.success).toBe(true);
-    expect(result.citations[0].attachment_id).toBe("doc123");
-    expect(result.citations[0].full_phrase).toBe("The full phrase here");
-    expect(result.citations[0].key_span).toBe("key span");
-  });
-
   it("handles AV citations with timestamps", () => {
     const response = `The speaker said [1].
 
