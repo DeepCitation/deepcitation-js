@@ -196,15 +196,15 @@ export function deferredCitationToCitation(
   data: CitationData,
   citationNumber?: number
 ): Citation {
-  // Parse page number from page_key
+  // Parse page number from page_id
   let pageNumber: number | undefined;
-  let startPageKey: string | undefined;
-  const pageKey = data.page_key;
+  let startPageId: string | undefined;
+  const pageKey = data.page_id;
   if (pageKey) {
     const pageMatch = pageKey.match(/page[_a-zA-Z]*(\d+)_index_(\d+)/i);
     if (pageMatch) {
       pageNumber = parseInt(pageMatch[1], 10);
-      startPageKey = `page_number_${pageMatch[1]}_index_${pageMatch[2]}`;
+      startPageId = `page_number_${pageMatch[1]}_index_${pageMatch[2]}`;
     }
   }
 
@@ -225,9 +225,9 @@ export function deferredCitationToCitation(
   return {
     attachmentId: data.attachment_id,
     pageNumber,
-    startPageKey,
+    startPageId,
     fullPhrase: data.full_phrase,
-    keySpan: data.key_span,
+    anchorText: data.anchor_text,
     citationNumber: citationNumber ?? data.id,
     lineIds,
     reasoning: data.reasoning,
@@ -344,9 +344,9 @@ export function replaceDeferredMarkers(
       return replacer(id, data);
     }
 
-    // Show key span if requested
-    if (showKeySpan && data?.key_span) {
-      return data.key_span;
+    // Show anchor text if requested
+    if (showKeySpan && data?.anchor_text) {
+      return data.anchor_text;
     }
 
     // Default: remove marker
