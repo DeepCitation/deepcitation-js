@@ -424,6 +424,177 @@ const MissIndicator = () => (
 );
 
 // =============================================================================
+// KEYSPAN FOCUSED IMAGE COMPONENT
+// =============================================================================
+
+/**
+ * Calculate the bounding box that encompasses all keySpan boxes.
+ * Falls back to phraseMatchDeepItem if no keySpan boxes are available.
+ */
+function getKeySpanBoundingBox(verification: Verification | null): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} | null {
+  if (!verification) return null;
+
+  // Prefer keySpanMatchDeepItems for multi-box spans
+  const boxes = verification.keySpanMatchDeepItems;
+  if (boxes && boxes.length > 0) {
+    // Calculate bounding box encompassing all keySpan boxes
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const box of boxes) {
+      minX = Math.min(minX, box.x);
+      minY = Math.min(minY, box.y);
+      maxX = Math.max(maxX, box.x + box.width);
+      maxY = Math.max(maxY, box.y + box.height);
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }
+
+  // Fall back to phraseMatchDeepItem
+  const phrase = verification.phraseMatchDeepItem;
+  if (phrase) {
+    return {
+      x: phrase.x,
+      y: phrase.y,
+      width: phrase.width,
+      height: phrase.height,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Displays a verification image in a scrollable container that initially
+ * focuses on the keySpan position. Uses the keySpanMatchDeepItems or
+ * phraseMatchDeepItem coordinates to calculate the initial scroll position.
+ */
+function KeySpanFocusedImage({
+  verification,
+  onImageClick,
+  maxWidth = "min(70vw, 384px)",
+  maxHeight = "min(50vh, 300px)",
+}: {
+  verification: Verification;
+  onImageClick?: () => void;
+  maxWidth?: string;
+  maxHeight?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const hasInitializedScrollRef = useRef(false);
+
+  const keySpanBox = useMemo(
+    () => getKeySpanBoundingBox(verification),
+    [verification]
+  );
+
+  // Set initial scroll position when image loads, only once
+  const handleImageLoad = useCallback(() => {
+    if (
+      hasInitializedScrollRef.current ||
+      !containerRef.current ||
+      !imageRef.current ||
+      !keySpanBox
+    ) {
+      return;
+    }
+
+    const container = containerRef.current;
+    const image = imageRef.current;
+    const imageDimensions = verification.verificationImageDimensions;
+
+    // We need to know the original image dimensions to calculate scale
+    // If not provided in verification, use the natural image dimensions
+    const originalWidth = imageDimensions?.width || image.naturalWidth;
+    const originalHeight = imageDimensions?.height || image.naturalHeight;
+
+    if (originalWidth === 0 || originalHeight === 0) return;
+
+    // Calculate the scale factor: displayed size / original size
+    const scaleX = image.clientWidth / originalWidth;
+    const scaleY = image.clientHeight / originalHeight;
+
+    // Calculate the keySpan center in displayed image coordinates
+    const keySpanCenterX = (keySpanBox.x + keySpanBox.width / 2) * scaleX;
+    const keySpanCenterY = (keySpanBox.y + keySpanBox.height / 2) * scaleY;
+
+    // Calculate scroll position to center the keySpan in the viewport
+    // with some vertical bias towards showing content above the keySpan
+    const scrollX = Math.max(0, keySpanCenterX - container.clientWidth / 2);
+    const scrollY = Math.max(0, keySpanCenterY - container.clientHeight * 0.4);
+
+    container.scrollLeft = scrollX;
+    container.scrollTop = scrollY;
+    hasInitializedScrollRef.current = true;
+  }, [keySpanBox, verification.verificationImageDimensions]);
+
+  // Reset scroll initialization when verification changes
+  useEffect(() => {
+    hasInitializedScrollRef.current = false;
+  }, [verification.verificationImageBase64]);
+
+  return (
+    <button
+      type="button"
+      className="group block cursor-zoom-in relative rounded-md bg-gray-50 dark:bg-gray-800"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onImageClick?.();
+      }}
+      aria-label="Click to view full size"
+    >
+      <div
+        ref={containerRef}
+        className="overflow-auto rounded-md"
+        style={{
+          maxWidth,
+          maxHeight,
+        }}
+      >
+        <img
+          ref={imageRef}
+          src={verification.verificationImageBase64 as string}
+          alt="Citation verification"
+          className="block"
+          style={{
+            // Let the image display at its natural size for scrolling,
+            // but cap it at reasonable maximums for very large images
+            maxWidth: "none",
+            maxHeight: "none",
+            width: "auto",
+            height: "auto",
+          }}
+          loading="eager"
+          decoding="async"
+          onLoad={handleImageLoad}
+        />
+      </div>
+      {/* Bottom bar with expand hint on hover */}
+      <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md pointer-events-none">
+        <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
+          Click to expand
+        </span>
+      </span>
+    </button>
+  );
+}
+
+// =============================================================================
 // POPOVER CONTENT COMPONENT
 // =============================================================================
 
@@ -584,6 +755,13 @@ function DefaultPopoverContent({
   const hasImage = verification?.verificationImageBase64;
   const { isMiss, isPartialMatch, isPending } = status;
 
+  // Check if we have keySpan position data for focused scrolling
+  const hasKeySpanPosition = !!(
+    verification &&
+    (verification.keySpanMatchDeepItems?.length ||
+      verification.phraseMatchDeepItem)
+  );
+
   // Image view - sized for quick preview, click to expand
   // Uses responsive sizing that adapts to actual image dimensions:
   // - Small images (e.g. document snippets): show at natural size, constrained to viewport
@@ -591,47 +769,57 @@ function DefaultPopoverContent({
   // - Max dimensions: 70vw width, 50vh height to leave room for positioning
   // - Min dimensions: none - small images stay small
   //
+  // When keySpan position data is available, use KeySpanFocusedImage to
+  // initially scroll the image to show the keySpan area instead of the top-left.
+  //
   // React 19.2 Activity component is used to pre-render the image in "hidden" mode
   // before the user hovers, eliminating the empty popover flash when first displayed.
-  if (hasImage) {
+  if (hasImage && verification) {
     return (
       <Activity mode={isVisible ? "visible" : "hidden"}>
         <div
           className="p-2"
           style={{ maxWidth: "100%", overflow: "hidden" }}
         >
-          <button
-            type="button"
-            className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onImageClick?.();
-            }}
-            aria-label="Click to view full size"
-          >
-            <img
-              src={verification.verificationImageBase64 as string}
-              alt="Citation verification"
-              className="block rounded-md"
-              style={{
-                maxWidth: "min(70vw, 384px)",
-                maxHeight: "min(50vh, 300px)",
-                width: "auto",
-                height: "auto",
-                objectFit: "contain",
-              }}
-              // Use eager loading for prefetching, decode async to not block main thread
-              loading="eager"
-              decoding="async"
+          {hasKeySpanPosition ? (
+            <KeySpanFocusedImage
+              verification={verification}
+              onImageClick={onImageClick}
             />
-            {/* Bottom bar with expand hint on hover */}
-            <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
-              <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
-                Click to expand
+          ) : (
+            <button
+              type="button"
+              className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onImageClick?.();
+              }}
+              aria-label="Click to view full size"
+            >
+              <img
+                src={verification.verificationImageBase64 as string}
+                alt="Citation verification"
+                className="block rounded-md"
+                style={{
+                  maxWidth: "min(70vw, 384px)",
+                  maxHeight: "min(50vh, 300px)",
+                  width: "auto",
+                  height: "auto",
+                  objectFit: "contain",
+                }}
+                // Use eager loading for prefetching, decode async to not block main thread
+                loading="eager"
+                decoding="async"
+              />
+              {/* Bottom bar with expand hint on hover */}
+              <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
+                <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to expand
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+          )}
           {(isMiss || isPartialMatch) && (
             <DiffDetails
               citation={citation}
