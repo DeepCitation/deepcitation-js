@@ -90,9 +90,7 @@ export {
 } from "./react/utils.js";
 export { CITATION_X_PADDING, CITATION_Y_PADDING } from "./react/utils.js";
 
-// Prompts
 export {
-  // Primary exports (new names)
   CITATION_PROMPT,
   AV_CITATION_PROMPT,
   CITATION_REMINDER,
@@ -103,25 +101,14 @@ export {
   CITATION_DATA_END_DELIMITER,
   wrapSystemCitationPrompt,
   wrapCitationPrompt,
-  // Legacy exports for backward compatibility (deprecated)
-  DEFERRED_CITATION_PROMPT,
-  DEFERRED_AV_CITATION_PROMPT,
-  DEFERRED_CITATION_REMINDER,
-  DEFERRED_AV_CITATION_REMINDER,
-  DEFERRED_CITATION_JSON_SCHEMA,
-  DEFERRED_AV_CITATION_JSON_SCHEMA,
 } from "./prompts/citationPrompts.js";
 
 export type {
   WrapSystemPromptOptions,
   WrapCitationPromptOptions,
   WrapCitationPromptResult,
-  // Primary type exports (new names)
   CitationData,
   ParsedCitationResponse,
-  // Legacy type exports for backward compatibility (deprecated)
-  DeferredCitationData,
-  ParsedDeferredResponse,
 } from "./prompts/citationPrompts.js";
 
 export {
