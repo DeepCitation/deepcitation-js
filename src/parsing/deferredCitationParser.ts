@@ -80,7 +80,7 @@ function expandCompactKeys(
     result.attachment_id = attachmentId;
   }
 
-  return result as CitationData;
+  return result as unknown as CitationData;
 }
 
 /**
