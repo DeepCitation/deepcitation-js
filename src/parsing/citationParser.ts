@@ -49,8 +49,13 @@ const TIMESTAMP_KEY_MAP: Record<string, string> = {
  * Type guard to validate that an object has the required CitationData structure.
  * Ensures at minimum the id field is present and is a number.
  */
-function isValidCitationData(obj: Record<string, unknown>): obj is CitationData {
-  return typeof obj.id === "number";
+function isValidCitationData(obj: unknown): obj is CitationData {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "id" in obj &&
+    typeof (obj as Record<string, unknown>).id === "number"
+  );
 }
 
 /**
