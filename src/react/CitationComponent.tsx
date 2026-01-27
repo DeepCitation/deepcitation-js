@@ -45,8 +45,67 @@ export type { CitationVariant, CitationContent } from "./types.js";
 /** Default number of search attempt groups to show before expanding */
 const DEFAULT_VISIBLE_GROUP_COUNT = 2;
 
-/** Maximum characters to show for truncated phrases */
+/** Maximum characters to show for truncated phrases in search attempts */
 const MAX_PHRASE_LENGTH = 50;
+
+/** Maximum characters to show for matched text display in search results */
+const MAX_MATCHED_TEXT_LENGTH = 40;
+
+// =============================================================================
+// ERROR BOUNDARY
+// =============================================================================
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+/**
+ * Error boundary for catching and displaying rendering errors in citation components.
+ * Prevents the entire app from crashing if citation rendering fails.
+ */
+class CitationErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error("[DeepCitation] Citation component error:", error, errorInfo);
+  }
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      // Default fallback: minimal error indicator
+      return (
+        <span
+          className="inline-flex items-center text-red-500 dark:text-red-400"
+          title={`Citation error: ${this.state.error?.message || "Unknown error"}`}
+        >
+          <WarningIcon className="size-3" />
+        </span>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
 
 /**
  * Get the default content type based on variant.
@@ -929,14 +988,11 @@ function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
 
   // Page info badge
   if (group.pagesSearched.length > 0) {
-    // Filter out undefined/null values before Math operations
+    // Filter out undefined/null values and use formatPageList for proper range handling
     const validPages = group.pagesSearched.filter((p): p is number => p != null);
-    const pageText = validPages.length === 1
-      ? `p${validPages[0]}`
-      : validPages.length > 1
-      ? `p${Math.min(...validPages)}-${Math.max(...validPages)}`
-      : "";
-    if (pageText) {
+    if (validPages.length > 0) {
+      // Use formatPageList but strip "page" / "pages" prefix for compact display
+      const pageText = formatPageList(validPages).replace(/^pages? /, "p");
       badges.push({ text: pageText, variant: "default" });
     }
   }
@@ -978,7 +1034,7 @@ function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
         {group.anySuccess && group.successfulAttempt?.matchedText &&
           group.successfulAttempt.matchedText !== group.phrase && (
           <p className="text-[10px] text-green-600 dark:text-green-400 truncate mt-0.5">
-            → "{group.successfulAttempt.matchedText.slice(0, 40)}{group.successfulAttempt.matchedText.length > 40 ? "…" : ""}"
+            → "{group.successfulAttempt.matchedText.slice(0, MAX_MATCHED_TEXT_LENGTH)}{group.successfulAttempt.matchedText.length > MAX_MATCHED_TEXT_LENGTH ? "…" : ""}"
           </p>
         )}
         {!group.anySuccess && group.uniqueNotes.length > 0 && (
@@ -1907,40 +1963,46 @@ export const CitationComponent = forwardRef<
     // Render with Radix Popover
     if (shouldShowPopover) {
       const popoverContentElement = renderPopoverContent ? (
-        renderPopoverContent({
-          citation,
-          verification: verification ?? null,
-          status,
-        })
+        <CitationErrorBoundary>
+          {renderPopoverContent({
+            citation,
+            verification: verification ?? null,
+            status,
+          })}
+        </CitationErrorBoundary>
       ) : (
-        <DefaultPopoverContent
-          citation={citation}
-          verification={verification ?? null}
-          status={status}
-          isLoading={isLoading || shouldShowSpinner}
-          isPhrasesExpanded={isPhrasesExpanded}
-          onPhrasesExpandChange={setIsPhrasesExpanded}
-          isVisible={isHovering}
-          onImageClick={() => {
-            if (verification?.verificationImageBase64) {
-              setExpandedImageSrc(verification.verificationImageBase64);
-            }
-          }}
-        />
+        <CitationErrorBoundary>
+          <DefaultPopoverContent
+            citation={citation}
+            verification={verification ?? null}
+            status={status}
+            isLoading={isLoading || shouldShowSpinner}
+            isPhrasesExpanded={isPhrasesExpanded}
+            onPhrasesExpandChange={setIsPhrasesExpanded}
+            isVisible={isHovering}
+            onImageClick={() => {
+              if (verification?.verificationImageBase64) {
+                setExpandedImageSrc(verification.verificationImageBase64);
+              }
+            }}
+          />
+        </CitationErrorBoundary>
       );
 
       // Pre-render the image content in hidden mode when we have an image
       // but the user isn't hovering yet. This uses React 19.2's Activity
       // component to prefetch and decode the image before it's needed.
       const prefetchElement = hasImage && !isHovering && !renderPopoverContent ? (
-        <DefaultPopoverContent
-          citation={citation}
-          verification={verification ?? null}
-          status={status}
-          isLoading={false}
-          isVisible={false}
-          onImageClick={() => {}}
-        />
+        <CitationErrorBoundary>
+          <DefaultPopoverContent
+            citation={citation}
+            verification={verification ?? null}
+            status={status}
+            isLoading={false}
+            isVisible={false}
+            onImageClick={() => {}}
+          />
+        </CitationErrorBoundary>
       ) : null;
 
       return (

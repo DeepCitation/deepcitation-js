@@ -46,12 +46,21 @@ const TIMESTAMP_KEY_MAP: Record<string, string> = {
 } as const;
 
 /**
+ * Type guard to validate that an object has the required CitationData structure.
+ * Ensures at minimum the id field is present and is a number.
+ */
+function isValidCitationData(obj: Record<string, unknown>): obj is CitationData {
+  return typeof obj.id === "number";
+}
+
+/**
  * Expands compact citation data to the full CitationData format.
  * Handles both compact keys (n, a, r, f, k, p, l, t) and full keys.
  *
  * @param data - Raw citation object (may have compact or full keys)
  * @param attachmentId - Optional attachment_id to inject (for grouped format)
  * @returns Normalized CitationData with full keys
+ * @throws Error if the resulting data doesn't have a valid id field
  */
 function expandCompactKeys(
   data: CompactCitationData | CitationData | Record<string, unknown>,
@@ -80,7 +89,12 @@ function expandCompactKeys(
     result.attachment_id = attachmentId;
   }
 
-  return result as unknown as CitationData;
+  // Runtime validation to ensure type safety
+  if (!isValidCitationData(result)) {
+    throw new Error("Invalid citation data: missing or invalid 'id' field");
+  }
+
+  return result;
 }
 
 /**
@@ -151,15 +165,27 @@ export type ParsedDeferredResponse = ParsedCitationResponse;
  * - Single quotes instead of double quotes (in JSON context)
  * - Missing closing brackets
  * - Unescaped newlines in strings
+ *
+ * @param jsonString - The potentially malformed JSON string
+ * @returns The repaired JSON string
  */
-function repairJson(jsonString: string): string {
+function repairJson(jsonString: string): { repaired: string; repairs: string[] } {
   let repaired = jsonString.trim();
+  const repairs: string[] = [];
 
   // Remove any markdown code block markers that might be present
+  const beforeMarkdownRemoval = repaired;
   repaired = repaired.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  if (repaired !== beforeMarkdownRemoval) {
+    repairs.push("removed markdown code block markers");
+  }
 
   // Fix trailing commas before ] or }
+  const beforeTrailingCommas = repaired;
   repaired = repaired.replace(/,(\s*[\]\}])/g, "$1");
+  if (repaired !== beforeTrailingCommas) {
+    repairs.push("removed trailing commas");
+  }
 
   // Fix missing closing bracket if we have an opening [
   if (repaired.startsWith("[") && !repaired.endsWith("]")) {
@@ -167,7 +193,9 @@ function repairJson(jsonString: string): string {
     const openBrackets = (repaired.match(/\[/g) || []).length;
     const closeBrackets = (repaired.match(/\]/g) || []).length;
     if (openBrackets > closeBrackets) {
-      repaired = repaired + "]".repeat(openBrackets - closeBrackets);
+      const addedCount = openBrackets - closeBrackets;
+      repaired = repaired + "]".repeat(addedCount);
+      repairs.push(`added ${addedCount} closing bracket(s)`);
     }
   }
 
@@ -176,11 +204,13 @@ function repairJson(jsonString: string): string {
     const openBraces = (repaired.match(/\{/g) || []).length;
     const closeBraces = (repaired.match(/\}/g) || []).length;
     if (openBraces > closeBraces) {
-      repaired = repaired + "}".repeat(openBraces - closeBraces);
+      const addedCount = openBraces - closeBraces;
+      repaired = repaired + "}".repeat(addedCount);
+      repairs.push(`added ${addedCount} closing brace(s)`);
     }
   }
 
-  return repaired;
+  return { repaired, repairs };
 }
 
 
@@ -261,19 +291,28 @@ export function parseDeferredCitationResponse(
       // First attempt: direct JSON.parse
       const parsed = JSON.parse(jsonString);
       citations = parseCitationsFromJson(parsed);
-    } catch {
+    } catch (initialError) {
       // Second attempt: repair and retry
       try {
-        const repaired = repairJson(jsonString);
+        const { repaired, repairs } = repairJson(jsonString);
         const parsed = JSON.parse(repaired);
         citations = parseCitationsFromJson(parsed);
+
+        // Log warning when repair was necessary
+        if (repairs.length > 0) {
+          console.warn(
+            "[DeepCitation] JSON repair was triggered for citation data.",
+            `Repairs applied: ${repairs.join(", ")}.`,
+            `Initial parse error: ${initialError instanceof Error ? initialError.message : "Unknown error"}`
+          );
+        }
       } catch (repairError) {
         return {
           visibleText,
           citations: [],
           citationMap: new Map(),
           success: false,
-          error: `Failed to parse citation JSON: ${repairError instanceof Error ? repairError.message : "Unknown error"}`,
+          error: `Failed to parse citation JSON. Initial error: ${initialError instanceof Error ? initialError.message : "Unknown error"}. Repair error: ${repairError instanceof Error ? repairError.message : "Unknown error"}`,
         };
       }
     }
