@@ -538,9 +538,8 @@ test.describe("Visual Showcase - Desktop", () => {
     // Wait for all content to render
     await page.waitForTimeout(500);
 
-    // Take full page screenshot - will create baseline on first run
+    // Take screenshot of the showcase element
     await expect(page.locator('[data-testid="visual-showcase"]')).toHaveScreenshot('desktop-showcase.png', {
-      fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.1, // Allow small differences across platforms
     });
@@ -597,7 +596,6 @@ test.describe("Visual Showcase - Mobile", () => {
     await page.waitForTimeout(500);
 
     await expect(page.locator('[data-testid="mobile-showcase"]')).toHaveScreenshot('mobile-showcase.png', {
-      fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.1,
     });
@@ -620,7 +618,6 @@ test.describe("Visual Showcase - Tablet", () => {
     await page.waitForTimeout(500);
 
     await expect(page.locator('[data-testid="visual-showcase"]')).toHaveScreenshot('tablet-showcase.png', {
-      fullPage: true,
       animations: 'disabled',
       maxDiffPixelRatio: 0.1,
     });
