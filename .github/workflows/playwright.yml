@@ -60,13 +60,15 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-      # Deploy report to GitHub Pages
+      # Deploy report to GitHub Pages (optional - requires Pages to be enabled)
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: ${{ !cancelled() }}
+        continue-on-error: true
+        id: pages-setup
 
       - name: Prepare report for Pages
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.pages-setup.outcome == 'success' }}
         run: |
           mkdir -p _site/playwright-reports/${{ github.run_id }}
           cp -r playwright-report/* _site/playwright-reports/${{ github.run_id }}/
@@ -75,13 +77,14 @@ jobs:
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.pages-setup.outcome == 'success' }}
         with:
           path: _site
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.pages-setup.outcome == 'success' }}
+        continue-on-error: true
         id: deployment
 
       # Comment on PR with report link
@@ -92,14 +95,19 @@ jobs:
           script: |
             const runId = '${{ github.run_id }}';
             const testResult = '${{ steps.playwright.outcome }}';
+            const pagesEnabled = '${{ steps.pages-setup.outcome }}' === 'success';
             const icon = testResult === 'success' ? '✅' : '❌';
             const status = testResult === 'success' ? 'passed' : 'failed';
+
+            const reportLink = pagesEnabled
+              ? `📊 **[View Full Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/playwright-reports/${runId}/)**`
+              : `📊 **[Download Report Artifact](https://github.com/${{ github.repository }}/actions/runs/${runId})**`;
 
             const body = `## ${icon} Playwright Test Report
 
             **Status:** Tests ${status}
 
-            📊 **[View Full Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/playwright-reports/${runId}/)**
+            ${reportLink}
 
             <details>
             <summary>Visual Snapshots</summary>
