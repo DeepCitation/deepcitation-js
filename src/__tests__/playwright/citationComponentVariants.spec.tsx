@@ -93,7 +93,7 @@ test.describe("CitationComponent - Brackets Variant", () => {
     const citation = page.locator("[data-citation-id]");
 
     await expect(citation).toBeVisible();
-    // Brackets variant defaults to anchorText content
+    // brackets variant defaults to anchorText content
     await expect(citation).toContainText("25% revenue growth");
   });
 
@@ -424,7 +424,7 @@ test.describe("CitationComponent - Popover", () => {
 
     const citation = page.locator("[data-citation-id]");
     await expect(citation).toBeVisible();
-    // Brackets variant defaults to anchorText content
+    // brackets variant defaults to anchorText content
     await expect(citation).toContainText("25% revenue growth");
   });
 
