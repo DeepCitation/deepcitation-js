@@ -1259,7 +1259,7 @@ function DefaultPopoverContent({
               status={searchStatus}
               foundPage={foundPage}
               anchorText={anchorText}
-              fullPhrase={fullPhrase}
+              fullPhrase={fullPhrase ?? undefined}
             />
           )}
 
@@ -1268,7 +1268,7 @@ function DefaultPopoverContent({
             <VerificationLog
               searchAttempts={verification.searchAttempts}
               status={searchStatus}
-              expectedPage={expectedPage}
+              expectedPage={expectedPage ?? undefined}
               expectedLine={expectedLine}
               foundPage={foundPage}
               foundLine={foundLine}
