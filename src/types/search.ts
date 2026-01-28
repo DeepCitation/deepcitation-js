@@ -63,6 +63,22 @@ export interface SearchAttempt {
 
   // Where it was searched
   pageSearched?: number;
+  /** Line ID(s) searched within the page */
+  lineSearched?: number | number[];
+  /** Search scope: specific line, entire page, or whole document */
+  searchScope?: "line" | "page" | "document";
+
+  // Location comparison (for displacement detection)
+  /** Where we expected to find the match */
+  expectedLocation?: {
+    page: number;
+    line?: number;
+  };
+  /** Where we actually found the match (if success: true) */
+  foundLocation?: {
+    page: number;
+    line?: number;
+  };
 
   // Match details (only if success: true)
   /** Which variation matched + trust level */
