@@ -915,9 +915,14 @@ function SearchedPhrasesInfo({
 
   if (groupedAttempts.length === 0) return null;
 
-  // Calculate total attempts for header
-  const totalAttempts = groupedAttempts.reduce((sum, g) => sum + g.attemptCount, 0);
-  const uniquePhrases = groupedAttempts.length;
+  // Calculate pages searched across all attempts
+  const allPagesSearched = new Set<number>();
+  for (const group of groupedAttempts) {
+    for (const page of group.pagesSearched) {
+      if (page != null) allPagesSearched.add(page);
+    }
+  }
+  const pagesSearchedCount = allPagesSearched.size;
 
   // Show first DEFAULT_VISIBLE_GROUP_COUNT groups by default (usually fullPhrase + anchorText), expand to show all
   const defaultDisplayCount = Math.min(DEFAULT_VISIBLE_GROUP_COUNT, groupedAttempts.length);
@@ -925,27 +930,23 @@ function SearchedPhrasesInfo({
   const hiddenGroupCount = groupedAttempts.length - defaultDisplayCount;
 
   return (
-    <div className="mt-2">
-      {/* Compact header */}
-      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400">
-        <span className="uppercase font-medium">
-          {totalAttempts === uniquePhrases
-            ? `${uniquePhrases} phrase${uniquePhrases !== 1 ? "s" : ""} searched`
-            : `${uniquePhrases} phrase${uniquePhrases !== 1 ? "s" : ""} · ${totalAttempts} attempts`}
-        </span>
+    <div className="mt-1">
+      {/* Summary header showing what was searched */}
+      <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
+        Searched {pagesSearchedCount > 1 ? `${pagesSearchedCount} pages` : pagesSearchedCount === 1 ? "1 page" : "document"}
         {hiddenGroupCount > 0 && (
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+            className="ml-2 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            {isExpanded ? "less" : `+${hiddenGroupCount}`}
+            {isExpanded ? "show less" : `show all ${groupedAttempts.length} phrases`}
           </button>
         )}
       </div>
 
-      {/* Compact stacked list */}
-      <div className="mt-1.5 space-y-1">
+      {/* Search phrase list */}
+      <div className="space-y-2">
         {groupedAttempts.slice(0, displayCount).map((group, index) => (
           <SearchAttemptRow key={index} group={group} />
         ))}
@@ -959,92 +960,62 @@ function SearchedPhrasesInfo({
  * Shows phrase, metadata badges, and result on one or two lines.
  */
 function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
-  // Truncate phrase more aggressively for compact display
+  // Truncate phrase for display
   const displayPhrase = group.phrase.length > MAX_PHRASE_LENGTH
     ? group.phrase.slice(0, MAX_PHRASE_LENGTH) + "…"
     : group.phrase;
 
-  // Status indicator
-  const statusIcon = group.anySuccess ? (
+  // Build location info string
+  const validPages = group.pagesSearched.filter((p): p is number => p != null);
+  const locationInfo = validPages.length > 0
+    ? formatPageList(validPages)
+    : "all pages";
+
+  // Status indicator - only show check for successful attempts
+  const statusIndicator = group.anySuccess ? (
     <span className={cn(
-      "size-3 flex-shrink-0",
+      "inline-flex size-3 flex-shrink-0",
       isLowTrustMatch(group.successfulAttempt?.matchedVariation)
         ? "text-amber-500 dark:text-amber-400"
         : "text-green-500 dark:text-green-400"
     )}>
       <CheckIcon />
     </span>
-  ) : (
-    <span className="size-3 flex-shrink-0 text-red-400 dark:text-red-500">
-      <WarningIcon />
-    </span>
-  );
+  ) : null;
 
-  // Build compact badges
-  const badges: Array<{ text: string; variant: "default" | "muted" | "success" | "error" }> = [];
-
-  // Phrase type badge (only for anchor text)
-  if (group.phraseType === "anchor_text") {
-    badges.push({ text: "anchor", variant: "muted" });
-  }
-
-  // Page info badge
-  if (group.pagesSearched.length > 0) {
-    // Filter out undefined/null values and use formatPageList for proper range handling
-    const validPages = group.pagesSearched.filter((p): p is number => p != null);
-    if (validPages.length > 0) {
-      // Use formatPageList but strip "page" / "pages" prefix for compact display
-      const pageText = formatPageList(validPages).replace(/^pages? /, "p");
-      badges.push({ text: pageText, variant: "default" });
-    }
-  }
-
-  // Variations count badge
-  if (group.variationsTried.length > 0) {
-    badges.push({ text: `+${group.variationsTried.length} var`, variant: "muted" });
-  }
+  // Phrase type label
+  const phraseTypeLabel = group.phraseType === "anchor_text" ? "anchor text" : "full phrase";
 
   return (
-    <div className="flex items-start gap-1.5 py-0.5">
-      {/* Status icon */}
-      <div className="mt-0.5">{statusIcon}</div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Phrase + badges on same line */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="font-mono text-[11px] text-gray-700 dark:text-gray-300 break-all">
-            "{displayPhrase}"
-          </span>
-          {badges.map((badge, i) => (
-            <span
-              key={i}
-              className={cn(
-                "px-1 py-px rounded text-[9px] font-medium whitespace-nowrap",
-                badge.variant === "default" && "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
-                badge.variant === "muted" && "bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500",
-                badge.variant === "success" && "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-                badge.variant === "error" && "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-              )}
-            >
-              {badge.text}
-            </span>
-          ))}
-        </div>
-
-        {/* Result line (compact) */}
-        {group.anySuccess && group.successfulAttempt?.matchedText &&
-          group.successfulAttempt.matchedText !== group.phrase && (
-          <p className="text-[10px] text-green-600 dark:text-green-400 truncate mt-0.5">
-            → "{group.successfulAttempt.matchedText.slice(0, MAX_MATCHED_TEXT_LENGTH)}{group.successfulAttempt.matchedText.length > MAX_MATCHED_TEXT_LENGTH ? "…" : ""}"
-          </p>
-        )}
-        {!group.anySuccess && group.uniqueNotes.length > 0 && (
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 italic truncate mt-0.5">
-            {group.uniqueNotes[0]}
-          </p>
-        )}
+    <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded-md">
+      {/* Phrase type and location */}
+      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-1">
+        <span className="uppercase font-medium">{phraseTypeLabel}</span>
+        <span>{locationInfo}</span>
       </div>
+
+      {/* The searched phrase */}
+      <div className="flex items-start gap-1.5">
+        <p className="font-mono text-[11px] text-gray-700 dark:text-gray-300 break-words flex-1">
+          "{displayPhrase}"
+        </p>
+        {statusIndicator}
+      </div>
+
+      {/* Result line for successful matches */}
+      {group.anySuccess && group.successfulAttempt?.matchedText &&
+        group.successfulAttempt.matchedText !== group.phrase && (
+        <p className="text-[10px] text-green-600 dark:text-green-400 truncate mt-1">
+          Found: "{group.successfulAttempt.matchedText.slice(0, MAX_MATCHED_TEXT_LENGTH)}{group.successfulAttempt.matchedText.length > MAX_MATCHED_TEXT_LENGTH ? "…" : ""}"
+        </p>
+      )}
+
+      {/* Notes for failed attempts */}
+      {!group.anySuccess && group.uniqueNotes.length > 0 && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 italic mt-1">
+          {group.uniqueNotes[0]}
+        </p>
+      )}
     </div>
   );
 }
@@ -1169,10 +1140,7 @@ function DefaultPopoverContent({
     return (
       <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
         <span className="text-xs font-medium text-red-600 dark:text-red-500">
-          <span className="inline-block relative top-[0.1em] mr-1.5 size-3 text-amber-500 dark:text-amber-400">
-            <WarningIcon />
-          </span>
-          Not found: {citation.anchorText || citation.fullPhrase}
+          Not found in document
         </span>
         <SearchedPhrasesInfo
           citation={citation}
