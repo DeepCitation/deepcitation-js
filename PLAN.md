@@ -259,15 +259,19 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
 
 Different tooltip layouts based on verification status:
 
-| Status | Layout | Quote Box? | Expandable Log? |
-|--------|--------|------------|-----------------|
-| `found` | Minimal (green bar only) | No | No |
-| `found_anchor_text_only` | Minimal (green bar only) | No | No |
-| `found_on_other_page` | Full (header + quote + log) | Yes | Yes (collapsed) |
-| `found_on_other_line` | Full (header + quote + log) | Yes | Yes (collapsed) |
-| `partial_text_found` | Full (header + quote + log) | Yes | Yes (collapsed) |
-| `not_found` | Full (header + quote + log) | Yes | Yes (collapsed) |
-| `pending`/`loading` | Loading spinner | No | No |
+| Status | Layout | Content | Expandable Log? |
+|--------|--------|---------|-----------------|
+| `found` | Header + Image | Verification image | No |
+| `found_anchor_text_only` | Header + Image | Verification image | No |
+| `found_on_other_page` | Full | Image (or quote box fallback) | Yes (collapsed) |
+| `found_on_other_line` | Full | Image (or quote box fallback) | Yes (collapsed) |
+| `partial_text_found` | Full | Image (or quote box fallback) | Yes (collapsed) |
+| `not_found` | Full | Quote box (no image available) | Yes (collapsed) |
+| `pending`/`loading` | Loading spinner | - | No |
+
+**Content logic**:
+- If `verificationImageBase64` exists → show image
+- Else → show quote box with `fullPhrase`
 
 **Click behavior**: Clicking anywhere on the tooltip expands the verification log (for statuses that have one).
 
@@ -314,14 +318,19 @@ This is additive and backwards compatible:
 
 **Three Visual States**:
 
-1. **Success (Green)** - Minimal footer bar only:
+1. **Success (Green)** - Header + verification image:
    ```
    ┌─────────────────────────────────────┐
-   │ ✓ Verified Match              PG 2 │
+   │ ✓ Verified Match              PG 2 │  <- Green header with page badge
+   ├─────────────────────────────────────┤
+   │                                     │
+   │     [Verification Image]            │  <- Shows the highlighted match
+   │                                     │
    └─────────────────────────────────────┘
    ```
-   - No quote box, no "Attempting to verify" section
-   - Just a simple green confirmation bar with page badge
+   - Green header bar with checkmark and page number badge
+   - Verification image showing the highlighted match in the document
+   - No quote box, no "Attempting to verify" section, no expandable log
 
 2. **Not Found (Red)** - Full layout, collapsed log:
    ```
@@ -355,14 +364,16 @@ This is additive and backwards compatible:
 
 ## Status-Specific Rendering
 
-| Status | Header Text | Header Color | Show Quote Box? | Footer Text |
-|--------|-------------|--------------|-----------------|-------------|
-| `found` | "Verified Match" | Green | No | "PG {n}" badge only |
-| `found_anchor_text_only` | "Verified Match" | Green | No | "PG {n}" badge only |
-| `found_on_other_line` | "Citation Found (Unexpected Location)" | Amber | Yes | "Found on Line {x} (Expected Line {y})" |
-| `found_on_other_page` | "Citation Found (Unexpected Location)" | Amber | Yes | "Found on Page {x} (Expected Page {y})" |
-| `partial_text_found` | "Partial Match Found" | Amber | Yes | "Partial match (X/Y attempts)" |
-| `not_found` | "Citation Unverified" | Red | Yes | "No matches found (0/X attempts)" |
+| Status | Header Text | Header Color | Show Image? | Show Quote Box? | Expandable Log? |
+|--------|-------------|--------------|-------------|-----------------|-----------------|
+| `found` | "Verified Match" | Green | Yes | No | No |
+| `found_anchor_text_only` | "Verified Match" | Green | Yes | No | No |
+| `found_on_other_line` | "Citation Found (Unexpected Location)" | Amber | Yes (if available) | Fallback if no image | Yes |
+| `found_on_other_page` | "Citation Found (Unexpected Location)" | Amber | Yes (if available) | Fallback if no image | Yes |
+| `partial_text_found` | "Partial Match Found" | Amber | Yes (if available) | Fallback if no image | Yes |
+| `not_found` | "Citation Unverified" | Red | No | Yes | Yes |
+
+**Content priority**: Show verification image when available; fall back to quote box when no image exists.
 
 ---
 
