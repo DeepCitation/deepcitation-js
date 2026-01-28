@@ -45,7 +45,7 @@ describe("getCitationStatus", () => {
   });
 
   describe("explicit status coverage", () => {
-    it("treats found_on_other_page as partial match but not verified", () => {
+    it("treats found_on_other_page as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -59,12 +59,12 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
       expect(status.isMiss).toBe(false);
       expect(status.isPending).toBe(false);
     });
 
-    it("treats found_on_other_line as partial match but not verified", () => {
+    it("treats found_on_other_line as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -80,10 +80,10 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
     });
 
-    it("treats first_word_found as partial match but not verified", () => {
+    it("treats first_word_found as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -97,10 +97,10 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
     });
 
-    it("treats partial_text_found as partial match but not verified", () => {
+    it("treats partial_text_found as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -113,7 +113,7 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
     });
 
     it("treats found_phrase_missed_anchor_text as verified but not partial", () => {
