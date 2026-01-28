@@ -37,7 +37,7 @@ import {
 import { useSmartDiff } from "./useSmartDiff.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
 import { SplitDiffDisplay, MatchQualityBar, getContextualStatusMessage } from "./SplitDiffDisplay.js";
-import { StatusHeader, QuoteBox, VerificationLog, AttemptingToVerify } from "./VerificationLog.js";
+import { StatusHeader, VerificationLog } from "./VerificationLog.js";
 
 // Re-export types for convenience
 export type { CitationVariant, CitationContent } from "./types.js";
@@ -1211,51 +1211,53 @@ function DefaultPopoverContent({
     return (
       <Activity mode={isVisible ? "visible" : "hidden"}>
         <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ width: "380px", maxWidth: "90vw" }}>
-          {/* Status header (red or amber) */}
-          <StatusHeader status={searchStatus} foundPage={foundPage} />
-
-          {/* Content area: Image OR AttemptingToVerify section */}
+          {/* Content area: Image with simple header, OR combined status header with quote */}
           {hasImage && verification ? (
-            // Show image if available (for partial matches that have images)
-            <div className="p-2">
-              {hasAnchorTextPosition ? (
-                <AnchorTextFocusedImage
-                  verification={verification}
-                  onImageClick={onImageClick}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onImageClick?.();
-                  }}
-                  aria-label="Click to view full size"
-                >
-                  <img
-                    src={verification.verificationImageBase64 as string}
-                    alt="Citation verification"
-                    className="block rounded-md w-full"
-                    style={{
-                      maxHeight: "min(50vh, 300px)",
-                      objectFit: "contain",
-                    }}
-                    loading="eager"
-                    decoding="async"
+            // Show simple header + image (for partial matches that have images)
+            <>
+              <StatusHeader status={searchStatus} foundPage={foundPage} />
+              <div className="p-2">
+                {hasAnchorTextPosition ? (
+                  <AnchorTextFocusedImage
+                    verification={verification}
+                    onImageClick={onImageClick}
                   />
-                  <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
-                    <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
-                      Click to expand
+                ) : (
+                  <button
+                    type="button"
+                    className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onImageClick?.();
+                    }}
+                    aria-label="Click to view full size"
+                  >
+                    <img
+                      src={verification.verificationImageBase64 as string}
+                      alt="Citation verification"
+                      className="block rounded-md w-full"
+                      style={{
+                        maxHeight: "min(50vh, 300px)",
+                        objectFit: "contain",
+                      }}
+                      loading="eager"
+                      decoding="async"
+                    />
+                    <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
+                      <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to expand
+                      </span>
                     </span>
-                  </span>
-                </button>
-              )}
-            </div>
+                  </button>
+                )}
+              </div>
+            </>
           ) : (
-            // Show AttemptingToVerify with QuoteBox (for not_found or partial without image)
-            <AttemptingToVerify
+            // Combined header with anchor text and quote (for not_found or partial without image)
+            <StatusHeader
+              status={searchStatus}
+              foundPage={foundPage}
               anchorText={anchorText}
               fullPhrase={fullPhrase}
             />

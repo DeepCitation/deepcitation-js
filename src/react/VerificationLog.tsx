@@ -19,7 +19,7 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   anchor_text_fallback: "Anchor Text Fallback",
   adjacent_pages: "Adjacent Pages",
   expanded_window: "Expanded Window",
-  regex_search: "Global Regex",
+  regex_search: "Full Document Search",
   first_word_fallback: "First Word Search",
 };
 
@@ -55,6 +55,10 @@ export interface StatusHeaderProps {
   foundPage?: number;
   /** Whether this is a compact header (for success states) */
   compact?: boolean;
+  /** Anchor text to display in the header (for combined layout) */
+  anchorText?: string;
+  /** Full phrase for quote box (when using combined layout) */
+  fullPhrase?: string;
 }
 
 export interface QuoteBoxProps {
@@ -175,8 +179,9 @@ function getAttemptResultText(attempt: SearchAttempt): string {
 /**
  * Header bar showing verification status with icon and text.
  * Green for success, amber for partial, red for failure.
+ * Can optionally include anchor text and quote for a combined layout.
  */
-export function StatusHeader({ status, foundPage, compact = false }: StatusHeaderProps) {
+export function StatusHeader({ status, foundPage, compact = false, anchorText, fullPhrase }: StatusHeaderProps) {
   const colorScheme = getStatusColorScheme(status);
   const headerText = getStatusHeaderText(status);
 
@@ -189,6 +194,53 @@ export function StatusHeader({ status, foundPage, compact = false }: StatusHeade
 
   const IconComponent = colorScheme === "green" ? CheckIcon : WarningIcon;
 
+  // Combined layout: status + anchor text + quote in one header section
+  const hasCombinedContent = anchorText || fullPhrase;
+
+  if (hasCombinedContent) {
+    const displayAnchorText = anchorText || fullPhrase?.slice(0, 50) || "";
+    const displayPhrase = fullPhrase || anchorText || "";
+
+    return (
+      <div className={cn("border-b", colorClasses[colorScheme])}>
+        {/* Status row */}
+        <div className={cn(
+          "flex items-center justify-between gap-2 font-semibold text-sm",
+          compact ? "px-3 py-2" : "px-4 py-2.5"
+        )}>
+          <div className="flex items-center gap-2">
+            <span className="size-4">
+              <IconComponent />
+            </span>
+            <span>{headerText}</span>
+          </div>
+          {foundPage != null && foundPage > 0 && (
+            <span className={cn(
+              "text-xs font-mono px-1.5 py-0.5 rounded",
+              colorScheme === "green" && "bg-green-100 dark:bg-green-800/30",
+              colorScheme === "amber" && "bg-amber-100 dark:bg-amber-800/30",
+              colorScheme === "red" && "bg-red-100 dark:bg-red-800/30",
+              colorScheme === "gray" && "bg-gray-100 dark:bg-gray-700/30"
+            )}>
+              PG {foundPage}
+            </span>
+          )}
+        </div>
+
+        {/* Anchor text and quote */}
+        <div className="px-4 pb-3 pt-1 bg-white dark:bg-gray-900">
+          <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 mb-2">
+            {displayAnchorText}
+          </div>
+          {displayPhrase && (
+            <QuoteBox phrase={displayPhrase} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Simple header (no anchor text/quote)
   return (
     <div
       className={cn(
