@@ -257,17 +257,19 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
 
 ### Phase 8: Conditional Display Logic
 
-The verification log should only appear in certain states:
+Different tooltip layouts based on verification status:
 
-| Status | Show Log? | Default State |
-|--------|-----------|---------------|
-| `found` (exact match, same location) | No | Hidden |
-| `found_anchor_text_only` | Optional | Collapsed |
-| `found_on_other_page` | Yes | Collapsed |
-| `found_on_other_line` | Yes | Collapsed |
-| `partial_text_found` | Yes | Collapsed |
-| `not_found` | Yes | Expanded |
-| `pending`/`loading` | No | Hidden |
+| Status | Layout | Quote Box? | Expandable Log? |
+|--------|--------|------------|-----------------|
+| `found` | Minimal (green bar only) | No | No |
+| `found_anchor_text_only` | Minimal (green bar only) | No | No |
+| `found_on_other_page` | Full (header + quote + log) | Yes | Yes (collapsed) |
+| `found_on_other_line` | Full (header + quote + log) | Yes | Yes (collapsed) |
+| `partial_text_found` | Full (header + quote + log) | Yes | Yes (collapsed) |
+| `not_found` | Full (header + quote + log) | Yes | Yes (collapsed) |
+| `pending`/`loading` | Loading spinner | No | No |
+
+**Click behavior**: Clicking anywhere on the tooltip expands the verification log (for statuses that have one).
 
 ---
 
@@ -304,9 +306,68 @@ This is additive and backwards compatible:
 
 ---
 
+## Interaction Behavior
+
+**Default State**: Log is always **collapsed** by default.
+
+**Expansion Trigger**: Clicking on the CitationComponent or anywhere in the tooltip/popover expands the verification log.
+
+**Three Visual States**:
+
+1. **Success (Green)** - Minimal footer bar only:
+   ```
+   ┌─────────────────────────────────────┐
+   │ ✓ Verified Match              PG 2 │
+   └─────────────────────────────────────┘
+   ```
+   - No quote box, no "Attempting to verify" section
+   - Just a simple green confirmation bar with page badge
+
+2. **Not Found (Red)** - Full layout, collapsed log:
+   ```
+   ┌─────────────────────────────────────┐
+   │ △ Citation Unverified              │  <- Red header
+   ├─────────────────────────────────────┤
+   │ ATTEMPTING TO VERIFY:              │
+   │ Liquidity Event Definition         │
+   │                                     │
+   │ "Returns are primarily dictated..." │  <- Quote box
+   ├─────────────────────────────────────┤
+   │ ✗ No matches found (0/4 attempts) ▼│  <- Collapsed log
+   └─────────────────────────────────────┘
+   ```
+
+3. **Partial/Displaced (Amber)** - Full layout, collapsed log:
+   ```
+   ┌─────────────────────────────────────┐
+   │ △ Citation Found (Unexpected Loc.) │  <- Amber header
+   ├─────────────────────────────────────┤
+   │ ATTEMPTING TO VERIFY:              │
+   │ 8% annual interest rate            │
+   │                                     │
+   │ "This Safe shall accrue interest..." │
+   ├─────────────────────────────────────┤
+   │ △ Found on Line 84 (Expected 14) ▼ │  <- Collapsed log
+   └─────────────────────────────────────┘
+   ```
+
+---
+
+## Status-Specific Rendering
+
+| Status | Header Text | Header Color | Show Quote Box? | Footer Text |
+|--------|-------------|--------------|-----------------|-------------|
+| `found` | "Verified Match" | Green | No | "PG {n}" badge only |
+| `found_anchor_text_only` | "Verified Match" | Green | No | "PG {n}" badge only |
+| `found_on_other_line` | "Citation Found (Unexpected Location)" | Amber | Yes | "Found on Line {x} (Expected Line {y})" |
+| `found_on_other_page` | "Citation Found (Unexpected Location)" | Amber | Yes | "Found on Page {x} (Expected Page {y})" |
+| `partial_text_found` | "Partial Match Found" | Amber | Yes | "Partial match (X/Y attempts)" |
+| `not_found` | "Citation Unverified" | Red | Yes | "No matches found (0/X attempts)" |
+
+---
+
 ## Open Questions
 
-1. Should the log be expanded by default for `not_found` status?
+1. ~~Should the log be expanded by default for `not_found` status?~~ **Answered: Always collapsed**
 2. Should we show timing info (e.g., "took 45ms")?
-3. Should "View search sequence" be its own tab vs. collapsible section?
-4. Do we need an API change to return line-level location data?
+3. Do we need an API change to return line-level location data?
