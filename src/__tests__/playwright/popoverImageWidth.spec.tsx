@@ -53,59 +53,7 @@ const verificationWithMiss: Verification = {
 // =============================================================================
 
 test.describe("Popover Image Width Constraint", () => {
-  test("popover image container has width constraint classes", async ({ mount, page }) => {
-    await mount(
-      <div style={{ padding: "100px" }}>
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithWideImage}
-        />
-      </div>
-    );
-
-    const citation = page.locator("[data-citation-id]");
-    await citation.hover();
-
-    // Wait for popover to appear
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
-    await expect(popover).toBeVisible();
-
-    // Find the image button container
-    const imageButton = popover.locator("button");
-    await expect(imageButton).toBeVisible();
-
-    // Check that the button has the correct Tailwind classes for width constraint
-    // w-[384px] sets fixed width, max-w-full allows shrinking on small screens
-    await expect(imageButton).toHaveClass(/w-\[384px\]/);
-    await expect(imageButton).toHaveClass(/max-w-full/);
-  });
-
-  test("popover image container has height constraint class", async ({ mount, page }) => {
-    await mount(
-      <div style={{ padding: "100px" }}>
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithWideImage}
-        />
-      </div>
-    );
-
-    const citation = page.locator("[data-citation-id]");
-    await citation.hover();
-
-    // Wait for popover to appear
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
-    await expect(popover).toBeVisible();
-
-    // Find the image button container
-    const imageButton = popover.locator("button");
-    await expect(imageButton).toBeVisible();
-
-    // Check that the button has the correct Tailwind class for fixed height
-    await expect(imageButton).toHaveClass(/h-\[200px\]/);
-  });
-
-  test("image is cropped with object-cover, not stretched", async ({ mount, page }) => {
+  test("popover image has constrained max dimensions", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
         <CitationComponent
@@ -126,13 +74,13 @@ test.describe("Popover Image Width Constraint", () => {
     const image = popover.locator("img");
     await expect(image).toBeVisible();
 
-    // Check that image has object-cover class for proper cropping
-    await expect(image).toHaveClass(/object-cover/);
-    // Check that image anchors to left-top to show the relevant highlighted area
-    await expect(image).toHaveClass(/object-left-top/);
+    // Check that image has max-width constraint via inline style
+    // Implementation uses: maxWidth: "min(70vw, 384px)"
+    const maxWidth = await image.evaluate((el) => (el as HTMLElement).style.maxWidth);
+    expect(maxWidth).toContain("384px");
   });
 
-  test("image fills container with w-full h-full", async ({ mount, page }) => {
+  test("popover image has max height constraint", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
         <CitationComponent
@@ -153,9 +101,65 @@ test.describe("Popover Image Width Constraint", () => {
     const image = popover.locator("img");
     await expect(image).toBeVisible();
 
-    // Check that image fills its container
-    await expect(image).toHaveClass(/w-full/);
-    await expect(image).toHaveClass(/h-full/);
+    // Check that image has max-height constraint via inline style
+    // Implementation uses: maxHeight: "min(50vh, 300px)"
+    const maxHeight = await image.evaluate((el) => (el as HTMLElement).style.maxHeight);
+    expect(maxHeight).toContain("300px");
+  });
+
+  test("image uses object-fit contain to maintain aspect ratio", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithWideImage}
+        />
+      </div>
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.hover();
+
+    // Wait for popover to appear
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    await expect(popover).toBeVisible();
+
+    // Find the image
+    const image = popover.locator("img");
+    await expect(image).toBeVisible();
+
+    // Check that image uses object-fit: contain to maintain aspect ratio
+    // Implementation uses inline style: objectFit: "contain"
+    const objectFit = await image.evaluate((el) => (el as HTMLElement).style.objectFit);
+    expect(objectFit).toBe("contain");
+  });
+
+  test("image has auto width and height", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithWideImage}
+        />
+      </div>
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.hover();
+
+    // Wait for popover to appear
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    await expect(popover).toBeVisible();
+
+    // Find the image
+    const image = popover.locator("img");
+    await expect(image).toBeVisible();
+
+    // Check that image uses auto dimensions for natural sizing within constraints
+    const width = await image.evaluate((el) => (el as HTMLElement).style.width);
+    const height = await image.evaluate((el) => (el as HTMLElement).style.height);
+    expect(width).toBe("auto");
+    expect(height).toBe("auto");
   });
 });
 
