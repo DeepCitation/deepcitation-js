@@ -2,20 +2,41 @@
 
 This guide provides step-by-step instructions for AI code agents (Claude, Cursor, GitHub Copilot, etc.) to implement DeepCitation in any codebase.
 
-## Quick Reference
+---
+
+## TL;DR - Minimal Integration
 
 ```bash
 npm install @deepcitation/deepcitation-js
 ```
 
-**Core workflow: Pre-Prompt → LLM Call → Verify → Display**
+```typescript
+import { DeepCitation, wrapCitationPrompt, getAllCitationsFromLlmOutput, extractVisibleText } from "@deepcitation/deepcitation-js";
+
+// 1. Upload document
+const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY! });
+const { fileDataParts, deepTextPromptPortion } = await dc.prepareFiles([{ file: buffer, filename: "doc.pdf" }]);
+
+// 2. Wrap prompts & call LLM
+const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({ systemPrompt, userPrompt, deepTextPromptPortion });
+const llmOutput = await callYourLLM(enhancedSystemPrompt, enhancedUserPrompt);
+
+// 3. Parse & verify
+const citations = getAllCitationsFromLlmOutput(llmOutput);
+const { verifications } = await dc.verifyAttachment(fileDataParts[0].attachmentId, citations);
+
+// 4. Display (strip citation data block before showing to users!)
+const visibleText = extractVisibleText(llmOutput);
+```
+
+**Core workflow: Upload → Wrap Prompts → LLM Call → Verify → Display**
+
+---
 
 ## Implementation Checklist
 
-When implementing DeepCitation, complete these steps in order:
-
 - [ ] Install the package
-- [ ] Set up environment variables
+- [ ] Set up environment variables (`DEEPCITATION_API_KEY`)
 - [ ] Implement file upload (Pre-Prompt)
 - [ ] Wrap prompts with citation instructions
 - [ ] Call your LLM with enhanced prompts
@@ -540,17 +561,42 @@ import type {
 
 ## Verification Status Reference
 
-| Status Value                | `isVerified` | `isPartialMatch` | `isMiss` |
-|-----------------------------|--------------|------------------|----------|
-| `"found"`                   | ✅ true      | false            | false    |
-| `"found_anchor_text_only"`     | ✅ true      | false            | false    |
-| `"found_phrase_missed_value"`| ✅ true     | false            | false    |
-| `"found_on_other_page"`     | ✅ true      | ⚠️ true          | false    |
-| `"found_on_other_line"`     | ✅ true      | ⚠️ true          | false    |
-| `"partial_text_found"`      | ✅ true      | ⚠️ true          | false    |
-| `"first_word_found"`        | ✅ true      | ⚠️ true          | false    |
-| `"not_found"`               | false        | false            | ❌ true  |
-| `"pending"` / `null`        | false        | false            | false    |
+### Quick Summary
+
+| Indicator | Meaning | When shown |
+|-----------|---------|------------|
+| 🟢 Green checkmark | Verified | Exact match found at expected location |
+| 🟡 Amber checkmark | Partial match | Found but with caveats (wrong page, partial text, etc.) |
+| 🔴 Red warning | Not found | Text not found in document |
+| ⏳ Spinner | Pending | Verification in progress |
+
+### Detailed Status Values
+
+| Status Value | Indicator | Description |
+|--------------|-----------|-------------|
+| `"found"` | 🟢 Green | Exact match at expected location |
+| `"found_phrase_missed_anchor_text"` | 🟢 Green | Full phrase found, anchor text highlight missed |
+| `"found_anchor_text_only"` | 🟡 Amber | Only anchor text found, full phrase not matched |
+| `"found_on_other_page"` | 🟡 Amber | Found on different page than expected |
+| `"found_on_other_line"` | 🟡 Amber | Found on different line than expected |
+| `"partial_text_found"` | 🟡 Amber | Only part of the text matched |
+| `"first_word_found"` | 🟡 Amber | Only first word matched (lowest confidence) |
+| `"not_found"` | 🔴 Red | Text not found in document |
+| `"pending"` / `null` | ⏳ Spinner | Verification in progress |
+
+### Status Flags
+
+| Status Value | `isVerified` | `isPartialMatch` | `isMiss` |
+|--------------|--------------|------------------|----------|
+| `"found"` | ✅ true | false | false |
+| `"found_phrase_missed_anchor_text"` | ✅ true | false | false |
+| `"found_anchor_text_only"` | ✅ true | ⚠️ true | false |
+| `"found_on_other_page"` | ✅ true | ⚠️ true | false |
+| `"found_on_other_line"` | ✅ true | ⚠️ true | false |
+| `"partial_text_found"` | ✅ true | ⚠️ true | false |
+| `"first_word_found"` | ✅ true | ⚠️ true | false |
+| `"not_found"` | false | false | ❌ true |
+| `"pending"` / `null` | false | false | false |
 
 ---
 

@@ -45,7 +45,7 @@ describe("getCitationStatus", () => {
   });
 
   describe("explicit status coverage", () => {
-    it("treats found_on_other_page as partial match but not verified", () => {
+    it("treats found_on_other_page as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -59,12 +59,12 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
       expect(status.isMiss).toBe(false);
       expect(status.isPending).toBe(false);
     });
 
-    it("treats found_on_other_line as partial match but not verified", () => {
+    it("treats found_on_other_line as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -80,10 +80,10 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
     });
 
-    it("treats first_word_found as partial match but not verified", () => {
+    it("treats first_word_found as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -97,10 +97,10 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
     });
 
-    it("treats partial_text_found as partial match but not verified", () => {
+    it("treats partial_text_found as partial match (verified with amber indicator)", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
@@ -113,39 +113,39 @@ describe("getCitationStatus", () => {
       };
       const status = getCitationStatus(verification);
       expect(status.isPartialMatch).toBe(true);
-      expect(status.isVerified).toBe(false);
+      expect(status.isVerified).toBe(true); // Partial matches ARE verified (amber checkmark)
     });
 
-    it("treats found_anchor_text_only as verified but not partial", () => {
+    it("treats found_phrase_missed_anchor_text as verified but not partial", () => {
       const verification: Verification = {
         citation: {
           anchorText: "term",
           fullPhrase: "term",
+          attachmentId: "file",
+        },
+        verifiedPageNumber: 2,
+        status: "found_phrase_missed_anchor_text",
+        verifiedMatchSnippet: "snippet",
+      };
+      const status = getCitationStatus(verification);
+      expect(status.isVerified).toBe(true);
+      expect(status.isPartialMatch).toBe(false);
+    });
+
+    it("treats found_anchor_text_only as partial match", () => {
+      const verification: Verification = {
+        citation: {
+          anchorText: "term",
+          fullPhrase: "full phrase",
           attachmentId: "file",
         },
         verifiedPageNumber: 2,
         status: "found_anchor_text_only",
-        verifiedMatchSnippet: "snippet",
+        verifiedMatchSnippet: "term",
       };
       const status = getCitationStatus(verification);
       expect(status.isVerified).toBe(true);
-      expect(status.isPartialMatch).toBe(false);
-    });
-
-    it("treats found_phrase_missed_value as verified but not partial", () => {
-      const verification: Verification = {
-        citation: {
-          anchorText: "term",
-          fullPhrase: "term",
-          attachmentId: "file",
-        },
-        verifiedPageNumber: 2,
-        status: "found_phrase_missed_value",
-        verifiedMatchSnippet: "snippet",
-      };
-      const status = getCitationStatus(verification);
-      expect(status.isVerified).toBe(true);
-      expect(status.isPartialMatch).toBe(false);
+      expect(status.isPartialMatch).toBe(true);
     });
 
     it("treats loading status as pending", () => {
