@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.52] - 2025-01-29
+
+### Added
+- **Linter variant** for CitationComponent - displays citations as inline text with semantic underlines (solid for verified, dashed for partial, wavy for not found, dotted for pending) (#107)
+- **Badge variant** for UrlCitationComponent with improved status indicators (verified, partial, pending, blocked, error states) (#108)
+- **Verification log timeline** in citation tooltip - shows the verification process with timestamps (#104)
+- **Detailed search attempt info** in tooltip for failed lookups - helps debug why citations weren't found (#103)
+- **Deferred JSON citation format** - optimized format for streaming responses with grouped search attempts UI (#94)
+- **Visual showcase tests** for CitationComponent popover/tooltip states with dark mode support (#110)
+
+### Changed
+- Improved CitationTooltip UX with clearer status values and better visual feedback (#101)
+- Renamed `keySpan` to `anchorText` and `startPageKey` to `startPageId` for clarity (#89)
+- Optimized citation format: group citations by attachment with shorthand keys (#92)
+
+### Removed
+- All deprecated APIs and backwards compatibility shims have been removed (#105):
+  - `verifyAll()` - use `verify()` instead
+  - `removeCitations()` - use `replaceCitations()` instead
+  - Various deprecated type aliases and re-exports
+
 ## [1.1.50] - 2025-01-21
 
 This release marks the first comprehensive public release of DeepCitation, consolidating all features developed since the initial v1.0.0 release.
@@ -212,7 +233,8 @@ This release marks the first comprehensive public release of DeepCitation, conso
 - TypeScript support
 - Verification image display with popover
 
-[Unreleased]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.50...HEAD
+[Unreleased]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.52...HEAD
+[1.1.52]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.50...v1.1.52
 [1.1.50]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.26...v1.1.50
 [1.1.26]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.25...v1.1.26
 [1.1.25]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.24...v1.1.25
