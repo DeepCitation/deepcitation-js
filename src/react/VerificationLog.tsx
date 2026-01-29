@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import type { SearchAttempt, SearchStatus, SearchMethod } from "../types/search.js";
 import { CheckIcon, CloseIcon, WarningIcon } from "./icons.js";
 import { cn } from "./utils.js";
@@ -312,7 +312,7 @@ function VerificationLogSummary({
   onToggle,
 }: VerificationLogSummaryProps) {
   const colorScheme = getStatusColorScheme(status);
-  const successCount = searchAttempts.filter(a => a.success).length;
+  const successCount = useMemo(() => searchAttempts.filter(a => a.success).length, [searchAttempts]);
   const totalCount = searchAttempts.length;
 
   // Determine the summary text based on status
@@ -349,6 +349,8 @@ function VerificationLogSummary({
     <button
       type="button"
       onClick={onToggle}
+      aria-expanded={isExpanded}
+      aria-controls="verification-log-timeline"
       className="w-full px-4 py-3 flex items-center justify-between text-xs hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
     >
       <div className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
@@ -481,16 +483,26 @@ interface VerificationLogTimelineProps {
  */
 function VerificationLogTimeline({ searchAttempts, expectedPage, expectedLine }: VerificationLogTimelineProps) {
   return (
-    <div className="px-4 pb-3 max-h-[200px] overflow-y-auto border-t border-gray-100 dark:border-gray-800">
-      {searchAttempts.map((attempt, index) => (
-        <VerificationLogAttempt
-          key={index}
-          attempt={attempt}
-          index={index}
-          expectedPage={expectedPage}
-          expectedLine={expectedLine}
-        />
-      ))}
+    <div
+      id="verification-log-timeline"
+      className="px-4 pb-3 max-h-[200px] overflow-y-auto border-t border-gray-100 dark:border-gray-800"
+    >
+      {searchAttempts.map((attempt, index) => {
+        // Generate a stable key from attempt properties
+        const lineKey = Array.isArray(attempt.lineSearched)
+          ? attempt.lineSearched.join("-")
+          : attempt.lineSearched ?? "none";
+        const key = `${attempt.method}-${attempt.pageSearched ?? "doc"}-${lineKey}-${index}`;
+        return (
+          <VerificationLogAttempt
+            key={key}
+            attempt={attempt}
+            index={index}
+            expectedPage={expectedPage}
+            expectedLine={expectedLine}
+          />
+        );
+      })}
     </div>
   );
 }
