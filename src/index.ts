@@ -15,7 +15,6 @@ export type {
   FileInput,
   FileDataPart,
   PrepareFilesResult,
-  verifyAll,
 } from "./client/index.js";
 
 // Parsing
