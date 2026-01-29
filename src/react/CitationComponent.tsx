@@ -128,6 +128,7 @@ function getDefaultContent(variant: CitationVariant): CitationContent {
     case "chip":
     case "text":
     case "brackets":
+    case "linter":
       return "anchorText";
     case "source":
       return "source";
@@ -234,6 +235,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `superscript`: Small raised text like footnotes¹
    * - `minimal`: Compact text with indicator, truncated
    * - `source`: ChatGPT-style source chip with name + count
+   * - `linter`: Inline text with semantic underlines (solid/dashed/wavy)
    */
   variant?: CitationVariant;
   /**
@@ -247,6 +249,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `chip` → `anchorText`
    * - `brackets` → `anchorText`
    * - `text` → `anchorText`
+   * - `linter` → `anchorText`
    * - `superscript` → `number`
    * - `minimal` → `number`
    * - `source` → `source`
@@ -1980,6 +1983,64 @@ export const CitationComponent = forwardRef<
                 +{additionalCount}
               </span>
             )}
+          </span>
+        );
+      }
+
+      // Variant: linter (semantic underlines like grammar/spell-check tools)
+      // Uses text-decoration-style to differentiate verification states:
+      // - Verified: solid underline with subtle green background wash
+      // - Partial: dashed underline (amber)
+      // - Not Found: wavy underline (red) - familiar from spell-checkers
+      if (variant === "linter") {
+        // Build inline styles for text-decoration since Tailwind doesn't support all decoration styles
+        const linterStyles: React.CSSProperties = {
+          textDecoration: "underline",
+          textDecorationThickness: "2px",
+          textUnderlineOffset: "4px",
+          padding: "2px 4px",
+          borderRadius: "3px",
+          transition: "all 0.2s ease-in-out",
+        };
+
+        // Apply status-specific decoration styles
+        if (isMiss && !shouldShowSpinner) {
+          linterStyles.textDecorationStyle = "wavy";
+          linterStyles.textDecorationColor = "var(--dc-linter-error, #ef4444)";
+        } else if (isPartialMatch && !shouldShowSpinner) {
+          linterStyles.textDecorationStyle = "dashed";
+          linterStyles.textDecorationColor = "var(--dc-linter-warning, #f59e0b)";
+        } else if (isVerified && !shouldShowSpinner) {
+          linterStyles.textDecorationStyle = "solid";
+          linterStyles.textDecorationColor = "var(--dc-linter-success, #10b981)";
+        } else if (shouldShowSpinner) {
+          linterStyles.textDecorationStyle = "dotted";
+          linterStyles.textDecorationColor = "var(--dc-linter-pending, #9ca3af)";
+        } else {
+          // Default/unknown state
+          linterStyles.textDecorationStyle = "dotted";
+          linterStyles.textDecorationColor = "var(--dc-linter-pending, #9ca3af)";
+        }
+
+        const linterClasses = cn(
+          "cursor-pointer",
+          // Verified: subtle green background wash
+          isVerified && !isPartialMatch && !shouldShowSpinner &&
+            "bg-green-500/[0.08] hover:bg-green-500/[0.15] dark:bg-green-400/[0.08] dark:hover:bg-green-400/[0.15]",
+          // Partial: subtle amber background on hover
+          isPartialMatch && !shouldShowSpinner &&
+            "hover:bg-amber-500/10 dark:hover:bg-amber-400/10",
+          // Miss: subtle red background on hover
+          isMiss && !shouldShowSpinner &&
+            "hover:bg-red-500/10 dark:hover:bg-red-400/10",
+          // Pending: subtle gray background
+          shouldShowSpinner &&
+            "bg-gray-500/[0.05] hover:bg-gray-500/10 dark:bg-gray-400/[0.05] dark:hover:bg-gray-400/10"
+        );
+
+        return (
+          <span className={linterClasses} style={linterStyles}>
+            {displayText}
           </span>
         );
       }
