@@ -179,6 +179,47 @@ function getAttemptResultText(attempt: SearchAttempt): string {
   return "Text does not match";
 }
 
+/**
+ * Get deemphasized detail text for GitHub CI/CD style display.
+ * Shows location info in a clean, subtle format.
+ */
+function getAttemptDetailText(attempt: SearchAttempt): string {
+  const page = attempt.pageSearched;
+  const line = attempt.lineSearched;
+  const scope = attempt.searchScope;
+
+  // For successful matches, show where it was found
+  if (attempt.success) {
+    if (attempt.foundLocation) {
+      const { page: foundPage, line: foundLine } = attempt.foundLocation;
+      if (foundLine != null) {
+        return `Found on Pg ${foundPage}, Line ${foundLine}`;
+      }
+      return `Found on Pg ${foundPage}`;
+    }
+    if (page != null) {
+      if (line != null) {
+        const lineStr = Array.isArray(line) ? `${line[0]}-${line[line.length - 1]}` : line.toString();
+        return `Pg ${page}, Line ${lineStr}`;
+      }
+      return `Pg ${page}`;
+    }
+  }
+
+  // For failed searches, show where we searched
+  if (scope === "document") return "Full document search";
+
+  if (page != null) {
+    if (line != null) {
+      const lineStr = Array.isArray(line) ? `Lines ${line[0]}-${line[line.length - 1]}` : `Line ${line}`;
+      return `Pg ${page}, ${lineStr}`;
+    }
+    return `Pg ${page}, all lines`;
+  }
+
+  return "";
+}
+
 // =============================================================================
 // STATUS HEADER COMPONENT
 // =============================================================================
@@ -381,69 +422,47 @@ function VerificationLogSummary({
 interface VerificationLogAttemptProps {
   attempt: SearchAttempt;
   index: number;
-  expectedPage?: number;
-  expectedLine?: number;
 }
 
 /**
  * Single attempt row in the verification log timeline.
- * Issue #9: Monochrome badges - only icon carries status color.
- * Issue #12: Visual hierarchy - successful matches more prominent.
+ * GitHub CI/CD style: numbered list with right-aligned status icon
+ * and deemphasized detail text below.
  */
-function VerificationLogAttempt({ attempt, index, expectedPage, expectedLine }: VerificationLogAttemptProps) {
+function VerificationLogAttempt({ attempt, index }: VerificationLogAttemptProps) {
   const isSuccess = attempt.success;
   const methodName = getMethodDisplayName(attempt.method);
-  const scopeBadge = formatScopeBadge(attempt);
-  const resultText = getAttemptResultText(attempt);
-
-  // Determine if this is the expected location
-  const isExpectedLocation =
-    attempt.pageSearched === expectedPage &&
-    (expectedLine == null || attempt.lineSearched === expectedLine);
+  const detailText = getAttemptDetailText(attempt);
 
   // Icon component and color - only icon is colored
   const IconComponent = isSuccess ? CheckIcon : CloseIcon;
   const iconColorClass = isSuccess
     ? "text-green-600 dark:text-green-400"
-    : "text-gray-500 dark:text-gray-400";
+    : "text-gray-400 dark:text-gray-500";
 
   return (
-    <div className={cn(
-      "flex gap-2.5 py-2",
-      index > 0 && "border-t border-gray-100 dark:border-gray-800"
-    )}>
-      {/* Status icon */}
-      <div className="flex-shrink-0 pt-0.5">
-        <span className={cn("size-3 block", iconColorClass)}>
-          <IconComponent />
+    <div className="flex items-start gap-3 py-1.5">
+      {/* Step number */}
+      <span className="text-xs text-gray-400 dark:text-gray-500 w-4 text-right flex-shrink-0 pt-px">
+        {index + 1}.
+      </span>
+
+      {/* Method name + detail */}
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-gray-700 dark:text-gray-300">
+          {methodName}
         </span>
+        {detailText && (
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+            {detailText}
+          </p>
+        )}
       </div>
 
-      {/* Details */}
-      <div className="flex-1 min-w-0 text-xs">
-        {/* Header: method name + scope badge (monochrome) */}
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className={cn(
-            "font-medium",
-            isSuccess ? "text-gray-800 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"
-          )}>
-            {methodName}
-          </span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-            {scopeBadge}
-          </span>
-        </div>
-
-        {/* Result text - subtle */}
-        <p className={cn(
-          "text-[11px]",
-          isSuccess
-            ? "text-green-600 dark:text-green-400"
-            : "text-gray-500 dark:text-gray-400"
-        )}>
-          {resultText}
-        </p>
-      </div>
+      {/* Status icon - right aligned */}
+      <span className={cn("size-3.5 flex-shrink-0 mt-0.5", iconColorClass)}>
+        <IconComponent />
+      </span>
     </div>
   );
 }
@@ -454,14 +473,13 @@ function VerificationLogAttempt({ attempt, index, expectedPage, expectedLine }: 
 
 interface VerificationLogTimelineProps {
   searchAttempts: SearchAttempt[];
-  expectedPage?: number;
-  expectedLine?: number;
 }
 
 /**
  * Scrollable timeline showing all search attempts.
+ * GitHub CI/CD style: numbered list with clean spacing.
  */
-function VerificationLogTimeline({ searchAttempts, expectedPage, expectedLine }: VerificationLogTimelineProps) {
+function VerificationLogTimeline({ searchAttempts }: VerificationLogTimelineProps) {
   return (
     <div
       id="verification-log-timeline"
@@ -478,8 +496,6 @@ function VerificationLogTimeline({ searchAttempts, expectedPage, expectedLine }:
             key={key}
             attempt={attempt}
             index={index}
-            expectedPage={expectedPage}
-            expectedLine={expectedLine}
           />
         );
       })}
@@ -547,8 +563,6 @@ export function VerificationLog({
       {isExpanded && (
         <VerificationLogTimeline
           searchAttempts={searchAttempts}
-          expectedPage={expectedPage}
-          expectedLine={expectedLine}
         />
       )}
     </div>
