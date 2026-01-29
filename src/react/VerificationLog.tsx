@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import type { SearchAttempt, SearchStatus, SearchMethod } from "../types/search.js";
-import { CheckIcon, CloseIcon, MissIcon, WarningIcon } from "./icons.js";
+import { CheckIcon, MissIcon, WarningIcon } from "./icons.js";
 import { cn } from "./utils.js";
 
 // =============================================================================
@@ -247,7 +247,7 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
 
   // Select appropriate icon based on status
   const IconComponent = colorScheme === "green" ? CheckIcon
-    : colorScheme === "red" ? CloseIcon
+    : colorScheme === "red" ? MissIcon
     : WarningIcon;
 
   // Determine if location differs (for page badge)
