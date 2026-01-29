@@ -21,6 +21,27 @@ export const DeepCitationIcon = ({ className }: { className?: string }) => (
 );
 
 /**
+ * Miss/fail indicator - horizontal line (dash)
+ * Semantically indicates "not found" without implying "close/delete"
+ * Size is controlled by parent container - use size-4 or similar on wrapper
+ */
+export const MissIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3"
+    strokeLinecap="round"
+    aria-hidden="true"
+    width="100%"
+    height="100%"
+  >
+    <line x1="6" y1="12" x2="18" y2="12" />
+  </svg>
+);
+
+/**
  * Check icon SVG (no dependencies)
  * Size is controlled by parent container - use size-4 or similar on wrapper
  */

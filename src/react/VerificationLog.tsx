@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import type { SearchAttempt, SearchStatus, SearchMethod } from "../types/search.js";
-import { CheckIcon, CloseIcon, WarningIcon } from "./icons.js";
+import { CheckIcon, CloseIcon, MissIcon, WarningIcon } from "./icons.js";
 import { cn } from "./utils.js";
 
 // =============================================================================
@@ -347,7 +347,7 @@ export function QuoteBox({ phrase, maxLength = MAX_QUOTE_BOX_LENGTH }: QuoteBoxP
     : phrase;
 
   return (
-    <blockquote className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-md border-l-[3px] border-gray-300 dark:border-gray-600 leading-relaxed text-sm">
+    <blockquote className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-3 rounded border-l-[3px] border-gray-300 dark:border-gray-600 leading-relaxed text-sm">
       "{displayPhrase}"
     </blockquote>
   );
@@ -373,16 +373,12 @@ interface VerificationLogSummaryProps {
  * Issue #6 & #11: Simplified to avoid redundant info (header already shows status).
  */
 function VerificationLogSummary({
-  status,
   searchAttempts,
-  expectedPage,
-  expectedLine,
-  foundPage,
-  foundLine,
   isExpanded,
   onToggle,
 }: VerificationLogSummaryProps) {
   const totalCount = searchAttempts.length;
+  const successCount = searchAttempts.filter(a => a.success).length;
 
   return (
     <button
@@ -408,7 +404,7 @@ function VerificationLogSummary({
         </svg>
         <span>Details</span>
         <span className="text-gray-400 dark:text-gray-500">
-          ({totalCount} {totalCount === 1 ? "search" : "searches"})
+          ({successCount} / {totalCount} {totalCount === 1 ? "search" : "searches"})
         </span>
       </div>
     </button>
@@ -435,7 +431,7 @@ function VerificationLogAttempt({ attempt, index }: VerificationLogAttemptProps)
   const detailText = getAttemptDetailText(attempt);
 
   // Icon component and color - only icon is colored
-  const IconComponent = isSuccess ? CheckIcon : CloseIcon;
+  const IconComponent = isSuccess ? CheckIcon : MissIcon;
   const iconColorClass = isSuccess
     ? "text-green-600 dark:text-green-400"
     : "text-gray-400 dark:text-gray-500";

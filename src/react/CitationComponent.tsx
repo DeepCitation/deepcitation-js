@@ -1897,8 +1897,15 @@ export const CitationComponent = forwardRef<
     }
 
     // Status classes for text styling
+    // Variants that display inline text (text, minimal, superscript, linter) need
+    // a default text color that works in both light and dark modes
+    const needsDefaultTextColor =
+      variant === "text" || variant === "minimal" || variant === "superscript" || variant === "linter";
+
     const statusClasses = cn(
-      // Found status (text color) - verified or partial match
+      // Default text color for inline variants (ensures dark mode compatibility)
+      needsDefaultTextColor && !isMiss && !shouldShowSpinner && "text-gray-900 dark:text-gray-100",
+      // Found status (text color) - verified or partial match, for brackets variant
       (isVerified || isPartialMatch) &&
         variant === "brackets" &&
         "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline",
