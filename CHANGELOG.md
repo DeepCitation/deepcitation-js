@@ -16,11 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Detailed search attempt info** in tooltip for failed lookups - helps debug why citations weren't found (#103)
 - **Deferred JSON citation format** - optimized format for streaming responses with grouped search attempts UI (#94)
 - **Visual showcase tests** for CitationComponent popover/tooltip states with dark mode support (#110)
+- **`showIndicator` prop** for CitationComponent - control visibility of status indicators (checkmark, warning, spinner) (#111)
+- **Expandable search details** for verified matches - see how matches were found even for successful verifications (#111)
 
 ### Changed
 - Improved CitationTooltip UX with clearer status values and better visual feedback (#101)
 - Renamed `keySpan` to `anchorText` and `startPageKey` to `startPageId` for clarity (#89)
 - Optimized citation format: group citations by attachment with shorthand keys (#92)
+- **Dark mode improvements** - superscript variant now inherits text color, popover headers use neutral backgrounds with colored icons only (#111)
+- **URL citation variants** - chip/inline/bracket variants now use neutral gray colors instead of blue, better spacing with `mr-0.5` (#111)
+- **Unexpected location display** - shows strikethrough expected page next to actual found page (e.g., ~~PG 5~~ PG 7) (#111)
 
 ### Removed
 - All deprecated APIs and backwards compatibility shims have been removed (#105):
