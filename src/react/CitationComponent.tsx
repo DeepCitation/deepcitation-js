@@ -854,6 +854,50 @@ function AnchorTextFocusedImage({
 }
 
 // =============================================================================
+// HUMANIZING MESSAGES (Issue #5)
+// =============================================================================
+
+/**
+ * Get a conversational message for not-found or partial match states.
+ * Uses the actual anchor text for context, truncating if needed.
+ */
+function getHumanizingMessage(
+  status: string | null | undefined,
+  anchorText?: string,
+  expectedPage?: number,
+  foundPage?: number
+): string | null {
+  if (!status) return null;
+
+  const MAX_ANCHOR_LENGTH = 30;
+  const displayText = anchorText
+    ? anchorText.length > MAX_ANCHOR_LENGTH
+      ? `"${anchorText.slice(0, MAX_ANCHOR_LENGTH)}…"`
+      : `"${anchorText}"`
+    : "this phrase";
+
+  switch (status) {
+    case "not_found":
+      return `We couldn't find ${displayText} in this document.`;
+    case "found_on_other_page":
+      if (expectedPage && foundPage) {
+        return `Found on page ${foundPage} instead of page ${expectedPage}.`;
+      }
+      return `Found on a different page than expected.`;
+    case "found_on_other_line":
+      return `Found at a different position than expected.`;
+    case "partial_text_found":
+      return `Only part of the text was found.`;
+    case "first_word_found":
+      return `Only the beginning of the phrase was found.`;
+    case "found_anchor_text_only":
+      return `The key phrase was found, but not the full context.`;
+    default:
+      return null;
+  }
+}
+
+// =============================================================================
 // POPOVER CONTENT COMPONENT
 // =============================================================================
 
@@ -968,13 +1012,13 @@ function SearchedPhrasesInfo({
   return (
     <div className="mt-1">
       {/* Summary header showing what was searched */}
-      <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
+      <div className="text-[10px] text-gray-600 dark:text-gray-400 mb-2">
         Searched {pagesSearchedCount > 1 ? `${pagesSearchedCount} pages` : pagesSearchedCount === 1 ? "1 page" : "document"}
         {hiddenGroupCount > 0 && (
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="ml-2 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+            className="ml-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
             {isExpanded ? "show less" : `show all ${groupedAttempts.length} phrases`}
           </button>
@@ -994,7 +1038,7 @@ function SearchedPhrasesInfo({
 /**
  * Compact single-row display for a grouped search attempt.
  * Shows phrase, metadata badges, and result on one or two lines.
- * For failed attempts, shows detailed information about what was tried.
+ * Uses cleaner, less colorful design with monochrome badges.
  */
 function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
   // Truncate phrase for display
@@ -1006,47 +1050,42 @@ function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
   const validPages = group.pagesSearched.filter((p): p is number => p != null);
   const locationInfo = validPages.length > 0
     ? formatPageList(validPages)
-    : "all pages";
+    : "entire document";
 
-  // Status indicator - show check for success, X for failure
+  // Status indicator - only icon is colored
   const statusIndicator = group.anySuccess ? (
     <span className={cn(
       "inline-flex size-3 flex-shrink-0",
       isLowTrustMatch(group.successfulAttempt?.matchedVariation)
-        ? "text-amber-500 dark:text-amber-400"
-        : "text-green-500 dark:text-green-400"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-green-600 dark:text-green-400"
     )}>
       <CheckIcon />
     </span>
   ) : (
-    <span className="inline-flex size-3 flex-shrink-0 text-red-500 dark:text-red-400">
+    <span className="inline-flex size-3 flex-shrink-0 text-gray-400 dark:text-gray-500">
       <CloseIcon />
     </span>
   );
 
   // Phrase type label
-  const phraseTypeLabel = group.phraseType === "anchor_text" ? "anchor text" : "full phrase";
-
-  // For failed attempts, build the methods tried string
-  const methodsTriedString = !group.anySuccess && group.methodsUsed.size > 0
-    ? Array.from(group.methodsUsed).map(getMethodLabel).join(", ")
-    : null;
+  const phraseTypeLabel = group.phraseType === "anchor_text" ? "Key phrase" : "Full phrase";
 
   // For failed attempts, show variations that were also searched
   const visibleVariations = group.variationsTried.slice(0, MAX_VISIBLE_VARIATIONS);
   const hiddenVariationsCount = group.variationsTried.length - MAX_VISIBLE_VARIATIONS;
 
   return (
-    <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded-md">
-      {/* Phrase type and location */}
+    <div className="p-2 bg-gray-50 dark:bg-gray-800/40 rounded-md">
+      {/* Phrase type and location - monochrome */}
       <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-1">
-        <span className="uppercase font-medium">{phraseTypeLabel}</span>
+        <span className="font-medium">{phraseTypeLabel}</span>
         <span>{locationInfo}</span>
       </div>
 
       {/* The searched phrase */}
       <div className="flex items-start gap-1.5">
-        <p className="font-mono text-[11px] text-gray-700 dark:text-gray-300 break-words flex-1">
+        <p className="font-mono text-[11px] text-gray-700 dark:text-gray-200 break-words flex-1">
           "{displayPhrase}"
         </p>
         {statusIndicator}
@@ -1063,17 +1102,10 @@ function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
       {/* Detailed info for failed attempts */}
       {!group.anySuccess && (
         <>
-          {/* Not found with methods tried */}
-          {methodsTriedString && (
-            <p className="text-[10px] text-red-500 dark:text-red-400 mt-1">
-              Not found — tried: {methodsTriedString}
-            </p>
-          )}
-
           {/* Variations that were also searched */}
           {visibleVariations.length > 0 && (
             <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-              <span className="font-medium">Also searched: </span>
+              <span className="font-medium">Also tried: </span>
               {visibleVariations.map((variation, index) => {
                 const truncatedVar = variation.length > MAX_VARIATION_LENGTH
                   ? variation.slice(0, MAX_VARIATION_LENGTH) + "…"
@@ -1095,7 +1127,7 @@ function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
 
           {/* Notes (if any, for additional context) */}
           {group.uniqueNotes.length > 0 && (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 italic mt-1">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
               {group.uniqueNotes[0]}
             </p>
           )}
@@ -1138,19 +1170,24 @@ function DefaultPopoverContent({
   const foundPage = verification?.verifiedPageNumber ?? undefined;
   const foundLine = verification?.verifiedLineIds?.[0];
 
+  // Get humanizing message for partial/not-found states
+  const anchorText = citation.anchorText?.toString();
+  const fullPhrase = citation.fullPhrase;
+  const humanizingMessage = getHumanizingMessage(searchStatus, anchorText, expectedPage ?? undefined, foundPage);
+
   // Loading/pending state view
   if (isLoading || isPending) {
-    const searchingPhrase = citation.fullPhrase || citation.anchorText?.toString();
+    const searchingPhrase = fullPhrase || anchorText;
     return (
       <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
           <span className="inline-block relative top-[0.1em] mr-1.5 size-2 animate-spin">
             <SpinnerIcon />
           </span>
           Searching...
         </span>
         {searchingPhrase && (
-          <p className="p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] break-words text-gray-600 dark:text-gray-400 italic">
+          <p className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded font-mono text-[11px] break-words text-gray-700 dark:text-gray-300">
             "{searchingPhrase.length > 80 ? searchingPhrase.slice(0, 80) + '…' : searchingPhrase}"
           </p>
         )}
@@ -1169,7 +1206,7 @@ function DefaultPopoverContent({
   if (isCleanSuccess && hasImage && verification) {
     return (
       <Activity mode={isVisible ? "visible" : "hidden"}>
-        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
           {/* Green status header - show expected page */}
           <StatusHeader status={searchStatus} foundPage={foundPage} expectedPage={expectedPage ?? undefined} />
 
@@ -1233,17 +1270,20 @@ function DefaultPopoverContent({
   // PARTIAL/DISPLACED STATE (Amber) or NOT FOUND (Red) - Full layout
   // ==========================================================================
   if (isMiss || isPartialMatch) {
-    const anchorText = citation.anchorText?.toString();
-    const fullPhrase = citation.fullPhrase;
-
     return (
       <Activity mode={isVisible ? "visible" : "hidden"}>
-        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
           {/* Content area: Image with simple header, OR combined status header with quote */}
           {hasImage && verification ? (
             // Show simple header + image (for partial matches that have images)
             <>
               <StatusHeader status={searchStatus} foundPage={foundPage} expectedPage={expectedPage ?? undefined} />
+              {/* Humanizing message for partial matches with images */}
+              {humanizingMessage && (
+                <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">
+                  {humanizingMessage}
+                </div>
+              )}
               <div className="p-2">
                 {hasAnchorTextPosition ? (
                   <AnchorTextFocusedImage
@@ -1283,13 +1323,21 @@ function DefaultPopoverContent({
             </>
           ) : (
             // Combined header with anchor text and quote (for not_found or partial without image)
-            <StatusHeader
-              status={searchStatus}
-              foundPage={foundPage}
-              expectedPage={expectedPage ?? undefined}
-              anchorText={anchorText}
-              fullPhrase={fullPhrase ?? undefined}
-            />
+            <>
+              <StatusHeader
+                status={searchStatus}
+                foundPage={foundPage}
+                expectedPage={expectedPage ?? undefined}
+                anchorText={anchorText}
+                fullPhrase={fullPhrase ?? undefined}
+              />
+              {/* Humanizing message for not-found states (below the status header) */}
+              {humanizingMessage && (
+                <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">
+                  {humanizingMessage}
+                </div>
+              )}
+            </>
           )}
 
           {/* Verification log (collapsible) */}
@@ -1327,9 +1375,9 @@ function DefaultPopoverContent({
             "text-xs font-medium",
             status.isVerified &&
               !status.isPartialMatch &&
-              "text-green-600 dark:text-green-500",
-            status.isPartialMatch && "text-amber-600 dark:text-amber-500",
-            status.isMiss && "text-red-600 dark:text-red-500",
+              "text-green-600 dark:text-green-400",
+            status.isPartialMatch && "text-amber-600 dark:text-amber-400",
+            status.isMiss && "text-red-500 dark:text-red-400",
             status.isPending && "text-gray-500 dark:text-gray-400"
           )}
         >
@@ -1337,7 +1385,7 @@ function DefaultPopoverContent({
         </span>
       )}
       {hasSnippet && (
-        <span className="text-sm text-gray-700 dark:text-gray-300 italic">
+        <span className="text-sm text-gray-700 dark:text-gray-200">
           "{verification.verifiedMatchSnippet}"
         </span>
       )}
