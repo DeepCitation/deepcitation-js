@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import type { SearchAttempt, SearchStatus, SearchMethod } from "../types/search.js";
-import { CheckIcon, CloseIcon, WarningIcon } from "./icons.js";
+import { CheckIcon, MissIcon, WarningIcon } from "./icons.js";
 import { cn } from "./utils.js";
 
 // =============================================================================
@@ -16,16 +16,27 @@ const MAX_QUOTE_BOX_LENGTH = 150;
 /** Maximum length for anchor text preview in headers */
 const MAX_ANCHOR_TEXT_PREVIEW_LENGTH = 50;
 
-/** Human-readable method names for display */
+/** Maximum height for the scrollable timeline */
+const MAX_TIMELINE_HEIGHT = "200px";
+
+/** Icon color classes by status - defined outside component to avoid recreation on every render */
+const ICON_COLOR_CLASSES = {
+  green: "text-green-600 dark:text-green-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  red: "text-red-500 dark:text-red-400",
+  gray: "text-gray-400 dark:text-gray-500",
+} as const;
+
+/** User-friendly method names for display (Issue #10: simplified from technical jargon) */
 const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
-  exact_line_match: "Exact Line Match",
-  line_with_buffer: "Line Buffer Search",
-  current_page: "Page Scan",
-  anchor_text_fallback: "Key Phrase Search",
-  adjacent_pages: "Nearby Pages",
-  expanded_window: "Wider Search",
-  regex_search: "Full Document Search",
-  first_word_fallback: "First Word Search",
+  exact_line_match: "Exact location",
+  line_with_buffer: "Nearby lines",
+  current_page: "Expected page",
+  anchor_text_fallback: "Key phrase",
+  adjacent_pages: "Nearby pages",
+  expanded_window: "Wider area",
+  regex_search: "Entire document",
+  first_word_fallback: "First word",
 };
 
 // =============================================================================
@@ -104,6 +115,7 @@ function getStatusColorScheme(status?: SearchStatus | null): "green" | "amber" |
 
 /**
  * Get the header text based on status.
+ * Issue #3: Made more concise - anchor text will be integrated separately.
  */
 function getStatusHeaderText(status?: SearchStatus | null): string {
   if (!status) return "Verifying...";
@@ -112,20 +124,21 @@ function getStatusHeaderText(status?: SearchStatus | null): string {
     case "found":
     case "found_anchor_text_only":
     case "found_phrase_missed_anchor_text":
-      return "Verified Match";
+      return "Verified";
     case "found_on_other_page":
+      return "Found on different page";
     case "found_on_other_line":
-      return "Citation Found (Unexpected Location)";
+      return "Found on different line";
     case "partial_text_found":
     case "first_word_found":
-      return "Partial Match Found";
+      return "Partial match";
     case "not_found":
-      return "Citation Unverified";
+      return "Not found";
     case "pending":
     case "loading":
       return "Verifying...";
     default:
-      return "Unknown Status";
+      return "Unknown";
   }
 }
 
@@ -177,32 +190,112 @@ function getAttemptResultText(attempt: SearchAttempt): string {
   return "Text does not match";
 }
 
+/**
+ * Get deemphasized detail text for GitHub CI/CD style display.
+ * Shows location info in a clean, subtle format.
+ */
+function getAttemptDetailText(attempt: SearchAttempt): string {
+  const page = attempt.pageSearched;
+  const line = attempt.lineSearched;
+  const scope = attempt.searchScope;
+
+  // For successful matches, show where it was found
+  if (attempt.success) {
+    if (attempt.foundLocation) {
+      const { page: foundPage, line: foundLine } = attempt.foundLocation;
+      if (foundLine != null) {
+        return `Found on Pg ${foundPage}, Line ${foundLine}`;
+      }
+      return `Found on Pg ${foundPage}`;
+    }
+    if (page != null) {
+      if (line != null) {
+        const lineStr = Array.isArray(line) ? `${line[0]}-${line[line.length - 1]}` : line.toString();
+        return `Pg ${page}, Line ${lineStr}`;
+      }
+      return `Pg ${page}`;
+    }
+  }
+
+  // For failed searches, show where we searched
+  if (scope === "document") return "Full document search";
+
+  if (page != null) {
+    if (line != null) {
+      const lineStr = Array.isArray(line) ? `Lines ${line[0]}-${line[line.length - 1]}` : `Line ${line}`;
+      return `Pg ${page}, ${lineStr}`;
+    }
+    return `Pg ${page}, all lines`;
+  }
+
+  return "";
+}
+
+// =============================================================================
+// PAGE BADGE COMPONENT
+// =============================================================================
+
+interface PageBadgeProps {
+  /** Expected page from citation */
+  expectedPage?: number;
+  /** Page where match was found */
+  foundPage?: number;
+}
+
+/**
+ * Displays page location information.
+ * Shows arrow format (Pg 5 → 7) when location differs from expected.
+ */
+function PageBadge({ expectedPage, foundPage }: PageBadgeProps) {
+  const hasExpected = expectedPage != null && expectedPage > 0;
+  const hasFound = foundPage != null && foundPage > 0;
+  const locationDiffers = hasExpected && hasFound && expectedPage !== foundPage;
+
+  // Show arrow format when location differs (Issue #8: Pg 5 → 7)
+  if (locationDiffers) {
+    return (
+      <span className="text-xs font-mono text-gray-500 dark:text-gray-400 flex items-center gap-1">
+        <span className="text-gray-400 dark:text-gray-500">Pg {expectedPage}</span>
+        <span className="text-gray-400 dark:text-gray-500">→</span>
+        <span className="text-gray-700 dark:text-gray-300">{foundPage}</span>
+      </span>
+    );
+  }
+
+  // Show found page or expected page
+  const pageToShow = hasFound ? foundPage : expectedPage;
+  if (pageToShow != null && pageToShow > 0) {
+    return (
+      <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+        Pg {pageToShow}
+      </span>
+    );
+  }
+
+  return null;
+}
+
 // =============================================================================
 // STATUS HEADER COMPONENT
 // =============================================================================
 
 /**
  * Header bar showing verification status with icon and text.
- * Uses muted colors with small colored icon for status indication.
- * Can optionally include anchor text and quote for a combined layout.
+ *
+ * shadcn HoverCard style:
+ * - Clean white/dark background (no colored header backgrounds)
+ * - Colored icon only indicates status
+ * - Subtle ring border for elevation
+ * - Page badge uses arrow format for location differences (Pg 5 → 7)
  */
 export function StatusHeader({ status, foundPage, expectedPage, compact = false, anchorText, fullPhrase }: StatusHeaderProps) {
   const colorScheme = getStatusColorScheme(status);
   const headerText = getStatusHeaderText(status);
 
-  // Icon colors - only the icon is colored, not the entire header
-  const iconColorClasses = {
-    green: "text-green-600 dark:text-green-500",
-    amber: "text-amber-600 dark:text-amber-500",
-    red: "text-red-500 dark:text-red-400",
-    gray: "text-gray-400 dark:text-gray-500",
-  };
-
-  const IconComponent = colorScheme === "green" ? CheckIcon : WarningIcon;
-
-  // Determine if we should show expected page (when location differs)
-  const showExpectedPage = expectedPage != null && expectedPage > 0 && foundPage != null && foundPage > 0 && expectedPage !== foundPage;
-  const isUnexpectedLocation = status === "found_on_other_page" || status === "found_on_other_line";
+  // Select appropriate icon based on status
+  const IconComponent = colorScheme === "green" ? CheckIcon
+    : colorScheme === "red" ? MissIcon
+    : WarningIcon;
 
   // Combined layout: status + anchor text + quote in one header section
   const hasCombinedContent = anchorText || fullPhrase;
@@ -213,40 +306,26 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
 
     return (
       <div className="border-b border-gray-200 dark:border-gray-700">
-        {/* Status row - muted background with colored icon */}
+        {/* Status row - clean neutral background */}
         <div className={cn(
-          "flex items-center justify-between gap-2 text-sm bg-gray-50 dark:bg-gray-800/50",
+          "flex items-center justify-between gap-2 text-sm",
           compact ? "px-3 py-2" : "px-4 py-2.5"
         )}>
           <div className="flex items-center gap-2">
-            <span className={cn("size-4", iconColorClasses[colorScheme])}>
+            <span className={cn("size-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
               <IconComponent />
             </span>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{headerText}</span>
+            <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>
           </div>
-          {/* Page location badge - show expected (strikethrough) + found for unexpected location */}
-          {(foundPage != null && foundPage > 0) || showExpectedPage ? (
-            <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-              {showExpectedPage && isUnexpectedLocation && (
-                <span className="line-through opacity-60 mr-1">PG {expectedPage}</span>
-              )}
-              {foundPage != null && foundPage > 0 && (
-                <span>PG {foundPage}</span>
-              )}
-            </span>
-          ) : expectedPage != null && expectedPage > 0 ? (
-            <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-              PG {expectedPage}
-            </span>
-          ) : null}
+          <PageBadge expectedPage={expectedPage} foundPage={foundPage} />
         </div>
 
         {/* Anchor text and quote */}
-        <div className="px-4 pb-3 pt-1 bg-white dark:bg-gray-900">
-          <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-200 mb-2">
-            {displayAnchorText}
+        <div className="px-4 pb-3 pt-1">
+          <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 mb-2">
+            "{displayAnchorText}"
           </div>
-          {displayPhrase && (
+          {displayPhrase && displayPhrase !== displayAnchorText && (
             <QuoteBox phrase={displayPhrase} />
           )}
         </div>
@@ -254,35 +333,21 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
     );
   }
 
-  // Simple header (no anchor text/quote) - muted colors
+  // Simple header (no anchor text/quote)
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800/50",
+        "flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700 text-sm",
         compact ? "px-3 py-2" : "px-4 py-2.5"
       )}
     >
       <div className="flex items-center gap-2">
-        <span className={cn("size-4", iconColorClasses[colorScheme])}>
+        <span className={cn("size-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
           <IconComponent />
         </span>
-        <span className="font-medium text-gray-700 dark:text-gray-300">{headerText}</span>
+        <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>
       </div>
-      {/* Page location badge - show expected (strikethrough) + found for unexpected location */}
-      {(foundPage != null && foundPage > 0) || showExpectedPage ? (
-        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-          {showExpectedPage && isUnexpectedLocation && (
-            <span className="line-through opacity-60 mr-1">PG {expectedPage}</span>
-          )}
-          {foundPage != null && foundPage > 0 && (
-            <span>PG {foundPage}</span>
-          )}
-        </span>
-      ) : expectedPage != null && expectedPage > 0 ? (
-        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-          PG {expectedPage}
-        </span>
-      ) : null}
+      <PageBadge expectedPage={expectedPage} foundPage={foundPage} />
     </div>
   );
 }
@@ -293,6 +358,8 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
 
 /**
  * Styled quote box for displaying the phrase being verified.
+ * Issue #7: Removed serif/italic for modern UI consistency.
+ * Uses left border accent (which aligns with shadcn patterns).
  */
 export function QuoteBox({ phrase, maxLength = MAX_QUOTE_BOX_LENGTH }: QuoteBoxProps) {
   const displayPhrase = phrase.length > maxLength
@@ -300,7 +367,7 @@ export function QuoteBox({ phrase, maxLength = MAX_QUOTE_BOX_LENGTH }: QuoteBoxP
     : phrase;
 
   return (
-    <blockquote className="font-serif italic text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-md border-l-[3px] border-gray-300 dark:border-gray-600 leading-relaxed text-sm">
+    <blockquote className="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-3 rounded border-l-[3px] border-gray-300 dark:border-gray-600 leading-relaxed text-sm">
       "{displayPhrase}"
     </blockquote>
   );
@@ -322,51 +389,16 @@ interface VerificationLogSummaryProps {
 }
 
 /**
- * Clickable summary header showing the result and attempt count.
+ * Clickable summary header - GitHub-style with just chevron + count.
+ * Issue #6 & #11: Simplified to avoid redundant info (header already shows status).
  */
 function VerificationLogSummary({
-  status,
   searchAttempts,
-  expectedPage,
-  expectedLine,
-  foundPage,
-  foundLine,
   isExpanded,
   onToggle,
 }: VerificationLogSummaryProps) {
-  const colorScheme = getStatusColorScheme(status);
-  const successCount = useMemo(() => searchAttempts.filter(a => a.success).length, [searchAttempts]);
   const totalCount = searchAttempts.length;
-
-  // Determine the summary text based on status
-  let summaryText = "";
-  let subText = "";
-
-  if (status === "not_found") {
-    summaryText = "No matches found";
-    subText = `(${successCount}/${totalCount} attempts)`;
-  } else if (status === "found_on_other_line" && foundLine != null && expectedLine != null) {
-    summaryText = `Found on Line ${foundLine}`;
-    subText = `(Expected Line ${expectedLine})`;
-  } else if (status === "found_on_other_page" && foundPage != null && expectedPage != null) {
-    summaryText = `Found on Page ${foundPage}`;
-    subText = `(Expected Page ${expectedPage})`;
-  } else if (status === "partial_text_found" || status === "first_word_found") {
-    summaryText = "Partial match";
-    subText = `(${successCount}/${totalCount} attempts)`;
-  } else {
-    summaryText = "Match found";
-    subText = `(${successCount}/${totalCount} attempts)`;
-  }
-
-  // Icon based on status
-  const IconComponent = colorScheme === "red" ? CloseIcon : colorScheme === "amber" ? WarningIcon : CheckIcon;
-  const iconColorClass = {
-    green: "text-green-500 dark:text-green-400",
-    amber: "text-amber-500 dark:text-amber-400",
-    red: "text-red-500 dark:text-red-400",
-    gray: "text-gray-400 dark:text-gray-500",
-  }[colorScheme];
+  const successCount = searchAttempts.filter(a => a.success).length;
 
   return (
     <button
@@ -374,29 +406,27 @@ function VerificationLogSummary({
       onClick={onToggle}
       aria-expanded={isExpanded}
       aria-controls="verification-log-timeline"
-      className="w-full px-4 py-3 flex items-center justify-between text-xs hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      className="w-full px-4 py-2.5 flex items-center justify-between text-xs hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
     >
-      <div className="flex items-center gap-2 font-semibold text-gray-700 dark:text-gray-300">
-        <span className={cn("size-3.5", iconColorClass)}>
-          <IconComponent />
-        </span>
-        <span>{summaryText}</span>
-        <span className="font-normal text-gray-500 dark:text-gray-400">
-          {subText}
+      <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+        <svg
+          className={cn(
+            "size-3 transition-transform duration-200",
+            isExpanded && "rotate-90"
+          )}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          aria-hidden="true"
+        >
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+        <span>Details</span>
+        <span className="text-gray-400 dark:text-gray-500">
+          ({successCount} / {totalCount} {totalCount === 1 ? "search" : "searches"})
         </span>
       </div>
-      <svg
-        className={cn(
-          "size-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200",
-          isExpanded && "rotate-180"
-        )}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M6 9l6 6 6-6" />
-      </svg>
     </button>
   );
 }
@@ -408,85 +438,47 @@ function VerificationLogSummary({
 interface VerificationLogAttemptProps {
   attempt: SearchAttempt;
   index: number;
-  expectedPage?: number;
-  expectedLine?: number;
 }
 
 /**
  * Single attempt row in the verification log timeline.
+ * GitHub CI/CD style: numbered list with right-aligned status icon
+ * and deemphasized detail text below.
  */
-function VerificationLogAttempt({ attempt, index, expectedPage, expectedLine }: VerificationLogAttemptProps) {
+function VerificationLogAttempt({ attempt, index }: VerificationLogAttemptProps) {
   const isSuccess = attempt.success;
   const methodName = getMethodDisplayName(attempt.method);
-  const scopeBadge = formatScopeBadge(attempt);
-  const resultText = getAttemptResultText(attempt);
+  const detailText = getAttemptDetailText(attempt);
 
-  // Determine if this is the expected location (for highlighting)
-  const isExpectedLocation =
-    attempt.pageSearched === expectedPage &&
-    (expectedLine == null || attempt.lineSearched === expectedLine);
-
-  // Badge color class
-  const badgeColorClass = isSuccess
-    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-    : isExpectedLocation
-    ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-    : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
-
-  // Icon component and color
-  const IconComponent = isSuccess ? CheckIcon : CloseIcon;
+  // Icon component and color - only icon is colored
+  const IconComponent = isSuccess ? CheckIcon : MissIcon;
   const iconColorClass = isSuccess
-    ? "text-green-500 dark:text-green-400"
+    ? "text-green-600 dark:text-green-400"
     : "text-gray-400 dark:text-gray-500";
 
-  // For amber success (partial/displaced), use amber icon
-  const isPartialSuccess = isSuccess && !isExpectedLocation;
-  const finalIconColorClass = isPartialSuccess
-    ? "text-amber-500 dark:text-amber-400"
-    : iconColorClass;
-
   return (
-    <div className={cn(
-      "flex gap-2.5 py-2.5",
-      index > 0 && "border-t border-dashed border-gray-200 dark:border-gray-700"
-    )}>
-      {/* Status icon */}
-      <div className="flex-shrink-0 pt-0.5">
-        <span className={cn("size-3.5 block", finalIconColorClass)}>
-          <IconComponent />
+    <div className="flex items-start gap-3 py-1.5">
+      {/* Step number */}
+      <span className="text-xs text-gray-400 dark:text-gray-500 w-4 text-right flex-shrink-0 pt-px">
+        {index + 1}.
+      </span>
+
+      {/* Method name + detail */}
+      <div className="flex-1 min-w-0">
+        <span className="text-xs text-gray-700 dark:text-gray-300">
+          {methodName}
         </span>
+        {detailText && (
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+            {detailText}
+          </p>
+        )}
       </div>
 
-      {/* Details */}
-      <div className="flex-1 min-w-0 text-xs">
-        {/* Header: method name + scope badge */}
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <span className={cn(
-            "font-semibold",
-            isSuccess ? "text-gray-700 dark:text-gray-300" : "text-gray-600 dark:text-gray-400"
-          )}>
-            {methodName}
-          </span>
-          <span className={cn(
-            "px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold",
-            badgeColorClass
-          )}>
-            {scopeBadge}
-          </span>
-        </div>
-
-        {/* Result text */}
-        <p className={cn(
-          "text-[11px]",
-          isSuccess
-            ? isPartialSuccess
-              ? "text-amber-600 dark:text-amber-400"
-              : "text-green-600 dark:text-green-400"
-            : "text-red-500 dark:text-red-400"
-        )}>
-          {resultText}
-        </p>
-      </div>
+      {/* Status icon - right aligned */}
+      <span className={cn("size-3.5 flex-shrink-0 mt-0.5", iconColorClass)}>
+        <IconComponent />
+      </span>
     </div>
   );
 }
@@ -497,21 +489,23 @@ function VerificationLogAttempt({ attempt, index, expectedPage, expectedLine }: 
 
 interface VerificationLogTimelineProps {
   searchAttempts: SearchAttempt[];
-  expectedPage?: number;
-  expectedLine?: number;
 }
 
 /**
  * Scrollable timeline showing all search attempts.
+ * GitHub CI/CD style: numbered list with clean spacing.
  */
-function VerificationLogTimeline({ searchAttempts, expectedPage, expectedLine }: VerificationLogTimelineProps) {
+function VerificationLogTimeline({ searchAttempts }: VerificationLogTimelineProps) {
   return (
     <div
       id="verification-log-timeline"
-      className="px-4 pb-3 max-h-[200px] overflow-y-auto border-t border-gray-100 dark:border-gray-800"
+      className="px-4 pb-3 overflow-y-auto"
+      style={{ maxHeight: MAX_TIMELINE_HEIGHT }}
     >
       {searchAttempts.map((attempt, index) => {
-        // Generate a stable key from attempt properties
+        // Generate a stable key from attempt properties.
+        // Note: index is included because the same method/page/line combination
+        // can appear multiple times in search attempts (e.g., retries).
         const lineKey = Array.isArray(attempt.lineSearched)
           ? attempt.lineSearched.join("-")
           : attempt.lineSearched ?? "none";
@@ -521,8 +515,6 @@ function VerificationLogTimeline({ searchAttempts, expectedPage, expectedLine }:
             key={key}
             attempt={attempt}
             index={index}
-            expectedPage={expectedPage}
-            expectedLine={expectedLine}
           />
         );
       })}
@@ -576,7 +568,7 @@ export function VerificationLog({
   const derivedFoundLine = foundLine ?? successfulAttempt?.foundLocation?.line;
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+    <div className="border-t border-gray-200 dark:border-gray-700">
       <VerificationLogSummary
         status={status}
         searchAttempts={searchAttempts}
@@ -590,8 +582,6 @@ export function VerificationLog({
       {isExpanded && (
         <VerificationLogTimeline
           searchAttempts={searchAttempts}
-          expectedPage={expectedPage}
-          expectedLine={expectedLine}
         />
       )}
     </div>
@@ -611,7 +601,7 @@ export interface AttemptingToVerifyProps {
 
 /**
  * Section showing what citation is being verified.
- * Displays "ATTEMPTING TO VERIFY:" label with the anchor text and quote box.
+ * Displays the anchor text and quote box being searched.
  */
 export function AttemptingToVerify({ anchorText, fullPhrase }: AttemptingToVerifyProps) {
   const displayAnchorText = anchorText || fullPhrase?.slice(0, MAX_ANCHOR_TEXT_PREVIEW_LENGTH) || "Citation";
@@ -619,13 +609,13 @@ export function AttemptingToVerify({ anchorText, fullPhrase }: AttemptingToVerif
 
   return (
     <div className="px-4 py-3 space-y-2">
-      <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wide">
-        Attempting to verify:
+      <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-medium tracking-wide">
+        Searching for:
       </div>
-      <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-200">
-        {displayAnchorText}
+      <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-100">
+        "{displayAnchorText}"
       </div>
-      {displayPhrase && (
+      {displayPhrase && displayPhrase !== displayAnchorText && (
         <QuoteBox phrase={displayPhrase} />
       )}
     </div>
