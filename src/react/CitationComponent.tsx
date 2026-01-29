@@ -2063,9 +2063,9 @@ export const CitationComponent = forwardRef<
       // - Not Found: wavy underline (red) - familiar from spell-checkers
       // - Pending: dotted underline (gray)
       //
-      // NOTE: Unlike other variants, linter omits the status indicator (checkmark/warning icon)
-      // because the underline style itself conveys the verification status visually.
-      // This creates a cleaner inline appearance similar to grammar-check tools.
+      // The linter variant respects showIndicator prop (default true).
+      // When showIndicator is true, the status indicator appears after the text.
+      // The underline style also conveys status visually for additional context.
       if (variant === "linter") {
         // Compute status states once to avoid repetition
         const isVerifiedState = isVerified && !isPartialMatch && !shouldShowSpinner;
@@ -2079,13 +2079,17 @@ export const CitationComponent = forwardRef<
         // - amber-600: #d97706 (partial)
         // - red-500: #ef4444 (miss)
         // - gray-400: #9ca3af (pending)
+        //
+        // Font-size is inherited from parent to avoid layout shifts
         const linterStyles: React.CSSProperties = {
           textDecoration: "underline",
           textDecorationThickness: "2px",
-          textUnderlineOffset: "4px",
-          padding: "2px 4px",
-          borderRadius: "3px",
-          transition: "all 0.2s ease-in-out",
+          textUnderlineOffset: "3px",
+          borderRadius: "2px",
+          // Inherit font properties to avoid size changes
+          fontSize: "inherit",
+          fontFamily: "inherit",
+          lineHeight: "inherit",
         };
 
         // Apply status-specific decoration styles
@@ -2123,6 +2127,7 @@ export const CitationComponent = forwardRef<
         return (
           <span className={linterClasses} style={linterStyles}>
             {displayText}
+            {showIndicator && renderStatusIndicator()}
           </span>
         );
       }
@@ -2184,6 +2189,7 @@ export const CitationComponent = forwardRef<
     ) : null;
 
     // Shared trigger element props
+    // Note: linter variant handles its own hover styles, so we skip the blue hover for it
     const triggerProps = {
       "data-citation-id": citationKey,
       "data-citation-instance": citationInstanceId,
@@ -2191,7 +2197,8 @@ export const CitationComponent = forwardRef<
         "relative inline-flex items-baseline cursor-pointer",
         "px-0.5 -mx-0.5 rounded-sm",
         "transition-all duration-[50ms]",
-        "hover:bg-blue-500/10 dark:hover:bg-blue-400/10",
+        // Only apply blue hover for non-linter variants (linter has its own status-colored hover)
+        variant !== "linter" && "hover:bg-blue-500/10 dark:hover:bg-blue-400/10",
         hasImage && "cursor-zoom-in",
         className
       ),
