@@ -92,13 +92,5 @@ export interface SearchAttempt {
 
   // Performance tracking
   durationMs?: number;
-
-  // ----- DEPRECATED: Backwards compatibility fields -----
-  // These are kept for backwards compatibility with older API responses.
-  // Prefer the new fields above.
-  /** @deprecated Use searchPhrase instead */
-  searchPhrases?: string[];
-  /** @deprecated Use note instead */
-  notes?: string;
 }
 

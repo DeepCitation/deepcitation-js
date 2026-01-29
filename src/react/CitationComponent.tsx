@@ -330,17 +330,17 @@ function isLowTrustMatch(matchedVariation?: MatchedVariation): boolean {
 }
 
 /**
- * Get the search phrase from a SearchAttempt, supporting both old and new formats.
+ * Get the search phrase from a SearchAttempt.
  */
 function getSearchPhrase(attempt: SearchAttempt): string {
-  return attempt.searchPhrase || attempt.searchPhrases?.[0] || "";
+  return attempt.searchPhrase || "";
 }
 
 /**
- * Get the note from a SearchAttempt, supporting both old and new formats.
+ * Get the note from a SearchAttempt.
  */
 function getSearchNote(attempt: SearchAttempt): string | undefined {
-  return attempt.note || attempt.notes;
+  return attempt.note;
 }
 
 // =============================================================================

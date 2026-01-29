@@ -15,7 +15,6 @@ export type {
   FileInput,
   FileDataPart,
   PrepareFilesResult,
-  verifyAll,
 } from "./client/index.js";
 
 // Parsing
@@ -114,7 +113,6 @@ export type {
 export {
   removeLineIdMetadata,
   removePageNumberMetadata,
-  removeCitations,
   replaceCitations,
   getVerificationTextIndicator,
 } from "./parsing/normalizeCitation.js";

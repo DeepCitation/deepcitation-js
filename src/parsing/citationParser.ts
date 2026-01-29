@@ -150,18 +150,7 @@ function parseCitationsFromJson(parsed: unknown): CitationData[] {
   return rawCitations.map((c) => expandCompactKeys(c as Record<string, unknown>));
 }
 
-// Re-export types for backward compatibility
 export type { CitationData, ParsedCitationResponse } from "../prompts/citationPrompts.js";
-
-/**
- * @deprecated Use CitationData instead
- */
-export type DeferredCitationData = CitationData;
-
-/**
- * @deprecated Use ParsedCitationResponse instead
- */
-export type ParsedDeferredResponse = ParsedCitationResponse;
 
 /**
  * Attempts to repair malformed JSON.

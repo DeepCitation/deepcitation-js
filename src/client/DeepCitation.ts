@@ -332,12 +332,12 @@ export class DeepCitation {
    * });
    *
    * // Use fileDataParts later for verification
-   * const result = await deepcitation.verifyAll({ llmOutput, fileDataParts });
+   * const result = await deepcitation.verify({ llmOutput, fileDataParts });
    * ```
    */
   async prepareFiles(files: FileInput[]): Promise<PrepareFilesResult> {
     if (files.length === 0) {
-      return { fileDataParts: [], deepTextPromptPortion: [] };
+      return { fileDataParts: [] };
     }
 
     // Upload all files in parallel
@@ -359,12 +359,7 @@ export class DeepCitation {
       })
     );
 
-    // Also return separate array for backwards compatibility (deprecated)
-    const deepTextPromptPortion: string[] = fileDataParts.map(
-      (part) => part.deepTextPromptPortion
-    );
-
-    return { fileDataParts, deepTextPromptPortion };
+    return { fileDataParts };
   }
 
   /**

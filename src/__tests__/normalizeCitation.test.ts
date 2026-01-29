@@ -3,7 +3,6 @@ import {
   getCitationPageNumber,
   normalizeCitations,
   replaceCitations,
-  removeCitations,
 } from "../parsing/normalizeCitation.js";
 import type { Verification } from "../types/verification.js";
 import type { Citation } from "../types/citation.js";
@@ -590,22 +589,6 @@ describe("replaceCitations", () => {
       const result = replaceCitations(input, { leaveAnchorTextBehind: true });
       expect(result).toBe(`Textsaid "hello".`);
     });
-  });
-});
-
-describe("removeCitations (backward compatibility)", () => {
-  // NOTE: These tests use old attribute names (key_span) in XML strings to verify backward compatibility.
-
-  it("removes citations like replaceCitations (backward compat: key_span in XML)", () => {
-    // Input uses old naming: key_span
-    const input = `Text<cite attachment_id='abc' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
-    expect(removeCitations(input)).toBe("Text.");
-  });
-
-  it("supports leaveAnchorTextBehind parameter (backward compat: key_span in XML)", () => {
-    // Input uses old naming: key_span
-    const input = `Text<cite attachment_id='abc' key_span='test' full_phrase='f' start_page_key='page_1_index_0' line_ids='1' />.`;
-    expect(removeCitations(input, true)).toBe("Texttest.");
   });
 });
 

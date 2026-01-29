@@ -11,8 +11,6 @@ export type {
   FileDataPart,
   PrepareFilesResult,
   VerifyInput,
-  /** @deprecated Use VerifyInput instead */
-  verifyAll,
   ConvertFileInput,
   ConvertFileResponse,
   PrepareConvertedFileOptions,

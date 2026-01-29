@@ -126,12 +126,6 @@ export interface FileDataPart {
 export interface PrepareFilesResult {
   /** Array of file references for verification (includes deepTextPromptPortion for each file) */
   fileDataParts: FileDataPart[];
-  /**
-   * Array of formatted text content for LLM prompts (with page markers and line IDs).
-   * @deprecated Use fileDataParts[].deepTextPromptPortion instead for single source of truth.
-   * This is kept for backwards compatibility but will be removed in a future version.
-   */
-  deepTextPromptPortion: string[];
 }
 
 /**
@@ -146,10 +140,6 @@ export interface VerifyInput {
   outputImageFormat?: "jpeg" | "png" | "avif";
 }
 
-/**
- * @deprecated Use VerifyInput instead. This alias is kept for backwards compatibility.
- */
-export type verifyAll = VerifyInput;
 
 /**
  * Input for convertFile - convert URL or Office file to PDF
