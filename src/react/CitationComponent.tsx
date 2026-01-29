@@ -37,6 +37,7 @@ import {
 import { useSmartDiff } from "./useSmartDiff.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
 import { SplitDiffDisplay, MatchQualityBar, getContextualStatusMessage } from "./SplitDiffDisplay.js";
+import { StatusHeader, VerificationLog } from "./VerificationLog.js";
 
 // Re-export types for convenience
 export type { CitationVariant, CitationContent } from "./types.js";
@@ -47,6 +48,12 @@ const DEFAULT_VISIBLE_GROUP_COUNT = 2;
 
 /** Maximum characters to show for truncated phrases in search attempts */
 const MAX_PHRASE_LENGTH = 50;
+
+/** Popover container width */
+const POPOVER_WIDTH = "380px";
+
+/** Popover container max width (viewport-relative) */
+const POPOVER_MAX_WIDTH = "90vw";
 
 /** Maximum characters to show for matched text display in search results */
 const MAX_MATCHED_TEXT_LENGTH = 40;
@@ -1101,7 +1108,8 @@ function DefaultPopoverContent({
   isVisible = true,
 }: PopoverContentProps) {
   const hasImage = verification?.verificationImageBase64;
-  const { isMiss, isPartialMatch, isPending } = status;
+  const { isMiss, isPartialMatch, isPending, isVerified } = status;
+  const searchStatus = verification?.status;
 
   // Check if we have anchorText position data for focused scrolling
   const hasAnchorTextPosition = !!(
@@ -1110,75 +1118,17 @@ function DefaultPopoverContent({
       verification.phraseMatchDeepItem)
   );
 
-  // Image view - sized for quick preview, click to expand
-  // Uses responsive sizing that adapts to actual image dimensions:
-  // - Small images (e.g. document snippets): show at natural size, constrained to viewport
-  // - Large images: constrain to max dimensions while preserving aspect ratio
-  // - Max dimensions: 70vw width, 50vh height to leave room for positioning
-  // - Min dimensions: none - small images stay small
-  //
-  // When anchorText position data is available, use AnchorTextFocusedImage to
-  // initially scroll the image to show the anchorText area instead of the top-left.
-  //
-  // React 19.2 Activity component is used to pre-render the image in "hidden" mode
-  // before the user hovers, eliminating the empty popover flash when first displayed.
-  if (hasImage && verification) {
-    return (
-      <Activity mode={isVisible ? "visible" : "hidden"}>
-        <div
-          className="p-2"
-          style={{ maxWidth: "100%", overflow: "hidden" }}
-        >
-          {hasAnchorTextPosition ? (
-            <AnchorTextFocusedImage
-              verification={verification}
-              onImageClick={onImageClick}
-            />
-          ) : (
-            <button
-              type="button"
-              className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onImageClick?.();
-              }}
-              aria-label="Click to view full size"
-            >
-              <img
-                src={verification.verificationImageBase64 as string}
-                alt="Citation verification"
-                className="block rounded-md"
-                style={{
-                  maxWidth: "min(70vw, 384px)",
-                  maxHeight: "min(50vh, 300px)",
-                  width: "auto",
-                  height: "auto",
-                  objectFit: "contain",
-                }}
-                // Use eager loading for prefetching, decode async to not block main thread
-                loading="eager"
-                decoding="async"
-              />
-              {/* Bottom bar with expand hint on hover */}
-              <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
-                <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click to expand
-                </span>
-              </span>
-            </button>
-          )}
-          {(isMiss || isPartialMatch) && (
-            <DiffDetails
-              citation={citation}
-              verification={verification}
-              status={status}
-            />
-          )}
-        </div>
-      </Activity>
-    );
-  }
+  // Determine if we should show the verification log (for non-success states)
+  const showVerificationLog = isMiss || isPartialMatch;
+
+  // Determine if this is a "clean" success (no log needed)
+  const isCleanSuccess = isVerified && !isPartialMatch && !isMiss;
+
+  // Get page/line info for the log
+  const expectedPage = citation.pageNumber;
+  const expectedLine = citation.lineIds?.[0];
+  const foundPage = verification?.verifiedPageNumber ?? undefined;
+  const foundLine = verification?.verifiedLineIds?.[0];
 
   // Loading/pending state view
   if (isLoading || isPending) {
@@ -1205,24 +1155,141 @@ function DefaultPopoverContent({
     );
   }
 
-  // Miss state view (no image, but show what was searched)
-  if (isMiss) {
+  // ==========================================================================
+  // SUCCESS STATE (Green) - Header + Image only
+  // ==========================================================================
+  if (isCleanSuccess && hasImage && verification) {
     return (
-      <div className="p-3 flex flex-col gap-2 min-w-[200px] max-w-[400px]">
-        <span className="text-xs font-medium text-red-600 dark:text-red-500">
-          Not found in document
-        </span>
-        <SearchedPhrasesInfo
-          citation={citation}
-          verification={verification}
-          isExpanded={isPhrasesExpanded}
-          onExpandChange={onPhrasesExpandChange}
-        />
-      </div>
+      <Activity mode={isVisible ? "visible" : "hidden"}>
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
+          {/* Green status header */}
+          <StatusHeader status={searchStatus} foundPage={foundPage} />
+
+          {/* Verification image */}
+          <div className="p-2">
+            {hasAnchorTextPosition ? (
+              <AnchorTextFocusedImage
+                verification={verification}
+                onImageClick={onImageClick}
+              />
+            ) : (
+              <button
+                type="button"
+                className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onImageClick?.();
+                }}
+                aria-label="Click to view full size"
+              >
+                <img
+                  src={verification.verificationImageBase64 as string}
+                  alt="Citation verification"
+                  className="block rounded-md w-full"
+                  style={{
+                    maxHeight: "min(50vh, 300px)",
+                    objectFit: "contain",
+                  }}
+                  loading="eager"
+                  decoding="async"
+                />
+                <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
+                  <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
+                    Click to expand
+                  </span>
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      </Activity>
     );
   }
 
-  // Text-only view (verified/partial match without image)
+  // ==========================================================================
+  // PARTIAL/DISPLACED STATE (Amber) or NOT FOUND (Red) - Full layout
+  // ==========================================================================
+  if (isMiss || isPartialMatch) {
+    const anchorText = citation.anchorText?.toString();
+    const fullPhrase = citation.fullPhrase;
+
+    return (
+      <Activity mode={isVisible ? "visible" : "hidden"}>
+        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
+          {/* Content area: Image with simple header, OR combined status header with quote */}
+          {hasImage && verification ? (
+            // Show simple header + image (for partial matches that have images)
+            <>
+              <StatusHeader status={searchStatus} foundPage={foundPage} />
+              <div className="p-2">
+                {hasAnchorTextPosition ? (
+                  <AnchorTextFocusedImage
+                    verification={verification}
+                    onImageClick={onImageClick}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onImageClick?.();
+                    }}
+                    aria-label="Click to view full size"
+                  >
+                    <img
+                      src={verification.verificationImageBase64 as string}
+                      alt="Citation verification"
+                      className="block rounded-md w-full"
+                      style={{
+                        maxHeight: "min(50vh, 300px)",
+                        objectFit: "contain",
+                      }}
+                      loading="eager"
+                      decoding="async"
+                    />
+                    <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
+                      <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to expand
+                      </span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            // Combined header with anchor text and quote (for not_found or partial without image)
+            <StatusHeader
+              status={searchStatus}
+              foundPage={foundPage}
+              anchorText={anchorText}
+              fullPhrase={fullPhrase ?? undefined}
+            />
+          )}
+
+          {/* Verification log (collapsible) */}
+          {showVerificationLog && verification?.searchAttempts && (
+            <VerificationLog
+              searchAttempts={verification.searchAttempts}
+              status={searchStatus}
+              expectedPage={expectedPage ?? undefined}
+              expectedLine={expectedLine}
+              foundPage={foundPage}
+              foundLine={foundLine}
+              isExpanded={isPhrasesExpanded}
+              onExpandChange={onPhrasesExpandChange}
+            />
+          )}
+        </div>
+      </Activity>
+    );
+  }
+
+  // ==========================================================================
+  // FALLBACK: Text-only view (verified/partial match without image)
+  // ==========================================================================
   const statusLabel = getStatusLabel(status);
   const hasSnippet = verification?.verifiedMatchSnippet;
   const pageNumber = verification?.verifiedPageNumber;
@@ -1255,13 +1322,6 @@ function DefaultPopoverContent({
         <span className="text-xs text-gray-500 dark:text-gray-400">
           Page {pageNumber}
         </span>
-      )}
-      {(isMiss || isPartialMatch) && (
-        <DiffDetails
-          citation={citation}
-          verification={verification}
-          status={status}
-        />
       )}
     </div>
   );

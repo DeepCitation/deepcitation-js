@@ -146,3 +146,15 @@ export { VerificationTabs } from "./VerificationTabs.js";
 
 // Smart Diff Hook
 export { useSmartDiff, type DiffBlock, type DiffPart, type DiffBlockType } from "./useSmartDiff.js";
+
+// Verification Log Components (Search attempt timeline display)
+export {
+  VerificationLog,
+  StatusHeader,
+  QuoteBox,
+  AttemptingToVerify,
+  type VerificationLogProps,
+  type StatusHeaderProps,
+  type QuoteBoxProps,
+  type AttemptingToVerifyProps,
+} from "./VerificationLog.js";
