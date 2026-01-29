@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.51] - 2026-01-29
+
+### Added
+- **Linter variant** for CitationComponent - displays citations as inline text with semantic underlines (solid for verified, dashed for partial, wavy for not found, dotted for pending) (#107)
+- **Badge variant** for UrlCitationComponent with improved status indicators (verified, partial, pending, blocked, error states) (#108)
+- **Verification log timeline** in citation tooltip - shows the verification process with timestamps (#104)
+- **Detailed search attempt info** in tooltip for failed lookups - helps debug why citations weren't found (#103)
+- **Deferred JSON citation format** - optimized format for streaming responses with grouped search attempts UI (#94)
+- **Visual showcase tests** for CitationComponent popover/tooltip states with dark mode support (#110)
+- **`showIndicator` prop** for CitationComponent - control visibility of status indicators (checkmark, warning, spinner) (#111)
+- **Expandable search details** for verified matches - see how matches were found even for successful verifications (#111)
+
+### Changed
+- Improved CitationTooltip UX with clearer status values and better visual feedback (#101)
+- Renamed `keySpan` to `anchorText` and `startPageKey` to `startPageId` for clarity (#89)
+- Optimized citation format: group citations by attachment with shorthand keys (#92)
+- **Dark mode improvements** - superscript variant now inherits text color, popover headers use neutral backgrounds with colored icons only (#111)
+- **URL citation variants** - chip/inline/bracket variants now use neutral gray colors instead of blue, better spacing with `mr-0.5` (#111)
+- **Unexpected location display** - shows strikethrough expected page next to actual found page (e.g., ~~PG 5~~ PG 7) (#111)
+
+### Removed
+- All deprecated APIs and backwards compatibility shims have been removed (#105):
+  - `verifyAll()` - use `verify()` instead
+  - `removeCitations()` - use `replaceCitations()` instead
+  - Various deprecated type aliases and re-exports
+
 ## [1.1.50] - 2025-01-21
 
 This release marks the first comprehensive public release of DeepCitation, consolidating all features developed since the initial v1.0.0 release.
@@ -212,7 +238,8 @@ This release marks the first comprehensive public release of DeepCitation, conso
 - TypeScript support
 - Verification image display with popover
 
-[Unreleased]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.50...HEAD
+[Unreleased]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.51...HEAD
+[1.1.51]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.50...v1.1.51
 [1.1.50]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.26...v1.1.50
 [1.1.26]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.25...v1.1.26
 [1.1.25]: https://github.com/deepcitation/deepcitation-js/compare/v1.1.24...v1.1.25
