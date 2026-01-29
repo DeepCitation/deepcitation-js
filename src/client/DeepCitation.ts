@@ -359,12 +359,7 @@ export class DeepCitation {
       })
     );
 
-    // Also return separate array for backwards compatibility (deprecated)
-    const deepTextPromptPortion: string[] = fileDataParts.map(
-      (part) => part.deepTextPromptPortion
-    );
-
-    return { fileDataParts, deepTextPromptPortion };
+    return { fileDataParts };
   }
 
   /**

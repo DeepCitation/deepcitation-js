@@ -114,7 +114,6 @@ export type {
 export {
   removeLineIdMetadata,
   removePageNumberMetadata,
-  removeCitations,
   replaceCitations,
   getVerificationTextIndicator,
 } from "./parsing/normalizeCitation.js";

@@ -207,16 +207,6 @@ export const replaceCitations = (
   });
 };
 
-/**
- * @deprecated Use `replaceCitations` instead. This function is kept for backward compatibility.
- */
-export const removeCitations = (
-  markdownWithCitations: string,
-  leaveAnchorTextBehind?: boolean
-): string => {
-  return replaceCitations(markdownWithCitations, { leaveAnchorTextBehind });
-};
-
 export const removePageNumberMetadata = (pageText: string): string => {
   return pageText
     .replace(/<page_number_\d+_index_\d+>/g, "")
