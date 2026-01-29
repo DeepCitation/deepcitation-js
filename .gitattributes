@@ -1,0 +1,2 @@
+# Visual snapshot images should be treated as binary
+tests/playwright/specs/__snapshots__/**/*.png binary
