@@ -86,8 +86,8 @@ This release marks the first comprehensive public release of DeepCitation, conso
 - Renamed `PdfSpaceItem` to `SnippetPdfItem`
 - `CitationVariant` type: removed `"indicator"` variant (use `content="indicator"` instead)
 
-### Deprecated
-- `removeCitations()` - use `replaceCitations()` instead (still works for backward compatibility)
+### Removed
+- `removeCitations()` - use `replaceCitations()` instead
 
 ## [1.1.26] - 2025-01-15
 
