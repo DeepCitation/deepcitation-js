@@ -320,37 +320,41 @@ function groupSearchAttemptsByPhrase(attempts: SearchAttempt[]): GroupedSearchAt
 }
 
 /**
+ * Format a page range as a string.
+ */
+function formatRange(start: number, end: number): string {
+  if (start === end) return String(start);
+  if (end === start + 1) return `${start}, ${end}`;
+  return `${start}-${end}`;
+}
+
+/**
  * Format pages searched for display.
  * Collapses consecutive pages into ranges (e.g., "1, 2, 3" -> "1-3").
  */
 function formatPagesSearched(pages: number[], maxInline: number = MAX_INLINE_PAGES): string {
   if (pages.length === 0) return "";
+  if (pages.length === 1) return `Pg ${pages[0]}`;
 
   // Collapse consecutive pages into ranges
   const ranges: string[] = [];
   let rangeStart = pages[0];
   let rangeEnd = pages[0];
 
-  for (let i = 1; i <= pages.length; i++) {
-    if (i < pages.length && pages[i] === rangeEnd + 1) {
+  for (let i = 1; i < pages.length; i++) {
+    if (pages[i] === rangeEnd + 1) {
       rangeEnd = pages[i];
     } else {
-      // End current range
-      if (rangeStart === rangeEnd) {
-        ranges.push(String(rangeStart));
-      } else if (rangeEnd === rangeStart + 1) {
-        ranges.push(String(rangeStart), String(rangeEnd));
-      } else {
-        ranges.push(`${rangeStart}-${rangeEnd}`);
-      }
-      if (i < pages.length) {
-        rangeStart = pages[i];
-        rangeEnd = pages[i];
-      }
+      // Finalize current range and start new one
+      ranges.push(formatRange(rangeStart, rangeEnd));
+      rangeStart = pages[i];
+      rangeEnd = pages[i];
     }
   }
+  // Finalize the last range
+  ranges.push(formatRange(rangeStart, rangeEnd));
 
-  // Truncate if too many
+  // Truncate if too many ranges
   if (ranges.length > maxInline) {
     const shown = ranges.slice(0, maxInline);
     const remaining = ranges.length - maxInline;
@@ -583,7 +587,7 @@ interface GroupedAttemptCardProps {
 
 /**
  * Card displaying a grouped search attempt.
- * Shows phrase, all locations searched, and variations.
+ * Shows phrase, attempt count, locations searched, and variations.
  */
 function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
   const hasDocumentScope = group.scopesUsed.includes("document");
@@ -600,6 +604,9 @@ function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
       ? formatPagesSearched(group.pagesSearched)
       : "";
 
+  // Format attempt count
+  const attemptCountText = `${group.attemptCount} ${group.attemptCount === 1 ? "search" : "searches"}`;
+
   // Format variations for display
   const hasVariations = group.variationsTried.length > 0;
   const displayVariations = group.variationsTried.slice(0, MAX_INLINE_VARIATIONS);
@@ -609,10 +616,14 @@ function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
     <div className="space-y-0.5">
       {/* Phrase with icon and location */}
       <div className="flex items-start gap-2">
-        <span className={cn(
-          "size-3 max-w-3 max-h-3 mt-0.5 flex-shrink-0",
-          group.anySuccess ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"
-        )}>
+        <span
+          className={cn(
+            "size-3 max-w-3 max-h-3 mt-0.5 flex-shrink-0",
+            group.anySuccess ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"
+          )}
+          role="img"
+          aria-label={group.anySuccess ? "Phrase found" : "Phrase not found"}
+        >
           {group.anySuccess ? <CheckIcon /> : <MissIcon />}
         </span>
         <div className="flex-1 min-w-0">
@@ -620,11 +631,9 @@ function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
             <span className="text-xs text-gray-700 dark:text-gray-200 font-mono break-all">
               "{displayPhrase}"
             </span>
-            {locationText && (
-              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex-shrink-0">
-                {locationText}
-              </span>
-            )}
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex-shrink-0 whitespace-nowrap">
+              {attemptCountText}{locationText && ` · ${locationText}`}
+            </span>
           </div>
         </div>
       </div>
@@ -689,12 +698,14 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText }: AuditSea
     [searchAttempts]
   );
 
-  // Collect all rejected matches across groups
+  // Collect all rejected matches across groups (use Set for O(n) instead of O(n²))
   const allRejectedMatches = useMemo(() => {
+    const seen = new Set<string>();
     const matches: Array<{ text: string; count?: number }> = [];
     for (const group of groupedAttempts) {
       for (const match of group.rejectedMatches) {
-        if (!matches.some(m => m.text === match.text)) {
+        if (!seen.has(match.text)) {
+          seen.add(match.text);
           matches.push(match);
         }
       }
