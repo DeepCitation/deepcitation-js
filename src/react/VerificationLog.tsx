@@ -464,12 +464,14 @@ interface SearchAttemptRowProps {
 /**
  * Single row showing one search attempt with its phrase, method, and location.
  * Displays as: "1. "phrase..."   Method · Pg X"
+ * Also shows search variations if present.
  */
 function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps) {
-  // Format the phrase for display (truncate if too long)
-  const displayPhrase = attempt.searchPhrase.length > MAX_PHRASE_DISPLAY_LENGTH
-    ? attempt.searchPhrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH) + "..."
-    : attempt.searchPhrase;
+  // Format the phrase for display (truncate if too long), with null safety
+  const phrase = attempt.searchPhrase ?? "";
+  const displayPhrase = phrase.length > MAX_PHRASE_DISPLAY_LENGTH
+    ? phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH) + "..."
+    : phrase;
 
   // Format location
   const locationText = attempt.searchScope === "document"
@@ -483,6 +485,9 @@ function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps)
 
   // Calculate the width needed for the index number (for alignment)
   const indexWidth = String(totalCount).length;
+
+  // Get search variations (if any)
+  const variations = attempt.searchVariations ?? [];
 
   return (
     <div className="flex items-start gap-2 py-0.5">
@@ -516,6 +521,13 @@ function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps)
             {methodName}{locationText && ` · ${locationText}`}
           </span>
         </div>
+        {/* Show search variations if present */}
+        {variations.length > 0 && (
+          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+            Also tried: {variations.slice(0, 3).map(v => `"${v}"`).join(", ")}
+            {variations.length > 3 && ` +${variations.length - 3} more`}
+          </div>
+        )}
       </div>
     </div>
   );
