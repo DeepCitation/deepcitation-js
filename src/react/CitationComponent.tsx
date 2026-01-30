@@ -2142,9 +2142,9 @@ export const CitationComponent = forwardRef<
           (isVerifiedState || isPartialState || isMissState) && "text-gray-700 dark:text-gray-200",
           // Only pending is slightly muted
           isPendingState && "text-gray-500 dark:text-gray-400",
-          // Verified: subtle green background wash (using green-600 to match component)
+          // Verified: subtle green background wash on hover only (using green-600 to match component)
           isVerifiedState &&
-            "bg-green-600/[0.08] hover:bg-green-600/[0.15] dark:bg-green-500/[0.08] dark:hover:bg-green-500/[0.15]",
+            "hover:bg-green-600/[0.12] dark:hover:bg-green-500/[0.12]",
           // Partial: subtle amber background on hover (using amber-600 to match component)
           isPartialState &&
             "hover:bg-amber-600/10 dark:hover:bg-amber-500/10",
