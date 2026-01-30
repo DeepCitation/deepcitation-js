@@ -358,6 +358,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             <span
               className={classNames(
                 "font-mono text-[11px] font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px]",
+                "text-gray-800 dark:text-gray-200",
                 isBroken && "line-through"
               )}
             >
@@ -397,7 +398,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             aria-label={`Link to ${domain}: ${statusInfo.label}`}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} />}
-            <span className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{displayText}</span>
+            <span className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">{displayText}</span>
             {renderStatusIndicator()}
           </span>
         </>
@@ -418,7 +419,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             data-variant="inline"
             className={classNames(
               "inline-flex items-center gap-1 cursor-pointer transition-colors no-underline border-b border-dotted mr-0.5",
-              "text-inherit border-gray-400 dark:border-gray-500",
+              "text-gray-700 dark:text-gray-300 border-gray-400 dark:border-gray-500",
               "hover:border-gray-600 dark:hover:border-gray-300",
               isBroken && "opacity-60 line-through",
               className

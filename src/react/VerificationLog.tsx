@@ -19,6 +19,9 @@ const MAX_ANCHOR_TEXT_PREVIEW_LENGTH = 50;
 /** Maximum height for the scrollable timeline */
 const MAX_TIMELINE_HEIGHT = "200px";
 
+/** Maximum length for phrase display in search attempt rows */
+const MAX_PHRASE_DISPLAY_LENGTH = 60;
+
 /** Icon color classes by status - defined outside component to avoid recreation on every render */
 const ICON_COLOR_CLASSES = {
   green: "text-green-600 dark:text-green-400",
@@ -452,97 +455,185 @@ interface AuditSearchDisplayProps {
   anchorText?: string;
 }
 
-/**
- * Extract unique searched phrases from attempts for audit display.
- * Shows what was actually searched, not the methods used.
- */
-function getUniqueSearchedPhrases(attempts: SearchAttempt[]): string[] {
-  const phrases = new Set<string>();
-  for (const attempt of attempts) {
-    if (attempt.searchPhrase) {
-      phrases.add(attempt.searchPhrase);
-    }
-    if (attempt.searchVariations) {
-      for (const variation of attempt.searchVariations) {
-        phrases.add(variation);
-      }
-    }
-  }
-  return Array.from(phrases);
+interface SearchAttemptRowProps {
+  attempt: SearchAttempt;
+  index: number;
+  totalCount: number;
 }
 
 /**
- * Extract partial matches (text found but not accepted) from attempts.
- * The count field is reserved for future API support (e.g., "$0.00" found 100 times).
+ * Single row showing one search attempt with its phrase, method, and location.
+ * Displays as: "1. "phrase..."   Method · Pg X"
+ * Also shows search variations if present.
  */
-function getPartialMatches(attempts: SearchAttempt[]): Array<{ text: string; count?: number }> {
-  const matches: Array<{ text: string; count?: number }> = [];
-  for (const attempt of attempts) {
-    if (!attempt.success && attempt.matchedText) {
-      // Found text but didn't accept it as a match
-      matches.push({ text: attempt.matchedText });
-    }
-  }
-  return matches;
+function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps) {
+  // Format the phrase for display (truncate if too long), with null safety
+  const phrase = attempt.searchPhrase ?? "";
+  const displayPhrase = phrase.length === 0
+    ? "(empty)"
+    : phrase.length > MAX_PHRASE_DISPLAY_LENGTH
+      ? phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH) + "..."
+      : phrase;
+
+  // Format location
+  const locationText = attempt.searchScope === "document"
+    ? "Entire doc"
+    : attempt.pageSearched != null
+      ? `Pg ${attempt.pageSearched}`
+      : "";
+
+  // Get method display name
+  const methodName = METHOD_DISPLAY_NAMES[attempt.method] || attempt.method;
+
+  // Calculate the width needed for the index number (for alignment)
+  const indexWidth = String(totalCount).length;
+
+  // Get search variations (if any)
+  const variations = attempt.searchVariations ?? [];
+
+  return (
+    <div className="flex items-start gap-2 py-0.5">
+      {/* Index number */}
+      <span
+        className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex-shrink-0 tabular-nums"
+        style={{ minWidth: `${indexWidth + 1}ch` }}
+      >
+        {index}.
+      </span>
+
+      {/* Status icon */}
+      <span
+        className={cn(
+          "size-3 max-w-3 max-h-3 mt-0.5 flex-shrink-0",
+          attempt.success ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"
+        )}
+        role="img"
+        aria-label={attempt.success ? "Found" : "Not found"}
+      >
+        {attempt.success ? <CheckIcon /> : <MissIcon />}
+      </span>
+
+      {/* Phrase and details */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-xs text-gray-700 dark:text-gray-200 font-mono break-all">
+            "{displayPhrase}"
+          </span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0 whitespace-nowrap">
+            {methodName}{locationText && ` · ${locationText}`}
+          </span>
+        </div>
+        {/* Show search variations if present */}
+        {variations.length > 0 && (
+          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+            Also tried: {variations.slice(0, 3).map(v => `"${v}"`).join(", ")}
+            {variations.length > 3 && ` +${variations.length - 3} more`}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface RejectedMatchesSectionProps {
+  rejectedMatches: Array<{ text: string; count?: number }>;
+}
+
+/**
+ * Section showing text that was found but rejected.
+ * Helps auditors understand why partial matches weren't accepted.
+ */
+function RejectedMatchesSection({ rejectedMatches }: RejectedMatchesSectionProps) {
+  if (rejectedMatches.length === 0) return null;
+
+  return (
+    <div>
+      <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+        Found but rejected
+      </div>
+      <div className="space-y-1">
+        {rejectedMatches.map((match) => (
+          <div key={match.text} className="text-xs text-gray-600 dark:text-gray-300 font-mono">
+            "{match.text}"{match.count != null && ` (${match.count} occurrences)`}
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 italic">
+        Context did not match citation
+      </p>
+    </div>
+  );
 }
 
 /**
  * Audit-focused search display.
- * Shows WHAT was searched (phrases) not HOW (methods).
- * Answers: "What did you search for?" and "Why wasn't X accepted?"
+ * Shows each search attempt in order with its phrase, method, and location.
+ * This makes it clear what was searched at each step of the progression.
  */
 function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText }: AuditSearchDisplayProps) {
-  const searchedPhrases = getUniqueSearchedPhrases(searchAttempts);
-  const partialMatches = getPartialMatches(searchAttempts);
+  // Collect rejected matches (found but not accepted)
+  const rejectedMatches = useMemo(() => {
+    const seen = new Set<string>();
+    const matches: Array<{ text: string; count?: number }> = [];
+    for (const attempt of searchAttempts) {
+      if (!attempt.success && attempt.matchedText && !seen.has(attempt.matchedText)) {
+        seen.add(attempt.matchedText);
+        matches.push({ text: attempt.matchedText });
+      }
+    }
+    return matches;
+  }, [searchAttempts]);
 
-  // If no searchPhrase data, fall back to citation data
-  // Use type guard to ensure type safety without assertion
-  const fallbackPhrases = [fullPhrase, anchorText].filter((p): p is string => Boolean(p));
-  const displayPhrases = searchedPhrases.length > 0 ? searchedPhrases : fallbackPhrases;
+  // If no search attempts, fall back to citation data
+  if (searchAttempts.length === 0) {
+    const fallbackPhrases = [fullPhrase, anchorText].filter((p): p is string => Boolean(p));
+    if (fallbackPhrases.length === 0) return null;
 
-  if (displayPhrases.length === 0) {
-    return null;
+    // Display fallback as simple list
+    return (
+      <div className="px-4 py-3 space-y-3 text-sm">
+        <div>
+          <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+            Searched for
+          </div>
+          <div className="space-y-1">
+            {fallbackPhrases.map((phrase, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="size-3 max-w-3 max-h-3 mt-0.5 text-gray-400 dark:text-gray-500 flex-shrink-0">
+                  <MissIcon />
+                </span>
+                <span className="text-xs text-gray-700 dark:text-gray-200 font-mono break-all">
+                  "{phrase}"
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="px-4 py-3 space-y-3 text-sm">
-      {/* What was searched */}
+    <div className="px-4 py-3 space-y-4 text-sm">
+      {/* Search attempts timeline */}
       <div>
-        <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-          Searched for
+        <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+          Search attempts
         </div>
-        <div className="space-y-1">
-          {displayPhrases.map((phrase, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <span className="size-3 max-w-3 max-h-3 mt-0.5 text-gray-400 dark:text-gray-500 flex-shrink-0">
-                <MissIcon />
-              </span>
-              <span className="text-xs text-gray-700 dark:text-gray-200 font-mono break-all">
-                "{phrase}"
-              </span>
-            </div>
+        <div className="space-y-0.5">
+          {searchAttempts.map((attempt, i) => (
+            <SearchAttemptRow
+              key={i}
+              attempt={attempt}
+              index={i + 1}
+              totalCount={searchAttempts.length}
+            />
           ))}
         </div>
       </div>
 
-      {/* What was found but rejected (if any) */}
-      {partialMatches.length > 0 && (
-        <div>
-          <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-            Found in document
-          </div>
-          <div className="space-y-1">
-            {partialMatches.map((match, i) => (
-              <div key={i} className="text-xs text-gray-600 dark:text-gray-300 font-mono">
-                "{match.text}"{match.count && ` (${match.count} occurrences)`}
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 italic">
-            Phrase context did not match
-          </p>
-        </div>
-      )}
+      {/* Rejected matches section */}
+      <RejectedMatchesSection rejectedMatches={rejectedMatches} />
     </div>
   );
 }

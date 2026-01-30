@@ -80,10 +80,10 @@ export interface SearchAttempt {
     line?: number;
   };
 
-  // Match details (only if success: true)
-  /** Which variation matched + trust level */
+  // Match details
+  /** Which variation matched + trust level (only if success: true) */
   matchedVariation?: MatchedVariation;
-  /** The actual text found in document */
+  /** The actual text found in document (may exist even if success: false, for rejected matches) */
   matchedText?: string;
 
   // Human-readable note (API-generated)
@@ -93,4 +93,3 @@ export interface SearchAttempt {
   // Performance tracking
   durationMs?: number;
 }
-

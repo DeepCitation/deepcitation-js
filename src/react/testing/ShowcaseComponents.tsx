@@ -166,6 +166,193 @@ const lowTrustWithAudit: Verification = {
 };
 
 // =============================================================================
+// TEST FIXTURES - Enhanced Audit Display (with variations and rejected matches)
+// =============================================================================
+
+/** Example: Search with spelling variations (auditor use case - spot differences like Colour/color) */
+const searchWithVariations: SearchAttempt[] = [
+  {
+    method: "exact_line_match",
+    success: false,
+    searchPhrase: "Patient is allergic to penicillin",
+    searchPhraseType: "full_phrase",
+    searchVariations: ["Patient is allergic to Penicillin", "patient is allergic to penicillin"],
+    pageSearched: 1,
+    note: "not found on expected page",
+  },
+  {
+    method: "current_page",
+    success: false,
+    searchPhrase: "Patient is allergic to penicillin",
+    searchPhraseType: "full_phrase",
+    searchVariations: ["Patient is allergic to Penicillin"],
+    pageSearched: 1,
+  },
+  {
+    method: "adjacent_pages",
+    success: false,
+    searchPhrase: "Patient is allergic to penicillin",
+    searchPhraseType: "full_phrase",
+    pageSearched: 2,
+  },
+  {
+    method: "adjacent_pages",
+    success: false,
+    searchPhrase: "Patient is allergic to penicillin",
+    searchPhraseType: "full_phrase",
+    pageSearched: 3,
+  },
+  {
+    method: "anchor_text_fallback",
+    success: false,
+    searchPhrase: "allergic to penicillin",
+    searchPhraseType: "anchor_text",
+    searchVariations: ["allergic to Penicillin", "penicillin allergy"],
+    pageSearched: 1,
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "allergic to penicillin",
+    searchPhraseType: "anchor_text",
+    searchScope: "document",
+    note: "searched entire document",
+  },
+  {
+    method: "regex_search",
+    success: false,
+    searchPhrase: "allergic to penicillin",
+    searchPhraseType: "anchor_text",
+    searchScope: "document",
+  },
+  {
+    method: "first_word_fallback",
+    success: false,
+    searchPhrase: "allergic",
+    searchPhraseType: "anchor_text",
+    searchScope: "document",
+  },
+];
+
+const notFoundWithVariations: Verification = {
+  status: "not_found",
+  verifiedPageNumber: -1,
+  searchAttempts: searchWithVariations,
+};
+
+/** Example: False positives - text found but rejected (e.g., "$0.00" found many times) */
+const searchWithRejectedMatches: SearchAttempt[] = [
+  {
+    method: "exact_line_match",
+    success: false,
+    searchPhrase: "Total cost is $0.00",
+    searchPhraseType: "full_phrase",
+    pageSearched: 5,
+    note: "phrase not found at expected location",
+  },
+  {
+    method: "current_page",
+    success: false,
+    searchPhrase: "Total cost is $0.00",
+    searchPhraseType: "full_phrase",
+    pageSearched: 5,
+    matchedText: "$0.00",
+    note: "partial match rejected - context mismatch",
+  },
+  {
+    method: "anchor_text_fallback",
+    success: false,
+    searchPhrase: "$0.00",
+    searchPhraseType: "anchor_text",
+    searchVariations: ["0.00", "$0"],
+    pageSearched: 5,
+    matchedText: "$0.00",
+    note: "found 15 occurrences, none in correct context",
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "$0.00",
+    searchPhraseType: "anchor_text",
+    searchScope: "document",
+    matchedText: "$0.00",
+    note: "all matches rejected - wrong context",
+  },
+];
+
+const notFoundWithRejectedMatches: Verification = {
+  status: "not_found",
+  verifiedPageNumber: -1,
+  searchAttempts: searchWithRejectedMatches,
+};
+
+/** Example: Many pages searched (tests page collapsing UI) */
+const searchManyPages: SearchAttempt[] = [
+  {
+    method: "exact_line_match",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 1,
+  },
+  {
+    method: "adjacent_pages",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 2,
+  },
+  {
+    method: "adjacent_pages",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 3,
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 4,
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 5,
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 6,
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 7,
+  },
+  {
+    method: "expanded_window",
+    success: false,
+    searchPhrase: "Quarterly earnings report",
+    searchPhraseType: "full_phrase",
+    pageSearched: 8,
+  },
+];
+
+const notFoundManyPages: Verification = {
+  status: "not_found",
+  verifiedPageNumber: -1,
+  searchAttempts: searchManyPages,
+};
+
+// =============================================================================
 // TEST FIXTURES - URL Metas
 // =============================================================================
 
@@ -362,6 +549,42 @@ export function VisualShowcase() {
             <CitationComponent
               citation={baseCitation}
               verification={lowTrustWithAudit}
+              variant="brackets"
+            />
+          </div>
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800" data-audit="with-variations">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-3">Not Found - With spelling variations (helps auditor spot differences)</p>
+            <CitationComponent
+              citation={{
+                ...baseCitation,
+                fullPhrase: "Patient is allergic to penicillin",
+                anchorText: "allergic to penicillin",
+              }}
+              verification={notFoundWithVariations}
+              variant="brackets"
+            />
+          </div>
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800" data-audit="rejected-matches">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-3">Not Found - With rejected matches (shows why $0.00 was not accepted)</p>
+            <CitationComponent
+              citation={{
+                ...baseCitation,
+                fullPhrase: "Total cost is $0.00",
+                anchorText: "$0.00",
+              }}
+              verification={notFoundWithRejectedMatches}
+              variant="brackets"
+            />
+          </div>
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800" data-audit="many-pages">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-3">Not Found - Many pages searched (tests page collapsing)</p>
+            <CitationComponent
+              citation={{
+                ...baseCitation,
+                fullPhrase: "Quarterly earnings report",
+                anchorText: "earnings report",
+              }}
+              verification={notFoundManyPages}
               variant="brackets"
             />
           </div>
