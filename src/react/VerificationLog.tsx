@@ -473,6 +473,7 @@ function getUniqueSearchedPhrases(attempts: SearchAttempt[]): string[] {
 
 /**
  * Extract partial matches (text found but not accepted) from attempts.
+ * The count field is reserved for future API support (e.g., "$0.00" found 100 times).
  */
 function getPartialMatches(attempts: SearchAttempt[]): Array<{ text: string; count?: number }> {
   const matches: Array<{ text: string; count?: number }> = [];
@@ -495,9 +496,9 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText }: AuditSea
   const partialMatches = getPartialMatches(searchAttempts);
 
   // If no searchPhrase data, fall back to citation data
-  const displayPhrases = searchedPhrases.length > 0
-    ? searchedPhrases
-    : [fullPhrase, anchorText].filter(Boolean) as string[];
+  // Use type guard to ensure type safety without assertion
+  const fallbackPhrases = [fullPhrase, anchorText].filter((p): p is string => Boolean(p));
+  const displayPhrases = searchedPhrases.length > 0 ? searchedPhrases : fallbackPhrases;
 
   if (displayPhrases.length === 0) {
     return null;
