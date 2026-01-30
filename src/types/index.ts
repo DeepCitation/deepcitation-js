@@ -30,6 +30,7 @@ export type {
   SearchMethod,
   SearchAttempt,
   MatchedVariation,
+  GroupedSearchAttempt,
 } from "./search.js";
 
 // Box/geometry types

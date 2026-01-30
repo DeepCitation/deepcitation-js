@@ -94,3 +94,32 @@ export interface SearchAttempt {
   durationMs?: number;
 }
 
+/**
+ * Grouped search attempts for audit display.
+ * Groups multiple SearchAttempts by phrase to show all locations searched.
+ */
+export interface GroupedSearchAttempt {
+  /** The phrase that was searched */
+  phrase: string;
+  /** Type of phrase: full_phrase or anchor_text */
+  phraseType: "full_phrase" | "anchor_text" | undefined;
+  /** Number of individual search attempts for this phrase */
+  attemptCount: number;
+  /** All pages where this phrase was searched */
+  pagesSearched: number[];
+  /** Search scopes used (line, page, document) */
+  scopesUsed: ("line" | "page" | "document")[];
+  /** Alternative variations tried (e.g., spelling differences) */
+  variationsTried: string[];
+  /** Unique notes from the attempts */
+  notes: string[];
+  /** Whether any attempt for this phrase succeeded */
+  anySuccess: boolean;
+  /** Text that was found but rejected (for false positive display) */
+  rejectedMatches: Array<{
+    text: string;
+    /** Number of times this text was found (API may provide in future) */
+    count?: number;
+  }>;
+}
+
