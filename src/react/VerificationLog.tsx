@@ -469,9 +469,11 @@ interface SearchAttemptRowProps {
 function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps) {
   // Format the phrase for display (truncate if too long), with null safety
   const phrase = attempt.searchPhrase ?? "";
-  const displayPhrase = phrase.length > MAX_PHRASE_DISPLAY_LENGTH
-    ? phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH) + "..."
-    : phrase;
+  const displayPhrase = phrase.length === 0
+    ? "(empty)"
+    : phrase.length > MAX_PHRASE_DISPLAY_LENGTH
+      ? phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH) + "..."
+      : phrase;
 
   // Format location
   const locationText = attempt.searchScope === "document"
@@ -550,8 +552,8 @@ function RejectedMatchesSection({ rejectedMatches }: RejectedMatchesSectionProps
         Found but rejected
       </div>
       <div className="space-y-1">
-        {rejectedMatches.map((match, i) => (
-          <div key={i} className="text-xs text-gray-600 dark:text-gray-300 font-mono">
+        {rejectedMatches.map((match) => (
+          <div key={match.text} className="text-xs text-gray-600 dark:text-gray-300 font-mono">
             "{match.text}"{match.count != null && ` (${match.count} occurrences)`}
           </div>
         ))}
