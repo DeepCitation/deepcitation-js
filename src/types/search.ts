@@ -109,6 +109,8 @@ export interface GroupedSearchAttempt {
   pagesSearched: number[];
   /** Search scopes used (line, page, document) */
   scopesUsed: ("line" | "page" | "document")[];
+  /** Search methods used in order (e.g., exact_line_match → current_page) */
+  methodsUsed: SearchMethod[];
   /** Alternative variations tried (e.g., spelling differences) */
   variationsTried: string[];
   /** Unique notes from the attempts */

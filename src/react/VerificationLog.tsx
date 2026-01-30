@@ -263,6 +263,7 @@ function groupSearchAttemptsByPhrase(attempts: SearchAttempt[]): GroupedSearchAt
         attemptCount: 0,
         pagesSearched: [],
         scopesUsed: [],
+        methodsUsed: [],
         variationsTried: [],
         notes: [],
         anySuccess: false,
@@ -281,6 +282,11 @@ function groupSearchAttemptsByPhrase(attempts: SearchAttempt[]): GroupedSearchAt
     // Track scopes used
     if (attempt.searchScope && !group.scopesUsed.includes(attempt.searchScope)) {
       group.scopesUsed.push(attempt.searchScope);
+    }
+
+    // Track methods used (in order, allow duplicates to show progression)
+    if (attempt.method && !group.methodsUsed.includes(attempt.method)) {
+      group.methodsUsed.push(attempt.method);
     }
 
     // Track variations
@@ -587,7 +593,7 @@ interface GroupedAttemptCardProps {
 
 /**
  * Card displaying a grouped search attempt.
- * Shows phrase, attempt count, locations searched, and variations.
+ * Shows phrase, search methods used, locations searched, and variations.
  */
 function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
   const hasDocumentScope = group.scopesUsed.includes("document");
@@ -604,8 +610,10 @@ function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
       ? formatPagesSearched(group.pagesSearched)
       : "";
 
-  // Format attempt count
-  const attemptCountText = `${group.attemptCount} ${group.attemptCount === 1 ? "search" : "searches"}`;
+  // Format search methods as a progression (e.g., "Exact location → Expected page → Nearby pages")
+  const methodsText = group.methodsUsed
+    .map(m => METHOD_DISPLAY_NAMES[m] || m)
+    .join(" → ");
 
   // Format variations for display
   const hasVariations = group.variationsTried.length > 0;
@@ -614,7 +622,7 @@ function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
 
   return (
     <div className="space-y-0.5">
-      {/* Phrase with icon and location */}
+      {/* Phrase with icon */}
       <div className="flex items-start gap-2">
         <span
           className={cn(
@@ -627,16 +635,19 @@ function GroupedAttemptCard({ group }: GroupedAttemptCardProps) {
           {group.anySuccess ? <CheckIcon /> : <MissIcon />}
         </span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs text-gray-700 dark:text-gray-200 font-mono break-all">
-              "{displayPhrase}"
-            </span>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono flex-shrink-0 whitespace-nowrap">
-              {attemptCountText}{locationText && ` · ${locationText}`}
-            </span>
-          </div>
+          <span className="text-xs text-gray-700 dark:text-gray-200 font-mono break-all">
+            "{displayPhrase}"
+          </span>
         </div>
       </div>
+
+      {/* Search methods progression */}
+      {methodsText && (
+        <div className="pl-5 text-[10px] text-gray-500 dark:text-gray-400">
+          {methodsText}
+          {locationText && <span className="text-gray-400 dark:text-gray-500"> · {locationText}</span>}
+        </div>
+      )}
 
       {/* Variations tried (if any) */}
       {hasVariations && (
