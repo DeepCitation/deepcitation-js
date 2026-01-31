@@ -23,6 +23,16 @@ export type SearchMethod =
   | "first_word_fallback"
   | "keyspan_fallback";
 
+/** Type of variation applied to search phrases */
+export type VariationType =
+  | "exact"
+  | "normalized"
+  | "currency"
+  | "date"
+  | "numeric"
+  | "symbol"
+  | "accent";
+
 /**
  * Indicates which variation of the citation was matched.
  * Trust decreases as we fall back from fullPhrase to anchorText to partial matches.
@@ -96,7 +106,7 @@ export interface SearchAttempt {
 
   // Variation tracking
   /** Type of variation applied to the search phrase */
-  variationType?: "exact" | "normalized" | "currency" | "date" | "numeric" | "symbol" | "accent";
+  variationType?: VariationType;
 
   // Occurrence tracking (for ambiguity detection)
   /** Number of occurrences found for this search phrase */

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import type { SearchAttempt, SearchStatus, SearchMethod } from "../types/search.js";
+import type { SearchAttempt, SearchStatus, SearchMethod, VariationType } from "../types/search.js";
 import { CheckIcon, MissIcon, SpinnerIcon } from "./icons.js";
 import { cn } from "./utils.js";
 
@@ -43,8 +43,12 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   keyspan_fallback: "Key phrase",
 };
 
-/** User-friendly labels for variation types */
-const VARIATION_TYPE_LABELS: Record<string, string> = {
+/**
+ * User-friendly labels for variation types shown in search attempts.
+ * Maps technical variation type keys to human-readable labels.
+ * @example getVariationLabel("currency") -> "Price formats"
+ */
+const VARIATION_TYPE_LABELS: Record<VariationType, string> = {
   exact: "Exact match",
   normalized: "Normalized",
   currency: "Price formats",
@@ -53,6 +57,15 @@ const VARIATION_TYPE_LABELS: Record<string, string> = {
   symbol: "Symbol variants",
   accent: "Accent variants",
 };
+
+/**
+ * Get the user-friendly label for a variation type.
+ * Returns null for undefined types (caller should fall back to "Also tried").
+ */
+export function getVariationLabel(variationType: VariationType | undefined): string | null {
+  if (!variationType) return null;
+  return VARIATION_TYPE_LABELS[variationType] ?? null;
+}
 
 // =============================================================================
 // TYPES
@@ -320,11 +333,20 @@ interface AmbiguityWarningProps {
  * Warning banner shown when text appears multiple times in the document.
  * Helps auditors understand potential matching ambiguity.
  */
-function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
+export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
   if (ambiguity.totalOccurrences <= 1) return null;
 
+  // Truncate very long notes to prevent layout issues
+  const displayNote = ambiguity.note && ambiguity.note.length > 200
+    ? ambiguity.note.slice(0, 200) + "..."
+    : ambiguity.note;
+
   return (
-    <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+    <div
+      role="status"
+      aria-live="polite"
+      className="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800"
+    >
       <div className="flex items-start gap-2">
         <svg
           className="size-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
@@ -332,21 +354,22 @@ function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
-          aria-hidden="true"
+          role="img"
+          aria-label="Warning"
         >
           <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div className="text-xs text-amber-800 dark:text-amber-200">
           <span className="font-medium">
-            Found {ambiguity.totalOccurrences} occurrences
+            Found {ambiguity.totalOccurrences.toLocaleString()} occurrences
           </span>
           {ambiguity.occurrencesOnExpectedPage > 0 && (
             <span className="text-amber-700 dark:text-amber-300">
-              {" "}({ambiguity.occurrencesOnExpectedPage} on expected page)
+              {" "}({ambiguity.occurrencesOnExpectedPage.toLocaleString()} on expected page)
             </span>
           )}
-          {ambiguity.note && (
-            <p className="mt-0.5 text-amber-700 dark:text-amber-300">{ambiguity.note}</p>
+          {displayNote && (
+            <p className="mt-0.5 text-amber-700 dark:text-amber-300 max-w-prose">{displayNote}</p>
           )}
         </div>
       </div>
@@ -572,8 +595,7 @@ function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps)
   const variations = attempt.searchVariations ?? [];
 
   // Get variation type label if present
-  const variationType = attempt.variationType;
-  const variationTypeLabel = variationType ? VARIATION_TYPE_LABELS[variationType] : null;
+  const variationTypeLabel = getVariationLabel(attempt.variationType);
 
   return (
     <div className="flex items-start gap-2 py-0.5">
@@ -652,7 +674,7 @@ function RejectedMatchesSection({ rejectedMatches }: RejectedMatchesSectionProps
 /**
  * "Looking for" section showing original citation text being searched.
  */
-function LookingForSection({ anchorText, fullPhrase }: { anchorText?: string; fullPhrase?: string }) {
+export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: string; fullPhrase?: string }) {
   const hasAnchorText = anchorText && anchorText.trim().length > 0;
   const hasFullPhrase = fullPhrase && fullPhrase.trim().length > 0 && fullPhrase !== anchorText;
 
