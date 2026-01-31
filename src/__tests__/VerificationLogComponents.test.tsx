@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import {
   AmbiguityWarning,
   LookingForSection,
   getVariationLabel,
+  SourceContextHeader,
+  FaviconImage,
   type AmbiguityInfo,
 } from "../react/VerificationLog";
+import type { Citation } from "../types/citation";
+import type { Verification } from "../types/verification";
 
 describe("AmbiguityWarning", () => {
   afterEach(() => {
@@ -309,6 +313,300 @@ describe("getVariationLabel", () => {
   describe("undefined handling", () => {
     it("returns null for undefined", () => {
       expect(getVariationLabel(undefined)).toBe(null);
+    });
+  });
+});
+
+// =============================================================================
+// SOURCE CONTEXT HEADER TESTS
+// =============================================================================
+
+describe("SourceContextHeader", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  // ==========================================================================
+  // URL CITATION TESTS
+  // ==========================================================================
+
+  describe("URL citations", () => {
+    it("renders favicon and domain for URL citation", () => {
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        domain: "example.com",
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      // Should show the domain
+      expect(container.textContent).toContain("example.com");
+      // Should have an img element for favicon (uses Google Favicon fallback)
+      const img = container.querySelector("img");
+      expect(img).toBeInTheDocument();
+    });
+
+    it("prefers siteName over domain for display", () => {
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        domain: "example.com",
+        siteName: "Example Site",
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      expect(container.textContent).toContain("Example Site");
+    });
+
+    it("shows title when different from displayName and within length limit", () => {
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        domain: "example.com",
+        title: "Article Title",
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      expect(container.textContent).toContain("example.com");
+      expect(container.textContent).toContain("Article Title");
+    });
+
+    it("uses verified data from verification over citation", () => {
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        domain: "example.com",
+        siteName: "Original Site",
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        verifiedSiteName: "Verified Site Name",
+        verifiedDomain: "verified.com",
+      };
+
+      const { container } = render(
+        <SourceContextHeader citation={citation} verification={verification} />
+      );
+
+      expect(container.textContent).toContain("Verified Site Name");
+      expect(container.textContent).not.toContain("Original Site");
+    });
+
+    it("truncates long display names", () => {
+      const longName = "A".repeat(50); // Exceeds MAX_SOURCE_DISPLAY_NAME_LENGTH (40)
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        siteName: longName,
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      // Should contain truncated text with ellipsis
+      expect(container.textContent).toContain("A".repeat(40) + "...");
+      expect(container.textContent).not.toContain(longName);
+    });
+  });
+
+  // ==========================================================================
+  // DOCUMENT CITATION TESTS
+  // ==========================================================================
+
+  describe("Document citations", () => {
+    it("renders document icon and label for document citation", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123def456",
+        pageNumber: 5,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        label: "Invoice.pdf",
+      };
+
+      const { container } = render(
+        <SourceContextHeader citation={citation} verification={verification} />
+      );
+
+      expect(container.textContent).toContain("Invoice.pdf");
+      expect(container.textContent).toContain("Page 5");
+      // Should have SVG for document icon
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+    });
+
+    it("uses truncated attachmentId when no label provided", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123def456ghij",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      // Should show first 8 chars of attachmentId + "..."
+      expect(container.textContent).toContain("abc123de...");
+    });
+
+    it("returns null when no meaningful display info available", () => {
+      const citation: Citation = {
+        type: "document",
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      expect(container.textContent).toBe("");
+    });
+
+    it("shows page number even without label or attachmentId", () => {
+      const citation: Citation = {
+        type: "document",
+        pageNumber: 10,
+        fullPhrase: "Test phrase",
+      };
+
+      const { container } = render(<SourceContextHeader citation={citation} />);
+
+      expect(container.textContent).toContain("Page 10");
+    });
+  });
+});
+
+// =============================================================================
+// FAVICON IMAGE TESTS
+// =============================================================================
+
+describe("FaviconImage", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  // ==========================================================================
+  // RENDERING TESTS
+  // ==========================================================================
+
+  describe("rendering", () => {
+    it("renders img when faviconUrl is provided", () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl="https://example.com/favicon.ico"
+          domain="example.com"
+          alt="Example"
+        />
+      );
+
+      const img = container.querySelector("img");
+      expect(img).toBeInTheDocument();
+      expect(img?.getAttribute("src")).toBe("https://example.com/favicon.ico");
+    });
+
+    it("uses Google Favicon Service when only domain is provided", () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl={null}
+          domain="example.com"
+          alt="Example"
+        />
+      );
+
+      const img = container.querySelector("img");
+      expect(img).toBeInTheDocument();
+      expect(img?.getAttribute("src")).toContain("google.com/s2/favicons");
+      expect(img?.getAttribute("src")).toContain("domain=example.com");
+    });
+
+    it("renders GlobeIcon when no faviconUrl or domain provided", () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl={null}
+          domain={null}
+          alt="Source"
+        />
+      );
+
+      // Should not have an img element
+      const img = container.querySelector("img");
+      expect(img).not.toBeInTheDocument();
+      // Should have SVG for globe icon
+      const svg = container.querySelector("svg");
+      expect(svg).toBeInTheDocument();
+    });
+
+    it("falls back to GlobeIcon when image fails to load", async () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl="https://invalid-url.com/broken.ico"
+          domain="example.com"
+          alt="Example"
+        />
+      );
+
+      // Initially should show img
+      let img = container.querySelector("img");
+      expect(img).toBeInTheDocument();
+
+      // Trigger error event
+      fireEvent.error(img!);
+
+      // After error, should show GlobeIcon (SVG)
+      await waitFor(() => {
+        const svg = container.querySelector("svg");
+        expect(svg).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ==========================================================================
+  // ACCESSIBILITY TESTS
+  // ==========================================================================
+
+  describe("accessibility", () => {
+    it("uses provided alt text", () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl="https://example.com/favicon.ico"
+          domain="example.com"
+          alt="Example Site"
+        />
+      );
+
+      const img = container.querySelector("img");
+      expect(img?.getAttribute("alt")).toBe("Example Site");
+    });
+
+    it("falls back to 'Source' for empty alt text", () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl="https://example.com/favicon.ico"
+          domain="example.com"
+          alt=""
+        />
+      );
+
+      const img = container.querySelector("img");
+      expect(img?.getAttribute("alt")).toBe("Source");
+    });
+
+    it("falls back to 'Source' for whitespace-only alt text", () => {
+      const { container } = render(
+        <FaviconImage
+          faviconUrl="https://example.com/favicon.ico"
+          domain="example.com"
+          alt="   "
+        />
+      );
+
+      const img = container.querySelector("img");
+      expect(img?.getAttribute("alt")).toBe("Source");
     });
   });
 });

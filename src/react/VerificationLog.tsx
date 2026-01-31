@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from "react";
 import type { SearchAttempt, SearchStatus, SearchMethod, VariationType } from "../types/search.js";
-import { CheckIcon, MissIcon, SpinnerIcon } from "./icons.js";
-import { cn } from "./utils.js";
+import type { Citation } from "../types/citation.js";
+import type { Verification } from "../types/verification.js";
+import { CheckIcon, MissIcon, SpinnerIcon, DocumentIcon, GlobeIcon } from "./icons.js";
+import { cn, isUrlCitation } from "./utils.js";
 
 // =============================================================================
 // CONSTANTS
@@ -65,6 +67,155 @@ const VARIATION_TYPE_LABELS: Record<VariationType, string> = {
 export function getVariationLabel(variationType: VariationType | undefined): string | null {
   if (!variationType) return null;
   return VARIATION_TYPE_LABELS[variationType];
+}
+
+// =============================================================================
+// SOURCE CONTEXT HEADER COMPONENT
+// =============================================================================
+
+export interface SourceContextHeaderProps {
+  /** The citation being displayed */
+  citation: Citation;
+  /** Verification data (optional, provides favicon for URL citations) */
+  verification?: Verification | null;
+}
+
+/** Maximum length for display name truncation in source headers */
+const MAX_SOURCE_DISPLAY_NAME_LENGTH = 40;
+
+/**
+ * FaviconImage subcomponent with fallback handling.
+ * Shows favicon from verification or citation, with Google Favicon fallback,
+ * and falls back to GlobeIcon on error.
+ *
+ * Privacy Note: When no favicon URL is provided, this component uses
+ * Google's Favicon Service (google.com/s2/favicons) as a fallback.
+ * This makes an external request to Google with the domain being cited,
+ * which may have privacy implications for sensitive use cases.
+ */
+export function FaviconImage({
+  faviconUrl,
+  domain,
+  alt,
+}: {
+  faviconUrl: string | null | undefined;
+  domain: string | null | undefined;
+  alt: string;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  // Build fallback chain for favicon URL (simple computation, no useMemo needed)
+  // Privacy: Google Favicon Service is used as fallback, which sends domain to Google
+  let effectiveFaviconUrl: string | null = null;
+  if (faviconUrl) {
+    effectiveFaviconUrl = faviconUrl;
+  } else if (domain) {
+    effectiveFaviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+  }
+
+  // Show GlobeIcon if no URL or if image failed to load
+  if (!effectiveFaviconUrl || hasError) {
+    return (
+      <span className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500">
+        <GlobeIcon />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={effectiveFaviconUrl}
+      alt={alt?.trim() || "Source"}
+      className="w-4 h-4 flex-shrink-0 rounded-sm"
+      onError={() => setHasError(true)}
+      loading="lazy"
+    />
+  );
+}
+
+/**
+ * SourceContextHeader displays source information (favicon + source info) for citations.
+ * Shown at the top of popovers to give auditors immediate visibility into citation sources.
+ *
+ * For URL citations: Shows favicon + domain/siteName + optional title
+ * For Document citations: Shows document icon + label/attachmentId
+ */
+export function SourceContextHeader({ citation, verification }: SourceContextHeaderProps) {
+  const isUrl = isUrlCitation(citation);
+
+  if (isUrl) {
+    // URL citation: show favicon + domain/site info
+    const faviconUrl = verification?.verifiedFaviconUrl || citation.faviconUrl;
+    const domain = verification?.verifiedDomain || citation.domain;
+    const siteName = verification?.verifiedSiteName || citation.siteName;
+    const title = verification?.verifiedTitle || citation.title;
+
+    // Display text: prefer siteName, fall back to domain
+    // Truncate to MAX_SOURCE_DISPLAY_NAME_LENGTH for consistency with document citations
+    const rawDisplayName = siteName || domain;
+    const displayName = rawDisplayName && rawDisplayName.length > MAX_SOURCE_DISPLAY_NAME_LENGTH
+      ? `${rawDisplayName.slice(0, MAX_SOURCE_DISPLAY_NAME_LENGTH)}...`
+      : rawDisplayName;
+    // Show title if it's different from displayName and adds value
+    const showTitle = title && title !== rawDisplayName && title.length <= 60;
+
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+        <FaviconImage
+          faviconUrl={faviconUrl}
+          domain={domain}
+          alt={rawDisplayName?.trim() || "Source"}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            {displayName && (
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
+                {displayName}
+              </span>
+            )}
+          </div>
+          {showTitle && (
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+              {title}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Document citation: show document icon + label/attachmentId
+  const label = verification?.label;
+  const attachmentId = citation.attachmentId;
+  const pageNumber = citation.pageNumber;
+
+  // Display text: prefer label, fall back to truncated attachmentId
+  const displayName = label || (attachmentId ? `${attachmentId.slice(0, 8)}...` : null);
+
+  // Only show if we have something meaningful to display
+  if (!displayName && !pageNumber) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+      <span className="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500">
+        <DocumentIcon />
+      </span>
+      <div className="flex items-baseline gap-1.5 min-w-0">
+        {displayName && (
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
+            {displayName}
+          </span>
+        )}
+        {pageNumber && pageNumber > 0 && (
+          <span className="text-[10px] text-gray-500 dark:text-gray-400 flex-shrink-0">
+            Page {pageNumber}
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // =============================================================================
