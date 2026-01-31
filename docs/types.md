@@ -38,7 +38,7 @@ interface Citation {
 
 ## VerifyCitationRequest
 
-Request body for the /verify endpoint.
+Request body for the /verifyCitations endpoint.
 
 ```typescript
 interface VerifyCitationRequest {
@@ -109,7 +109,7 @@ interface SearchAttempt {
 
 ## VerifyCitationResponse (Raw API)
 
-Raw response from the /verify endpoint. The SDK normalizes this to the Verification interface above.
+Raw response from the /verifyCitations endpoint. The SDK normalizes this to the Verification interface above.
 
 ```typescript
 interface VerifyCitationResponse {

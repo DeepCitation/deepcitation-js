@@ -39,7 +39,7 @@ After your LLM generates a response, verify citations against the source:
 
 ```bash
 # Verify citations
-curl -X POST "https://api.deepcitation.com/verify" \
+curl -X POST "https://api.deepcitation.com/verifyCitations" \
   -H "Authorization: Bearer dc_live_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -94,7 +94,7 @@ echo "Prompt content ready for LLM"
 
 # Step 3: Verify citations from LLM response
 echo "Verifying citations..."
-VERIFY_RESPONSE=$(curl -s -X POST "$BASE_URL/verify" \
+VERIFY_RESPONSE=$(curl -s -X POST "$BASE_URL/verifyCitations" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d "{
@@ -143,7 +143,7 @@ curl -s ... | jq '.verifications | to_entries[] | {key: .key, page: .value.pageN
 | **Base URL** | `https://api.deepcitation.com` |
 | **Auth Header** | `Authorization: Bearer dc_live_xxx` |
 | **Content-Type** | `application/json` (for verify) |
-| **Endpoints** | `POST /prepareFile`, `POST /verify` |
+| **Endpoints** | `POST /prepareFile`, `POST /verifyCitations` |
 | **File Types** | PDFs, Images, Office Docs, URLs |
 | **Image Formats** | `avif` (default, smallest), `jpeg`, `png` |
 | **File Retention** | 30 days |

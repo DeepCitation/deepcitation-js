@@ -49,9 +49,8 @@ jobs:
       - name: Check links
         uses: lycheeverse/lychee-action@v1
         with:
-          args: --verbose --no-progress './docs/_site/**/*.html' --exclude 'localhost' --exclude '127.0.0.1' --exclude 'deepcitation.com' --accept 200,204,206,301,302,307,308
-          fail: true
-        continue-on-error: true
+          args: --verbose --no-progress './docs/_site/**/*.html' --exclude 'localhost' --exclude '127.0.0.1' --accept 200,204,206,301,302,307,308
+          fail: false
 
       - name: Upload artifact
         if: github.ref == 'refs/heads/main'

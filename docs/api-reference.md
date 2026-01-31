@@ -64,7 +64,7 @@ curl -X POST "https://api.deepcitation.com/prepareFile" \
 
 ---
 
-## POST /verify
+## POST /verifyCitations
 
 Verify citations from LLM output against the source document. Returns verification status and visual proof.
 
@@ -89,7 +89,7 @@ Verify citations from LLM output against the source document. Returns verificati
 ### Example Request
 
 ```bash
-curl -X POST "https://api.deepcitation.com/verify" \
+curl -X POST "https://api.deepcitation.com/verifyCitations" \
   -H "Authorization: Bearer dc_live_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
