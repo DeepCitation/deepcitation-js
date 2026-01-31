@@ -6,7 +6,6 @@ import React, {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -70,41 +69,45 @@ const MAX_VARIATION_LENGTH = 30;
 
 /**
  * Detects if the device has touch capability.
- * Uses useSyncExternalStore for SSR compatibility and reactive updates.
+ * Uses useState + useEffect for React 17+ compatibility.
  *
  * This is used to auto-detect mobile/touch devices so the component can
  * show the popover on first tap rather than immediately opening the image overlay.
+ *
+ * Detection uses pointer: coarse media query as primary method, which specifically
+ * identifies devices where the PRIMARY input is coarse (touch), avoiding false
+ * positives on Windows laptops with touchscreens but mouse as primary input.
  */
-function subscribeToTouchChanges(callback: () => void): () => void {
-  // Listen for changes in touch capability (e.g., device orientation changes,
-  // connecting/disconnecting touch screens on hybrid devices)
-  if (typeof window !== "undefined" && window.matchMedia) {
-    const mediaQuery = window.matchMedia("(pointer: coarse)");
-    // Use addEventListener with 'change' event (modern API)
-    mediaQuery.addEventListener?.("change", callback);
-    return () => mediaQuery.removeEventListener?.("change", callback);
-  }
-  return () => {};
-}
-
 function getIsTouchDevice(): boolean {
   if (typeof window === "undefined") return false;
-  // Check for touch capability using multiple methods for better accuracy:
-  // 1. pointer: coarse media query (most reliable for touch-primary devices)
-  // 2. maxTouchPoints > 0 (detects touch capability)
-  // 3. ontouchstart in window (legacy detection)
+  // Primary check: pointer: coarse media query
+  // This specifically checks if the PRIMARY pointing device is coarse (touch)
+  // Windows laptops with touchscreens typically report (pointer: fine) because
+  // the mouse/trackpad is the primary input device
   const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  const hasTouchPoints = navigator.maxTouchPoints > 0;
-  const hasTouch = "ontouchstart" in window;
-  return hasCoarsePointer || hasTouchPoints || hasTouch;
-}
-
-function getServerSnapshot(): boolean {
-  return false; // SSR: assume non-touch
+  return hasCoarsePointer;
 }
 
 function useIsTouchDevice(): boolean {
-  return useSyncExternalStore(subscribeToTouchChanges, getIsTouchDevice, getServerSnapshot);
+  // Initialize with current value (SSR-safe: defaults to false on server)
+  const [isTouchDevice, setIsTouchDevice] = useState(() => getIsTouchDevice());
+
+  useEffect(() => {
+    // Update state with current value on mount (handles SSR hydration)
+    setIsTouchDevice(getIsTouchDevice());
+
+    // Listen for changes in pointer capability (e.g., tablet mode changes)
+    if (typeof window !== "undefined" && window.matchMedia) {
+      const mediaQuery = window.matchMedia("(pointer: coarse)");
+      const handleChange = () => setIsTouchDevice(getIsTouchDevice());
+
+      // Use addEventListener with 'change' event (modern API)
+      mediaQuery.addEventListener?.("change", handleChange);
+      return () => mediaQuery.removeEventListener?.("change", handleChange);
+    }
+  }, []);
+
+  return isTouchDevice;
 }
 
 // =============================================================================
