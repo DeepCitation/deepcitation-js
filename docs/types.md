@@ -38,7 +38,7 @@ interface Citation {
 
 ## VerifyCitationRequest
 
-Request body for the /verifyCitations endpoint.
+Request body for the /verify endpoint.
 
 ```typescript
 interface VerifyCitationRequest {
@@ -55,55 +55,26 @@ interface VerifyCitationRequest {
 
 ---
 
-## VerifyCitationResponse & Verification
+## Verification (SDK)
 
-Response from the /verify endpoint with verification results.
+The SDK normalizes API responses into this Verification interface for use with React components.
 
 ```typescript
-interface VerifyCitationResponse {
-  /** Map of citation keys to verification results */
-  verifications: { [key: string]: Verification };
-}
-
 interface Verification {
+  /** Verification status */
+  status?: SearchStatus | null;
   /** Page number where citation was found (1-indexed) */
-  pageNumber?: number | null;
-  /** The search term used (lowercase) */
-  lowerCaseSearchTerm: string | null;
+  verifiedPageNumber?: number | null;
   /** Text snippet showing match context */
-  matchSnippet?: string | null;
+  verifiedMatchSnippet?: string | null;
   /** Base64-encoded verification image */
   verificationImageBase64?: string | null;
-  /** Verification status */
-  searchState?: SearchState | null;
-  /** When this citation was verified */
-  verifiedAt?: Date;
+  /** Search attempts made */
+  searchAttempts?: SearchAttempt[];
+  /** Attachment ID */
+  attachmentId?: string | null;
   /** The original citation object */
   citation?: Citation;
-}
-
-interface SearchState {
-  status: SearchStatus;
-  expectedPage?: number | null;
-  actualPage?: number | null;
-  expectedLineIds?: number[] | null;
-  actualLineIds?: number[] | null;
-  expectedTimestamps?: { startTime?: string; endTime?: string };
-  actualTimestamps?: { startTime?: string; endTime?: string };
-  searchAttempts?: SearchAttempt[]; // Track all search attempts
-}
-
-interface SearchAttempt {
-  method: SearchMethod;
-  success: boolean;
-  searchPhrases: string[]; // The actual phrase(s) searched for
-  pageSearched?: number;
-  matchScore?: number; // For BM25 and other scoring methods
-  matchSnippet?: string;
-  notes?: string; // Additional context about why it failed/succeeded
-  durationMs?: number; // Time taken in milliseconds
-  startTime?: number; // Timestamp when search started
-  endTime?: number; // Timestamp when search ended
 }
 
 type SearchStatus =
@@ -115,6 +86,60 @@ type SearchStatus =
   | "found_on_other_line" // Found on different line than expected
   | "first_word_found" // Found the first word of the phrase
   | "pending";           // Still processing
+
+type SearchMethod =
+  | "exact"              // Exact string match
+  | "fuzzy"              // Fuzzy/approximate match
+  | "bm25"               // BM25 scoring
+  | "semantic";          // Semantic similarity
+
+interface SearchAttempt {
+  method: SearchMethod;
+  success: boolean;
+  searchPhrases: string[]; // The actual phrase(s) searched for
+  pageSearched?: number;
+  matchScore?: number; // For BM25 and other scoring methods
+  matchSnippet?: string;
+  notes?: string; // Additional context about why it failed/succeeded
+  durationMs?: number; // Time taken in milliseconds
+}
+```
+
+---
+
+## VerifyCitationResponse (Raw API)
+
+Raw response from the /verify endpoint. The SDK normalizes this to the Verification interface above.
+
+```typescript
+interface VerifyCitationResponse {
+  /** Map of citation keys to verification results */
+  verifications: { [key: string]: RawVerification };
+}
+
+interface RawVerification {
+  /** Page number where citation was found (1-indexed) */
+  pageNumber?: number | null;
+  /** The search term used (lowercase) */
+  lowerCaseSearchTerm: string | null;
+  /** Text snippet showing match context */
+  matchSnippet?: string | null;
+  /** Base64-encoded verification image */
+  verificationImageBase64?: string | null;
+  /** Verification status (nested in raw API response) */
+  searchState?: SearchState | null;
+  /** When this citation was verified */
+  verifiedAt?: Date;
+  /** The original citation object */
+  citation?: Citation;
+}
+
+interface SearchState {
+  status: SearchStatus;
+  expectedPage?: number | null;
+  actualPage?: number | null;
+  searchAttempts?: SearchAttempt[];
+}
 ```
 
 ---

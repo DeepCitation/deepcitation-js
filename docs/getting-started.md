@@ -106,7 +106,7 @@ Include your API key in the Authorization header:
 Authorization: Bearer dc_live_your_api_key
 ```
 
-Get your API key from the [dashboard](https://deepcitation.com/keys).
+Get your API key from the [dashboard](https://deepcitation.com/usage).
 
 ---
 
@@ -118,10 +118,8 @@ All API endpoints are available at:
 https://api.deepcitation.com
 ```
 
-For direct function calls, use:
-```
-us-central1-deepcitation-com.cloudfunctions.net
-```
+{: .note }
+The SDK handles API routing automatically. You only need to configure your API key.
 
 ---
 

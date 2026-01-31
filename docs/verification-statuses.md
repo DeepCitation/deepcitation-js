@@ -16,7 +16,6 @@ Learn how to interpret the `searchState.status` field in verification responses.
 The `searchState.status` field indicates the verification result:
 
 ### found
-{: .text-green-100 }
 
 Exact match found in the document. The citation is verified.
 
@@ -31,7 +30,6 @@ Exact match found in the document. The citation is verified.
 ---
 
 ### partial_text_found
-{: .text-yellow-100 }
 
 Some of the citation text was found, but not an exact match. This often occurs when:
 - The LLM paraphrased the source text
@@ -49,7 +47,6 @@ Some of the citation text was found, but not an exact match. This often occurs w
 ---
 
 ### found_anchor_text_only
-{: .text-blue-100 }
 
 The short value/anchorText was found, but the full phrase was not. This indicates the key information exists but the surrounding context differs.
 
@@ -64,7 +61,6 @@ The short value/anchorText was found, but the full phrase was not. This indicate
 ---
 
 ### found_on_other_page
-{: .text-yellow-100 }
 
 Citation found, but on a different page than specified. The content exists but the page reference was incorrect.
 
@@ -81,7 +77,6 @@ Citation found, but on a different page than specified. The content exists but t
 ---
 
 ### found_on_other_line
-{: .text-yellow-100 }
 
 Citation found on the correct page, but on a different line than expected.
 
@@ -98,14 +93,12 @@ Citation found on the correct page, but on a different line than expected.
 ---
 
 ### first_word_found
-{: .text-yellow-100 }
 
 Only the first word of the phrase was found. This may indicate a partial match or incorrect citation.
 
 ---
 
 ### not_found
-{: .text-red-100 }
 
 Citation could not be verified - text not found in document. This may indicate:
 - A hallucination by the LLM
@@ -123,7 +116,6 @@ Citation could not be verified - text not found in document. This may indicate:
 ---
 
 ### pending
-{: .text-grey-lt-100 }
 
 Verification is still in progress. Wait and retry.
 

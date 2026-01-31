@@ -89,7 +89,7 @@ Verify citations from LLM output against the source document. Returns verificati
 ### Example Request
 
 ```bash
-curl -X POST "https://api.deepcitation.com/verifyCitations" \
+curl -X POST "https://api.deepcitation.com/verify" \
   -H "Authorization: Bearer dc_live_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{

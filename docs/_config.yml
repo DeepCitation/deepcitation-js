@@ -35,6 +35,11 @@ kramdown:
     block:
       line_numbers: false
 
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-include-cache
+
 # Exclude files
 exclude:
   - Gemfile

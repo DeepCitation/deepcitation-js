@@ -143,7 +143,7 @@ curl -s ... | jq '.verifications | to_entries[] | {key: .key, page: .value.pageN
 | **Base URL** | `https://api.deepcitation.com` |
 | **Auth Header** | `Authorization: Bearer dc_live_xxx` |
 | **Content-Type** | `application/json` (for verify) |
-| **Endpoints** | `POST /prepareFile`, `POST /verifyCitations` |
+| **Endpoints** | `POST /prepareFile`, `POST /verify` |
 | **File Types** | PDFs, Images, Office Docs, URLs |
 | **Image Formats** | `avif` (default, smallest), `jpeg`, `png` |
 | **File Retention** | 30 days |

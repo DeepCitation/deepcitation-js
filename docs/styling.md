@@ -20,7 +20,7 @@ Override the default colors using CSS custom properties:
   /* Text colors */
   --dc-color-verified: #2563eb;     /* Blue for found citations */
   --dc-color-success: #16a34a;      /* Green checkmark for exact match */
-  --dc-color-error: #dc2626;        /* Orange checkmark for partial match */
+  --dc-color-partial: #f59e0b;      /* Orange checkmark for partial match */
 
   /* Backgrounds */
   --dc-hover-bg: rgba(59, 130, 246, 0.08);
