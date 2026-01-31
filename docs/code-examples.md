@@ -1,0 +1,254 @@
+---
+layout: default
+title: Code Examples
+nav_order: 7
+description: "SDK usage examples and integration patterns"
+---
+
+# Code Examples
+
+Common integration patterns and code examples for DeepCitation.
+
+---
+
+## Multi-File Workflow
+
+Work with multiple documents and verify citations across files:
+
+```typescript
+import {
+  DeepCitation,
+  wrapCitationPrompt,
+  getAllCitationsFromLlmOutput,
+  groupCitationsByAttachmentId
+} from "@deepcitation/deepcitation-js";
+
+const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
+
+// 1. Upload multiple documents
+const file1 = await dc.uploadFile(contractPdf, {
+  filename: "contract.pdf"
+});
+const file2 = await dc.uploadFile(invoicePdf, {
+  filename: "invoice.pdf"
+});
+
+// 2. Wrap prompts with multiple file contents
+const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
+  systemPrompt: "You are a document analyst that cites sources.",
+  userPrompt: "Compare the contract terms with the invoice amounts.",
+  deepTextPromptPortion: [file1.deepTextPromptPortion, file2.deepTextPromptPortion] // Array for multiple files
+});
+
+// 3. Call your LLM
+const response = await yourLLM.chat({
+  messages: [
+    { role: "system", content: enhancedSystemPrompt },
+    { role: "user", content: enhancedUserPrompt },
+  ]
+});
+
+// 4. Group and verify citations by attachment
+const citations = getAllCitationsFromLlmOutput(response.content);
+const citationsByAttachment = groupCitationsByAttachmentId(citations);
+
+// Verify in parallel for each attachment
+const verificationPromises = [];
+for (const [attachmentId, attachmentCitations] of citationsByAttachment) {
+  verificationPromises.push(dc.verifyAttachment(attachmentId, attachmentCitations));
+}
+const results = await Promise.all(verificationPromises);
+```
+
+---
+
+## React Component
+
+Use the React component to display verified citations with hover tooltips showing visual proof:
+
+```tsx
+import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+
+function VerifiedResponse({ citations, verifications }) {
+  return (
+    <div>
+      <p>
+        According to the report, revenue grew by{" "}
+        <CitationComponent
+          citation={citations["1"]}
+          verification={verifications["1"]}
+        />
+        this quarter, while{" "}
+        <CitationComponent
+          citation={citations["2"]}
+          verification={verifications["2"]}
+        />
+        .
+      </p>
+    </div>
+  );
+}
+```
+
+---
+
+## Display Variants
+
+Choose from different display variants to match your UI design:
+
+```tsx
+import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+
+// Brackets variant (default) - [anchorText] with square brackets
+<CitationComponent
+  citation={{ citationNumber: 1, anchorText: "25% growth" }}
+  verification={verification}
+  variant="brackets"
+/>
+// Renders: [25% growth]
+
+// Chip variant - pill/badge style with background color
+<CitationComponent
+  citation={{ citationNumber: 1, anchorText: "Revenue Growth" }}
+  verification={verification}
+  variant="chip"
+/>
+// Renders: Revenue Growth (styled pill)
+
+// Text variant - plain text, inherits parent styling
+<CitationComponent
+  citation={{ citationNumber: 1, anchorText: "25% growth" }}
+  verification={verification}
+  variant="text"
+/>
+// Renders: 25% growth
+
+// Superscript variant - small raised text like footnotes
+<CitationComponent
+  citation={{ citationNumber: 1 }}
+  verification={verification}
+  variant="superscript"
+/>
+// Renders: ¹
+
+// Minimal variant - compact with truncation
+<CitationComponent
+  citation={{ citationNumber: 1 }}
+  verification={verification}
+  variant="minimal"
+/>
+// Renders: 1
+
+// Source variant - ChatGPT-style with name + count
+<CitationComponent
+  citation={{ citationNumber: 1, sourceName: "Wikipedia" }}
+  verification={verification}
+  variant="source"
+  additionalCount={2}
+/>
+// Renders: Wikipedia +2
+
+// Controlling content separately from variant
+// Use content prop to override what text is displayed:
+// - "anchorText": Descriptive text (default for chip, brackets, text)
+// - "number": Citation number (default for superscript, minimal)
+// - "indicator": Only the status icon, no text
+// - "source": Source name (default for source variant)
+
+<CitationComponent
+  citation={{ citationNumber: 1, anchorText: "Revenue Growth" }}
+  verification={verification}
+  variant="brackets"
+  content="number"  // Override to show number instead of anchorText
+/>
+// Renders: [1] instead of [Revenue Growth]
+```
+
+---
+
+## Popover Options
+
+Control the verification popover position or hide it entirely:
+
+```tsx
+import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+
+// Default popover position (top)
+<CitationComponent
+  citation={citation}
+  verification={verification}
+  popoverPosition="top"
+/>
+
+// Popover at bottom
+<CitationComponent
+  citation={citation}
+  verification={verification}
+  popoverPosition="bottom"
+/>
+
+// Hidden popover (no hover preview)
+<CitationComponent
+  citation={citation}
+  verification={verification}
+  popoverPosition="hidden"
+/>
+```
+
+---
+
+## Event Handlers
+
+Add custom click and hover handlers for interactive citations:
+
+```tsx
+import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+
+<CitationComponent
+  citation={citation}
+  verification={verification}
+  eventHandlers={{
+    onClick: (citation, key, event) => {
+      console.log("Citation clicked:", key);
+      // Navigate to source, open modal, etc.
+    },
+    onMouseEnter: (citation, key) => {
+      console.log("Hovering:", key);
+    },
+    onMouseLeave: (citation, key) => {
+      console.log("Left:", key);
+    },
+  }}
+/>
+```
+
+---
+
+## Error Handling
+
+Handle common API errors gracefully:
+
+```typescript
+try {
+  const result = await dc.verifyAttachment(attachmentId, citations);
+  // Handle success
+} catch (error) {
+  if (error.message.includes("401")) {
+    // Invalid or expired API key
+  } else if (error.message.includes("429")) {
+    // Rate limit exceeded - add payment method or wait
+  } else if (error.message.includes("404")) {
+    // Attachment not found - may have expired (30 day retention)
+  } else {
+    // Other error
+  }
+}
+```
+
+---
+
+## Next Steps
+
+- [Components](components) - Full CitationComponent documentation
+- [Types](types) - TypeScript interface definitions
+- [Real-World Examples](real-world-examples) - Industry-specific integrations
