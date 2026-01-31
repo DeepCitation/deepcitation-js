@@ -1045,6 +1045,78 @@ These are the only legitimate DeepCitation URLs. Do not fabricate others.
 
 ---
 
+## Optional: "DeepCitation Enabled" Message Input Indicator
+
+If your chat application has a message input area with feature toggles or mode indicators (similar to Claude, ChatGPT, or Gemini), consider adding a "Deep Citation" option. This helps users understand that citation verification is available or active for their conversation.
+
+**Important**: Match the existing UI patterns in the application. Use the same list item styles, icon sizes, active/enabled indicators, and interaction patterns already present in the message input area.
+
+### Implementation approaches
+
+#### If the app supports toggleable features
+Add "Deep Citation" as a toggleable option in the existing features menu/list:
+
+```tsx
+import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
+
+// Match the app's existing menu item component and styles
+<MenuItem
+  icon={<DeepCitationIcon />}  // Our bracket icon [ ]
+  label="Deep Citation"
+  isActive={deepCitationEnabled}
+  onClick={() => setDeepCitationEnabled(!deepCitationEnabled)}
+/>
+```
+
+#### If the app only shows read-only indicators
+Display "Deep Citation" as an enabled indicator when documents are uploaded:
+
+```tsx
+import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
+
+// Show in the app's existing status/indicator area
+{hasUploadedDocuments && (
+  <StatusIndicator
+    icon={<DeepCitationIcon />}
+    label="Deep Citation"
+    status="enabled"  // Use the app's existing enabled/active styling
+  />
+)}
+```
+
+### Matching the app's style
+
+Study the existing feature toggles/indicators in the message input and replicate:
+
+| Style Element | What to Match |
+|---------------|---------------|
+| **Icon size** | Same as other feature icons (e.g., `size-4`, `w-5 h-5`) |
+| **Label font** | Same font-size, weight, color as other menu items |
+| **Active state** | Checkmark ✓, filled dot ●, highlight color, or whatever the app uses |
+| **Hover/focus** | Same hover background, focus ring as other items |
+| **Spacing** | Same gap between icon and label, same padding |
+
+### Using the DeepCitationIcon
+
+We provide an official `DeepCitationIcon` component - square brackets `[ ]` that represent citations:
+
+```tsx
+import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
+
+// The icon inherits currentColor and defaults to 1em size
+<DeepCitationIcon className="size-4" />
+```
+
+### When to show this
+
+- **As a toggle**: When the app allows users to enable/disable features
+- **As an indicator**: When documents have been uploaded and DeepCitation is processing
+- **In a features menu**: Alongside other options like "Web search", "Create image", etc.
+
+This indicator increases user trust by signaling that AI-generated content will include verifiable citations. It's optional and should only be added if it fits naturally with the application's existing UX patterns.
+
+---
+
 ## Resources
 
 - [Full Documentation](https://deepcitation.com/docs)
