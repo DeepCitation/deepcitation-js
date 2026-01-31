@@ -87,6 +87,12 @@ function parseLineIds(lineIdsString: string): number[] | undefined {
         if (rangeSize > MAX_LINE_ID_RANGE_SIZE) {
           // Performance fix: use sampling for large ranges to maintain accuracy
           // Include start and end, plus evenly distributed samples
+          if (typeof console !== "undefined" && console.warn) {
+            console.warn(
+              `[DeepCitation] Line ID range ${start}-${end} exceeds limit (${MAX_LINE_ID_RANGE_SIZE}), ` +
+              `using ${LARGE_RANGE_SAMPLE_COUNT} sample points. This may affect verification accuracy.`
+            );
+          }
           lineIds.push(start);
           const sampleCount = Math.min(LARGE_RANGE_SAMPLE_COUNT - 2, rangeSize - 2);
           if (sampleCount > 0) {

@@ -419,3 +419,54 @@ describe("Module-level Regex Compilation", () => {
     expect(citation.pageNumber).toBe(5);
   });
 });
+
+describe("Range Sampling Behavior", () => {
+  it("should sample large ranges and produce exactly 50 points", () => {
+    // Verify that sampling produces the expected number of sample points
+    const text = `<cite attachment_id='abc' full_phrase='Test' anchor_text='Test' line_ids='1-5000' />`;
+    const result = getAllCitationsFromLlmOutput(text);
+    const citation = Object.values(result)[0];
+
+    // Should produce exactly 50 sample points
+    expect(citation.lineIds).toBeDefined();
+    expect(citation.lineIds!.length).toBe(50);
+
+    // First should be the range start, last should be the range end
+    expect(citation.lineIds![0]).toBe(1);
+    expect(citation.lineIds![49]).toBe(5000);
+  });
+
+  it("should not sample small ranges within the limit", () => {
+    const text = `<cite attachment_id='abc' full_phrase='Test' anchor_text='Test' line_ids='1-100' />`;
+    const result = getAllCitationsFromLlmOutput(text);
+    const citation = Object.values(result)[0];
+
+    // Should fully expand ranges within the limit
+    expect(citation.lineIds).toBeDefined();
+    expect(citation.lineIds!.length).toBe(100);
+    expect(citation.lineIds![0]).toBe(1);
+    expect(citation.lineIds![99]).toBe(100);
+  });
+
+  it("should handle edge case at exactly the limit", () => {
+    // MAX_LINE_ID_RANGE_SIZE is 1000
+    const text = `<cite attachment_id='abc' full_phrase='Test' anchor_text='Test' line_ids='1-1000' />`;
+    const result = getAllCitationsFromLlmOutput(text);
+    const citation = Object.values(result)[0];
+
+    // Range of exactly 1000 should be fully expanded (not sampled)
+    expect(citation.lineIds).toBeDefined();
+    expect(citation.lineIds!.length).toBe(1000);
+  });
+
+  it("should sample ranges just above the limit", () => {
+    // MAX_LINE_ID_RANGE_SIZE is 1000, so 1001 should be sampled
+    const text = `<cite attachment_id='abc' full_phrase='Test' anchor_text='Test' line_ids='1-1001' />`;
+    const result = getAllCitationsFromLlmOutput(text);
+    const citation = Object.values(result)[0];
+
+    // Range of 1001 should be sampled to 50 points
+    expect(citation.lineIds).toBeDefined();
+    expect(citation.lineIds!.length).toBe(50);
+  });
+});

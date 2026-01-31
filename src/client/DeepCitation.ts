@@ -29,6 +29,11 @@ const DEFAULT_UPLOAD_CONCURRENCY = 5;
 /**
  * Simple promise-based concurrency limiter.
  * Ensures only N promises run concurrently.
+ *
+ * The counter is managed as follows:
+ * - Incremented when a task starts running (either immediately or from queue)
+ * - Decremented when a task completes (in the finally block)
+ * - next() does NOT increment - it just dequeues and runs (run() handles the counter)
  */
 function createConcurrencyLimiter(limit: number) {
   let running = 0;
@@ -36,7 +41,7 @@ function createConcurrencyLimiter(limit: number) {
 
   const next = () => {
     if (queue.length > 0 && running < limit) {
-      running++;
+      // Don't increment running here - the queued function's run() will handle it
       const fn = queue.shift()!;
       fn();
     }
@@ -45,6 +50,8 @@ function createConcurrencyLimiter(limit: number) {
   return <T>(fn: () => Promise<T>): Promise<T> => {
     return new Promise((resolve, reject) => {
       const run = () => {
+        // Increment counter when task actually starts
+        running++;
         fn()
           .then(resolve)
           .catch(reject)
@@ -55,7 +62,6 @@ function createConcurrencyLimiter(limit: number) {
       };
 
       if (running < limit) {
-        running++;
         run();
       } else {
         queue.push(run);
@@ -126,11 +132,13 @@ export class DeepCitation {
   /**
    * Request deduplication cache for verify calls.
    * Prevents duplicate API calls when same verification is requested multiple times.
-   * Cache entries expire after 5 minutes.
+   * Cache entries expire after 5 minutes, and the cache is limited to 100 entries
+   * to prevent memory leaks in long-running sessions.
    */
   private readonly verifyCache = new Map<string, { promise: Promise<VerifyCitationsResponse>; timestamp: number }>();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
   private readonly CACHE_CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
+  private readonly MAX_CACHE_SIZE = 100; // Maximum cached entries to prevent memory leaks
   private lastCacheCleanup = 0;
 
   /**
@@ -172,19 +180,38 @@ export class DeepCitation {
   /**
    * Clean expired entries from the verify cache.
    * Only runs periodically to avoid performance overhead on every call.
+   * Also enforces max cache size with LRU eviction to prevent memory leaks.
    */
   private cleanExpiredCache(): void {
-    const now = Date.now();
+    try {
+      const now = Date.now();
 
-    // Only clean up periodically, not on every call
-    if (now - this.lastCacheCleanup < this.CACHE_CLEANUP_INTERVAL_MS) {
-      return;
-    }
-    this.lastCacheCleanup = now;
+      // Only clean up periodically, not on every call
+      if (now - this.lastCacheCleanup < this.CACHE_CLEANUP_INTERVAL_MS) {
+        return;
+      }
+      this.lastCacheCleanup = now;
 
-    for (const [key, entry] of this.verifyCache.entries()) {
-      if (now - entry.timestamp > this.CACHE_TTL_MS) {
-        this.verifyCache.delete(key);
+      // Remove expired entries
+      for (const [key, entry] of this.verifyCache.entries()) {
+        if (now - entry.timestamp > this.CACHE_TTL_MS) {
+          this.verifyCache.delete(key);
+        }
+      }
+
+      // LRU eviction: if still too large, remove oldest entries
+      if (this.verifyCache.size > this.MAX_CACHE_SIZE) {
+        const entries = Array.from(this.verifyCache.entries())
+          .sort((a, b) => a[1].timestamp - b[1].timestamp);
+        const toRemove = entries.slice(0, this.verifyCache.size - this.MAX_CACHE_SIZE);
+        for (const [key] of toRemove) {
+          this.verifyCache.delete(key);
+        }
+      }
+    } catch (err) {
+      // Silently fail - do not break the main verification flow
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("[DeepCitation] Cache cleanup failed:", err);
       }
     }
   }
@@ -521,10 +548,18 @@ export class DeepCitation {
     // Create cache key from attachmentId and a hash of the citation content
     // Using JSON.stringify ensures different citation content = different cache key
     // Sorting keys ensures consistent ordering for equivalent content
+    // Include all fields that affect verification results to avoid cache collisions
     const citationContent = JSON.stringify(
       Object.entries(citationMap)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, citation]) => [key, citation.fullPhrase, citation.anchorText, citation.pageNumber])
+        .map(([key, citation]) => [
+          key,
+          citation.fullPhrase,
+          citation.anchorText,
+          citation.pageNumber,
+          citation.lineIds,
+          citation.selection,
+        ])
     );
     const cacheKey = `${attachmentId}:${citationContent}:${options?.outputImageFormat || "avif"}`;
 
