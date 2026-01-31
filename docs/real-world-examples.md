@@ -133,7 +133,7 @@ This visual differentiation helps users immediately identify when an AI has made
 
 ## Financial Analysis
 
-Using the `source` variant for ChatGPT-style citations in financial reports:
+Using the `source` variant for source badge citations in financial reports:
 
 ```tsx
 <p>

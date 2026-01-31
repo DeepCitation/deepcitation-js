@@ -139,7 +139,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 />
 // Renders: 1
 
-// Source variant - ChatGPT-style with name + count
+// Source variant - badge/pill style with name + count
 <CitationComponent
   citation={{ citationNumber: 1, sourceName: "Wikipedia" }}
   verification={verification}

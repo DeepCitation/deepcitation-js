@@ -149,9 +149,9 @@ Compact text with indicator, truncated. Best for blog posts, news articles.
 />
 ```
 
-### Source (ChatGPT-style)
+### Source
 
-Source chip showing name + count. Best for chat interfaces, conversational AI.
+Source badge/pill showing name + count. Best for chat interfaces, conversational AI.
 
 ```tsx
 <CitationComponent
