@@ -282,13 +282,12 @@ export interface CitationComponentProps extends BaseCitationProps {
   isLoading?: boolean;
   /**
    * Visual style variant for the citation.
-   * - `chip`: Pill/badge style with background color
-   * - `brackets`: [text✓] with square brackets (default)
+   * - `linter`: Inline text with semantic underlines (default)
+   * - `chip`: Pill/badge style with neutral gray background
+   * - `brackets`: [text✓] with square brackets
    * - `text`: Plain text, inherits parent styling
    * - `superscript`: Small raised text like footnotes¹
-   * - `minimal`: Compact text with indicator, truncated
-   * - `source`: ChatGPT-style source chip with name + count
-   * - `linter`: Inline text with semantic underlines (solid/dashed/wavy)
+   * - `badge`: ChatGPT-style source chip with favicon + count
    */
   variant?: CitationVariant;
   /**
@@ -299,13 +298,12 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `source`: Source name (e.g., "Wikipedia")
    *
    * Defaults based on variant:
+   * - `linter` → `anchorText`
    * - `chip` → `anchorText`
    * - `brackets` → `anchorText`
    * - `text` → `anchorText`
-   * - `linter` → `anchorText`
    * - `superscript` → `number`
-   * - `minimal` → `number`
-   * - `source` → `source`
+   * - `badge` → `source`
    */
   content?: CitationContent;
   /** Event handlers for citation interactions */
@@ -1975,10 +1973,10 @@ export const CitationComponent = forwardRef<
     }
 
     // Status classes for text styling
-    // Variants that display inline text (text, minimal, superscript, linter) need
+    // Variants that display inline text (text, superscript, linter) need
     // a default text color that works in both light and dark modes
     const needsDefaultTextColor =
-      variant === "text" || variant === "minimal" || variant === "superscript" || variant === "linter";
+      variant === "text" || variant === "superscript" || variant === "linter";
 
     const statusClasses = cn(
       // Default text color for inline variants (ensures dark mode compatibility)
