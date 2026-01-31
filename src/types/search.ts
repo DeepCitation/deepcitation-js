@@ -20,7 +20,18 @@ export type SearchMethod =
   | "adjacent_pages"
   | "expanded_window"
   | "regex_search"
-  | "first_word_fallback";
+  | "first_word_fallback"
+  | "keyspan_fallback";
+
+/** Type of variation applied to search phrases */
+export type VariationType =
+  | "exact"
+  | "normalized"
+  | "currency"
+  | "date"
+  | "numeric"
+  | "symbol"
+  | "accent";
 
 /**
  * Indicates which variation of the citation was matched.
@@ -92,4 +103,14 @@ export interface SearchAttempt {
 
   // Performance tracking
   durationMs?: number;
+
+  // Variation tracking
+  /** Type of variation applied to the search phrase */
+  variationType?: VariationType;
+
+  // Occurrence tracking (for ambiguity detection)
+  /** Number of occurrences found for this search phrase */
+  occurrencesFound?: number;
+  /** Whether the matched occurrence was the expected one (based on page/line context) */
+  matchedExpectedOccurrence?: boolean;
 }
