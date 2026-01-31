@@ -80,12 +80,20 @@ export interface SourceContextHeaderProps {
   verification?: Verification | null;
 }
 
+/** Maximum length for display name truncation in source headers */
+const MAX_SOURCE_DISPLAY_NAME_LENGTH = 40;
+
 /**
  * FaviconImage subcomponent with fallback handling.
  * Shows favicon from verification or citation, with Google Favicon fallback,
  * and falls back to GlobeIcon on error.
+ *
+ * Privacy Note: When no favicon URL is provided, this component uses
+ * Google's Favicon Service (google.com/s2/favicons) as a fallback.
+ * This makes an external request to Google with the domain being cited,
+ * which may have privacy implications for sensitive use cases.
  */
-function FaviconImage({
+export function FaviconImage({
   faviconUrl,
   domain,
   alt,
@@ -96,15 +104,14 @@ function FaviconImage({
 }) {
   const [hasError, setHasError] = useState(false);
 
-  // Build fallback chain for favicon URL
-  const effectiveFaviconUrl = useMemo(() => {
-    if (faviconUrl) return faviconUrl;
-    if (domain) {
-      // Use Google Favicon Service as fallback
-      return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
-    }
-    return null;
-  }, [faviconUrl, domain]);
+  // Build fallback chain for favicon URL (simple computation, no useMemo needed)
+  // Privacy: Google Favicon Service is used as fallback, which sends domain to Google
+  let effectiveFaviconUrl: string | null = null;
+  if (faviconUrl) {
+    effectiveFaviconUrl = faviconUrl;
+  } else if (domain) {
+    effectiveFaviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+  }
 
   // Show GlobeIcon if no URL or if image failed to load
   if (!effectiveFaviconUrl || hasError) {
@@ -118,7 +125,7 @@ function FaviconImage({
   return (
     <img
       src={effectiveFaviconUrl}
-      alt={alt}
+      alt={alt?.trim() || "Source"}
       className="w-4 h-4 flex-shrink-0 rounded-sm"
       onError={() => setHasError(true)}
       loading="lazy"
@@ -144,16 +151,20 @@ export function SourceContextHeader({ citation, verification }: SourceContextHea
     const title = verification?.verifiedTitle || citation.title;
 
     // Display text: prefer siteName, fall back to domain
-    const displayName = siteName || domain;
+    // Truncate to MAX_SOURCE_DISPLAY_NAME_LENGTH for consistency with document citations
+    const rawDisplayName = siteName || domain;
+    const displayName = rawDisplayName && rawDisplayName.length > MAX_SOURCE_DISPLAY_NAME_LENGTH
+      ? `${rawDisplayName.slice(0, MAX_SOURCE_DISPLAY_NAME_LENGTH)}...`
+      : rawDisplayName;
     // Show title if it's different from displayName and adds value
-    const showTitle = title && title !== displayName && title.length <= 60;
+    const showTitle = title && title !== rawDisplayName && title.length <= 60;
 
     return (
       <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
         <FaviconImage
           faviconUrl={faviconUrl}
           domain={domain}
-          alt={displayName || "Source"}
+          alt={rawDisplayName?.trim() || "Source"}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-1.5">

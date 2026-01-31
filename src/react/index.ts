@@ -163,6 +163,7 @@ export {
   QuoteBox,
   AttemptingToVerify,
   SourceContextHeader,
+  FaviconImage,
   type VerificationLogProps,
   type StatusHeaderProps,
   type QuoteBoxProps,
