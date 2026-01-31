@@ -1,0 +1,49 @@
+title: DeepCitation Documentation
+description: Verify AI citations against source documents. Visual proof for every claim.
+baseurl: "/deepcitation-js"
+url: "https://deepcitation.github.io"
+
+# Theme
+remote_theme: just-the-docs/just-the-docs@v0.8.2
+color_scheme: light
+
+# Aux links (top right)
+aux_links:
+  "GitHub": "https://github.com/DeepCitation/deepcitation-js"
+  "Get API Key": "https://deepcitation.com/usage"
+
+aux_links_new_tab: true
+
+# Search
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+
+# Footer
+footer_content: "DeepCitation is a product of FileLasso, Inc. &copy; 2026 FileLasso, Inc. All rights reserved."
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
+
+# Code highlighting
+highlighter: rouge
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-include-cache
+
+# Exclude files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - CitationComponent-PRD.md
