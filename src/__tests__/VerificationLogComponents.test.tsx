@@ -90,7 +90,33 @@ describe("AmbiguityWarning", () => {
       expect(container.textContent).toContain("This is a test note about ambiguity");
     });
 
-    it("truncates very long notes", () => {
+    it("truncates very long notes at word boundary", () => {
+      // Create a note with words that exceeds 200 chars
+      const longNote = "This is a test note that goes on and on. ".repeat(10); // ~410 chars
+      const ambiguity: AmbiguityInfo = {
+        totalOccurrences: 2,
+        occurrencesOnExpectedPage: 1,
+        confidence: "low",
+        note: longNote,
+      };
+
+      const { container } = render(<AmbiguityWarning ambiguity={ambiguity} />);
+      // Should be truncated and end with "..."
+      expect(container.textContent).toContain("...");
+      // Should not contain the full note
+      expect(container.textContent).not.toContain(longNote);
+      // Should end at a word boundary followed by "..." (space before ...)
+      // The truncated text should end with a complete word
+      const noteText = container.textContent || "";
+      const ellipsisIndex = noteText.lastIndexOf("...");
+      expect(ellipsisIndex).toBeGreaterThan(0);
+      // Character before "..." should be a word character (end of complete word)
+      const charBeforeEllipsis = noteText[ellipsisIndex - 1];
+      expect(charBeforeEllipsis).toMatch(/\w/);
+    });
+
+    it("truncates at 200 chars when no word boundary found after 150 chars", () => {
+      // Create a note with no spaces (worst case)
       const longNote = "A".repeat(250);
       const ambiguity: AmbiguityInfo = {
         totalOccurrences: 2,
@@ -100,7 +126,7 @@ describe("AmbiguityWarning", () => {
       };
 
       const { container } = render(<AmbiguityWarning ambiguity={ambiguity} />);
-      // Should be truncated to 200 chars + "..."
+      // Should be truncated to 200 chars + "..." when no word boundary
       expect(container.textContent).toContain("A".repeat(200) + "...");
       expect(container.textContent).not.toContain("A".repeat(201));
     });

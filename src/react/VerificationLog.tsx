@@ -336,10 +336,13 @@ interface AmbiguityWarningProps {
 export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
   if (ambiguity.totalOccurrences <= 1) return null;
 
-  // Truncate very long notes to prevent layout issues
-  const displayNote = ambiguity.note && ambiguity.note.length > 200
-    ? ambiguity.note.slice(0, 200) + "..."
-    : ambiguity.note;
+  // Truncate very long notes at word boundary to prevent layout issues
+  let displayNote = ambiguity.note;
+  if (displayNote && displayNote.length > 200) {
+    const truncated = displayNote.slice(0, 200);
+    const lastSpace = truncated.lastIndexOf(" ");
+    displayNote = (lastSpace > 150 ? truncated.slice(0, lastSpace) : truncated) + "...";
+  }
 
   return (
     <div
