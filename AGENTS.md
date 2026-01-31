@@ -359,7 +359,7 @@ import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
 - **As an indicator**: When documents have been uploaded and DeepCitation is processing
 - **In a features menu**: Alongside other options like "Web search", "Create image", etc.
 
-This is entirely optional and should only be added if it fits naturally with the application's existing UX patterns.
+This indicator increases user trust by signaling that AI-generated content will include verifiable citations. It's optional and should only be added if it fits naturally with the application's existing UX patterns.
 
 ---
 
