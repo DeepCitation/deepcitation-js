@@ -232,10 +232,10 @@ The `linter` variant displays citations as inline text with semantic underlines,
 
 | Status      | Underline Style | Background              | Familiar From                |
 |-------------|-----------------|-------------------------|------------------------------|
-| **Verified**| Solid           | Subtle green wash       | "Valid" indicator            |
+| **Verified**| Solid           | Hover: subtle green     | "Valid" indicator            |
 | **Partial** | Dashed          | Hover: subtle amber     | "Suggestion" style           |
 | **Not Found** | Wavy          | Hover: subtle red       | Spell-checker errors         |
-| **Pending** | Dotted          | Subtle gray             | Processing indicator         |
+| **Pending** | Dotted          | Hover: subtle gray      | Processing indicator         |
 
 ```tsx
 // Linter variant displays inline text with underlines
