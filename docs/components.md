@@ -43,6 +43,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
 ## Basic Usage
 
+{% raw %}
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
@@ -64,6 +65,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 />
 // Renders: [25% growth] with blue text
 ```
+{% endraw %}
 
 ---
 
@@ -153,6 +155,7 @@ Compact text with indicator, truncated. Best for blog posts, news articles.
 
 Source badge/pill showing name + count. Best for chat interfaces, conversational AI.
 
+{% raw %}
 ```tsx
 <CitationComponent
   citation={{ ...citation, title: "YC SAFE Agreement", domain: "ycombinator.com" }}
@@ -161,6 +164,7 @@ Source badge/pill showing name + count. Best for chat interfaces, conversational
   additionalCount={2}  // Shows "+2" suffix
 />
 ```
+{% endraw %}
 
 ### Indicator Only
 
@@ -180,6 +184,7 @@ Shows only the verification status indicator. Best for space-constrained UIs, ta
 
 Add interactivity with mouse and touch event handlers:
 
+{% raw %}
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 import { useState } from "react";
@@ -219,6 +224,7 @@ function MyComponent() {
   );
 }
 ```
+{% endraw %}
 
 ---
 

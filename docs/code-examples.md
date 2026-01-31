@@ -96,6 +96,7 @@ function VerifiedResponse({ citations, verifications }) {
 
 Choose from different display variants to match your UI design:
 
+{% raw %}
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
@@ -163,6 +164,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 />
 // Renders: [1] instead of [Revenue Growth]
 ```
+{% endraw %}
 
 ---
 
@@ -201,6 +203,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
 Add custom click and hover handlers for interactive citations:
 
+{% raw %}
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
@@ -221,6 +224,7 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
   }}
 />
 ```
+{% endraw %}
 
 ---
 

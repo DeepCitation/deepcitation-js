@@ -15,6 +15,7 @@ Examples showing how to integrate citations in different industry contexts.
 
 Using the default `brackets` variant for formal legal documents:
 
+{% raw %}
 ```tsx
 // Legal document with default brackets variant
 <p>
@@ -38,6 +39,7 @@ Using the default `brackets` variant for formal legal documents:
   , meaning creditors are paid first.
 </p>
 ```
+{% endraw %}
 
 **Result:** The YC Post-Money SAFE establishes a specific priority for payouts. In the event of dissolution, the instrument is [Junior to creditors], meaning creditors are paid first.
 
@@ -47,6 +49,7 @@ Using the default `brackets` variant for formal legal documents:
 
 Using `minimal` and `text` variants for clinical documentation:
 
+{% raw %}
 ```tsx
 // Medical notes using minimal and text variants
 <div>
@@ -95,6 +98,7 @@ Using `minimal` and `text` variants for clinical documentation:
   </p>
 </div>
 ```
+{% endraw %}
 
 {: .note }
 The `text` variant inherits styling from the parent element, making it ideal for clinical notes where citations should blend with the text.
@@ -105,6 +109,7 @@ The `text` variant inherits styling from the parent element, making it ideal for
 
 Showing how unverified citations (hallucinations) are visually distinct from verified ones:
 
+{% raw %}
 ```tsx
 // Hallucination detection - miss status shows strikethrough
 <CitationComponent
@@ -123,6 +128,7 @@ Showing how unverified citations (hallucinations) are visually distinct from ver
 />
 // Renders with strikethrough styling to indicate hallucination
 ```
+{% endraw %}
 
 {: .warning }
 The citation above was not found in the source document (hallucination). Notice the strikethrough styling indicating a miss.
@@ -135,6 +141,7 @@ This visual differentiation helps users immediately identify when an AI has made
 
 Using the `source` variant for source badge citations in financial reports:
 
+{% raw %}
 ```tsx
 <p>
   According to the SEC filing{" "}
@@ -159,6 +166,7 @@ Using the `source` variant for source badge citations in financial reports:
   , the insider plans to sell shares over the next quarter.
 </p>
 ```
+{% endraw %}
 
 ---
 

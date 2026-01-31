@@ -46,3 +46,4 @@ exclude:
   - Gemfile.lock
   - node_modules
   - vendor
+  - CitationComponent-PRD.md
