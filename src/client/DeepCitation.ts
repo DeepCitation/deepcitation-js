@@ -563,11 +563,13 @@ export class DeepCitation {
     // Sorting ensures consistent ordering for equivalent content
     // Selection is appended separately since generateCitationKey doesn't include it
     // Final key is hashed to prevent collisions from delimiter characters in user data
-    const citationKeys = Object.entries(citationMap)
-      .map(([mapKey, citation]) => {
+    // Note: We use Object.values, not Object.entries, because the map key (citation number)
+    // is just a display identifier - verification results depend only on citation content
+    const citationKeys = Object.values(citationMap)
+      .map((citation) => {
         const baseKey = generateCitationKey(citation);
         const selectionKey = citation.selection ? JSON.stringify(citation.selection) : "";
-        return `${mapKey}:${baseKey}:${selectionKey}`;
+        return `${baseKey}:${selectionKey}`;
       })
       .sort()
       .join("|");

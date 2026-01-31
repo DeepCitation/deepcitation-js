@@ -624,5 +624,42 @@ describe("DeepCitation Client", () => {
       // Different selection should result in separate API calls
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
+
+    it("uses same cache for identical citations with different numbering", async () => {
+      const client = new DeepCitation({ apiKey: "sk-dc-123" });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          verifications: { "1": { status: "found" } },
+        }),
+      } as Response);
+
+      // Same citation content, different map keys (numbering)
+      const citations1 = {
+        "1": {
+          fullPhrase: "test phrase",
+          anchorText: "test",
+          pageNumber: 1,
+          lineIds: [1, 2, 3],
+          attachmentId: "file_abc",
+        },
+      };
+      const citations2 = {
+        "42": {
+          fullPhrase: "test phrase",
+          anchorText: "test",
+          pageNumber: 1,
+          lineIds: [1, 2, 3],
+          attachmentId: "file_abc",
+        },
+      };
+
+      await client.verifyAttachment("file_abc", citations1);
+      await client.verifyAttachment("file_abc", citations2);
+
+      // Same content should hit cache - only one API call
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
   });
 });
