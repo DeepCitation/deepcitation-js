@@ -66,7 +66,7 @@ PDF, DOCX, XLSX, PPTX, HTML, Images (JPG, PNG, TIFF, WebP, HEIC), URLs
 
 - [Full Documentation](https://deepcitation.com/docs)
 - [Examples](./examples) – Basic verification, Next.js chat app
-- [Agent Guide](./AGENTS.md) – For AI coding assistants
+- [Integration Guide](./INTEGRATION.md) – For AI coding assistants
 
 ## License
 
