@@ -291,6 +291,54 @@ for (const [key, verification] of Object.entries(verifications)) {
 
 ---
 
+## Optional: "DeepCitation Enabled" Message Input Indicator
+
+If your chat application has a message input area with feature toggles or mode indicators (similar to Claude, ChatGPT, or Gemini), consider adding a "Deep Citation" toggle or indicator. This helps users understand that citation verification is active for their conversation.
+
+### Example implementations
+
+**Claude-style** (menu item with checkmark):
+```
+[ ] Deep Citation ✓
+```
+
+**ChatGPT-style** (dropdown option):
+```
+[ ] Deep Citation ✓
+```
+
+**Gemini-style** (toggle with icon):
+```
+[ ] Deep Citation ●
+```
+
+### Using the DeepCitation icon
+
+We provide an official `DeepCitationIcon` component that matches our branding - square brackets `[ ]` that represent citations:
+
+```tsx
+import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
+
+// In your message input toolbar/menu
+<button className="flex items-center gap-2">
+  <DeepCitationIcon className="size-4" />
+  <span>Deep Citation</span>
+  {isEnabled && <span className="text-green-500">✓</span>}
+</button>
+```
+
+The icon inherits `currentColor` and defaults to `1em` size, making it easy to integrate with your existing UI styles.
+
+### When to show this indicator
+
+- When the user has uploaded documents that will be processed with DeepCitation
+- When DeepCitation verification is enabled for the conversation
+- In a features menu where users can toggle citation verification on/off
+
+This is entirely optional and should be implemented in a way that fits your application's design language and user experience.
+
+---
+
 ## Step 6: Display Results
 
 ### React Components
