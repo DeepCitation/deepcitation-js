@@ -193,6 +193,7 @@ const CACHE_CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
 /**
  * SSR-safe singleton getter for the prefetch cache state.
  * Returns null during SSR (no window), returns the cache state on client.
+ * Also returns null in strict CSP/sandboxed environments where window access may throw.
  */
 function getPrefetchCacheState(): PrefetchCacheState | null {
   // SSR safety: only create cache on client
@@ -200,19 +201,25 @@ function getPrefetchCacheState(): PrefetchCacheState | null {
     return null;
   }
 
-  // Type-safe access to window with symbol key
-  // Cast through unknown since Window doesn't have a symbol index signature
-  const win = window as unknown as WindowWithPrefetchCache;
+  try {
+    // Type-safe access to window with symbol key
+    // Cast through unknown since Window doesn't have a symbol index signature
+    const win = window as unknown as WindowWithPrefetchCache;
 
-  // Use a Symbol property on window to ensure singleton across module reloads
-  // Symbol.for ensures the same symbol is used even after hot module reload
-  if (!win[PREFETCH_CACHE_KEY]) {
-    win[PREFETCH_CACHE_KEY] = {
-      cache: new Map<string, PrefetchCacheEntry>(),
-      lastCleanup: 0,
-    };
+    // Use a Symbol property on window to ensure singleton across module reloads
+    // Symbol.for ensures the same symbol is used even after hot module reload
+    if (!win[PREFETCH_CACHE_KEY]) {
+      win[PREFETCH_CACHE_KEY] = {
+        cache: new Map<string, PrefetchCacheEntry>(),
+        lastCleanup: 0,
+      };
+    }
+    return win[PREFETCH_CACHE_KEY]!;
+  } catch {
+    // In strict CSP or sandboxed environments, window property access may throw
+    // Gracefully degrade by disabling the prefetch cache
+    return null;
   }
-  return win[PREFETCH_CACHE_KEY]!;
 }
 
 /**

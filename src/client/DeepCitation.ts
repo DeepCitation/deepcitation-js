@@ -612,6 +612,19 @@ export class DeepCitation {
       return (await response.json()) as VerifyCitationsResponse;
     })();
 
+    // Force cleanup if cache is at or approaching the limit to prevent memory leaks
+    // This ensures we never exceed MAX_CACHE_SIZE even under heavy concurrent load
+    if (this.verifyCache.size >= this.MAX_CACHE_SIZE) {
+      // Sort by timestamp and remove oldest entries to make room
+      const entries = Array.from(this.verifyCache.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+      // Remove at least 10% of entries to avoid thrashing
+      const toRemove = Math.max(1, Math.floor(this.MAX_CACHE_SIZE * 0.1));
+      for (let i = 0; i < toRemove && i < entries.length; i++) {
+        this.verifyCache.delete(entries[i][0]);
+      }
+    }
+
     // Cache the promise
     this.verifyCache.set(cacheKey, { promise: fetchPromise, timestamp: Date.now() });
 

@@ -470,3 +470,178 @@ describe("Range Sampling Behavior", () => {
     expect(citation.lineIds!.length).toBe(50);
   });
 });
+
+describe("Concurrency Limiter", () => {
+  /**
+   * Creates a concurrency limiter that ensures no more than `limit` tasks run simultaneously.
+   * This is a copy of the implementation in DeepCitation.ts for direct unit testing.
+   */
+  function createConcurrencyLimiter(limit: number) {
+    let running = 0;
+    const queue: Array<() => void> = [];
+
+    const next = () => {
+      if (queue.length > 0 && running < limit) {
+        const fn = queue.shift()!;
+        fn();
+      }
+    };
+
+    return <T>(fn: () => Promise<T>): Promise<T> => {
+      return new Promise((resolve, reject) => {
+        const run = () => {
+          running++;
+          let promise: Promise<T>;
+          try {
+            promise = fn();
+          } catch (err) {
+            running--;
+            next();
+            reject(err);
+            return;
+          }
+          promise
+            .then(resolve)
+            .catch(reject)
+            .finally(() => {
+              running--;
+              next();
+            });
+        };
+
+        if (running < limit) {
+          run();
+        } else {
+          queue.push(run);
+        }
+      });
+    };
+  }
+
+  it("should never exceed the configured concurrency limit under heavy load", async () => {
+    const limit = 3;
+    const limiter = createConcurrencyLimiter(limit);
+
+    let currentlyRunning = 0;
+    let maxObserved = 0;
+    const violations: number[] = [];
+
+    // Create many concurrent tasks to stress test the limiter
+    const tasks = Array.from({ length: 50 }, (_, i) =>
+      limiter(async () => {
+        currentlyRunning++;
+        if (currentlyRunning > limit) {
+          violations.push(currentlyRunning);
+        }
+        maxObserved = Math.max(maxObserved, currentlyRunning);
+
+        // Simulate async work with variable delays
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 10 + 1));
+
+        currentlyRunning--;
+        return i;
+      })
+    );
+
+    const results = await Promise.all(tasks);
+
+    // Verify all tasks completed
+    expect(results.length).toBe(50);
+    expect(results).toEqual(expect.arrayContaining([...Array(50).keys()]));
+
+    // Critical assertion: concurrency limit was never exceeded
+    expect(violations).toEqual([]);
+    expect(maxObserved).toBeLessThanOrEqual(limit);
+  });
+
+  it("should handle synchronous throws without deadlocking", async () => {
+    const limit = 2;
+    const limiter = createConcurrencyLimiter(limit);
+    const completedTasks: number[] = [];
+
+    const tasks = [
+      // Task that throws synchronously
+      limiter(() => {
+        throw new Error("sync error");
+      }).catch(() => "caught-sync"),
+
+      // Normal tasks that should still complete
+      limiter(async () => {
+        await new Promise((r) => setTimeout(r, 5));
+        completedTasks.push(1);
+        return "task1";
+      }),
+      limiter(async () => {
+        await new Promise((r) => setTimeout(r, 5));
+        completedTasks.push(2);
+        return "task2";
+      }),
+      limiter(async () => {
+        await new Promise((r) => setTimeout(r, 5));
+        completedTasks.push(3);
+        return "task3";
+      }),
+    ];
+
+    const results = await Promise.all(tasks);
+
+    // Sync error should be caught
+    expect(results[0]).toBe("caught-sync");
+    // All other tasks should complete
+    expect(completedTasks.sort()).toEqual([1, 2, 3]);
+  });
+
+  it("should handle async rejections without deadlocking", async () => {
+    const limit = 2;
+    const limiter = createConcurrencyLimiter(limit);
+    const completedTasks: number[] = [];
+
+    const tasks = [
+      // Task that rejects asynchronously
+      limiter(async () => {
+        await new Promise((r) => setTimeout(r, 2));
+        throw new Error("async error");
+      }).catch(() => "caught-async"),
+
+      // Normal tasks that should still complete
+      limiter(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+        completedTasks.push(1);
+        return "task1";
+      }),
+      limiter(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+        completedTasks.push(2);
+        return "task2";
+      }),
+    ];
+
+    const results = await Promise.all(tasks);
+
+    // Async error should be caught
+    expect(results[0]).toBe("caught-async");
+    // All other tasks should complete
+    expect(completedTasks.sort()).toEqual([1, 2]);
+  });
+
+  it("should process all queued tasks even with limit of 1", async () => {
+    const limit = 1;
+    const limiter = createConcurrencyLimiter(limit);
+    const order: number[] = [];
+
+    const tasks = Array.from({ length: 10 }, (_, i) =>
+      limiter(async () => {
+        order.push(i);
+        await new Promise((r) => setTimeout(r, 1));
+        return i;
+      })
+    );
+
+    const results = await Promise.all(tasks);
+
+    // All tasks should complete
+    expect(results.length).toBe(10);
+    // Tasks should run in order (since limit is 1)
+    expect(order).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+});
