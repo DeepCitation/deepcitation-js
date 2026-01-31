@@ -136,16 +136,77 @@ export function usePrefetchImage() {
 }
 
 /**
- * Set to track already prefetched image sources.
- * Performance fix: prevents duplicate prefetch requests for the same image.
+ * Creates an SSR-safe prefetch cache that only exists on the client.
+ * Uses a factory function to avoid module-level state issues with SSR.
+ *
+ * The cache uses a Map with timestamps for LRU-style eviction to prevent memory leaks.
+ * Entries are evicted after 5 minutes of inactivity.
  */
-const prefetchedImages = new Set<string>();
+const PREFETCH_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_PREFETCH_CACHE_SIZE = 100; // Maximum cached entries
+
+interface PrefetchCacheEntry {
+  timestamp: number;
+}
+
+/**
+ * SSR-safe singleton getter for the prefetch cache.
+ * Returns null during SSR (no window), returns the cache on client.
+ */
+function getPrefetchCache(): Map<string, PrefetchCacheEntry> | null {
+  // SSR safety: only create cache on client
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  // Use a property on window to ensure singleton across module reloads
+  const globalKey = "__deepcitation_prefetch_cache__";
+  if (!(window as any)[globalKey]) {
+    (window as any)[globalKey] = new Map<string, PrefetchCacheEntry>();
+  }
+  return (window as any)[globalKey];
+}
+
+/**
+ * Cleans expired entries from the prefetch cache.
+ * Only runs periodically to avoid performance overhead.
+ */
+let lastCacheCleanup = 0;
+const CACHE_CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
+
+function cleanPrefetchCache(): void {
+  const cache = getPrefetchCache();
+  if (!cache) return;
+
+  const now = Date.now();
+  if (now - lastCacheCleanup < CACHE_CLEANUP_INTERVAL_MS) return;
+  lastCacheCleanup = now;
+
+  // Remove expired entries
+  for (const [key, entry] of cache.entries()) {
+    if (now - entry.timestamp > PREFETCH_CACHE_TTL_MS) {
+      cache.delete(key);
+    }
+  }
+
+  // If still too large, remove oldest entries
+  if (cache.size > MAX_PREFETCH_CACHE_SIZE) {
+    const entries = Array.from(cache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = entries.slice(0, cache.size - MAX_PREFETCH_CACHE_SIZE);
+    for (const [key] of toRemove) {
+      cache.delete(key);
+    }
+  }
+}
 
 /**
  * Prefetches multiple images concurrently with deduplication.
  * Useful for batch prefetching all verification images.
  *
  * Performance fix: Tracks already prefetched images to avoid redundant requests.
+ * SSR-safe: Returns immediately during server-side rendering.
+ * Memory-safe: Uses LRU-style eviction with TTL to prevent memory leaks.
  *
  * @example
  * ```tsx
@@ -159,20 +220,38 @@ const prefetchedImages = new Set<string>();
  * ```
  */
 export async function prefetchImages(srcs: string[]): Promise<void[]> {
-  // Filter out already prefetched images
-  const newSrcs = srcs.filter((src) => !prefetchedImages.has(src));
+  const cache = getPrefetchCache();
+
+  // SSR safety: return empty array during server-side rendering
+  if (!cache) {
+    return [];
+  }
+
+  // Periodically clean expired entries
+  cleanPrefetchCache();
+
+  const now = Date.now();
+
+  // Filter out already prefetched images (within TTL)
+  const newSrcs = srcs.filter((src) => {
+    const entry = cache.get(src);
+    if (entry && now - entry.timestamp < PREFETCH_CACHE_TTL_MS) {
+      return false; // Already prefetched and still valid
+    }
+    return true;
+  });
 
   const promises = newSrcs.map(
     (src) =>
       new Promise<void>((resolve, reject) => {
         // Mark as prefetched before starting to prevent concurrent duplicates
-        prefetchedImages.add(src);
+        cache.set(src, { timestamp: now });
 
         const img = new Image();
         img.onload = () => resolve();
         img.onerror = () => {
-          // Remove from set on error so it can be retried
-          prefetchedImages.delete(src);
+          // Remove from cache on error so it can be retried
+          cache.delete(src);
           reject();
         };
         img.src = src;
@@ -183,7 +262,11 @@ export async function prefetchImages(srcs: string[]): Promise<void[]> {
 
 /**
  * Clears the prefetch cache. Useful for testing or memory management.
+ * SSR-safe: No-op during server-side rendering.
  */
 export function clearPrefetchCache(): void {
-  prefetchedImages.clear();
+  const cache = getPrefetchCache();
+  if (cache) {
+    cache.clear();
+  }
 }

@@ -9,6 +9,21 @@ import {
 
 /**
  * Module-level compiled regexes for hot-path operations.
+ *
+ * IMPORTANT: These regexes are compiled once at module load time to avoid
+ * the overhead of regex compilation on every function call. This is a
+ * significant performance optimization for parsing-heavy workloads.
+ *
+ * Note on global flag (/g): Regexes with the global flag maintain internal
+ * state (lastIndex). To avoid state pollution across calls, we create fresh
+ * instances from these patterns when using methods like .match() with /g:
+ *
+ *   // SAFE: Create new instance from source pattern
+ *   const regex = new RegExp(CITE_TAG_REGEX.source, CITE_TAG_REGEX.flags);
+ *
+ *   // UNSAFE: Reusing global regex directly can cause issues
+ *   const matches = text.match(CITE_TAG_REGEX); // May skip matches!
+ *
  * Performance fix: avoids regex recompilation on every function call.
  */
 const PAGE_ID_FULL_REGEX = /page[\_a-zA-Z]*(\d+)_index_(\d+)/;
@@ -34,11 +49,18 @@ function getAttributeRegex(name: string): RegExp {
 const MAX_LINE_ID_RANGE_SIZE = 1000;
 
 /**
+ * Number of sample points to use when a range is too large to fully expand.
+ * Samples are evenly distributed across the range to maintain verification accuracy.
+ */
+const LARGE_RANGE_SAMPLE_COUNT = 50;
+
+/**
  * Parses a line_ids string that may contain individual numbers, ranges, or both.
  * Examples: "1,2,3", "5-10", "1,5-7,10", "20-20"
  *
  * Performance: Range expansion is limited to MAX_LINE_ID_RANGE_SIZE to prevent
- * quadratic memory allocation from malicious inputs.
+ * quadratic memory allocation from malicious inputs. For larger ranges, evenly
+ * distributed sample points are used to maintain verification accuracy.
  *
  * @param lineIdsString - The raw line_ids string (e.g., "1,5-7,10")
  * @returns Sorted array of unique line IDs, or undefined if empty/invalid
@@ -60,13 +82,22 @@ function parseLineIds(lineIdsString: string): number[] | undefined {
       const end = parseInt(endStr, 10);
 
       if (!isNaN(start) && !isNaN(end) && start <= end) {
-        // Performance fix: limit range size to prevent memory exhaustion
         const rangeSize = end - start + 1;
+
         if (rangeSize > MAX_LINE_ID_RANGE_SIZE) {
-          // For large ranges, just use start and end values
-          lineIds.push(start, end);
+          // Performance fix: use sampling for large ranges to maintain accuracy
+          // Include start and end, plus evenly distributed samples
+          lineIds.push(start);
+          const sampleCount = Math.min(LARGE_RANGE_SAMPLE_COUNT - 2, rangeSize - 2);
+          if (sampleCount > 0) {
+            const step = (end - start) / (sampleCount + 1);
+            for (let i = 1; i <= sampleCount; i++) {
+              lineIds.push(Math.round(start + step * i));
+            }
+          }
+          lineIds.push(end);
         } else {
-          // Expand the range
+          // Expand the full range
           for (let i = start; i <= end; i++) {
             lineIds.push(i);
           }

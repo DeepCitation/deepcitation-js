@@ -130,17 +130,31 @@ export class DeepCitation {
    */
   private readonly verifyCache = new Map<string, { promise: Promise<VerifyCitationsResponse>; timestamp: number }>();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly CACHE_CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
+  private lastCacheCleanup = 0;
 
   /**
    * Concurrency limiter for file uploads.
    */
-  private readonly uploadLimiter = createConcurrencyLimiter(DEFAULT_UPLOAD_CONCURRENCY);
+  private readonly uploadLimiter: ReturnType<typeof createConcurrencyLimiter>;
 
   /**
    * Create a new DeepCitation client instance.
    *
    * @param config - Configuration options
    * @throws Error if apiKey is not provided
+   *
+   * @example
+   * ```typescript
+   * // With default settings
+   * const dc = new DeepCitation({ apiKey: 'sk-dc-...' });
+   *
+   * // With custom concurrency limit
+   * const dc = new DeepCitation({
+   *   apiKey: 'sk-dc-...',
+   *   maxUploadConcurrency: 10, // Allow more concurrent uploads
+   * });
+   * ```
    */
   constructor(config: DeepCitationConfig) {
     if (!config.apiKey) {
@@ -150,13 +164,24 @@ export class DeepCitation {
     }
     this.apiKey = config.apiKey;
     this.apiUrl = config.apiUrl?.replace(/\/$/, "") || DEFAULT_API_URL;
+    this.uploadLimiter = createConcurrencyLimiter(
+      config.maxUploadConcurrency ?? DEFAULT_UPLOAD_CONCURRENCY
+    );
   }
 
   /**
    * Clean expired entries from the verify cache.
+   * Only runs periodically to avoid performance overhead on every call.
    */
   private cleanExpiredCache(): void {
     const now = Date.now();
+
+    // Only clean up periodically, not on every call
+    if (now - this.lastCacheCleanup < this.CACHE_CLEANUP_INTERVAL_MS) {
+      return;
+    }
+    this.lastCacheCleanup = now;
+
     for (const [key, entry] of this.verifyCache.entries()) {
       if (now - entry.timestamp > this.CACHE_TTL_MS) {
         this.verifyCache.delete(key);
@@ -493,9 +518,15 @@ export class DeepCitation {
     }
 
     // Performance fix: request deduplication
-    // Create cache key from attachmentId and sorted citation keys
-    const sortedCitationKeys = Object.keys(citationMap).sort().join(",");
-    const cacheKey = `${attachmentId}:${sortedCitationKeys}:${options?.outputImageFormat || "avif"}`;
+    // Create cache key from attachmentId and a hash of the citation content
+    // Using JSON.stringify ensures different citation content = different cache key
+    // Sorting keys ensures consistent ordering for equivalent content
+    const citationContent = JSON.stringify(
+      Object.entries(citationMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, citation]) => [key, citation.fullPhrase, citation.anchorText, citation.pageNumber])
+    );
+    const cacheKey = `${attachmentId}:${citationContent}:${options?.outputImageFormat || "avif"}`;
 
     // Clean expired cache entries periodically
     this.cleanExpiredCache();

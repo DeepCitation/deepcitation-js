@@ -490,8 +490,49 @@ describe("DeepCitation Client", () => {
       // All files should be uploaded
       expect(mockFetch).toHaveBeenCalledTimes(10);
 
-      // But max concurrent should be limited to 5 (DEFAULT_UPLOAD_CONCURRENCY)
-      expect(maxConcurrentCalls).toBeLessThanOrEqual(5);
+      // Max concurrent should be exactly 5 (DEFAULT_UPLOAD_CONCURRENCY)
+      // With 10 files and artificial delays, we should hit the limit
+      expect(maxConcurrentCalls).toBe(5);
+    });
+
+    it("respects custom concurrency limit from config", async () => {
+      const customLimit = 3;
+      const client = new DeepCitation({
+        apiKey: "sk-dc-123",
+        maxUploadConcurrency: customLimit,
+      });
+      let concurrentCalls = 0;
+      let maxConcurrentCalls = 0;
+
+      mockFetch.mockImplementation(async () => {
+        concurrentCalls++;
+        maxConcurrentCalls = Math.max(maxConcurrentCalls, concurrentCalls);
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        concurrentCalls--;
+        return {
+          ok: true,
+          json: async () => ({
+            attachmentId: `file_${Math.random()}`,
+            deepTextPromptPortion: "content",
+            metadata: { filename: "test.pdf", mimeType: "application/pdf", pageCount: 1, textByteSize: 50 },
+            status: "ready",
+          }),
+        } as Response;
+      });
+
+      const files = Array(10)
+        .fill(null)
+        .map((_, i) => ({
+          file: new Blob([`content ${i}`]),
+          filename: `file${i}.pdf`,
+        }));
+
+      await client.prepareFiles(files);
+
+      expect(mockFetch).toHaveBeenCalledTimes(10);
+      expect(maxConcurrentCalls).toBe(customLimit);
     });
   });
 });

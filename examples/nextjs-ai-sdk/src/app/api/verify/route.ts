@@ -14,11 +14,11 @@ if (!apiKey) {
   );
 }
 
-const dc = apiKey ? new DeepCitation({ apiKey }) : null;
+const deepcitation = apiKey ? new DeepCitation({ apiKey }) : null;
 
 export async function POST(req: NextRequest) {
   console.log("🚀 /api/verify called");
-  if (!dc) {
+  if (!deepcitation) {
     return NextResponse.json(
       {
         error: "DeepCitation API key not configured",
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     console.log("[verify] citations", citations);
 
     // Verify citations against the source document
-    const result = await dc.verifyAttachment(attachmentId, citations, {
+    const result = await deepcitation.verifyAttachment(attachmentId, citations, {
       outputImageFormat: "avif",
     });
 

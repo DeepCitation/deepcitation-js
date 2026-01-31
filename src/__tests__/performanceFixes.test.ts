@@ -294,18 +294,27 @@ describe("Range Size Limits for Line ID Parsing", () => {
     expect(citation.lineIds).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("should limit large ranges to prevent memory exhaustion", () => {
+  it("should use sampling for large ranges to maintain accuracy", () => {
     // This would previously create an array of 10000 elements
     const text = `<cite attachment_id='abc' full_phrase='Test' anchor_text='Test' line_ids='1-10000' />`;
     const result = getAllCitationsFromLlmOutput(text);
     const citation = Object.values(result)[0];
 
-    // Large range should be limited (only start and end values)
+    // Large range should be sampled (50 points max: start + 48 samples + end)
     expect(citation.lineIds).toBeDefined();
+    expect(citation.lineIds!.length).toBe(50); // Exactly 50 sampled points
     expect(citation.lineIds!.length).toBeLessThan(1000);
-    // Should contain at least the start and end values
-    expect(citation.lineIds).toContain(1);
-    expect(citation.lineIds).toContain(10000);
+
+    // Should contain start and end values
+    expect(citation.lineIds![0]).toBe(1);
+    expect(citation.lineIds![citation.lineIds!.length - 1]).toBe(10000);
+
+    // Samples should be evenly distributed
+    const samples = citation.lineIds!;
+    for (let i = 1; i < samples.length; i++) {
+      // Each sample should be greater than the previous (sorted)
+      expect(samples[i]).toBeGreaterThan(samples[i - 1]);
+    }
   });
 
   it("should handle mixed ranges and individual numbers", () => {
