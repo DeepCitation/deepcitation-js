@@ -293,49 +293,73 @@ for (const [key, verification] of Object.entries(verifications)) {
 
 ## Optional: "DeepCitation Enabled" Message Input Indicator
 
-If your chat application has a message input area with feature toggles or mode indicators (similar to Claude, ChatGPT, or Gemini), consider adding a "Deep Citation" toggle or indicator. This helps users understand that citation verification is active for their conversation.
+If your chat application has a message input area with feature toggles or mode indicators (similar to Claude, ChatGPT, or Gemini), consider adding a "Deep Citation" option. This helps users understand that citation verification is available or active for their conversation.
 
-### Example implementations
+**Important**: Match the existing UI patterns in the application. Use the same list item styles, icon sizes, active/enabled indicators, and interaction patterns already present in the message input area.
 
-**Claude-style** (menu item with checkmark):
-```
-[ ] Deep Citation ✓
-```
+### Implementation approaches
 
-**ChatGPT-style** (dropdown option):
-```
-[ ] Deep Citation ✓
-```
-
-**Gemini-style** (toggle with icon):
-```
-[ ] Deep Citation ●
-```
-
-### Using the DeepCitation icon
-
-We provide an official `DeepCitationIcon` component that matches our branding - square brackets `[ ]` that represent citations:
+#### If the app supports toggleable features
+Add "Deep Citation" as a toggleable option in the existing features menu/list:
 
 ```tsx
 import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
 
-// In your message input toolbar/menu
-<button className="flex items-center gap-2">
-  <DeepCitationIcon className="size-4" />
-  <span>Deep Citation</span>
-  {isEnabled && <span className="text-green-500">✓</span>}
-</button>
+// Match the app's existing menu item component and styles
+<MenuItem
+  icon={<DeepCitationIcon />}  // Our bracket icon [ ]
+  label="Deep Citation"
+  isActive={deepCitationEnabled}
+  onClick={() => setDeepCitationEnabled(!deepCitationEnabled)}
+/>
 ```
 
-The icon inherits `currentColor` and defaults to `1em` size, making it easy to integrate with your existing UI styles.
+#### If the app only shows read-only indicators
+Display "Deep Citation" as an enabled indicator when documents are uploaded:
 
-### When to show this indicator
+```tsx
+import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
 
-- When the user has uploaded documents that will be processed with DeepCitation
-- When DeepCitation verification is enabled for the conversation
-- In a features menu where users can toggle citation verification on/off
+// Show in the app's existing status/indicator area
+{hasUploadedDocuments && (
+  <StatusIndicator
+    icon={<DeepCitationIcon />}
+    label="Deep Citation"
+    status="enabled"  // Use the app's existing enabled/active styling
+  />
+)}
+```
 
-This is entirely optional and should be implemented in a way that fits your application's design language and user experience.
+### Matching the app's style
+
+Study the existing feature toggles/indicators in the message input and replicate:
+
+| Style Element | What to Match |
+|---------------|---------------|
+| **Icon size** | Same as other feature icons (e.g., `size-4`, `w-5 h-5`) |
+| **Label font** | Same font-size, weight, color as other menu items |
+| **Active state** | Checkmark ✓, filled dot ●, highlight color, or whatever the app uses |
+| **Hover/focus** | Same hover background, focus ring as other items |
+| **Spacing** | Same gap between icon and label, same padding |
+
+### Using the DeepCitationIcon
+
+We provide an official `DeepCitationIcon` component - square brackets `[ ]` that represent citations:
+
+```tsx
+import { DeepCitationIcon } from "@deepcitation/deepcitation-js/react";
+
+// The icon inherits currentColor and defaults to 1em size
+<DeepCitationIcon className="size-4" />
+```
+
+### When to show this
+
+- **As a toggle**: When the app allows users to enable/disable features
+- **As an indicator**: When documents have been uploaded and DeepCitation is processing
+- **In a features menu**: Alongside other options like "Web search", "Create image", etc.
+
+This is entirely optional and should only be added if it fits naturally with the application's existing UX patterns.
 
 ---
 
