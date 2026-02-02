@@ -238,15 +238,16 @@ body a,
   }
 }
 
-// Navigation links - no underline
-.nav-list-link,
+// Navigation links - no underline (high specificity to override .side-bar a)
+.side-bar .nav-list-link,
+.side-bar a.nav-list-link,
 .site-title,
 .aux-nav-list-item a,
 .breadcrumb-nav-list-item a {
-  text-decoration: none;
+  text-decoration: none !important;
 
   &:hover {
-    text-decoration: none;
+    text-decoration: none !important;
     color: var(--link-hover-color);
   }
 }
@@ -309,6 +310,15 @@ pre {
   background-color: var(--sidebar-color);
   border-right: 1px solid var(--border-color);
   font-size: 1rem; // 16px - larger for better readability
+
+  // Hide the invisible/redundant "Home" link at top of sidebar
+  // that pushes the logo out of view
+  .site-header {
+    // Remove any invisible link that's pushing content down
+    > a:not(.site-title) {
+      display: none !important;
+    }
+  }
 
   // Site title with logo
   .site-title {
@@ -474,15 +484,18 @@ blockquote {
   }
 }
 
-.main-content .btn-primary {
-  background-color: var(--btn-primary-bg);
-  border-color: var(--btn-primary-bg);
-  color: var(--btn-primary-text);
+.main-content .btn-primary,
+.btn-primary {
+  background-color: var(--btn-primary-bg) !important;
+  background-image: none !important; // Override Just the Docs purple gradient
+  border-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
 
   &:hover {
-    background-color: var(--btn-primary-bg-hover);
-    border-color: var(--btn-primary-bg-hover);
-    color: var(--btn-primary-text);
+    background-color: var(--btn-primary-bg-hover) !important;
+    background-image: none !important;
+    border-color: var(--btn-primary-bg-hover) !important;
+    color: var(--btn-primary-text) !important;
   }
 }
 
