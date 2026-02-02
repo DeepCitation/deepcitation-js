@@ -1907,6 +1907,28 @@ export const CitationComponent = forwardRef<
     const isHoveringRef = useRef(isHovering);
     isHoveringRef.current = isHovering;
 
+    // Ref for the popover content element (for mobile click-outside dismiss detection)
+    const popoverContentRef = useRef<HTMLDivElement>(null);
+
+    // Ref for the trigger element (for mobile click-outside dismiss detection)
+    // We need our own ref in addition to the forwarded ref to reliably check click targets
+    const triggerRef = useRef<HTMLSpanElement>(null);
+
+    // Merge the forwarded ref with our internal triggerRef
+    const setTriggerRef = useCallback(
+      (element: HTMLSpanElement | null) => {
+        // Set our internal ref
+        triggerRef.current = element;
+        // Forward to the external ref
+        if (typeof ref === "function") {
+          ref(element);
+        } else if (ref) {
+          ref.current = element;
+        }
+      },
+      [ref]
+    );
+
     const citationKey = useMemo(
       () => generateCitationKey(citation),
       [citation]
@@ -2221,6 +2243,41 @@ export const CitationComponent = forwardRef<
         }
       };
     }, []);
+
+    // Mobile click-outside dismiss handler
+    // On mobile, tapping outside the citation trigger or popover should dismiss the popover.
+    // Desktop relies on mouse leave events which don't exist on mobile.
+    useEffect(() => {
+      if (!isMobile || !isHovering) return;
+
+      const handleOutsideTouch = (e: TouchEvent) => {
+        const target = e.target as Node;
+
+        // Check if touch is inside the trigger element
+        if (triggerRef.current?.contains(target)) {
+          return;
+        }
+
+        // Check if touch is inside the popover content
+        if (popoverContentRef.current?.contains(target)) {
+          return;
+        }
+
+        // Touch is outside both - dismiss the popover
+        setIsHovering(false);
+      };
+
+      // Use touchstart with capture phase to detect touches before they're handled
+      document.addEventListener("touchstart", handleOutsideTouch, {
+        capture: true,
+      });
+
+      return () => {
+        document.removeEventListener("touchstart", handleOutsideTouch, {
+          capture: true,
+        });
+      };
+    }, [isMobile, isHovering]);
 
     // Touch start handler for mobile - captures popover state before touch ends.
     // Reads isHoveringRef.current (which is kept in sync with isHovering state above)
@@ -2703,11 +2760,12 @@ export const CitationComponent = forwardRef<
           {prefetchElement}
           <Popover open={isHovering}>
             <PopoverTrigger asChild>
-              <span ref={ref} {...triggerProps}>
+              <span ref={setTriggerRef} {...triggerProps}>
                 {renderCitationContent()}
               </span>
             </PopoverTrigger>
             <PopoverContent
+              ref={popoverContentRef}
               id={popoverId}
               side={popoverPosition === "bottom" ? "bottom" : "top"}
               onPointerDownOutside={(e: Event) => e.preventDefault()}
@@ -2727,7 +2785,7 @@ export const CitationComponent = forwardRef<
     return (
       <>
         {children}
-        <span ref={ref} {...triggerProps}>
+        <span ref={setTriggerRef} {...triggerProps}>
           {renderCitationContent()}
         </span>
         {imageOverlay}
