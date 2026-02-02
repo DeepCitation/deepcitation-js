@@ -1279,22 +1279,27 @@ describe("CitationComponent interactionMode", () => {
 
   describe("eager mode (default)", () => {
     it("shows popover on hover", async () => {
+      const onEnter = jest.fn();
+
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
           verification={verificationWithImage}
           interactionMode="eager"
+          behaviorConfig={{ onHover: { onEnter } }}
         />
       );
 
       const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
 
-      // Popover should appear on hover in eager mode
-      // Check for popover content (the image or verification details)
+      // In eager mode, hover should trigger onEnter (popover opens)
+      expect(onEnter).toHaveBeenCalledTimes(1);
+
+      // Popover content should be visible (Radix uses data-state="open")
       await waitFor(() => {
-        const popover = container.querySelector("[data-popover]");
-        expect(popover).toBeInTheDocument();
+        const popoverContent = container.querySelector('[data-state="open"]');
+        expect(popoverContent).toBeInTheDocument();
       });
     });
 
@@ -1358,16 +1363,22 @@ describe("CitationComponent interactionMode", () => {
 
   describe("relaxed mode", () => {
     it("does NOT show popover on hover", async () => {
+      const onEnter = jest.fn();
+
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
           verification={verificationWithImage}
           interactionMode="relaxed"
+          behaviorConfig={{ onHover: { onEnter } }}
         />
       );
 
       const citation = container.querySelector("[data-citation-id]");
       fireEvent.mouseEnter(citation!);
+
+      // In relaxed mode, onEnter callback still fires but popover doesn't open
+      expect(onEnter).toHaveBeenCalledTimes(1);
 
       // Give time for popover to appear if it would
       await act(async () => {
@@ -1375,11 +1386,11 @@ describe("CitationComponent interactionMode", () => {
       });
 
       // Popover should NOT appear on hover in relaxed mode
-      const popover = container.querySelector("[data-popover]");
-      expect(popover).not.toBeInTheDocument();
+      const popoverContent = container.querySelector('[data-state="open"]');
+      expect(popoverContent).not.toBeInTheDocument();
     });
 
-    it("shows popover on first click (not image overlay)", () => {
+    it("shows popover on first click (not image overlay)", async () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
@@ -1394,9 +1405,11 @@ describe("CitationComponent interactionMode", () => {
       // First click should NOT open image overlay
       expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
-      // Popover should be shown instead (hover state activated)
-      const popover = container.querySelector("[data-popover]");
-      expect(popover).toBeInTheDocument();
+      // Popover should be shown instead (hover state activated via click)
+      await waitFor(() => {
+        const popoverContent = container.querySelector('[data-state="open"]');
+        expect(popoverContent).toBeInTheDocument();
+      });
     });
 
     it("opens image overlay on second click", () => {
@@ -1503,7 +1516,7 @@ describe("CitationComponent interactionMode", () => {
       expect(onClick).toHaveBeenCalledTimes(2);
     });
 
-    it("works correctly without image (no zoom needed)", () => {
+    it("works correctly without image (no zoom needed)", async () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
@@ -1516,15 +1529,18 @@ describe("CitationComponent interactionMode", () => {
 
       // First click - shows popover
       fireEvent.click(citation!);
-      const popover = container.querySelector("[data-popover]");
-      expect(popover).toBeInTheDocument();
 
-      // Second click - no image to zoom, popover stays
+      await waitFor(() => {
+        const popoverContent = container.querySelector('[data-state="open"]');
+        expect(popoverContent).toBeInTheDocument();
+      });
+
+      // Second click - no image to zoom, popover stays open
       fireEvent.click(citation!);
       expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
-    it("applies hover styles but not popover on hover", () => {
+    it("applies hover styles but not popover on hover", async () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
@@ -1541,9 +1557,14 @@ describe("CitationComponent interactionMode", () => {
       // The citation element should still be interactable
       expect(citation).toBeInTheDocument();
 
-      // But popover should NOT appear
-      const popover = container.querySelector("[data-popover]");
-      expect(popover).not.toBeInTheDocument();
+      // Give time for popover to appear if it would
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      // But popover should NOT appear in relaxed mode on hover
+      const popoverContent = container.querySelector('[data-state="open"]');
+      expect(popoverContent).not.toBeInTheDocument();
     });
   });
 
