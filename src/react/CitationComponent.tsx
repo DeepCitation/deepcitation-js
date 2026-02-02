@@ -1397,8 +1397,6 @@ function DefaultPopoverContent({
             </>
           ) : (
             // Combined header with anchor text and quote (for not_found or partial without image)
-            // When humanizingMessage exists, skip anchorText in header to avoid redundancy
-            // (humanizingMessage already contains the anchor text in quotes)
             // For URL citations, skip StatusHeader since SourceContextHeader already shows status
             <>
               {!isUrlCitation(citation) && (
@@ -1406,11 +1404,11 @@ function DefaultPopoverContent({
                   status={searchStatus}
                   foundPage={foundPage}
                   expectedPage={expectedPage ?? undefined}
-                  anchorText={humanizingMessage ? undefined : anchorText}
+                  anchorText={anchorText}
                   hidePageBadge
                 />
               )}
-              {/* Humanizing message replaces the anchor text display */}
+              {/* Humanizing message provides additional context below the header */}
               {humanizingMessage && (
                 <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{humanizingMessage}</div>
               )}
