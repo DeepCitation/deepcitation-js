@@ -218,7 +218,8 @@ export function SourceContextHeader({ citation, verification, status }: SourceCo
       : null;
 
     // Determine if we need to show the second line (status + phrase)
-    // Show for all resolved states, or during pending/loading if we have a miss (isMiss)
+    // Show for all resolved states, or if status indicates a miss
+    const isMiss = status === "not_found";
     const isResolved = status && status !== "pending" && status !== "loading";
     const showSecondLine = isResolved || isMiss;
 
