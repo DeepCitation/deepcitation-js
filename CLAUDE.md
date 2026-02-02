@@ -55,6 +55,9 @@ import type {
   CitationType,
   Verification,
   SourceType,
+  // Record types (object dictionaries, NOT arrays)
+  CitationRecord,      // Record<string, Citation> - for getAllCitationsFromLlmOutput return type
+  VerificationRecord,  // Record<string, Verification> - for verification results
 } from "@deepcitation/deepcitation-js";
 ```
 
@@ -176,9 +179,16 @@ const responseFormat = {
 ### 3. Extract & Verify Citations
 ```typescript
 import { getAllCitationsFromLlmOutput } from "@deepcitation/deepcitation-js";
+import type { CitationRecord } from "@deepcitation/deepcitation-js";
 
-const citations = getAllCitationsFromLlmOutput(llmResponse);
-// Returns: { "1": { pageNumber: 1, lineId: "1", fullPhrase: "..." }, ... }
+const citations: CitationRecord = getAllCitationsFromLlmOutput(llmResponse);
+// Returns CitationRecord (an OBJECT keyed by citationKey hash, NOT an array):
+// { "a1b2c3d4e5f67890": { pageNumber: 1, lineIds: [5], fullPhrase: "..." }, ... }
+
+// Check if empty (NOT .length!)
+if (Object.keys(citations).length === 0) {
+  console.log("No citations found");
+}
 ```
 
 ```bash
