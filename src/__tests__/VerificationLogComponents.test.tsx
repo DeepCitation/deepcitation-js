@@ -440,15 +440,16 @@ describe("SourceContextHeader", () => {
     it("uses truncated attachmentId when no label provided", () => {
       const citation: Citation = {
         type: "document",
-        attachmentId: "abc123def456ghij7890",
+        // Use 45-char attachmentId to trigger truncation (limit is 40 chars)
+        attachmentId: "abc123def456ghij7890klmn1234567890opqr12345",
         pageNumber: 1,
         fullPhrase: "Test phrase",
       };
 
       const { container } = render(<SourceContextHeader citation={citation} />);
 
-      // Should show first 16 chars of attachmentId + "..."
-      expect(container.textContent).toContain("abc123def456ghij...");
+      // Should show first 40 chars of attachmentId + "..."
+      expect(container.textContent).toContain("abc123def456ghij7890klmn1234567890opqr1234...");
     });
 
     it("returns null when no meaningful display info available", () => {
