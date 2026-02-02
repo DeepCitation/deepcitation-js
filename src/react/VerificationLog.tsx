@@ -633,7 +633,11 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
     : SpinnerIcon;
 
   // Combined layout: status + anchor text + quote in one header section
-  const hasCombinedContent = anchorText || fullPhrase;
+  // Only use combined layout when:
+  // 1. We have a fullPhrase (quote box content), OR
+  // 2. We have headerText AND anchorText (shows status text + anchor text below)
+  // When headerText is empty (verified states), we want inline display instead
+  const hasCombinedContent = fullPhrase || (headerText && anchorText);
 
   if (hasCombinedContent) {
     const displayAnchorText = anchorText || fullPhrase?.slice(0, MAX_ANCHOR_TEXT_PREVIEW_LENGTH) || "";
