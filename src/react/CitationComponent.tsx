@@ -695,12 +695,11 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 // =============================================================================
 
 /** Verified indicator - green checkmark for exact matches (subscript-positioned)
- * Note: Uses inline style for text-decoration:none to prevent inheriting line-through from parent.
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
  */
 const VerifiedIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-green-600 dark:text-green-500"
-    style={{ textDecoration: "none" }}
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-green-600 dark:text-green-500 [text-decoration:none]"
     aria-hidden="true"
   >
     <CheckIcon />
@@ -708,12 +707,11 @@ const VerifiedIndicator = () => (
 );
 
 /** Partial match indicator - amber checkmark for partial/relocated matches (subscript-positioned)
- * Note: Uses inline style for text-decoration:none to prevent inheriting line-through from parent.
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
  */
 const PartialIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-600 dark:text-amber-500"
-    style={{ textDecoration: "none" }}
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-600 dark:text-amber-500 [text-decoration:none]"
     aria-hidden="true"
   >
     <CheckIcon />
@@ -721,12 +719,11 @@ const PartialIndicator = () => (
 );
 
 /** Pending indicator - spinner for loading state (subscript-positioned)
- * Note: Uses inline style for text-decoration:none to prevent inheriting line-through from parent.
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
  */
 const PendingIndicator = () => (
   <span
-    className="inline-flex relative ml-1 top-[0.15em] size-2.5 animate-spin text-gray-400 dark:text-gray-500"
-    style={{ textDecoration: "none" }}
+    className="inline-flex relative ml-1 top-[0.15em] size-2.5 animate-spin text-gray-400 dark:text-gray-500 [text-decoration:none]"
     aria-hidden="true"
   >
     <SpinnerIcon />
@@ -737,12 +734,11 @@ const PendingIndicator = () => (
  * Uses a simple X mark instead of X-in-circle for better visibility at small sizes.
  * The SVG icon's thin stroke (2px) was hard to see when rendered at 10px.
  * aria-hidden="true" because parent component already conveys verification status.
- * Note: Uses inline style for text-decoration:none to prevent inheriting line-through from parent.
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
  */
 const MissIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-red-500 dark:text-red-400 font-bold text-[0.7em]"
-    style={{ textDecoration: "none" }}
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-red-500 dark:text-red-400 font-bold text-[0.7em] [text-decoration:none]"
     aria-hidden="true"
   >
     ✕
