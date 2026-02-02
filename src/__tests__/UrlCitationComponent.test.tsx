@@ -238,6 +238,59 @@ describe("UrlCitationComponent", () => {
         expect.any(Object)
       );
     });
+
+    it("shows external link icon on hover when openUrlOnClick is false", () => {
+      const { getByRole, queryByLabelText } = render(
+        <UrlCitationComponent urlMeta={createUrlMeta()} />
+      );
+
+      const button = getByRole("button");
+
+      // No external link icon initially
+      expect(queryByLabelText("Open in new tab")).not.toBeInTheDocument();
+
+      // Shows on hover
+      fireEvent.mouseEnter(button);
+      expect(queryByLabelText("Open in new tab")).toBeInTheDocument();
+
+      // Hides on leave
+      fireEvent.mouseLeave(button);
+      expect(queryByLabelText("Open in new tab")).not.toBeInTheDocument();
+    });
+
+    it("does not show external link icon on hover when openUrlOnClick is true", () => {
+      const { getByRole, queryByLabelText } = render(
+        <UrlCitationComponent urlMeta={createUrlMeta()} openUrlOnClick={true} />
+      );
+
+      const button = getByRole("button");
+
+      // Hover should not show external link (clicking opens URL directly)
+      fireEvent.mouseEnter(button);
+      expect(queryByLabelText("Open in new tab")).not.toBeInTheDocument();
+    });
+
+    it("opens URL via external link button when clicked", () => {
+      const windowOpenSpy = jest.spyOn(window, "open").mockImplementation(() => null);
+
+      const { getByRole, getByLabelText } = render(
+        <UrlCitationComponent urlMeta={createUrlMeta()} />
+      );
+
+      const button = getByRole("button");
+      fireEvent.mouseEnter(button);
+
+      const externalLinkButton = getByLabelText("Open in new tab");
+      fireEvent.click(externalLinkButton);
+
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        "https://stripe.com/docs/api/v2/citations",
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+      windowOpenSpy.mockRestore();
+    });
   });
 
   describe("display options", () => {

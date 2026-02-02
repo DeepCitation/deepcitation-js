@@ -358,8 +358,8 @@ test.describe("Popover Showcase - Interactive Hover", () => {
     const popover = page.locator('[data-radix-popper-content-wrapper]');
     await expect(popover).toBeVisible();
 
-    // The popover should contain "Not found" text
-    await expect(popover).toContainText("Not found");
+    // The popover should contain the "couldn't find" message (status text was removed, icon is self-explanatory)
+    await expect(popover).toContainText("couldn't find");
   });
 
   test("hovering pending citation shows loading state", async ({ mount, page }) => {
@@ -603,7 +603,7 @@ test.describe("Popover Showcase - Interactive Hover Dark Mode", () => {
     const popover = page.locator('[data-radix-popper-content-wrapper]');
     await expect(popover).toBeVisible();
 
-    // The popover should contain "Not found" text
-    await expect(popover).toContainText("Not found");
+    // The popover should contain the "couldn't find" message (status text was removed, icon is self-explanatory)
+    await expect(popover).toContainText("couldn't find");
   });
 });

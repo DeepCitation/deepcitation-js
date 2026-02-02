@@ -1,4 +1,4 @@
-import React, { forwardRef, memo, useCallback, useMemo } from "react";
+import React, { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { UrlCitationMeta, UrlCitationProps, UrlFetchStatus } from "./types.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
@@ -211,7 +211,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     ref,
   ) => {
     // Track hover state for external link indicator
-    const [isHovered, setIsHovered] = React.useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     // Default showExternalLinkOnHover to true when openUrlOnClick is false
     const shouldShowExternalLink = showExternalLinkOnHover ?? !openUrlOnClick;
@@ -280,12 +280,12 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     const handleMouseEnter = useCallback(() => {
       setIsHovered(true);
       eventHandlers?.onMouseEnter?.(citation, citationKey);
-    }, [eventHandlers, citation, citationKey]);
+    }, [eventHandlers, citation, citationKey, setIsHovered]);
 
     const handleMouseLeave = useCallback(() => {
       setIsHovered(false);
       eventHandlers?.onMouseLeave?.(citation, citationKey);
-    }, [eventHandlers, citation, citationKey]);
+    }, [eventHandlers, citation, citationKey, setIsHovered]);
 
     // External link button that appears on hover
     const renderExternalLinkButton = () => {
