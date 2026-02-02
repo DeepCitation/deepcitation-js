@@ -209,6 +209,38 @@ export interface BaseCitationProps {
   content?: CitationContent;
   /** Fallback display text when citation anchorText is empty */
   fallbackDisplay?: string | null;
+  /**
+   * Override label for the source displayed in popovers/headers.
+   *
+   * For document citations, this overrides the filename/label shown in the
+   * popover header (e.g., "Annual Report 2024" instead of "document.pdf").
+   *
+   * For URL citations, this overrides the URL/domain display
+   * (e.g., "Company Blog" instead of "example.com/blog/post").
+   *
+   * When not provided, the component falls back to:
+   * - Document citations: `verification.label` or nothing
+   * - URL citations: `citation.url` or `citation.domain`
+   *
+   * @example Document citation with custom label
+   * ```tsx
+   * <CitationComponent
+   *   citation={citation}
+   *   verification={verification}
+   *   sourceLabel="Q4 Financial Report"
+   * />
+   * ```
+   *
+   * @example URL citation with custom label
+   * ```tsx
+   * <CitationComponent
+   *   citation={urlCitation}
+   *   verification={verification}
+   *   sourceLabel="Official Documentation"
+   * />
+   * ```
+   */
+  sourceLabel?: string;
 }
 
 /**

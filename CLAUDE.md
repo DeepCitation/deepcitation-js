@@ -401,7 +401,39 @@ interface CitationBehaviorConfig {
 }
 ```
 
-### 9. URL-Based Citations
+### 9. Custom Source Labels
+
+The `sourceLabel` prop allows you to override the filename or URL title displayed in the citation popover header. This is useful when you want to show a more user-friendly name instead of the raw filename or URL.
+
+```tsx
+import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+
+// Document citation with custom source label
+// Shows "Q4 Financial Report" instead of "report_q4_2024_final.pdf"
+<CitationComponent
+  citation={documentCitation}
+  verification={verification}
+  sourceLabel="Q4 Financial Report"
+/>
+
+// URL citation with custom source label
+// Shows "Official API Documentation" instead of "developer.example.com/api/v2/reference"
+<CitationComponent
+  citation={urlCitation}
+  verification={verification}
+  sourceLabel="Official API Documentation"
+/>
+```
+
+**Behavior by citation type:**
+- **Document citations**: The `sourceLabel` overrides `verification.label` (the filename) in the popover header
+- **URL citations**: The `sourceLabel` overrides the URL/domain display in the popover header
+
+When `sourceLabel` is not provided, the component falls back to:
+- Document citations: Shows `verification.label` if available, otherwise nothing
+- URL citations: Shows the URL domain/path
+
+### 10. URL-Based Citations
 
 The Citation interface uses a `type` field to discriminate between document and URL citations:
 
@@ -471,7 +503,7 @@ const urlCitation: Citation = {
 - `imageUrl` - OG/social image URL
 - `accessedAt` - When the source was accessed
 
-### 10. UrlCitationComponent
+### 11. UrlCitationComponent
 
 Display URL citations with a clean badge design, status indicators, and favicon:
 
@@ -537,7 +569,7 @@ type UrlFetchStatus =
   | "unknown";
 ```
 
-### 11. SourcesListComponent
+### 12. SourcesListComponent
 
 Display all sources in a panel/drawer at the end of content (like Gemini's "Sources" section):
 
