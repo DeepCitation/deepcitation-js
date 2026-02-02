@@ -1,0 +1,314 @@
+// DeepCitation Brand Customizations for just-the-docs
+// ====================================================
+
+// -----------------------------------------------------
+// Brand Colors - Slate Scale
+// -----------------------------------------------------
+$slate-50:  #F8FAFC;
+$slate-100: #F1F5F9;
+$slate-200: #E2E8F0;
+$slate-300: #CBD5E1;
+$slate-400: #94A3B8;
+$slate-500: #64748B;
+$slate-600: #475569;
+$slate-700: #334155;
+$slate-800: #1E293B;
+$slate-900: #0F172A;
+$slate-950: #020617;
+
+// Primary brand colors
+$brand-blue-light: #005595;
+$brand-blue-dark: #38BDF8;
+
+// Status colors
+$status-red: #EF4444;
+$status-green: #22C55E;
+$status-amber: #F59E0B;
+
+// -----------------------------------------------------
+// Light Mode (Default)
+// -----------------------------------------------------
+:root {
+  // Core colors
+  --body-background-color: #FFFFFF;
+  --sidebar-color: #{$slate-50};
+  --body-heading-color: #{$slate-900};
+  --body-text-color: #{$slate-600};
+  --link-color: #{$brand-blue-light};
+
+  // Code
+  --code-background-color: #{$slate-50};
+  --code-border-color: #{$slate-200};
+
+  // Borders & UI
+  --border-color: #{$slate-200};
+  --search-background-color: #{$slate-50};
+  --search-result-preview-color: #{$slate-600};
+
+  // Selection
+  --selection-bg: #{$brand-blue-light};
+  --selection-text: #FFFFFF;
+
+  // Status
+  --status-red: #{$status-red};
+  --status-green: #{$status-green};
+  --status-amber: #{$status-amber};
+}
+
+// -----------------------------------------------------
+// Dark Mode (System Preference)
+// -----------------------------------------------------
+@media (prefers-color-scheme: dark) {
+  :root[data-color-mode="auto"] {
+    // Core colors
+    --body-background-color: #{$slate-950};
+    --sidebar-color: #{$slate-900};
+    --body-heading-color: #{$slate-100};
+    --body-text-color: #{$slate-400};
+    --link-color: #{$brand-blue-dark};
+
+    // Code
+    --code-background-color: #{$slate-900};
+    --code-border-color: #{$slate-800};
+
+    // Borders & UI
+    --border-color: #{$slate-800};
+    --search-background-color: #{$slate-900};
+    --search-result-preview-color: #{$slate-400};
+
+    // Selection
+    --selection-bg: #{$brand-blue-dark};
+    --selection-text: #{$slate-950};
+  }
+}
+
+// Manual dark mode override
+:root[data-color-mode="dark"] {
+  --body-background-color: #{$slate-950};
+  --sidebar-color: #{$slate-900};
+  --body-heading-color: #{$slate-100};
+  --body-text-color: #{$slate-400};
+  --link-color: #{$brand-blue-dark};
+  --code-background-color: #{$slate-900};
+  --code-border-color: #{$slate-800};
+  --border-color: #{$slate-800};
+  --search-background-color: #{$slate-900};
+  --search-result-preview-color: #{$slate-400};
+  --selection-bg: #{$brand-blue-dark};
+  --selection-text: #{$slate-950};
+}
+
+// -----------------------------------------------------
+// Typography
+// -----------------------------------------------------
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--body-text-color);
+  background-color: var(--body-background-color);
+}
+
+h1, h2, h3, h4, h5, h6,
+.site-title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  color: var(--body-heading-color);
+}
+
+code, pre, .highlight {
+  font-family: 'Source Code Pro', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+// -----------------------------------------------------
+// Sharp Corners (0-4px max)
+// -----------------------------------------------------
+.btn,
+.search-input,
+.search-results,
+code,
+pre,
+.code-example,
+.nav-list-link,
+table,
+th,
+td,
+blockquote,
+.side-bar {
+  border-radius: 4px !important;
+}
+
+// Fully sharp elements
+.search-result,
+.search-result-title {
+  border-radius: 0 !important;
+}
+
+// -----------------------------------------------------
+// "The Spark" - 75ms ease-out transitions
+// -----------------------------------------------------
+a,
+.btn,
+.nav-list-link,
+.search-input,
+code {
+  transition: all 75ms ease-out;
+}
+
+// -----------------------------------------------------
+// Links
+// -----------------------------------------------------
+a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+// Navigation links - no underline
+.nav-list-link,
+.site-title,
+.aux-nav-list-item a,
+.breadcrumb-nav-list-item a {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+// -----------------------------------------------------
+// Code Blocks
+// -----------------------------------------------------
+code {
+  background-color: var(--code-background-color);
+  border: 1px solid var(--code-border-color);
+  padding: 0.125em 0.25em;
+}
+
+pre {
+  background-color: var(--code-background-color);
+  border: 1px solid var(--code-border-color);
+
+  code {
+    border: none;
+    padding: 0;
+  }
+}
+
+// Syntax highlighting adjustments for dark mode
+@media (prefers-color-scheme: dark) {
+  :root[data-color-mode="auto"] {
+    .highlight {
+      background-color: var(--code-background-color);
+    }
+  }
+}
+
+:root[data-color-mode="dark"] {
+  .highlight {
+    background-color: var(--code-background-color);
+  }
+}
+
+// -----------------------------------------------------
+// Text Selection
+// -----------------------------------------------------
+::selection {
+  background-color: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+::-moz-selection {
+  background-color: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+// -----------------------------------------------------
+// Sidebar
+// -----------------------------------------------------
+.side-bar {
+  background-color: var(--sidebar-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.site-title {
+  color: var(--body-heading-color);
+}
+
+// -----------------------------------------------------
+// Search
+// -----------------------------------------------------
+.search-input {
+  background-color: var(--search-background-color);
+  border: 1px solid var(--border-color);
+
+  &:focus {
+    border-color: var(--link-color);
+    box-shadow: 0 0 0 2px rgba(0, 85, 149, 0.1);
+  }
+}
+
+.search-results {
+  background-color: var(--body-background-color);
+  border: 1px solid var(--border-color);
+}
+
+// -----------------------------------------------------
+// Tables
+// -----------------------------------------------------
+table {
+  border: 1px solid var(--border-color);
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+}
+
+th {
+  background-color: var(--sidebar-color);
+}
+
+// -----------------------------------------------------
+// Blockquotes
+// -----------------------------------------------------
+blockquote {
+  border-left: 4px solid var(--link-color);
+  background-color: var(--sidebar-color);
+  color: var(--body-text-color);
+}
+
+// -----------------------------------------------------
+// Buttons
+// -----------------------------------------------------
+.btn {
+  border: 1px solid var(--border-color);
+  background-color: var(--body-background-color);
+  color: var(--body-text-color);
+
+  &:hover {
+    background-color: var(--sidebar-color);
+    border-color: var(--link-color);
+  }
+}
+
+.btn-primary {
+  background-color: var(--link-color);
+  border-color: var(--link-color);
+  color: #FFFFFF;
+
+  &:hover {
+    background-color: #{$brand-blue-light};
+    opacity: 0.9;
+  }
+}
+
+// -----------------------------------------------------
+// Footer
+// -----------------------------------------------------
+.site-footer {
+  border-top: 1px solid var(--border-color);
+  color: var(--body-text-color);
+}
