@@ -20,10 +20,6 @@ $slate-950: #020617;
 $brand-blue-light: #005595;
 $brand-blue-dark: #38BDF8;
 
-// Status colors
-$status-red: #EF4444;
-$status-green: #22C55E;
-$status-amber: #F59E0B;
 
 // -----------------------------------------------------
 // Dark Mode Mixin (DRY)
@@ -38,9 +34,9 @@ $status-amber: #F59E0B;
   --code-border-color: #{$slate-800};
   --border-color: #{$slate-800};
   --search-background-color: #{$slate-900};
-  --search-result-preview-color: #{$slate-400};
   --selection-bg: #{$brand-blue-dark};
   --selection-text: #{$slate-950};
+  --focus-ring-color: rgba(56, 189, 248, 0.2); // #38BDF8 at 20%
 }
 
 // -----------------------------------------------------
@@ -61,16 +57,13 @@ $status-amber: #F59E0B;
   // Borders & UI
   --border-color: #{$slate-200};
   --search-background-color: #{$slate-50};
-  --search-result-preview-color: #{$slate-600};
 
   // Selection
   --selection-bg: #{$brand-blue-light};
   --selection-text: #FFFFFF;
 
-  // Status
-  --status-red: #{$status-red};
-  --status-green: #{$status-green};
-  --status-amber: #{$status-amber};
+  // Focus ring (10% opacity of link color)
+  --focus-ring-color: rgba(0, 85, 149, 0.15);
 }
 
 // -----------------------------------------------------
@@ -252,7 +245,7 @@ pre {
 
   &:focus {
     border-color: var(--link-color);
-    box-shadow: 0 0 0 2px rgba(0, 85, 149, 0.1);
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
   }
 }
 
