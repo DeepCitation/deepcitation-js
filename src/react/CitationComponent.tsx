@@ -948,6 +948,11 @@ interface PopoverContentProps {
   onPhrasesExpandChange?: (expanded: boolean) => void;
   /** Whether the popover is currently visible (used for Activity prefetching) */
   isVisible?: boolean;
+  /**
+   * Override label for the source display in the popover header.
+   * See BaseCitationProps.sourceLabel for details.
+   */
+  sourceLabel?: string;
 }
 
 /**
@@ -1178,6 +1183,7 @@ function DefaultPopoverContent({
   isPhrasesExpanded,
   onPhrasesExpandChange,
   isVisible = true,
+  sourceLabel,
 }: PopoverContentProps) {
   const hasImage = verification?.verificationImageBase64;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
@@ -1215,7 +1221,7 @@ function DefaultPopoverContent({
     return (
       <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md min-w-[200px] max-w-[400px]">
         {/* Source context header */}
-        <SourceContextHeader citation={citation} verification={verification} status={searchStatus} />
+        <SourceContextHeader citation={citation} verification={verification} status={searchStatus} sourceLabel={sourceLabel} />
         <div className="p-3 flex flex-col gap-2">
           <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
             <span className="inline-block relative top-[0.1em] mr-1.5 size-2 animate-spin">
@@ -1247,7 +1253,7 @@ function DefaultPopoverContent({
           style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}
         >
           {/* Source context header */}
-          <SourceContextHeader citation={citation} verification={verification} status={searchStatus} />
+          <SourceContextHeader citation={citation} verification={verification} status={searchStatus} sourceLabel={sourceLabel} />
           {/* Status header with anchorText - skip for URL citations since SourceContextHeader already shows status icon + URL */}
           {!isUrlCitation(citation) && (
             <StatusHeader
@@ -1326,7 +1332,7 @@ function DefaultPopoverContent({
           style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}
         >
           {/* Source context header */}
-          <SourceContextHeader citation={citation} verification={verification} status={searchStatus} />
+          <SourceContextHeader citation={citation} verification={verification} status={searchStatus} sourceLabel={sourceLabel} />
           {/* Content area: Image with simple header, OR combined status header with quote */}
           {hasImage && verification ? (
             // Show simple header + image (for partial matches that have images)
@@ -1436,7 +1442,7 @@ function DefaultPopoverContent({
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md min-w-[180px] max-w-full">
       {/* Source context header */}
-      <SourceContextHeader citation={citation} verification={verification} status={searchStatus} />
+      <SourceContextHeader citation={citation} verification={verification} status={searchStatus} sourceLabel={sourceLabel} />
       <div className="p-3 flex flex-col gap-2">
         {statusLabel && (
           <span
@@ -1636,6 +1642,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       additionalCount,
       faviconUrl,
       showIndicator = true,
+      sourceLabel,
     },
     ref,
   ) => {
@@ -2220,6 +2227,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             isPhrasesExpanded={isPhrasesExpanded}
             onPhrasesExpandChange={setIsPhrasesExpanded}
             isVisible={isHovering}
+            sourceLabel={sourceLabel}
             onImageClick={() => {
               if (verification?.verificationImageBase64) {
                 setExpandedImageSrc(verification.verificationImageBase64);
@@ -2241,6 +2249,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               status={status}
               isLoading={false}
               isVisible={false}
+              sourceLabel={sourceLabel}
               onImageClick={() => {}}
             />
           </CitationErrorBoundary>

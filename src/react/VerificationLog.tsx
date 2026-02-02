@@ -85,6 +85,16 @@ export interface SourceContextHeaderProps {
   verification?: Verification | null;
   /** Search status (used to derive URL fetch status for URL citations) */
   status?: SearchStatus | null;
+  /**
+   * Override label for the source display.
+   *
+   * For document citations, this overrides the filename/label shown
+   * (e.g., "Annual Report 2024" instead of "document.pdf").
+   *
+   * For URL citations, this overrides the URL display text
+   * (e.g., "Company Blog" instead of "example.com/blog/post").
+   */
+  sourceLabel?: string;
 }
 
 /** Maximum length for display name truncation in source headers */
@@ -180,8 +190,10 @@ export function FaviconImage({
  *
  * For URL citations: Shows status icon + UrlCitationComponent badge + page/line info (all in one row)
  * For Document citations: Shows document icon + label/attachmentId + page/line info
+ *
+ * The `sourceLabel` prop allows overriding the displayed source name for both types.
  */
-export function SourceContextHeader({ citation, verification, status }: SourceContextHeaderProps) {
+export function SourceContextHeader({ citation, verification, status, sourceLabel }: SourceContextHeaderProps) {
   const isUrl = isUrlCitation(citation);
 
   if (isUrl) {
@@ -233,6 +245,8 @@ export function SourceContextHeader({ citation, verification, status }: SourceCo
               urlMeta={{
                 url,
                 domain,
+                // When sourceLabel is provided, use it as the title override for display
+                title: sourceLabel,
                 faviconUrl,
                 fetchStatus: urlFetchStatus,
               }}
@@ -240,6 +254,8 @@ export function SourceContextHeader({ citation, verification, status }: SourceCo
               maxDisplayLength={MAX_URL_DISPLAY_LENGTH}
               preventTooltips={true}
               showStatusIndicator={false}
+              // When sourceLabel is provided, prefer showing the title (custom label)
+              showTitle={!!sourceLabel}
               className="!bg-transparent !px-0 !py-0 hover:!bg-transparent"
             />
           </div>
@@ -269,7 +285,8 @@ export function SourceContextHeader({ citation, verification, status }: SourceCo
 
   // Document citation: show document icon + label + page/line info (right-aligned)
   // Note: attachmentId should never be shown to users - only show the label if available
-  const label = verification?.label;
+  // sourceLabel takes precedence over verification.label
+  const label = sourceLabel || verification?.label;
   const pageNumber = verification?.verifiedPageNumber ?? citation.pageNumber;
   const lineIds = verification?.verifiedLineIds ?? citation.lineIds;
 
