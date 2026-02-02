@@ -3,6 +3,24 @@ import type { Verification } from "../types/verification.js";
 import type { SearchStatus } from "../types/search.js";
 
 /**
+ * Interaction mode for citation components.
+ *
+ * Controls the eagerness of popover/tooltip interactions:
+ *
+ * | Mode       | Hover Behavior               | Click Behavior                         |
+ * |------------|------------------------------|----------------------------------------|
+ * | `eager`    | Shows popover on hover       | Opens image/expands details            |
+ * | `relaxed`  | Style hover only (no popover)| Opens popover (not image)              |
+ *
+ * Mobile behavior (touch devices):
+ * - `eager`: 1st tap → popover, 2nd tap → image/expand
+ * - `relaxed`: 1st tap → popover, 2nd tap → image/expand (same as eager on mobile)
+ *
+ * @default "eager"
+ */
+export type CitationInteractionMode = "eager" | "relaxed";
+
+/**
  * Visual style variants for citations.
  *
  * | Variant       | Description                                    |
@@ -287,16 +305,9 @@ export interface UrlCitationProps extends Omit<BaseCitationProps, "citation" | "
   /** Whether to show the status indicator (checkmark, warning, spinner). Defaults to true. */
   showStatusIndicator?: boolean;
   /**
-   * Whether clicking the component opens the URL directly.
-   * When false (default), clicking triggers eventHandlers.onClick but doesn't navigate.
-   * An external link icon appears on hover so users can explicitly open the URL.
-   * @default false
-   */
-  openUrlOnClick?: boolean;
-  /**
    * Whether to show an external link icon on hover.
-   * Visible when openUrlOnClick is false so users know how to open the URL.
-   * @default true when openUrlOnClick is false
+   * The icon serves as a visual hint that clicking will open the URL.
+   * @default true
    */
   showExternalLinkOnHover?: boolean;
 }

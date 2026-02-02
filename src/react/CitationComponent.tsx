@@ -17,6 +17,7 @@ import type {
   CitationBehaviorContext,
   CitationContent,
   CitationEventHandlers,
+  CitationInteractionMode,
   CitationRenderProps,
   CitationVariant,
 } from "./types.js";
@@ -27,7 +28,7 @@ import { SplitDiffDisplay, getContextualStatusMessage } from "./SplitDiffDisplay
 import { SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
 
 // Re-export types for convenience
-export type { CitationVariant, CitationContent } from "./types.js";
+export type { CitationVariant, CitationContent, CitationInteractionMode } from "./types.js";
 
 /**
  * Module-level handler for hiding broken images.
@@ -290,6 +291,18 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `badge` → `source`
    */
   content?: CitationContent;
+  /**
+   * Controls the eagerness of popover/tooltip interactions.
+   *
+   * - `eager` (default): Hover shows popover immediately, click opens image/expands details
+   * - `relaxed`: Hover only applies style effects (no popover), click opens popover
+   *
+   * Use `relaxed` mode when citations are densely packed and hover popovers
+   * would be distracting. Users can still access verification details by clicking.
+   *
+   * @default "eager"
+   */
+  interactionMode?: CitationInteractionMode;
   /** Event handlers for citation interactions */
   eventHandlers?: CitationEventHandlers;
   /**
@@ -709,18 +722,18 @@ const PendingIndicator = () => (
   </span>
 );
 
-/** Miss indicator - red X for not found (subscript-positioned)
- * Uses a simple X mark instead of X-in-circle for better visibility at small sizes.
- * The SVG icon's thin stroke (2px) was hard to see when rendered at 10px.
+/** Miss indicator - red X in circle for not found (centered, not subscript)
+ * Uses XCircleIcon for consistent visual language with URL citations.
+ * Centered vertically (not subscript) to make the "not found" status more prominent.
  * aria-hidden="true" because parent component already conveys verification status.
  * Uses [text-decoration:none] to prevent inheriting line-through from parent.
  */
 const MissIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-red-500 dark:text-red-400 font-bold text-[0.7em] [text-decoration:none]"
+    className="inline-flex items-center ml-0.5 size-2.5 text-red-500 dark:text-red-400 [text-decoration:none]"
     aria-hidden="true"
   >
-    ✕
+    <XCircleIcon />
   </span>
 );
 
@@ -1390,8 +1403,6 @@ function DefaultPopoverContent({
             </>
           ) : (
             // Combined header with anchor text and quote (for not_found or partial without image)
-            // When humanizingMessage exists, skip anchorText in header to avoid redundancy
-            // (humanizingMessage already contains the anchor text in quotes)
             // For URL citations, skip StatusHeader since SourceContextHeader already shows status
             <>
               {!isUrlCitation(citation) && (
@@ -1399,11 +1410,11 @@ function DefaultPopoverContent({
                   status={searchStatus}
                   foundPage={foundPage}
                   expectedPage={expectedPage ?? undefined}
-                  anchorText={humanizingMessage ? undefined : anchorText}
+                  anchorText={anchorText}
                   hidePageBadge
                 />
               )}
-              {/* Humanizing message replaces the anchor text display */}
+              {/* Humanizing message provides additional context below the header */}
               {humanizingMessage && (
                 <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{humanizingMessage}</div>
               )}
@@ -1632,6 +1643,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       isLoading = false,
       variant = "linter",
       content: contentProp,
+      interactionMode = "eager",
       eventHandlers,
       behaviorConfig,
       isMobile: isMobileProp,
@@ -1646,6 +1658,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     },
     ref,
   ) => {
+    // Relaxed mode: hover doesn't open popover, click opens popover instead of image
+    const isRelaxedMode = interactionMode === "relaxed";
     // Get overlay context for blocking hover when any image overlay is open
     const { isAnyOverlayOpen } = useCitationOverlay();
 
@@ -1785,7 +1799,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           return;
         }
 
-        // Default: click opens image if available, or toggles phrases expansion for miss state
+        // Relaxed mode: first click shows popover, second click opens image
+        // (similar to mobile behavior but for desktop)
+        if (isRelaxedMode && !isHovering) {
+          // First click in relaxed mode: open popover
+          setIsHovering(true);
+          return;
+        }
+
+        // Default (eager mode, or second click in relaxed mode):
+        // Click opens image if available, or toggles phrases expansion for miss state
         if (verification?.verificationImageBase64) {
           setExpandedImageSrc(verification.verificationImageBase64);
         } else if (isMiss) {
@@ -1801,6 +1824,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         verification?.verificationImageBase64,
         isMiss,
         isMobile,
+        isRelaxedMode,
+        isHovering,
         getBehaviorContext,
         applyBehaviorActions,
       ],
@@ -1824,7 +1849,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       if (isAnyOverlayOpen) return;
 
       cancelHoverCloseTimeout();
-      setIsHovering(true);
+      // In relaxed mode, don't show popover on hover (only style hover effects)
+      if (!isRelaxedMode) {
+        setIsHovering(true);
+      }
       if (behaviorConfig?.onHover?.onEnter) {
         behaviorConfig.onHover.onEnter(getBehaviorContext());
       }
@@ -1837,6 +1865,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       getBehaviorContext,
       cancelHoverCloseTimeout,
       isAnyOverlayOpen,
+      isRelaxedMode,
     ]);
 
     const handleMouseLeave = useCallback(() => {
@@ -2175,13 +2204,26 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     // Shared trigger element props
     // All variants use status-aware hover colors (green/amber/red/gray)
+    // Cursor changes based on mode:
+    // - eager mode with image: cursor-zoom-in (click zooms)
+    // - relaxed mode without popover open: cursor-pointer (click opens popover)
+    // - relaxed mode with popover open + image: cursor-zoom-in (click zooms)
+    const cursorClass = isRelaxedMode
+      ? isHovering && hasImage
+        ? "cursor-zoom-in"
+        : "cursor-pointer"
+      : hasImage
+        ? "cursor-zoom-in"
+        : "cursor-pointer";
+
     const triggerProps = {
       "data-citation-id": citationKey,
       "data-citation-instance": citationInstanceId,
       className: cn(
-        "relative inline-flex items-baseline cursor-pointer",
+        "relative inline-flex items-baseline",
         "px-0.5 -mx-0.5 rounded-sm",
         "transition-all duration-[50ms]",
+        cursorClass,
         // Status-aware hover for all variants (10% opacity; linter includes these in its own classes too)
         variant !== "linter" &&
           isVerified &&
@@ -2196,7 +2238,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         variant !== "linter" &&
           (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
           "hover:bg-gray-500/10 dark:hover:bg-gray-400/10",
-        hasImage && "cursor-zoom-in",
         className,
       ),
       onMouseEnter: handleMouseEnter,

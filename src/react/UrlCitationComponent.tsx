@@ -2,7 +2,7 @@ import React, { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { UrlCitationMeta, UrlCitationProps, UrlFetchStatus } from "./types.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
-import { CheckIcon, CloseIcon, LockIcon, ExternalLinkIcon } from "./icons.js";
+import { CheckIcon, XCircleIcon, LockIcon, ExternalLinkIcon } from "./icons.js";
 
 /**
  * Module-level handler for hiding broken favicon images.
@@ -61,10 +61,10 @@ const STATUS_ICONS: Record<UrlFetchStatus, { icon: string; label: string; classN
   blocked_paywall: { icon: "$", label: "Paywall", className: "text-amber-600 dark:text-amber-500" },
   blocked_geo: { icon: "⊕", label: "Geo-restricted", className: "text-amber-600 dark:text-amber-500" },
   blocked_rate_limit: { icon: "◔", label: "Rate limited", className: "text-amber-600 dark:text-amber-500" },
-  error_timeout: { icon: "◷", label: "Timed out", className: "text-red-500 dark:text-red-400" },
-  error_not_found: { icon: "404", label: "Not found", className: "text-red-500 dark:text-red-400" },
-  error_server: { icon: "⚠", label: "Server error", className: "text-red-500 dark:text-red-400" },
-  error_network: { icon: "↯", label: "Network error", className: "text-red-500 dark:text-red-400" },
+  error_timeout: { icon: "⊗", label: "Timed out", className: "text-red-500 dark:text-red-400" },
+  error_not_found: { icon: "⊗", label: "Not found", className: "text-red-500 dark:text-red-400" },
+  error_server: { icon: "⊗", label: "Server error", className: "text-red-500 dark:text-red-400" },
+  error_network: { icon: "⊗", label: "Network error", className: "text-red-500 dark:text-red-400" },
   unknown: { icon: "?", label: "Unknown status", className: "text-gray-400 dark:text-gray-500" },
 };
 
@@ -205,8 +205,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
       eventHandlers,
       preventTooltips = false,
       showStatusIndicator = true,
-      openUrlOnClick = false, // Default: don't open URL on click
-      showExternalLinkOnHover, // Default is derived below
+      showExternalLinkOnHover = true, // Show external link icon on hover by default
     },
     ref,
   ) => {
@@ -214,8 +213,8 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     const [isHovered, setIsHovered] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
-    // Default showExternalLinkOnHover to true when openUrlOnClick is false
-    const shouldShowExternalLink = showExternalLinkOnHover ?? !openUrlOnClick;
+    // Show external link when either hovered or focused
+    const shouldShowExternalLink = showExternalLinkOnHover;
     // Show external link when either hovered or focused (keyboard accessibility)
     const showExternalLinkIndicator = shouldShowExternalLink && (isHovered || isFocused);
     const { url, domain: providedDomain, title, fetchStatus, faviconUrl, errorMessage } = urlMeta;
@@ -260,14 +259,15 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
         e.stopPropagation();
         if (onUrlClick) {
           onUrlClick(url, e);
-        } else if (openUrlOnClick) {
-          // Only open URL directly if explicitly enabled
+        } else {
+          // Always open the URL when clicking on the component
+          // The external link icon is just a visual hint, not a separate action
           window.open(url, "_blank", "noopener,noreferrer");
         }
         // Always call the event handler so parent can handle (e.g., show popover)
         eventHandlers?.onClick?.(citation, citationKey, e);
       },
-      [onUrlClick, url, eventHandlers, citation, citationKey, openUrlOnClick],
+      [onUrlClick, url, eventHandlers, citation, citationKey],
     );
 
     // Handler specifically for the external link icon
@@ -309,13 +309,14 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
           e.stopPropagation();
           if (onUrlClick) {
             onUrlClick(url, e);
-          } else if (openUrlOnClick) {
+          } else {
+            // Always open the URL when activating via keyboard
             window.open(url, "_blank", "noopener,noreferrer");
           }
           eventHandlers?.onClick?.(citation, citationKey, e);
         }
       },
-      [onUrlClick, url, eventHandlers, citation, citationKey, openUrlOnClick],
+      [onUrlClick, url, eventHandlers, citation, citationKey],
     );
 
     // External link button that appears on hover or focus
@@ -365,15 +366,18 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
         );
       }
 
-      // Error: X icon
+      // Error: X in circle icon (centered, not subscript)
       if (isError) {
         if (renderBlockedIndicator) {
           return renderBlockedIndicator(fetchStatus, errorMessage);
         }
         return (
-          <StatusIconWrapper className="text-red-500 dark:text-red-400" aria-label={statusInfo.label}>
-            <CloseIcon className="w-full h-full" />
-          </StatusIconWrapper>
+          <span
+            className="w-3 h-3 flex-shrink-0 flex items-center justify-center text-red-500 dark:text-red-400"
+            aria-label={statusInfo.label}
+          >
+            <XCircleIcon className="w-full h-full" />
+          </span>
         );
       }
 
@@ -391,7 +395,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
 
     // Badge variant (default) - matches the HTML design
     // Changed from <a> to <span> to prevent default link behavior
-    // Click is handled by handleClick which respects openUrlOnClick prop
+    // Click always opens URL in new tab
     if (variant === "badge") {
       return (
         <>
