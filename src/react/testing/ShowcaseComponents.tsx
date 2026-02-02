@@ -863,6 +863,7 @@ export function PopoverShowcase() {
                   status={status}
                   foundPage={foundPage}
                   expectedPage={expectedPage}
+                  anchorText="revenue increased by 15%"
                 />
                 <div className="p-2 text-xs text-gray-600 dark:text-gray-400">
                   {description}
