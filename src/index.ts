@@ -56,6 +56,9 @@ export type {
   // Source types for categorization
   SourceType,
   SourceMeta,
+  // Record types (object dictionaries, NOT arrays)
+  CitationRecord,
+  VerificationRecord,
 } from "./types/citation.js";
 
 export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";

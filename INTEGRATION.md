@@ -456,15 +456,18 @@ return result.toTextStreamResponse();
 
 ```typescript
 import { getAllCitationsFromLlmOutput, extractVisibleText } from "@deepcitation/deepcitation-js";
+import type { CitationRecord } from "@deepcitation/deepcitation-js";
 
 // Parse citations from LLM output
-const citations = getAllCitationsFromLlmOutput(llmOutput);
+// IMPORTANT: Returns CitationRecord (an object/dictionary), NOT an array!
+const citations: CitationRecord = getAllCitationsFromLlmOutput(llmOutput);
 
 // CRITICAL: Extract visible text to strip the citation data block
 // The citation data block is for parsing only - users should NEVER see it
 const visibleText = extractVisibleText(llmOutput);
 
 // Use visibleText for display, not the raw llmOutput
+// NOTE: Use Object.keys().length, NOT citations.length (it's not an array!)
 console.log(`Found ${Object.keys(citations).length} citations`);
 ```
 
@@ -473,6 +476,7 @@ console.log(`Found ${Object.keys(citations).length} citations`);
 ```typescript
 const citations = getAllCitationsFromLlmOutput(llmOutput);
 
+// IMPORTANT: citations is an object, NOT an array. Use Object.keys().length!
 if (Object.keys(citations).length === 0) {
   // LLM didn't include citations - display response as-is
   const visibleText = extractVisibleText(llmOutput);
@@ -1023,6 +1027,9 @@ import type {
   Verification,                    // Verification result from API
   FileDataPart,                    // Result from prepareFiles()
   CitationPosition,                // 'append' | 'prepend' | 'wrap'
+  // Record types (object dictionaries, NOT arrays!)
+  CitationRecord,                  // Record<string, Citation> - returned by getAllCitationsFromLlmOutput
+  VerificationRecord,              // Record<string, Verification> - returned by verify methods
 } from "@deepcitation/deepcitation-js";
 ```
 

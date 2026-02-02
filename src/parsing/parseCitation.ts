@@ -1,5 +1,9 @@
 import { type Verification } from "../types/verification.js";
-import { type Citation, type CitationStatus } from "../types/citation.js";
+import {
+  type Citation,
+  type CitationStatus,
+  type CitationRecord,
+} from "../types/citation.js";
 import { normalizeCitations } from "./normalizeCitation.js";
 import { generateCitationKey } from "../react/utils.js";
 import {
@@ -387,8 +391,8 @@ const isJsonCitationFormat = (data: any): data is Citation[] | Citation => {
  */
 const extractJsonCitations = (
   data: Citation[] | Citation
-): { [key: string]: Citation } => {
-  const citations: { [key: string]: Citation } = {};
+): CitationRecord => {
+  const citations: CitationRecord = {};
   const items = Array.isArray(data) ? data : [data];
 
   let citationNumber = 1;
@@ -452,7 +456,7 @@ const findJsonCitationsInObject = (obj: any, found: Citation[], depth = 0): void
 /**
  * Extracts XML citations from text using <cite ... /> tags.
  */
-const extractXmlCitations = (text: string): { [key: string]: Citation } => {
+const extractXmlCitations = (text: string): CitationRecord => {
   const normalizedText = normalizeCitations(text);
 
   // Find all <cite ... /> tags
@@ -462,7 +466,7 @@ const extractXmlCitations = (text: string): { [key: string]: Citation } => {
 
   if (!matches || matches.length === 0) return {};
 
-  const citations: { [key: string]: Citation } = {};
+  const citations: CitationRecord = {};
   const citationCounterRef = { current: 1 };
 
   for (const match of matches) {
@@ -484,15 +488,38 @@ const extractXmlCitations = (text: string): { [key: string]: Citation } => {
  * - Traverses the object looking for `citation` or `citations` properties matching JSON format
  * - Also stringifies the object to find embedded XML citations in markdown content
  *
+ * **IMPORTANT**: Returns an OBJECT (CitationRecord), NOT an array.
+ * To check if empty, use `Object.keys(citations).length === 0`.
+ *
  * @param llmOutput - The LLM output (string or object)
- * @returns Dictionary of parsed Citation objects keyed by citation key
+ * @returns CitationRecord - An object/dictionary of citations keyed by citationKey (a 16-char hash).
+ *          This is NOT an array. Use Object.keys(), Object.values(), or Object.entries() to iterate.
+ *
+ * @example
+ * ```typescript
+ * const citations = getAllCitationsFromLlmOutput(llmResponse);
+ * // Returns: { "a1b2c3d4e5f67890": { pageNumber: 1, ... }, "f9e8d7c6b5a43210": { ... } }
+ *
+ * // Check if empty (NOT citations.length!)
+ * if (Object.keys(citations).length === 0) {
+ *   console.log("No citations found");
+ * }
+ *
+ * // Get count
+ * const count = Object.keys(citations).length;
+ *
+ * // Iterate
+ * for (const [citationKey, citation] of Object.entries(citations)) {
+ *   console.log(`Citation ${citationKey}:`, citation.fullPhrase);
+ * }
+ * ```
  */
 export const getAllCitationsFromLlmOutput = (
-  llmOutput: any
-): { [key: string]: Citation } => {
+  llmOutput: unknown
+): CitationRecord => {
   if (!llmOutput) return {};
 
-  const citations: { [key: string]: Citation } = {};
+  const citations: CitationRecord = {};
 
   if (typeof llmOutput === "object") {
     // Check if the root object itself is JSON citation format
@@ -533,8 +560,8 @@ export const getAllCitationsFromLlmOutput = (
  * This is useful when you have citations from multiple files and need to
  * verify them against their respective attachments.
  *
- * @param citations - Array of Citation objects or a dictionary of citations
- * @returns Map of attachmentId to dictionary of citations from that file
+ * @param citations - Array of Citation objects or a CitationRecord (object/dictionary)
+ * @returns Map of attachmentId to CitationRecord (dictionary of citations from that file)
  *
  * @example
  * ```typescript
@@ -549,9 +576,9 @@ export const getAllCitationsFromLlmOutput = (
  * ```
  */
 export function groupCitationsByAttachmentId(
-  citations: Citation[] | { [key: string]: Citation }
-): Map<string, { [key: string]: Citation }> {
-  const grouped = new Map<string, { [key: string]: Citation }>();
+  citations: Citation[] | CitationRecord
+): Map<string, CitationRecord> {
+  const grouped = new Map<string, CitationRecord>();
 
   // Normalize input to entries
   const entries: [string, Citation][] = Array.isArray(citations)
@@ -575,8 +602,8 @@ export function groupCitationsByAttachmentId(
  * Groups citations by their attachmentId and returns as a plain object.
  * Alternative to groupCitationsByAttachmentId that returns a plain object instead of a Map.
  *
- * @param citations - Array of Citation objects or a dictionary of citations
- * @returns Object with attachmentId keys mapping to citation dictionaries
+ * @param citations - Array of Citation objects or a CitationRecord (object/dictionary)
+ * @returns Object with attachmentId keys mapping to CitationRecord dictionaries
  *
  * @example
  * ```typescript
@@ -591,9 +618,9 @@ export function groupCitationsByAttachmentId(
  * ```
  */
 export function groupCitationsByAttachmentIdObject(
-  citations: Citation[] | { [key: string]: Citation }
-): { [attachmentId: string]: { [key: string]: Citation } } {
-  const grouped: { [attachmentId: string]: { [key: string]: Citation } } = {};
+  citations: Citation[] | CitationRecord
+): Record<string, CitationRecord> {
+  const grouped: Record<string, CitationRecord> = {};
 
   // Normalize input to entries
   const entries: [string, Citation][] = Array.isArray(citations)
