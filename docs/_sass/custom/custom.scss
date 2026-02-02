@@ -205,45 +205,27 @@ a:focus-visible,
 
 // -----------------------------------------------------
 // Links - Brand blue, not purple!
+// Using high specificity to override Just the Docs defaults
 // -----------------------------------------------------
-a {
-  color: var(--link-color) !important;
+body a,
+.main-content a,
+.side-bar a {
+  color: var(--link-color);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
   text-decoration-color: var(--link-color);
 
   &:hover {
-    color: var(--link-hover-color) !important;
+    color: var(--link-hover-color);
     text-decoration-thickness: 2px;
     text-decoration-color: var(--link-hover-color);
   }
 
   &:visited {
+    // Keep visited links same color for cleaner look
+    // but slightly different shade could be added here
     color: var(--link-color);
-  }
-}
-
-// Main content links - ensure blue underlines
-.main-content a {
-  color: $brand-blue-light !important;
-  text-decoration-color: $brand-blue-light !important;
-
-  &:hover {
-    color: $brand-blue-hover-light !important;
-    text-decoration-color: $brand-blue-hover-light !important;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .main-content a {
-    color: $brand-blue-dark !important;
-    text-decoration-color: $brand-blue-dark !important;
-
-    &:hover {
-      color: $brand-blue-hover-dark !important;
-      text-decoration-color: $brand-blue-hover-dark !important;
-    }
   }
 }
 
@@ -327,11 +309,11 @@ pre {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    text-decoration: none !important;
+    text-decoration: none;
 
     &:hover {
       color: var(--link-color);
-      text-decoration: none !important;
+      text-decoration: none;
     }
 
     // Logo styling
@@ -345,34 +327,34 @@ pre {
 }
 
 // Auto-expand all nav sections
+// Note: !important needed to override Just the Docs JS-injected styles
 .nav-list-expander {
   display: none !important;
 }
 
-.nav-list .nav-list-item {
-  > .nav-list {
-    display: block !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
+.nav-list .nav-list-item > .nav-list {
+  display: block !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
-// Navigation links in sidebar
-.nav-list-link {
+// Navigation links in sidebar - high specificity to override theme
+.side-bar .nav-list .nav-list-link {
   font-size: 1rem; // 16px - bigger nav items
   padding: 0.625rem 0.75rem;
-  color: var(--link-color) !important;
+  color: var(--link-color);
 
   &:hover {
     background-color: var(--nav-active-bg);
-    color: var(--link-hover-color) !important;
+    color: var(--link-hover-color);
   }
 
   &.active {
     background-color: var(--nav-active-bg);
-    color: var(--nav-active-text) !important;
+    color: var(--nav-active-text);
     font-weight: 600;
     border-left: 3px solid var(--link-color);
+    margin-left: 0;
     padding-left: calc(0.75rem - 3px);
   }
 }
@@ -430,23 +412,20 @@ pre {
 // -----------------------------------------------------
 // Tables - Clean single thin borders (no double borders)
 // -----------------------------------------------------
-table,
 .main-content table {
-  border-collapse: collapse !important;
-  border-spacing: 0 !important;
-  border: none !important;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: none;
   font-size: 0.9375rem;
   width: 100%;
 }
 
-th, td,
 .main-content th,
 .main-content td {
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-color);
   padding: 0.75rem 1rem;
 }
 
-th,
 .main-content th {
   background-color: var(--sidebar-color);
   font-weight: 600;
@@ -466,8 +445,23 @@ blockquote {
 
 // -----------------------------------------------------
 // Buttons - Sharp corners, brand colors (BLUE not purple!)
+// Using CSS variables for theme consistency
 // -----------------------------------------------------
-.btn {
+:root {
+  --btn-primary-bg: #{$brand-blue-light};
+  --btn-primary-bg-hover: #{$brand-blue-hover-light};
+  --btn-primary-text: #FFFFFF;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --btn-primary-bg: #{$brand-blue-dark};
+    --btn-primary-bg-hover: #{$brand-blue-hover-dark};
+    --btn-primary-text: #{$slate-950};
+  }
+}
+
+.main-content .btn {
   border: 1px solid var(--border-color);
   background-color: var(--body-background-color);
   color: var(--body-text-color);
@@ -475,48 +469,32 @@ blockquote {
   padding: 0.625rem 1.25rem;
   font-size: 0.9375rem; // 15px
   font-weight: 500;
-  text-decoration: none !important;
+  text-decoration: none;
 
   &:hover {
     background-color: var(--sidebar-color);
     border-color: var(--link-color);
     color: var(--link-color);
-    text-decoration: none !important;
+    text-decoration: none;
   }
 }
 
-.btn-primary,
-.btn.btn-primary {
-  background-color: $brand-blue-light !important;
-  border-color: $brand-blue-light !important;
-  color: #FFFFFF !important;
+.main-content .btn-primary,
+.main-content .btn.btn-primary {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
 
   &:hover {
-    background-color: $brand-blue-hover-light !important;
-    border-color: $brand-blue-hover-light !important;
-    color: #FFFFFF !important;
-  }
-}
-
-// Dark mode button colors
-@media (prefers-color-scheme: dark) {
-  .btn-primary,
-  .btn.btn-primary {
-    background-color: $brand-blue-dark !important;
-    border-color: $brand-blue-dark !important;
-    color: $slate-950 !important;
-
-    &:hover {
-      background-color: $brand-blue-hover-dark !important;
-      border-color: $brand-blue-hover-dark !important;
-      color: $slate-950 !important;
-    }
+    background-color: var(--btn-primary-bg-hover);
+    border-color: var(--btn-primary-bg-hover);
+    color: var(--btn-primary-text);
   }
 }
 
 // Hero buttons on homepage
-.fs-5 {
-  font-size: 1rem !important;
+.main-content .fs-5 {
+  font-size: 1rem;
 }
 
 // -----------------------------------------------------
@@ -530,7 +508,7 @@ blockquote {
 
   // Hide the "Built with Just the Docs" text
   a[href*="just-the-docs"] {
-    display: none !important;
+    display: none;
   }
 }
 
