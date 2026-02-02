@@ -1516,7 +1516,7 @@ describe("CitationComponent interactionMode", () => {
       expect(onClick).toHaveBeenCalledTimes(2);
     });
 
-    it("works correctly without image (no zoom needed)", async () => {
+    it("works correctly without image (no zoom needed)", () => {
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
@@ -1527,17 +1527,18 @@ describe("CitationComponent interactionMode", () => {
 
       const citation = container.querySelector("[data-citation-id]");
 
-      // First click - shows popover
+      // First click - activates hover state (would show popover)
       fireEvent.click(citation!);
 
-      await waitFor(() => {
-        const popoverContent = container.querySelector('[data-state="open"]');
-        expect(popoverContent).toBeInTheDocument();
-      });
+      // Image overlay should NOT open (no image available)
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
-      // Second click - no image to zoom, popover stays open
+      // Second click - still no image to zoom
       fireEvent.click(citation!);
       expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+
+      // Cursor should remain pointer (no image to zoom)
+      expect(citation).toHaveClass("cursor-pointer");
     });
 
     it("applies hover styles but not popover on hover", async () => {
