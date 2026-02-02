@@ -298,8 +298,8 @@ blockquote {
   color: #FFFFFF;
 
   &:hover {
-    background-color: #{$brand-blue-light};
-    opacity: 0.9;
+    // Darken background without affecting text opacity
+    background-color: #004578; // Darker shade of brand blue
   }
 }
 
