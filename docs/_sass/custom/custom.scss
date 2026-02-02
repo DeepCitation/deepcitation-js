@@ -48,6 +48,10 @@ $btn-primary-color: $brand-blue-light;
   --nav-active-text: #{$slate-50};
   --inline-code-color: inherit;
   --inline-code-bg: transparent;
+  // Buttons
+  --btn-primary-bg: #{$brand-blue-dark};
+  --btn-primary-bg-hover: #{$brand-blue-hover-dark};
+  --btn-primary-text: #{$slate-950};
 }
 
 // -----------------------------------------------------
@@ -82,6 +86,11 @@ $btn-primary-color: $brand-blue-light;
   // Navigation
   --nav-active-bg: #{$slate-200};
   --nav-active-text: #{$slate-900};
+
+  // Buttons
+  --btn-primary-bg: #{$brand-blue-light};
+  --btn-primary-bg-hover: #{$brand-blue-hover-light};
+  --btn-primary-text: #FFFFFF;
 }
 
 // -----------------------------------------------------
@@ -411,11 +420,11 @@ pre {
 
 // -----------------------------------------------------
 // Tables - Clean single thin borders (no double borders)
+// border-collapse eliminates double borders between cells
 // -----------------------------------------------------
 .main-content table {
   border-collapse: collapse;
   border-spacing: 0;
-  border: none;
   font-size: 0.9375rem;
   width: 100%;
 }
@@ -445,22 +454,8 @@ blockquote {
 
 // -----------------------------------------------------
 // Buttons - Sharp corners, brand colors (BLUE not purple!)
-// Using CSS variables for theme consistency
+// Button CSS variables defined in :root above
 // -----------------------------------------------------
-:root {
-  --btn-primary-bg: #{$brand-blue-light};
-  --btn-primary-bg-hover: #{$brand-blue-hover-light};
-  --btn-primary-text: #FFFFFF;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --btn-primary-bg: #{$brand-blue-dark};
-    --btn-primary-bg-hover: #{$brand-blue-hover-dark};
-    --btn-primary-text: #{$slate-950};
-  }
-}
-
 .main-content .btn {
   border: 1px solid var(--border-color);
   background-color: var(--body-background-color);
