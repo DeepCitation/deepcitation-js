@@ -258,12 +258,6 @@ pre {
   }
 }
 
-// Standalone inline code (not in paragraph context) - subtle styling
-.main-content > p > code:only-child,
-code:not(pre code) {
-  // If needed for specific standalone code, add minimal styling
-}
-
 // Syntax highlighting adjustments for dark mode
 @media (prefers-color-scheme: dark) {
   .highlight {
