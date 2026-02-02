@@ -13,9 +13,11 @@ describe("StatusHeader", () => {
   // ==========================================================================
 
   describe("status display", () => {
-    it("renders 'Verified' text for found status", () => {
+    it("renders no text for found status (icon is self-explanatory)", () => {
       const { container } = render(<StatusHeader status="found" foundPage={5} />);
-      expect(container.textContent).toContain("Verified");
+      // "Verified" text was removed - the checkmark icon is self-explanatory
+      // Just verifies the header renders with page info
+      expect(container.textContent).toContain("Pg 5");
     });
 
     it("renders 'Found on different page' for found_on_other_page", () => {
@@ -23,9 +25,11 @@ describe("StatusHeader", () => {
       expect(container.textContent).toContain("Found on different page");
     });
 
-    it("renders 'Not found' for not_found status", () => {
+    it("renders no text for not_found status (X icon is self-explanatory)", () => {
       const { container } = render(<StatusHeader status="not_found" />);
-      expect(container.textContent).toContain("Not found");
+      // "Not found" text was removed - the X icon is self-explanatory
+      // The header should still render (with icon)
+      expect(container.querySelector("svg")).toBeInTheDocument();
     });
 
     it("renders 'Verifying...' for pending status", () => {

@@ -274,13 +274,15 @@ export function SourceContextHeader({ citation, verification, status }: SourceCo
 /**
  * Formats page and line info for display in headers.
  * Returns "Pg X" or "Pg X, Ln Y" or null if no info available.
+ *
+ * Note: Line numbers are intentionally not shown by default since document
+ * columns can cause sync issues with expected line IDs. Line numbers are
+ * only useful when there's a difference from expected.
  */
-function formatPageLineText(pageNumber: number | null | undefined, lineIds: number[] | null | undefined): string | null {
+function formatPageLineText(pageNumber: number | null | undefined, _lineIds: number[] | null | undefined): string | null {
   if (!pageNumber || pageNumber <= 0) return null;
-  const firstLine = lineIds?.[0];
-  if (firstLine && firstLine > 0) {
-    return `Pg ${pageNumber}, Ln ${firstLine}`;
-  }
+  // Don't show line numbers in the header - they can be unreliable due to column layouts
+  // Line differences are shown separately in the verification log when relevant
   return `Pg ${pageNumber}`;
 }
 
@@ -381,6 +383,8 @@ function getStatusColorScheme(status?: SearchStatus | null): "green" | "amber" |
 /**
  * Get the header text based on status.
  * Issue #3: Made more concise - anchor text will be integrated separately.
+ * Note: For "found" states, we return empty string since the icon is self-explanatory.
+ * The status text is only useful for states that need clarification (location differences, partial matches).
  */
 function getStatusHeaderText(status?: SearchStatus | null): string {
   if (!status) return "Verifying...";
@@ -389,7 +393,8 @@ function getStatusHeaderText(status?: SearchStatus | null): string {
     case "found":
     case "found_anchor_text_only":
     case "found_phrase_missed_anchor_text":
-      return "Verified";
+      // Icon (checkmark) is self-explanatory - no text needed
+      return "";
     case "found_on_other_page":
       return "Found on different page";
     case "found_on_other_line":
@@ -398,12 +403,13 @@ function getStatusHeaderText(status?: SearchStatus | null): string {
     case "first_word_found":
       return "Partial match";
     case "not_found":
-      return "Not found";
+      // Icon (X) is self-explanatory - no text needed
+      return "";
     case "pending":
     case "loading":
       return "Verifying...";
     default:
-      return "Unknown";
+      return "";
   }
 }
 
@@ -644,7 +650,7 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
             <span className={cn("size-4 max-w-4 max-h-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
               <IconComponent />
             </span>
-            <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>
+            {headerText && <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>}
           </div>
           {!hidePageBadge && <PageBadge expectedPage={expectedPage} foundPage={foundPage} />}
         </div>
@@ -663,6 +669,7 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
   }
 
   // Simple header (no anchor text/quote)
+  // If headerText is empty (icon is self-explanatory), just show icon + page badge
   return (
     <div
       className={cn(
@@ -674,7 +681,7 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
         <span className={cn("size-4 max-w-4 max-h-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
           <IconComponent />
         </span>
-        <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>
+        {headerText && <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>}
       </div>
       {!hidePageBadge && <PageBadge expectedPage={expectedPage} foundPage={foundPage} />}
     </div>

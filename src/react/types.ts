@@ -254,6 +254,19 @@ export interface UrlCitationProps extends Omit<BaseCitationProps, "citation" | "
   preventTooltips?: boolean;
   /** Whether to show the status indicator (checkmark, warning, spinner). Defaults to true. */
   showStatusIndicator?: boolean;
+  /**
+   * Whether clicking the component opens the URL directly.
+   * When false (default), clicking triggers eventHandlers.onClick but doesn't navigate.
+   * An external link icon appears on hover so users can explicitly open the URL.
+   * @default false
+   */
+  openUrlOnClick?: boolean;
+  /**
+   * Whether to show an external link icon on hover.
+   * Visible when openUrlOnClick is false so users know how to open the URL.
+   * @default true when openUrlOnClick is false
+   */
+  showExternalLinkOnHover?: boolean;
 }
 
 /**
