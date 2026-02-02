@@ -314,12 +314,15 @@ test.describe("URL Citation - Error Status", () => {
 // =============================================================================
 
 test.describe("URL Citation - Interactions", () => {
-  test("is an anchor element for accessibility", async ({ mount, page }) => {
+  test("is a button element with data-url for accessibility", async ({ mount, page }) => {
     await mount(<UrlCitationComponent urlMeta={verifiedUrlMeta} />);
     const url = page.locator("[data-fetch-status]");
 
-    // Badge variant renders as <a> element which has implicit link role
-    await expect(url).toHaveAttribute("href", verifiedUrlMeta.url);
+    // Badge variant renders as <span role="button"> element with data-url attribute
+    // Click is handled by component (e.g., show popover), not native link behavior
+    await expect(url).toHaveAttribute("role", "button");
+    await expect(url).toHaveAttribute("data-url", verifiedUrlMeta.url);
+    await expect(url).toHaveAttribute("tabindex", "0");
   });
 
   test("has aria-label with domain and status", async ({ mount, page }) => {

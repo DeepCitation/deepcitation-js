@@ -166,6 +166,33 @@ const lowTrustWithAudit: Verification = {
 };
 
 // =============================================================================
+// TEST FIXTURES - URL Citations
+// =============================================================================
+
+const urlCitation: Citation = {
+  type: "url",
+  url: "https://www.fitandwell.com/features/kettlebell-moves",
+  domain: "fitandwell.com",
+  title: "Build muscular arms with kettlebell moves",
+  fullPhrase: "The TGU transitions and Halos require control, not brute strength.",
+  anchorText: "require control, not brute strength",
+  citationNumber: 1,
+};
+
+const urlVerifiedVerification: Verification = {
+  status: "found",
+  verifiedPageNumber: 1,
+  verifiedMatchSnippet: "The TGU transitions and Halos require control, not brute strength.",
+  verificationImageBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+};
+
+const urlNotFoundVerification: Verification = {
+  status: "not_found",
+  verifiedPageNumber: -1,
+  searchAttempts: failedSearchAttempts,
+};
+
+// =============================================================================
 // TEST FIXTURES - Enhanced Audit Display (with variations and rejected matches)
 // =============================================================================
 
@@ -836,6 +863,7 @@ export function PopoverShowcase() {
                   status={status}
                   foundPage={foundPage}
                   expectedPage={expectedPage}
+                  anchorText="revenue increased by 15%"
                 />
                 <div className="p-2 text-xs text-gray-600 dark:text-gray-400">
                   {description}
@@ -843,67 +871,6 @@ export function PopoverShowcase() {
               </div>
             );
           })}
-        </div>
-      </section>
-
-      {/* Section: Combined Headers (with anchor text and quote) */}
-      <section className="mb-10" data-testid="popover-combined-headers-section">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-          Combined Headers (Status + Anchor Text + Quote)
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Used for not_found and partial states without images
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="not-found">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              not_found - with anchor text and quote
-            </div>
-            <StatusHeader
-              status="not_found"
-              expectedPage={5}
-              anchorText="increased by 15%"
-              fullPhrase="Revenue increased by 15% in Q4 2024, marking a significant improvement over the previous quarter's performance."
-            />
-          </div>
-
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="partial">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              found_on_other_page - with anchor text and quote
-            </div>
-            <StatusHeader
-              status="found_on_other_page"
-              foundPage={7}
-              expectedPage={5}
-              anchorText="increased by 15%"
-              fullPhrase="Revenue increased by 15% in Q4 2024."
-            />
-          </div>
-
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="first-word">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              first_word_found - low confidence match
-            </div>
-            <StatusHeader
-              status="first_word_found"
-              foundPage={3}
-              expectedPage={5}
-              anchorText="Revenue"
-              fullPhrase="Revenue increased by 15% in Q4 2024."
-            />
-          </div>
-
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="long-quote">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              not_found - with very long quote (truncated)
-            </div>
-            <StatusHeader
-              status="not_found"
-              expectedPage={5}
-              anchorText="quarterly financial improvements"
-              fullPhrase="The quarterly financial report indicates that revenue increased by 15% compared to the same period last year, driven primarily by strong performance in the enterprise segment and expansion into new markets across Asia-Pacific regions."
-            />
-          </div>
         </div>
       </section>
 
@@ -1188,6 +1155,42 @@ export function PopoverShowcase() {
             <span className="text-sm text-gray-600 dark:text-gray-400">Pending:</span>
             <CitationComponent
               citation={baseCitation}
+              verification={pendingVerification}
+              variant="brackets"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Section: URL Citation Popover Examples */}
+      <section className="mb-10" data-testid="popover-url-citation-section">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+          URL Citation Popover Examples
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          URL citations show the source URL in the header (no duplicate status row)
+        </p>
+        <div className="flex flex-wrap gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center gap-2" data-interactive-popover="url-verified">
+            <span className="text-sm text-gray-600 dark:text-gray-400">URL Verified:</span>
+            <CitationComponent
+              citation={urlCitation}
+              verification={urlVerifiedVerification}
+              variant="brackets"
+            />
+          </div>
+          <div className="flex items-center gap-2" data-interactive-popover="url-not-found">
+            <span className="text-sm text-gray-600 dark:text-gray-400">URL Not Found:</span>
+            <CitationComponent
+              citation={urlCitation}
+              verification={urlNotFoundVerification}
+              variant="brackets"
+            />
+          </div>
+          <div className="flex items-center gap-2" data-interactive-popover="url-pending">
+            <span className="text-sm text-gray-600 dark:text-gray-400">URL Pending:</span>
+            <CitationComponent
+              citation={urlCitation}
               verification={pendingVerification}
               variant="brackets"
             />

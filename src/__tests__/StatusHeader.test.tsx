@@ -13,9 +13,11 @@ describe("StatusHeader", () => {
   // ==========================================================================
 
   describe("status display", () => {
-    it("renders 'Verified' text for found status", () => {
+    it("renders no text for found status (icon is self-explanatory)", () => {
       const { container } = render(<StatusHeader status="found" foundPage={5} />);
-      expect(container.textContent).toContain("Verified");
+      // "Verified" text was removed - the checkmark icon is self-explanatory
+      // Just verifies the header renders with page info
+      expect(container.textContent).toContain("Pg 5");
     });
 
     it("renders 'Found on different page' for found_on_other_page", () => {
@@ -23,9 +25,11 @@ describe("StatusHeader", () => {
       expect(container.textContent).toContain("Found on different page");
     });
 
-    it("renders 'Not found' for not_found status", () => {
+    it("renders no text for not_found status (X icon is self-explanatory)", () => {
       const { container } = render(<StatusHeader status="not_found" />);
-      expect(container.textContent).toContain("Not found");
+      // "Not found" text was removed - the X icon is self-explanatory
+      // The header should still render (with icon)
+      expect(container.querySelector("svg")).toBeInTheDocument();
     });
 
     it("renders 'Verifying...' for pending status", () => {
@@ -105,28 +109,43 @@ describe("StatusHeader", () => {
   // ==========================================================================
 
   describe("combined header with anchorText and fullPhrase", () => {
-    it("renders anchor text in combined layout", () => {
+    it("renders anchor text inline when status text is empty (icon is self-explanatory)", () => {
+      // When status is "found" or "not_found", headerText is empty
+      // The anchor text should be shown inline as: [icon] "increased by 15%" Pg 5
+      const { container } = render(
+        <StatusHeader
+          status="found"
+          foundPage={5}
+          anchorText="increased by 15%"
+        />
+      );
+
+      // Should show quoted anchor text inline (since "Verified" text is no longer shown)
+      expect(container.textContent).toContain('"increased by 15%"');
+      expect(container.textContent).toContain("Pg 5");
+    });
+
+    it("renders anchor text inline when status text is empty", () => {
       const { container } = render(
         <StatusHeader
           status="not_found"
           expectedPage={5}
           anchorText="increased by 15%"
-          fullPhrase="Revenue increased by 15% in Q4 2024."
         />
       );
 
-      expect(container.textContent).toContain("increased by 15%");
-      expect(container.textContent).toContain("Revenue increased by 15% in Q4 2024.");
+      // When status text is empty (not_found), anchor text is shown inline
+      expect(container.textContent).toContain('"increased by 15%"');
+      expect(container.textContent).toContain("Pg 5");
     });
 
-    it("shows arrow format page badge in combined layout for partial match", () => {
+    it("shows arrow format page badge for partial match", () => {
       const { container } = render(
         <StatusHeader
           status="found_on_other_page"
           foundPage={7}
           expectedPage={5}
           anchorText="test anchor"
-          fullPhrase="test phrase"
         />
       );
 

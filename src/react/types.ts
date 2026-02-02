@@ -246,14 +246,27 @@ export interface UrlCitationProps extends Omit<BaseCitationProps, "citation" | "
     status: UrlFetchStatus,
     errorMessage?: string
   ) => React.ReactNode;
-  /** Click handler for the URL */
-  onUrlClick?: (url: string, event: React.MouseEvent) => void;
+  /** Click handler for the URL (supports both mouse and keyboard activation) */
+  onUrlClick?: (url: string, event: React.MouseEvent | React.KeyboardEvent) => void;
   /** Event handlers for citation interactions */
   eventHandlers?: CitationEventHandlers;
   /** Whether tooltips should be prevented */
   preventTooltips?: boolean;
   /** Whether to show the status indicator (checkmark, warning, spinner). Defaults to true. */
   showStatusIndicator?: boolean;
+  /**
+   * Whether clicking the component opens the URL directly.
+   * When false (default), clicking triggers eventHandlers.onClick but doesn't navigate.
+   * An external link icon appears on hover so users can explicitly open the URL.
+   * @default false
+   */
+  openUrlOnClick?: boolean;
+  /**
+   * Whether to show an external link icon on hover.
+   * Visible when openUrlOnClick is false so users know how to open the URL.
+   * @default true when openUrlOnClick is false
+   */
+  showExternalLinkOnHover?: boolean;
 }
 
 /**
@@ -312,11 +325,11 @@ export interface CitationEventHandlers {
   onMouseEnter?: (citation: Citation, citationKey: string) => void;
   /** Called when mouse leaves citation */
   onMouseLeave?: (citation: Citation, citationKey: string) => void;
-  /** Called when citation is clicked */
+  /** Called when citation is clicked or activated via keyboard */
   onClick?: (
     citation: Citation,
     citationKey: string,
-    event: React.MouseEvent | React.TouchEvent
+    event: React.MouseEvent | React.TouchEvent | React.KeyboardEvent
   ) => void;
   /** Called on touch end (mobile) */
   onTouchEnd?: (

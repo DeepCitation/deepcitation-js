@@ -225,19 +225,6 @@ test.describe("Popover Showcase - Desktop", () => {
     }
   });
 
-  test("combined headers section shows anchor text and quotes", async ({ mount, page }) => {
-    await mount(<PopoverShowcase />);
-
-    const combinedSection = page.locator('[data-testid="popover-combined-headers-section"]');
-    await expect(combinedSection).toBeVisible();
-
-    // Check all combined header variations
-    for (const type of ["not-found", "partial", "first-word", "long-quote"]) {
-      const combinedHeader = page.locator(`[data-combined-header="${type}"]`);
-      await expect(combinedHeader).toBeVisible();
-    }
-  });
-
   test("quote box section shows different quote lengths", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
@@ -358,8 +345,8 @@ test.describe("Popover Showcase - Interactive Hover", () => {
     const popover = page.locator('[data-radix-popper-content-wrapper]');
     await expect(popover).toBeVisible();
 
-    // The popover should contain "Not found" text
-    await expect(popover).toContainText("Not found");
+    // The popover should contain the "couldn't find" message (status text was removed, icon is self-explanatory)
+    await expect(popover).toContainText("couldn't find");
   });
 
   test("hovering pending citation shows loading state", async ({ mount, page }) => {
@@ -603,7 +590,7 @@ test.describe("Popover Showcase - Interactive Hover Dark Mode", () => {
     const popover = page.locator('[data-radix-popper-content-wrapper]');
     await expect(popover).toBeVisible();
 
-    // The popover should contain "Not found" text
-    await expect(popover).toContainText("Not found");
+    // The popover should contain the "couldn't find" message (status text was removed, icon is self-explanatory)
+    await expect(popover).toContainText("couldn't find");
   });
 });

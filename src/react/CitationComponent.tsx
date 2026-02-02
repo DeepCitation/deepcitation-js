@@ -32,6 +32,7 @@ import {
   cn,
   generateCitationInstanceId,
   generateCitationKey,
+  isUrlCitation,
 } from "./utils.js";
 import { useSmartDiff } from "./useSmartDiff.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
@@ -693,30 +694,36 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 // Use `renderIndicator` prop to customize. Use `variant="indicator"` to show only the icon.
 // =============================================================================
 
-/** Verified indicator - green checkmark for exact matches (subscript-positioned) */
+/** Verified indicator - green checkmark for exact matches (subscript-positioned)
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ */
 const VerifiedIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-green-600 dark:text-green-500"
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-green-600 dark:text-green-500 [text-decoration:none]"
     aria-hidden="true"
   >
     <CheckIcon />
   </span>
 );
 
-/** Partial match indicator - amber checkmark for partial/relocated matches (subscript-positioned) */
+/** Partial match indicator - amber checkmark for partial/relocated matches (subscript-positioned)
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ */
 const PartialIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-600 dark:text-amber-500"
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-600 dark:text-amber-500 [text-decoration:none]"
     aria-hidden="true"
   >
     <CheckIcon />
   </span>
 );
 
-/** Pending indicator - spinner for loading state (subscript-positioned) */
+/** Pending indicator - spinner for loading state (subscript-positioned)
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ */
 const PendingIndicator = () => (
   <span
-    className="inline-flex relative ml-1 top-[0.15em] size-2.5 animate-spin text-gray-400 dark:text-gray-500"
+    className="inline-flex relative ml-1 top-[0.15em] size-2.5 animate-spin text-gray-400 dark:text-gray-500 [text-decoration:none]"
     aria-hidden="true"
   >
     <SpinnerIcon />
@@ -727,10 +734,11 @@ const PendingIndicator = () => (
  * Uses a simple X mark instead of X-in-circle for better visibility at small sizes.
  * The SVG icon's thin stroke (2px) was hard to see when rendered at 10px.
  * aria-hidden="true" because parent component already conveys verification status.
+ * Uses [text-decoration:none] to prevent inheriting line-through from parent.
  */
 const MissIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-red-500 dark:text-red-400 font-bold text-[0.7em]"
+    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-red-500 dark:text-red-400 font-bold text-[0.7em] [text-decoration:none]"
     aria-hidden="true"
   >
     ✕
@@ -864,7 +872,8 @@ function AnchorTextFocusedImage({
   return (
     <button
       type="button"
-      className="group block cursor-zoom-in relative rounded-md bg-gray-50 dark:bg-gray-800"
+      // Removed bg-gray-50/bg-gray-800 - the evidence image's grey overlay provides visual separation
+      className="group block cursor-zoom-in relative"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -874,7 +883,7 @@ function AnchorTextFocusedImage({
     >
       <div
         ref={containerRef}
-        className="overflow-auto rounded-md"
+        className="overflow-auto"
         style={{
           maxWidth,
           maxHeight,
@@ -899,7 +908,7 @@ function AnchorTextFocusedImage({
         />
       </div>
       {/* Bottom bar with expand hint on hover */}
-      <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md pointer-events-none">
+      <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent pointer-events-none">
         <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
           Click to expand
         </span>
@@ -1273,8 +1282,10 @@ function DefaultPopoverContent({
         <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md" style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}>
           {/* Source context header */}
           <SourceContextHeader citation={citation} verification={verification} status={searchStatus} />
-          {/* Green status header - hide page badge since SourceContextHeader shows it */}
-          <StatusHeader status={searchStatus} foundPage={foundPage} expectedPage={expectedPage ?? undefined} hidePageBadge />
+          {/* Status header with anchorText - skip for URL citations since SourceContextHeader already shows status icon + URL */}
+          {!isUrlCitation(citation) && (
+            <StatusHeader status={searchStatus} foundPage={foundPage} expectedPage={expectedPage ?? undefined} hidePageBadge anchorText={anchorText} />
+          )}
 
           {/* Verification image */}
           <div className="p-2">
@@ -1286,7 +1297,8 @@ function DefaultPopoverContent({
             ) : (
               <button
                 type="button"
-                className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full"
+                // Removed bg-gray-50/bg-gray-800 and rounded-md - the evidence image's grey overlay provides visual separation
+                className="group block cursor-zoom-in relative overflow-hidden w-full"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -1297,7 +1309,7 @@ function DefaultPopoverContent({
                 <img
                   src={verification.verificationImageBase64 as string}
                   alt="Citation verification"
-                  className="block rounded-md w-full"
+                  className="block w-full"
                   style={{
                     maxHeight: "min(50vh, 300px)",
                     objectFit: "contain",
@@ -1305,7 +1317,7 @@ function DefaultPopoverContent({
                   loading="eager"
                   decoding="async"
                 />
-                <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
+                <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent">
                   <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
                     Click to expand
                   </span>
@@ -1347,7 +1359,10 @@ function DefaultPopoverContent({
           {hasImage && verification ? (
             // Show simple header + image (for partial matches that have images)
             <>
-              <StatusHeader status={searchStatus} foundPage={foundPage} expectedPage={expectedPage ?? undefined} hidePageBadge />
+              {/* Status header - skip for URL citations since SourceContextHeader already shows status */}
+              {!isUrlCitation(citation) && (
+                <StatusHeader status={searchStatus} foundPage={foundPage} expectedPage={expectedPage ?? undefined} hidePageBadge anchorText={anchorText} />
+              )}
               {/* Humanizing message for partial matches with images */}
               {humanizingMessage && (
                 <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">
@@ -1363,7 +1378,8 @@ function DefaultPopoverContent({
                 ) : (
                   <button
                     type="button"
-                    className="group block cursor-zoom-in relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full"
+                    // Removed bg-gray-50/bg-gray-800 and rounded-md - the evidence image's grey overlay provides visual separation
+                    className="group block cursor-zoom-in relative overflow-hidden w-full"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1374,7 +1390,7 @@ function DefaultPopoverContent({
                     <img
                       src={verification.verificationImageBase64 as string}
                       alt="Citation verification"
-                      className="block rounded-md w-full"
+                      className="block w-full"
                       style={{
                         maxHeight: "min(50vh, 300px)",
                         objectFit: "contain",
@@ -1382,7 +1398,7 @@ function DefaultPopoverContent({
                       loading="eager"
                       decoding="async"
                     />
-                    <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent rounded-b-md">
+                    <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent">
                       <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
                         Click to expand
                       </span>
@@ -1395,15 +1411,17 @@ function DefaultPopoverContent({
             // Combined header with anchor text and quote (for not_found or partial without image)
             // When humanizingMessage exists, skip anchorText in header to avoid redundancy
             // (humanizingMessage already contains the anchor text in quotes)
+            // For URL citations, skip StatusHeader since SourceContextHeader already shows status
             <>
-              <StatusHeader
-                status={searchStatus}
-                foundPage={foundPage}
-                expectedPage={expectedPage ?? undefined}
-                anchorText={humanizingMessage ? undefined : anchorText}
-                fullPhrase={humanizingMessage ? undefined : (fullPhrase ?? undefined)}
-                hidePageBadge
-              />
+              {!isUrlCitation(citation) && (
+                <StatusHeader
+                  status={searchStatus}
+                  foundPage={foundPage}
+                  expectedPage={expectedPage ?? undefined}
+                  anchorText={humanizingMessage ? undefined : anchorText}
+                  hidePageBadge
+                />
+              )}
               {/* Humanizing message replaces the anchor text display */}
               {humanizingMessage && (
                 <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">

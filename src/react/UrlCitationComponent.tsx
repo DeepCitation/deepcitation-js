@@ -1,8 +1,8 @@
-import React, { forwardRef, memo, useCallback, useMemo } from "react";
+import React, { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { UrlCitationMeta, UrlCitationProps, UrlFetchStatus } from "./types.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
-import { CheckIcon, CloseIcon, LockIcon } from "./icons.js";
+import { CheckIcon, CloseIcon, LockIcon, ExternalLinkIcon } from "./icons.js";
 
 /**
  * Module-level handler for hiding broken favicon images.
@@ -205,9 +205,19 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
       eventHandlers,
       preventTooltips = false,
       showStatusIndicator = true,
+      openUrlOnClick = false, // Default: don't open URL on click
+      showExternalLinkOnHover, // Default is derived below
     },
     ref,
   ) => {
+    // Track hover and focus state for external link indicator
+    const [isHovered, setIsHovered] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
+
+    // Default showExternalLinkOnHover to true when openUrlOnClick is false
+    const shouldShowExternalLink = showExternalLinkOnHover ?? !openUrlOnClick;
+    // Show external link when either hovered or focused (keyboard accessibility)
+    const showExternalLinkIndicator = shouldShowExternalLink && (isHovered || isFocused);
     const { url, domain: providedDomain, title, fetchStatus, faviconUrl, errorMessage } = urlMeta;
 
     // Derive citation from URL meta if not provided
@@ -250,22 +260,79 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
         e.stopPropagation();
         if (onUrlClick) {
           onUrlClick(url, e);
-        } else {
-          // Default: open URL in new tab
+        } else if (openUrlOnClick) {
+          // Only open URL directly if explicitly enabled
           window.open(url, "_blank", "noopener,noreferrer");
         }
+        // Always call the event handler so parent can handle (e.g., show popover)
         eventHandlers?.onClick?.(citation, citationKey, e);
       },
-      [onUrlClick, url, eventHandlers, citation, citationKey],
+      [onUrlClick, url, eventHandlers, citation, citationKey, openUrlOnClick],
+    );
+
+    // Handler specifically for the external link icon
+    const handleExternalLinkClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+      [url],
     );
 
     const handleMouseEnter = useCallback(() => {
+      setIsHovered(true);
       eventHandlers?.onMouseEnter?.(citation, citationKey);
     }, [eventHandlers, citation, citationKey]);
 
     const handleMouseLeave = useCallback(() => {
+      setIsHovered(false);
       eventHandlers?.onMouseLeave?.(citation, citationKey);
     }, [eventHandlers, citation, citationKey]);
+
+    // Focus handlers for keyboard accessibility
+    // Shows external link button when component receives keyboard focus
+    const handleFocus = useCallback(() => {
+      setIsFocused(true);
+    }, []);
+
+    const handleBlur = useCallback(() => {
+      setIsFocused(false);
+    }, []);
+
+    // Keyboard handler for accessibility (WCAG 2.1.1 Keyboard)
+    // Since we use role="button", we need to handle Enter and Space keys
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLSpanElement>) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (onUrlClick) {
+            onUrlClick(url, e);
+          } else if (openUrlOnClick) {
+            window.open(url, "_blank", "noopener,noreferrer");
+          }
+          eventHandlers?.onClick?.(citation, citationKey, e);
+        }
+      },
+      [onUrlClick, url, eventHandlers, citation, citationKey, openUrlOnClick],
+    );
+
+    // External link button that appears on hover or focus
+    const renderExternalLinkButton = () => {
+      if (!showExternalLinkIndicator) return null;
+      return (
+        <button
+          type="button"
+          onClick={handleExternalLinkClick}
+          className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+          aria-label="Open in new tab"
+          title="Open in new tab"
+        >
+          <ExternalLinkIcon className="w-full h-full" />
+        </button>
+      );
+    };
 
     const renderStatusIndicator = () => {
       // Verified: Green checkmark
@@ -323,13 +390,14 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     };
 
     // Badge variant (default) - matches the HTML design
+    // Changed from <a> to <span> to prevent default link behavior
+    // Click is handled by handleClick which respects openUrlOnClick prop
     if (variant === "badge") {
       return (
         <>
           {children}
-          <a
-            ref={ref as React.Ref<HTMLAnchorElement>}
-            href={url}
+          <span
+            ref={ref}
             data-citation-id={citationKey}
             data-citation-instance={citationInstanceId}
             data-url={url}
@@ -353,12 +421,12 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             title={showFullUrlOnHover ? (errorMessage || url) : undefined}
             onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
             onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
-            onClick={e => {
-              e.preventDefault();
-              handleClick(e as unknown as React.MouseEvent<HTMLSpanElement>);
-            }}
-            target="_blank"
-            rel="noopener noreferrer"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            role="button"
+            tabIndex={0}
             aria-label={`Link to ${domain}: ${statusInfo.label}`}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} isBroken={isBroken} />}
@@ -372,7 +440,8 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
               {displayText}
             </span>
             {showStatusIndicator && renderStatusIndicator()}
-          </a>
+            {renderExternalLinkButton()}
+          </span>
         </>
       );
     }
@@ -399,27 +468,31 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             title={showFullUrlOnHover ? url : undefined}
             onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
             onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
-            onMouseDown={handleClick}
-            onClick={e => e.stopPropagation()}
-            role="link"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            role="button"
+            tabIndex={0}
             aria-label={`Link to ${domain}: ${statusInfo.label}`}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} />}
             <span className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">{displayText}</span>
             {showStatusIndicator && renderStatusIndicator()}
+            {renderExternalLinkButton()}
           </span>
         </>
       );
     }
 
     // Inline variant - neutral underline style with spacing
+    // Changed from <a> to <span> to prevent default link behavior
     if (variant === "inline") {
       return (
         <>
           {children}
-          <a
-            ref={ref as React.Ref<HTMLAnchorElement>}
-            href={url}
+          <span
+            ref={ref}
             data-citation-id={citationKey}
             data-citation-instance={citationInstanceId}
             data-fetch-status={fetchStatus}
@@ -434,18 +507,19 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             title={showFullUrlOnHover ? url : undefined}
             onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
             onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
-            onClick={e => {
-              e.preventDefault();
-              handleClick(e as unknown as React.MouseEvent<HTMLSpanElement>);
-            }}
-            target="_blank"
-            rel="noopener noreferrer"
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            role="button"
+            tabIndex={0}
             aria-label={`Link to ${domain}: ${statusInfo.label}`}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} />}
             <span>{displayText}</span>
             {showStatusIndicator && renderStatusIndicator()}
-          </a>
+            {renderExternalLinkButton()}
+          </span>
         </>
       );
     }
@@ -471,9 +545,12 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
           title={showFullUrlOnHover ? url : undefined}
           onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
           onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
-          onMouseDown={handleClick}
-          onClick={e => e.stopPropagation()}
-          role="link"
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          role="button"
+          tabIndex={0}
           aria-label={`Link to ${domain}: ${statusInfo.label}`}
         >
           [
@@ -483,6 +560,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             isBroken && "line-through"
           )}>{displayText}</span>
           {showStatusIndicator && renderStatusIndicator()}
+          {renderExternalLinkButton()}
           ]
         </span>
       </>
