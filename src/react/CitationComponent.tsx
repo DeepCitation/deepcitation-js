@@ -1419,7 +1419,6 @@ function DefaultPopoverContent({
                   foundPage={foundPage}
                   expectedPage={expectedPage ?? undefined}
                   anchorText={humanizingMessage ? undefined : anchorText}
-                  fullPhrase={humanizingMessage ? undefined : (fullPhrase ?? undefined)}
                   hidePageBadge
                 />
               )}

@@ -336,10 +336,8 @@ export interface StatusHeaderProps {
   expectedPage?: number;
   /** Whether this is a compact header (for success states) */
   compact?: boolean;
-  /** Anchor text to display in the header (for combined layout) */
+  /** Anchor text to display inline when status text is empty */
   anchorText?: string;
-  /** Full phrase for quote box (when using combined layout) */
-  fullPhrase?: string;
   /** Whether to hide the page badge (to avoid duplication when SourceContextHeader shows it) */
   hidePageBadge?: boolean;
 }
@@ -618,7 +616,7 @@ export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
  * - Subtle ring border for elevation
  * - Page badge is only shown if hidePageBadge is false (to avoid duplication with SourceContextHeader)
  */
-export function StatusHeader({ status, foundPage, expectedPage, compact = false, anchorText, fullPhrase, hidePageBadge = false }: StatusHeaderProps) {
+export function StatusHeader({ status, foundPage, expectedPage, compact = false, anchorText, hidePageBadge = false }: StatusHeaderProps) {
   const colorScheme = getStatusColorScheme(status);
   const headerText = getStatusHeaderText(status);
 
@@ -632,50 +630,9 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
     : colorScheme === "red" ? XCircleIcon
     : SpinnerIcon;
 
-  // Combined layout: status + anchor text + quote in one header section
-  // Only use combined layout when:
-  // 1. We have a fullPhrase (quote box content), OR
-  // 2. We have headerText AND anchorText (shows status text + anchor text below)
-  // When headerText is empty (verified states), we want inline display instead
-  const hasCombinedContent = fullPhrase || (headerText && anchorText);
-
-  if (hasCombinedContent) {
-    const displayAnchorText = anchorText || fullPhrase?.slice(0, MAX_ANCHOR_TEXT_PREVIEW_LENGTH) || "";
-    const displayPhrase = fullPhrase || anchorText || "";
-
-    return (
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        {/* Status row - clean neutral background */}
-        <div className={cn(
-          "flex items-center justify-between gap-2 text-sm",
-          compact ? "px-3 py-2" : "px-4 py-2.5"
-        )}>
-          <div className="flex items-center gap-2">
-            <span className={cn("size-4 max-w-4 max-h-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
-              <IconComponent />
-            </span>
-            {headerText && <span className="font-medium text-gray-800 dark:text-gray-100">{headerText}</span>}
-          </div>
-          {!hidePageBadge && <PageBadge expectedPage={expectedPage} foundPage={foundPage} />}
-        </div>
-
-        {/* Anchor text and quote */}
-        <div className="px-4 pb-3 pt-1">
-          <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 mb-2">
-            "{displayAnchorText}"
-          </div>
-          {displayPhrase && displayPhrase !== displayAnchorText && (
-            <QuoteBox phrase={displayPhrase} />
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Simple header (no combined layout with quote box)
-  // When headerText is empty but we have anchorText, show it inline as the descriptive text
-  // This provides context like: [✓] "revenue increased by 15%"  Pg 3
-  const inlineText = headerText || (anchorText ? `"${anchorText}"` : null);
+  // Consistent single-row layout: icon + text + page badge
+  // Display priority: headerText (status description) > anchorText (quoted phrase)
+  const displayText = headerText || (anchorText ? `"${anchorText}"` : null);
 
   return (
     <div
@@ -688,12 +645,12 @@ export function StatusHeader({ status, foundPage, expectedPage, compact = false,
         <span className={cn("size-4 max-w-4 max-h-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
           <IconComponent />
         </span>
-        {inlineText && (
+        {displayText && (
           <span className={cn(
             "font-medium truncate",
             headerText ? "text-gray-800 dark:text-gray-100" : "text-gray-600 dark:text-gray-300"
           )}>
-            {inlineText}
+            {displayText}
           </span>
         )}
       </div>

@@ -125,28 +125,27 @@ describe("StatusHeader", () => {
       expect(container.textContent).toContain("Pg 5");
     });
 
-    it("renders anchor text in combined layout with fullPhrase", () => {
+    it("renders anchor text inline when status text is empty", () => {
       const { container } = render(
         <StatusHeader
           status="not_found"
           expectedPage={5}
           anchorText="increased by 15%"
-          fullPhrase="Revenue increased by 15% in Q4 2024."
         />
       );
 
-      expect(container.textContent).toContain("increased by 15%");
-      expect(container.textContent).toContain("Revenue increased by 15% in Q4 2024.");
+      // When status text is empty (not_found), anchor text is shown inline
+      expect(container.textContent).toContain('"increased by 15%"');
+      expect(container.textContent).toContain("Pg 5");
     });
 
-    it("shows arrow format page badge in combined layout for partial match", () => {
+    it("shows arrow format page badge for partial match", () => {
       const { container } = render(
         <StatusHeader
           status="found_on_other_page"
           foundPage={7}
           expectedPage={5}
           anchorText="test anchor"
-          fullPhrase="test phrase"
         />
       );
 

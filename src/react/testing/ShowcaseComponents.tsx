@@ -874,67 +874,6 @@ export function PopoverShowcase() {
         </div>
       </section>
 
-      {/* Section: Combined Headers (with anchor text and quote) */}
-      <section className="mb-10" data-testid="popover-combined-headers-section">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-          Combined Headers (Status + Anchor Text + Quote)
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Used for not_found and partial states without images
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="not-found">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              not_found - with anchor text and quote
-            </div>
-            <StatusHeader
-              status="not_found"
-              expectedPage={5}
-              anchorText="increased by 15%"
-              fullPhrase="Revenue increased by 15% in Q4 2024, marking a significant improvement over the previous quarter's performance."
-            />
-          </div>
-
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="partial">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              found_on_other_page - with anchor text and quote
-            </div>
-            <StatusHeader
-              status="found_on_other_page"
-              foundPage={7}
-              expectedPage={5}
-              anchorText="increased by 15%"
-              fullPhrase="Revenue increased by 15% in Q4 2024."
-            />
-          </div>
-
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="first-word">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              first_word_found - low confidence match
-            </div>
-            <StatusHeader
-              status="first_word_found"
-              foundPage={3}
-              expectedPage={5}
-              anchorText="Revenue"
-              fullPhrase="Revenue increased by 15% in Q4 2024."
-            />
-          </div>
-
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" data-combined-header="long-quote">
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              not_found - with very long quote (truncated)
-            </div>
-            <StatusHeader
-              status="not_found"
-              expectedPage={5}
-              anchorText="quarterly financial improvements"
-              fullPhrase="The quarterly financial report indicates that revenue increased by 15% compared to the same period last year, driven primarily by strong performance in the enterprise segment and expansion into new markets across Asia-Pacific regions."
-            />
-          </div>
-        </div>
-      </section>
-
       {/* Section: QuoteBox Variations */}
       <section className="mb-10" data-testid="popover-quotebox-section">
         <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
