@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, jest, mock } from "@jest/globals";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react";
 import React from "react";
 import { CitationComponent } from "../react/CitationComponent";
 import type { Citation } from "../types/citation";
@@ -78,10 +84,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("does not show spinner when verification is null (use isLoading prop)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={null}
-        />
+        <CitationComponent citation={baseCitation} verification={null} />
       );
 
       // Should NOT have a spinner by default - use isLoading prop to show spinner
@@ -91,10 +94,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("does not show spinner when verification has no status (use isLoading prop)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={{}}
-        />
+        <CitationComponent citation={baseCitation} verification={{}} />
       );
 
       // Should NOT have a spinner by default - use isLoading prop to show spinner
@@ -243,7 +243,9 @@ describe("CitationComponent behaviorConfig", () => {
     });
 
     it("custom renderIndicator takes precedence over showIndicator=false", () => {
-      const customIndicator = <span data-testid="custom-indicator">Custom</span>;
+      const customIndicator = (
+        <span data-testid="custom-indicator">Custom</span>
+      );
 
       const { container, getByTestId } = render(
         <CitationComponent
@@ -323,7 +325,9 @@ describe("CitationComponent behaviorConfig", () => {
       // Click overlay to close
       const overlay = container.querySelector("[role='dialog']");
       fireEvent.click(overlay!);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("does nothing on click when no image is available", () => {
@@ -338,7 +342,9 @@ describe("CitationComponent behaviorConfig", () => {
 
       // Click should not open overlay (no image)
       fireEvent.click(citation!);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("always calls eventHandlers.onClick", () => {
@@ -384,7 +390,9 @@ describe("CitationComponent behaviorConfig", () => {
 
       // Click should not open image (onClick replaces default behavior)
       fireEvent.click(citation!);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
       expect(customOnClick).toHaveBeenCalledTimes(1);
     });
 
@@ -406,7 +414,9 @@ describe("CitationComponent behaviorConfig", () => {
       fireEvent.click(citation!);
       fireEvent.click(citation!);
 
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
       expect(customOnClick).toHaveBeenCalledTimes(3);
     });
 
@@ -481,7 +491,9 @@ describe("CitationComponent behaviorConfig", () => {
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // No state changes occurred (onClick replaces defaults)
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("prevents any state changes when returning false", () => {
@@ -502,7 +514,9 @@ describe("CitationComponent behaviorConfig", () => {
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // Default behavior should NOT have occurred
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("applies returned actions to open image", () => {
@@ -568,7 +582,9 @@ describe("CitationComponent behaviorConfig", () => {
       // Click overlay to close
       const overlay = container.querySelector("[role='dialog']");
       fireEvent.click(overlay!);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("still calls eventHandlers.onClick when custom handler returns actions", () => {
@@ -642,7 +658,9 @@ describe("CitationComponent behaviorConfig", () => {
       fireEvent.click(citation!);
       expect(trackingData).toHaveLength(1);
       // Default behavior (image opening) should NOT happen
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("eventHandlers.onClick runs even when behaviorConfig.onClick is provided", () => {
@@ -918,7 +936,9 @@ describe("CitationComponent behaviorConfig", () => {
       // Click behavior is replaced by custom onClick (which does nothing)
       fireEvent.click(citation!);
       expect(customOnClick).toHaveBeenCalledTimes(1);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("context is updated between clicks when using custom onClick", () => {
@@ -953,7 +973,9 @@ describe("CitationComponent behaviorConfig", () => {
       // Second click - image should now be expanded
       fireEvent.click(citation!);
       expect(contexts[1].isImageExpanded).toBe(true);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -1215,7 +1237,9 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // No image overlay yet
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
 
       // Second tap - now popover is already open, should open image overlay
       fireEvent.touchStart(citation!);
@@ -1223,6 +1247,319 @@ describe("CitationComponent mobile/touch detection", () => {
 
       // Now image overlay should be visible
       expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+
+    it("triple tap keeps image overlay open", () => {
+      mockTouchDevice(true);
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // First tap - show popover
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+
+      // Second tap - open image overlay
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+
+      // Third tap - image overlay should remain open (tap on citation doesn't close it)
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+
+    it("mobile tap without verification image still shows popover on first tap", () => {
+      mockTouchDevice(true);
+
+      const verificationNoImage: Verification = {
+        status: "found",
+        verifiedMatchSnippet: "Test match snippet",
+      };
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationNoImage}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // First tap - should show popover
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+
+      // No image overlay (no image available)
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+
+      // Second tap - still no image overlay (no image available)
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+    });
+
+    it("cross-citation tapping is not incorrectly debounced (each citation has its own timer)", () => {
+      mockTouchDevice(true);
+
+      const citation1: Citation = {
+        citationNumber: 1,
+        anchorText: "first citation",
+        fullPhrase: "This is the first citation",
+      };
+
+      const citation2: Citation = {
+        citationNumber: 2,
+        anchorText: "second citation",
+        fullPhrase: "This is the second citation",
+      };
+
+      const { container } = render(
+        <>
+          <CitationComponent
+            citation={citation1}
+            verification={verificationWithImage}
+          />
+          <CitationComponent
+            citation={citation2}
+            verification={verificationWithImage}
+          />
+        </>
+      );
+
+      const citations = container.querySelectorAll("[data-citation-id]");
+      const citationA = citations[0];
+      const citationB = citations[1];
+
+      // Tap citation A
+      fireEvent.touchStart(citationA!);
+      fireEvent.click(citationA!);
+
+      // Immediately tap citation B (within debounce window if it were global)
+      // This should NOT be debounced because each citation has its own timer
+      fireEvent.touchStart(citationB!);
+      fireEvent.click(citationB!);
+
+      // Both citations should have responded to their first tap
+      // (no image overlay since it's first tap for each)
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+
+      // Now second tap on citation B should open image
+      fireEvent.touchStart(citationB!);
+      fireEvent.click(citationB!);
+
+      // Image overlay should be visible (proves citation B wasn't incorrectly debounced)
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+
+    it("second tap toggles phrase expansion for miss citations (no image)", () => {
+      mockTouchDevice(true);
+
+      const missCitation: Citation = {
+        citationNumber: 1,
+        anchorText: "unfound citation",
+        fullPhrase: "This citation was not found in the document",
+      };
+
+      const missVerification: Verification = {
+        status: "not_found",
+        searchAttempts: [
+          {
+            phrase: "unfound citation",
+            phraseType: "anchor_text",
+            pageNumber: 1,
+            lineIds: [1],
+            method: "exact",
+            searchVariations: ["unfound citation"],
+            foundMatch: false,
+          },
+        ],
+      };
+
+      const { container } = render(
+        <CitationComponent
+          citation={missCitation}
+          verification={missVerification}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // First tap - show popover
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+
+      // No image overlay (it's a miss, no image)
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+
+      // Second tap - should toggle phrase expansion (not image overlay)
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+
+      // Still no image overlay (miss citation behavior toggles phrases, not image)
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+    });
+
+    it("custom behaviorConfig.onClick receives TouchEvent on mobile", () => {
+      mockTouchDevice(true);
+
+      const onClickMock = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          behaviorConfig={{
+            onClick: onClickMock,
+          }}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // Tap on mobile
+      fireEvent.touchStart(citation!);
+      fireEvent.touchEnd(citation!);
+
+      // behaviorConfig.onClick should have been called
+      expect(onClickMock).toHaveBeenCalledTimes(1);
+
+      // The event should be a TouchEvent (check event.type)
+      const [context, event] = onClickMock.mock.calls[0];
+      expect(event.type).toBe("touchend");
+      expect(context.citation).toEqual(baseCitation);
+    });
+
+    it("mobile overrides relaxed mode - uses two-tap behavior regardless", () => {
+      mockTouchDevice(true);
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          interactionMode="relaxed"
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // First tap - should show popover (mobile two-tap behavior)
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+
+      // No image overlay yet (first tap shows popover)
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+
+      // Second tap - should open image
+      fireEvent.touchStart(citation!);
+      fireEvent.click(citation!);
+
+      // Image overlay should be visible
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+  });
+
+  describe("keyboard accessibility", () => {
+    it("Enter key triggers tap action in eager mode", () => {
+      mockTouchDevice(false);
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          interactionMode="eager"
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // Press Enter - should open image directly in eager mode
+      fireEvent.keyDown(citation!, { key: "Enter" });
+
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+
+    it("Space key triggers tap action in eager mode", () => {
+      mockTouchDevice(false);
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          interactionMode="eager"
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // Press Space - should open image directly in eager mode
+      fireEvent.keyDown(citation!, { key: " " });
+
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+
+    it("Enter key shows popover first in relaxed mode, second press opens image", () => {
+      mockTouchDevice(false);
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          interactionMode="relaxed"
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      // First Enter - should show popover (not image)
+      fireEvent.keyDown(citation!, { key: "Enter" });
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
+
+      // Second Enter - should open image
+      fireEvent.keyDown(citation!, { key: "Enter" });
+      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+    });
+
+    it("citation has correct ARIA attributes", () => {
+      mockTouchDevice(false);
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+        />
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+
+      expect(citation).toHaveAttribute("role", "button");
+      expect(citation).toHaveAttribute("tabIndex", "0");
+      expect(citation).toHaveAttribute("aria-expanded");
+      expect(citation).toHaveAttribute("aria-label");
     });
   });
 
@@ -1403,7 +1740,9 @@ describe("CitationComponent interactionMode", () => {
       fireEvent.click(citation!);
 
       // First click should NOT open image overlay
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
 
       // Popover should be shown instead (hover state activated via click)
       await waitFor(() => {
@@ -1425,7 +1764,9 @@ describe("CitationComponent interactionMode", () => {
 
       // First click - shows popover
       fireEvent.click(citation!);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
 
       // Second click - opens image overlay
       fireEvent.click(citation!);
@@ -1490,7 +1831,9 @@ describe("CitationComponent interactionMode", () => {
       fireEvent.click(overlay!);
 
       // Should be back to cursor-pointer (popover closed when overlay closes)
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("still triggers eventHandlers.onClick on both clicks", () => {
@@ -1531,11 +1874,15 @@ describe("CitationComponent interactionMode", () => {
       fireEvent.click(citation!);
 
       // Image overlay should NOT open (no image available)
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
 
       // Second click - still no image to zoom
       fireEvent.click(citation!);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
 
       // Cursor should remain pointer (no image to zoom)
       expect(citation).toHaveClass("cursor-pointer");
@@ -1589,7 +1936,9 @@ describe("CitationComponent interactionMode", () => {
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // Neither popover nor image overlay should open (custom handler takes over)
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(
+        container.querySelector("[role='dialog']")
+      ).not.toBeInTheDocument();
     });
 
     it("custom onClick returning actions works in relaxed mode", () => {

@@ -276,7 +276,10 @@ export type UrlCitationVariant = "badge" | "chip" | "inline" | "bracket";
 /**
  * Props for URL citation component
  */
-export interface UrlCitationProps extends Omit<BaseCitationProps, "citation" | "variant"> {
+export interface UrlCitationProps extends Omit<
+  BaseCitationProps,
+  "citation" | "variant"
+> {
   /** Visual style variant for the URL citation */
   variant?: UrlCitationVariant;
   /** URL metadata including fetch status */
@@ -297,7 +300,10 @@ export interface UrlCitationProps extends Omit<BaseCitationProps, "citation" | "
     errorMessage?: string
   ) => React.ReactNode;
   /** Click handler for the URL (supports both mouse and keyboard activation) */
-  onUrlClick?: (url: string, event: React.MouseEvent | React.KeyboardEvent) => void;
+  onUrlClick?: (
+    url: string,
+    event: React.MouseEvent | React.KeyboardEvent
+  ) => void;
   /** Event handlers for citation interactions */
   eventHandlers?: CitationEventHandlers;
   /** Whether tooltips should be prevented */
@@ -361,18 +367,31 @@ export interface CitationRenderProps {
 }
 
 /**
- * Event handlers for citation interactions
+ * Event handlers for citation interactions.
+ * Provides symmetric handlers for mouse and touch events.
  */
 export interface CitationEventHandlers {
   /** Called when mouse enters citation */
   onMouseEnter?: (citation: Citation, citationKey: string) => void;
   /** Called when mouse leaves citation */
   onMouseLeave?: (citation: Citation, citationKey: string) => void;
-  /** Called when citation is clicked or activated via keyboard */
+  /**
+   * Called when citation is clicked or activated via keyboard/touch.
+   * Event types:
+   * - `MouseEvent`: Desktop mouse clicks
+   * - `TouchEvent`: Mobile tap interactions (from handleTouchEnd)
+   * - `KeyboardEvent`: Keyboard activation (Enter/Space)
+   */
   onClick?: (
     citation: Citation,
     citationKey: string,
     event: React.MouseEvent | React.TouchEvent | React.KeyboardEvent
+  ) => void;
+  /** Called on touch start (mobile) - useful for analytics or custom interactions */
+  onTouchStart?: (
+    citation: Citation,
+    citationKey: string,
+    event: React.TouchEvent
   ) => void;
   /** Called on touch end (mobile) */
   onTouchEnd?: (
@@ -416,10 +435,18 @@ export interface CitationBehaviorActions {
 /**
  * Configuration for click behavior.
  * Return actions to perform, or `false` to prevent default behavior.
+ *
+ * Event types received:
+ * - `MouseEvent`: Desktop mouse clicks
+ * - `TouchEvent`: Mobile tap interactions (from handleTouchEnd)
+ * - `KeyboardEvent`: Keyboard activation (Enter/Space for accessibility)
+ *
+ * Note: On mobile touch devices, the event will be a TouchEvent, not MouseEvent.
+ * Use `event.type` to distinguish if needed.
  */
 export type CitationClickBehavior = (
   context: CitationBehaviorContext,
-  event: React.MouseEvent | React.TouchEvent
+  event: React.MouseEvent | React.TouchEvent | React.KeyboardEvent
 ) => CitationBehaviorActions | false | void;
 
 /**
@@ -524,7 +551,12 @@ export interface SourcesListItemProps {
   /** Citation numbers that reference this source */
   citationNumbers?: number[];
   /** Verification status */
-  verificationStatus?: "verified" | "partial" | "pending" | "failed" | "unknown";
+  verificationStatus?:
+    | "verified"
+    | "partial"
+    | "pending"
+    | "failed"
+    | "unknown";
   /** Click handler */
   onClick?: (source: SourcesListItemProps, event: React.MouseEvent) => void;
   /** Additional class name */
@@ -548,7 +580,11 @@ export interface SourcesListHeaderConfig {
   /** Whether to show source count badge */
   showCount?: boolean;
   /** Custom header render */
-  renderHeader?: (props: { title: string; count: number; onClose?: () => void }) => React.ReactNode;
+  renderHeader?: (props: {
+    title: string;
+    count: number;
+    onClose?: () => void;
+  }) => React.ReactNode;
 }
 
 /**
@@ -579,7 +615,10 @@ export interface SourcesListProps {
   /** Class name for the list items container */
   listClassName?: string;
   /** Click handler for source items */
-  onSourceClick?: (source: SourcesListItemProps, event: React.MouseEvent) => void;
+  onSourceClick?: (
+    source: SourcesListItemProps,
+    event: React.MouseEvent
+  ) => void;
   /** Whether to show verification indicators on items */
   showVerificationIndicators?: boolean;
   /** Whether to show citation number badges on items */
