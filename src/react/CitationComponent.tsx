@@ -1922,16 +1922,46 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       [isMobile, isHovering],
     );
 
-    // Touch handler for mobile
+    // Touch handler for mobile - handles tap-to-show-popover and tap-to-expand-image
     const handleTouchEnd = useCallback(
       (e: React.TouchEvent<HTMLSpanElement>) => {
         if (isMobile) {
           e.preventDefault();
           e.stopPropagation();
           eventHandlers?.onTouchEnd?.(citation, citationKey, e);
+
+          // Handle mobile tap logic here since preventDefault blocks the click event
+          // Custom onClick via behaviorConfig replaces default
+          if (behaviorConfig?.onClick) {
+            const context = getBehaviorContext();
+            const result = behaviorConfig.onClick(context, e);
+            if (result && typeof result === "object") {
+              applyBehaviorActions(result);
+            }
+            return;
+          }
+
+          // Custom eventHandlers.onClick disables default
+          if (eventHandlers?.onClick) {
+            eventHandlers.onClick(citation, citationKey, e);
+            return;
+          }
+
+          // First tap: show popover (popover wasn't open before this tap)
+          if (!wasPopoverOpenBeforeTap.current) {
+            setIsHovering(true);
+            return;
+          }
+
+          // Second tap (popover was already open): open image or toggle phrases
+          if (verification?.verificationImageBase64) {
+            setExpandedImageSrc(verification.verificationImageBase64);
+          } else if (isMiss) {
+            setIsPhrasesExpanded(prev => !prev);
+          }
         }
       },
-      [eventHandlers, citation, citationKey, isMobile],
+      [eventHandlers, citation, citationKey, isMobile, behaviorConfig, getBehaviorContext, applyBehaviorActions, verification?.verificationImageBase64, isMiss],
     );
 
     // Early return for miss with fallback display (only when showing anchorText)
