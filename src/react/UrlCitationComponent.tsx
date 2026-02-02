@@ -2,7 +2,7 @@ import React, { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { UrlCitationMeta, UrlCitationProps, UrlFetchStatus } from "./types.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
-import { CheckIcon, CloseIcon, LockIcon, ExternalLinkIcon } from "./icons.js";
+import { CheckIcon, XCircleIcon, LockIcon, ExternalLinkIcon } from "./icons.js";
 
 /**
  * Module-level handler for hiding broken favicon images.
@@ -61,10 +61,10 @@ const STATUS_ICONS: Record<UrlFetchStatus, { icon: string; label: string; classN
   blocked_paywall: { icon: "$", label: "Paywall", className: "text-amber-600 dark:text-amber-500" },
   blocked_geo: { icon: "⊕", label: "Geo-restricted", className: "text-amber-600 dark:text-amber-500" },
   blocked_rate_limit: { icon: "◔", label: "Rate limited", className: "text-amber-600 dark:text-amber-500" },
-  error_timeout: { icon: "◷", label: "Timed out", className: "text-red-500 dark:text-red-400" },
-  error_not_found: { icon: "404", label: "Not found", className: "text-red-500 dark:text-red-400" },
-  error_server: { icon: "⚠", label: "Server error", className: "text-red-500 dark:text-red-400" },
-  error_network: { icon: "↯", label: "Network error", className: "text-red-500 dark:text-red-400" },
+  error_timeout: { icon: "⊗", label: "Timed out", className: "text-red-500 dark:text-red-400" },
+  error_not_found: { icon: "⊗", label: "Not found", className: "text-red-500 dark:text-red-400" },
+  error_server: { icon: "⊗", label: "Server error", className: "text-red-500 dark:text-red-400" },
+  error_network: { icon: "⊗", label: "Network error", className: "text-red-500 dark:text-red-400" },
   unknown: { icon: "?", label: "Unknown status", className: "text-gray-400 dark:text-gray-500" },
 };
 
@@ -365,15 +365,18 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
         );
       }
 
-      // Error: X icon
+      // Error: X in circle icon (centered, not subscript)
       if (isError) {
         if (renderBlockedIndicator) {
           return renderBlockedIndicator(fetchStatus, errorMessage);
         }
         return (
-          <StatusIconWrapper className="text-red-500 dark:text-red-400" aria-label={statusInfo.label}>
-            <CloseIcon className="w-full h-full" />
-          </StatusIconWrapper>
+          <span
+            className="w-3 h-3 flex-shrink-0 flex items-center justify-center text-red-500 dark:text-red-400"
+            aria-label={statusInfo.label}
+          >
+            <XCircleIcon className="w-full h-full" />
+          </span>
         );
       }
 

@@ -22,6 +22,7 @@ export type {
   CitationEventHandlers,
   CitationVariant as CitationVariantType,
   CitationContent,
+  CitationInteractionMode,
   // URL citation types
   UrlFetchStatus,
   UrlCitationMeta,
@@ -85,6 +86,7 @@ export {
   CitationComponent,
   MemoizedCitationComponent,
   type CitationVariant,
+  type CitationInteractionMode,
   type CitationComponentProps,
 } from "./CitationComponent.js";
 
@@ -107,6 +109,7 @@ export {
   LockIcon,
   DocumentIcon,
   GlobeIcon,
+  XCircleIcon,
 } from "./icons.js";
 
 // Sources List Components (Anthropic-style aggregated citations)

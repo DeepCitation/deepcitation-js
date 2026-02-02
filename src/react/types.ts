@@ -3,6 +3,24 @@ import type { Verification } from "../types/verification.js";
 import type { SearchStatus } from "../types/search.js";
 
 /**
+ * Interaction mode for citation components.
+ *
+ * Controls the eagerness of popover/tooltip interactions:
+ *
+ * | Mode       | Hover Behavior               | Click Behavior                         |
+ * |------------|------------------------------|----------------------------------------|
+ * | `eager`    | Shows popover on hover       | Opens image/expands details            |
+ * | `relaxed`  | Style hover only (no popover)| Opens popover (not image)              |
+ *
+ * Mobile behavior (touch devices):
+ * - `eager`: 1st tap → popover, 2nd tap → image/expand
+ * - `relaxed`: 1st tap → popover, 2nd tap → image/expand (same as eager on mobile)
+ *
+ * @default "eager"
+ */
+export type CitationInteractionMode = "eager" | "relaxed";
+
+/**
  * Visual style variants for citations.
  *
  * | Variant       | Description                                    |
