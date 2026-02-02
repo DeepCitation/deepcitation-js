@@ -1,0 +1,312 @@
+// DeepCitation Brand Customizations for just-the-docs
+// ====================================================
+
+// -----------------------------------------------------
+// Brand Colors - Slate Scale
+// -----------------------------------------------------
+$slate-50:  #F8FAFC;
+$slate-100: #F1F5F9;
+$slate-200: #E2E8F0;
+$slate-300: #CBD5E1;
+$slate-400: #94A3B8;
+$slate-500: #64748B;
+$slate-600: #475569;
+$slate-700: #334155;
+$slate-800: #1E293B;
+$slate-900: #0F172A;
+$slate-950: #020617;
+
+// Primary brand colors
+$brand-blue-light: #005595;
+$brand-blue-dark: #38BDF8;
+
+
+// -----------------------------------------------------
+// Dark Mode Mixin (DRY)
+// -----------------------------------------------------
+@mixin dark-mode-colors {
+  --body-background-color: #{$slate-950};
+  --sidebar-color: #{$slate-900};
+  --body-heading-color: #{$slate-100};
+  --body-text-color: #{$slate-400};
+  --link-color: #{$brand-blue-dark};
+  --code-background-color: #{$slate-900};
+  --code-border-color: #{$slate-800};
+  --border-color: #{$slate-800};
+  --search-background-color: #{$slate-900};
+  --selection-bg: #{$brand-blue-dark};
+  --selection-text: #{$slate-950};
+  --focus-ring-color: rgba(56, 189, 248, 0.2); // #38BDF8 at 20%
+}
+
+// -----------------------------------------------------
+// Light Mode (Default)
+// -----------------------------------------------------
+:root {
+  // Core colors
+  --body-background-color: #FFFFFF;
+  --sidebar-color: #{$slate-50};
+  --body-heading-color: #{$slate-900};
+  --body-text-color: #{$slate-600};
+  --link-color: #{$brand-blue-light};
+
+  // Code
+  --code-background-color: #{$slate-50};
+  --code-border-color: #{$slate-200};
+
+  // Borders & UI
+  --border-color: #{$slate-200};
+  --search-background-color: #{$slate-50};
+
+  // Selection
+  --selection-bg: #{$brand-blue-light};
+  --selection-text: #FFFFFF;
+
+  // Focus ring (10% opacity of link color)
+  --focus-ring-color: rgba(0, 85, 149, 0.15);
+}
+
+// -----------------------------------------------------
+// Dark Mode (System Preference)
+// -----------------------------------------------------
+@media (prefers-color-scheme: dark) {
+  :root {
+    @include dark-mode-colors;
+  }
+}
+
+// -----------------------------------------------------
+// Typography
+// -----------------------------------------------------
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--body-text-color);
+  background-color: var(--body-background-color);
+}
+
+h1, h2, h3, h4, h5, h6,
+.site-title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  color: var(--body-heading-color);
+}
+
+code, pre, .highlight {
+  font-family: 'Source Code Pro', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+// -----------------------------------------------------
+// Sharp Corners (4px for interactive, 0 for containers)
+// -----------------------------------------------------
+.main-content .btn,
+.main-content code,
+.main-content pre,
+.main-content table,
+.main-content th,
+.main-content td,
+.main-content blockquote {
+  border-radius: 4px;
+}
+
+.side-bar .search-input,
+.side-bar .search-results {
+  border-radius: 4px;
+}
+
+.side-bar .nav-list-link {
+  border-radius: 4px;
+}
+
+// Fully sharp elements (list items)
+.search-result,
+.search-result-title {
+  border-radius: 0;
+}
+
+// -----------------------------------------------------
+// "The Spark" - 75ms ease-out transitions (specific properties)
+// -----------------------------------------------------
+a {
+  transition: color 75ms ease-out,
+              text-decoration-thickness 75ms ease-out;
+}
+
+.btn,
+.nav-list-link {
+  transition: color 75ms ease-out,
+              background-color 75ms ease-out,
+              border-color 75ms ease-out;
+}
+
+.search-input {
+  transition: border-color 75ms ease-out,
+              box-shadow 75ms ease-out;
+}
+
+code {
+  transition: background-color 75ms ease-out,
+              border-color 75ms ease-out;
+}
+
+// -----------------------------------------------------
+// Focus Indicators (Accessibility)
+// -----------------------------------------------------
+a:focus-visible,
+.btn:focus-visible,
+.nav-list-link:focus-visible,
+.search-input:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
+// -----------------------------------------------------
+// Links
+// -----------------------------------------------------
+a {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+// Navigation links - no underline
+.nav-list-link,
+.site-title,
+.aux-nav-list-item a,
+.breadcrumb-nav-list-item a {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+// -----------------------------------------------------
+// Code Blocks
+// -----------------------------------------------------
+code {
+  background-color: var(--code-background-color);
+  border: 1px solid var(--code-border-color);
+  padding: 0.125em 0.25em;
+}
+
+pre {
+  background-color: var(--code-background-color);
+  border: 1px solid var(--code-border-color);
+
+  code {
+    border: none;
+    padding: 0;
+  }
+}
+
+// Syntax highlighting adjustments for dark mode
+@media (prefers-color-scheme: dark) {
+  .highlight {
+    background-color: var(--code-background-color);
+  }
+}
+
+// -----------------------------------------------------
+// Text Selection
+// -----------------------------------------------------
+::selection {
+  background-color: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+::-moz-selection {
+  background-color: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+// -----------------------------------------------------
+// Sidebar
+// -----------------------------------------------------
+.side-bar {
+  background-color: var(--sidebar-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.site-title {
+  color: var(--body-heading-color);
+}
+
+// -----------------------------------------------------
+// Search
+// -----------------------------------------------------
+.search-input {
+  background-color: var(--search-background-color);
+  border: 1px solid var(--border-color);
+
+  &:focus {
+    border-color: var(--link-color);
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
+  }
+}
+
+.search-results {
+  background-color: var(--body-background-color);
+  border: 1px solid var(--border-color);
+}
+
+// -----------------------------------------------------
+// Tables
+// -----------------------------------------------------
+table {
+  border: 1px solid var(--border-color);
+}
+
+th, td {
+  border: 1px solid var(--border-color);
+}
+
+th {
+  background-color: var(--sidebar-color);
+}
+
+// -----------------------------------------------------
+// Blockquotes
+// -----------------------------------------------------
+blockquote {
+  border-left: 4px solid var(--link-color);
+  background-color: var(--sidebar-color);
+  color: var(--body-text-color);
+}
+
+// -----------------------------------------------------
+// Buttons
+// -----------------------------------------------------
+.btn {
+  border: 1px solid var(--border-color);
+  background-color: var(--body-background-color);
+  color: var(--body-text-color);
+
+  &:hover {
+    background-color: var(--sidebar-color);
+    border-color: var(--link-color);
+  }
+}
+
+.btn-primary {
+  background-color: var(--link-color);
+  border-color: var(--link-color);
+  color: #FFFFFF;
+
+  &:hover {
+    // Darken background without affecting text opacity
+    background-color: #004578; // Darker shade of brand blue
+  }
+}
+
+// -----------------------------------------------------
+// Footer
+// -----------------------------------------------------
+.site-footer {
+  border-top: 1px solid var(--border-color);
+  color: var(--body-text-color);
+}
