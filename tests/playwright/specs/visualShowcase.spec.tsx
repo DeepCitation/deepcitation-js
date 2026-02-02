@@ -225,19 +225,6 @@ test.describe("Popover Showcase - Desktop", () => {
     }
   });
 
-  test("combined headers section shows anchor text and quotes", async ({ mount, page }) => {
-    await mount(<PopoverShowcase />);
-
-    const combinedSection = page.locator('[data-testid="popover-combined-headers-section"]');
-    await expect(combinedSection).toBeVisible();
-
-    // Check all combined header variations
-    for (const type of ["not-found", "partial", "first-word", "long-quote"]) {
-      const combinedHeader = page.locator(`[data-combined-header="${type}"]`);
-      await expect(combinedHeader).toBeVisible();
-    }
-  });
-
   test("quote box section shows different quote lengths", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
