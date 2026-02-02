@@ -26,6 +26,24 @@ $status-green: #22C55E;
 $status-amber: #F59E0B;
 
 // -----------------------------------------------------
+// Dark Mode Mixin (DRY)
+// -----------------------------------------------------
+@mixin dark-mode-colors {
+  --body-background-color: #{$slate-950};
+  --sidebar-color: #{$slate-900};
+  --body-heading-color: #{$slate-100};
+  --body-text-color: #{$slate-400};
+  --link-color: #{$brand-blue-dark};
+  --code-background-color: #{$slate-900};
+  --code-border-color: #{$slate-800};
+  --border-color: #{$slate-800};
+  --search-background-color: #{$slate-900};
+  --search-result-preview-color: #{$slate-400};
+  --selection-bg: #{$brand-blue-dark};
+  --selection-text: #{$slate-950};
+}
+
+// -----------------------------------------------------
 // Light Mode (Default)
 // -----------------------------------------------------
 :root {
@@ -59,43 +77,9 @@ $status-amber: #F59E0B;
 // Dark Mode (System Preference)
 // -----------------------------------------------------
 @media (prefers-color-scheme: dark) {
-  :root[data-color-mode="auto"] {
-    // Core colors
-    --body-background-color: #{$slate-950};
-    --sidebar-color: #{$slate-900};
-    --body-heading-color: #{$slate-100};
-    --body-text-color: #{$slate-400};
-    --link-color: #{$brand-blue-dark};
-
-    // Code
-    --code-background-color: #{$slate-900};
-    --code-border-color: #{$slate-800};
-
-    // Borders & UI
-    --border-color: #{$slate-800};
-    --search-background-color: #{$slate-900};
-    --search-result-preview-color: #{$slate-400};
-
-    // Selection
-    --selection-bg: #{$brand-blue-dark};
-    --selection-text: #{$slate-950};
+  :root {
+    @include dark-mode-colors;
   }
-}
-
-// Manual dark mode override
-:root[data-color-mode="dark"] {
-  --body-background-color: #{$slate-950};
-  --sidebar-color: #{$slate-900};
-  --body-heading-color: #{$slate-100};
-  --body-text-color: #{$slate-400};
-  --link-color: #{$brand-blue-dark};
-  --code-background-color: #{$slate-900};
-  --code-border-color: #{$slate-800};
-  --border-color: #{$slate-800};
-  --search-background-color: #{$slate-900};
-  --search-result-preview-color: #{$slate-400};
-  --selection-bg: #{$brand-blue-dark};
-  --selection-text: #{$slate-950};
 }
 
 // -----------------------------------------------------
@@ -119,38 +103,67 @@ code, pre, .highlight {
 }
 
 // -----------------------------------------------------
-// Sharp Corners (0-4px max)
+// Sharp Corners (4px for interactive, 0 for containers)
 // -----------------------------------------------------
-.btn,
-.search-input,
-.search-results,
-code,
-pre,
-.code-example,
-.nav-list-link,
-table,
-th,
-td,
-blockquote,
-.side-bar {
-  border-radius: 4px !important;
+.main-content .btn,
+.main-content code,
+.main-content pre,
+.main-content table,
+.main-content th,
+.main-content td,
+.main-content blockquote {
+  border-radius: 4px;
 }
 
-// Fully sharp elements
+.side-bar .search-input,
+.side-bar .search-results {
+  border-radius: 4px;
+}
+
+.side-bar .nav-list-link {
+  border-radius: 4px;
+}
+
+// Fully sharp elements (list items)
 .search-result,
 .search-result-title {
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 // -----------------------------------------------------
-// "The Spark" - 75ms ease-out transitions
+// "The Spark" - 75ms ease-out transitions (specific properties)
 // -----------------------------------------------------
-a,
+a {
+  transition: color 75ms ease-out,
+              text-decoration-thickness 75ms ease-out;
+}
+
 .btn,
-.nav-list-link,
-.search-input,
+.nav-list-link {
+  transition: color 75ms ease-out,
+              background-color 75ms ease-out,
+              border-color 75ms ease-out;
+}
+
+.search-input {
+  transition: border-color 75ms ease-out,
+              box-shadow 75ms ease-out;
+}
+
 code {
-  transition: all 75ms ease-out;
+  transition: background-color 75ms ease-out,
+              border-color 75ms ease-out;
+}
+
+// -----------------------------------------------------
+// Focus Indicators (Accessibility)
+// -----------------------------------------------------
+a:focus-visible,
+.btn:focus-visible,
+.nav-list-link:focus-visible,
+.search-input:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
 }
 
 // -----------------------------------------------------
@@ -200,14 +213,6 @@ pre {
 
 // Syntax highlighting adjustments for dark mode
 @media (prefers-color-scheme: dark) {
-  :root[data-color-mode="auto"] {
-    .highlight {
-      background-color: var(--code-background-color);
-    }
-  }
-}
-
-:root[data-color-mode="dark"] {
   .highlight {
     background-color: var(--code-background-color);
   }
