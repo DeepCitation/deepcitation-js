@@ -405,6 +405,8 @@ interface CitationBehaviorConfig {
 
 The `sourceLabel` prop allows you to override the filename or URL title displayed in the citation popover header. This is useful when you want to show a more user-friendly name instead of the raw filename or URL.
 
+**Important:** The citation and verification objects only store the *original* filename from when the document was uploaded. If users rename their files in your application, you must use `sourceLabel` to display the updated name - the verification system has no way to know about filename changes.
+
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
 
@@ -423,15 +425,28 @@ import { CitationComponent } from "@deepcitation/deepcitation-js/react";
   verification={verification}
   sourceLabel="Official API Documentation"
 />
+
+// Common pattern: Use your app's current filename, not the original upload name
+<CitationComponent
+  citation={citation}
+  verification={verification}
+  sourceLabel={attachment.displayName} // Your app's current name for this file
+/>
 ```
 
 **Behavior by citation type:**
-- **Document citations**: The `sourceLabel` overrides `verification.label` (the filename) in the popover header
+- **Document citations**: The `sourceLabel` overrides `verification.label` (the original filename) in the popover header
 - **URL citations**: The `sourceLabel` overrides the URL/domain display in the popover header
 
 When `sourceLabel` is not provided, the component falls back to:
-- Document citations: Shows `verification.label` if available, otherwise nothing
+- Document citations: Shows `verification.label` (original filename) if available, otherwise nothing
 - URL citations: Shows the URL domain/path
+
+**When to use `sourceLabel`:**
+- User has renamed a file after uploading it
+- You want to show a friendly display name instead of technical filename
+- The original filename is cryptic (e.g., `doc_abc123.pdf`) but you have a better title
+- You're aggregating citations from multiple sources and want consistent naming
 
 ### 10. URL-Based Citations
 
