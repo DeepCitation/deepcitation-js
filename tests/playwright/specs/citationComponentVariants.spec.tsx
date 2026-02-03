@@ -627,8 +627,13 @@ test.describe("CitationComponent - Indicator Scaling", () => {
       const citation = page.locator("[data-citation-id]");
       await expect(citation).toBeVisible();
 
-      // Find the indicator span (contains the SVG icon)
-      const indicator = citation.locator("span[aria-hidden='true']").first();
+      // Find the indicator span by locating the SVG inside it
+      // The indicator is a span with inline-flex that contains an SVG
+      const indicatorSvg = citation.locator("svg").first();
+      await expect(indicatorSvg).toBeVisible();
+
+      // Get the parent span (the actual indicator with the size style)
+      const indicator = indicatorSvg.locator("..");
 
       // Get computed dimensions
       const box = await indicator.boundingBox();
@@ -658,8 +663,11 @@ test.describe("CitationComponent - Indicator Scaling", () => {
     const citation = page.locator("[data-citation-id]");
     await expect(citation).toBeVisible();
 
-    // Find the indicator span
-    const indicator = citation.locator("span[aria-hidden='true']").first();
+    // Find the indicator span by locating the SVG inside it
+    const indicatorSvg = citation.locator("svg").first();
+    await expect(indicatorSvg).toBeVisible();
+    const indicator = indicatorSvg.locator("..");
+
     const box = await indicator.boundingBox();
     expect(box).toBeTruthy();
 
