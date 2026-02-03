@@ -759,7 +759,7 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 // | Pending       | Spinner            | Gray   | "pending", "loading", null/undefined         |
 // | Verified      | Checkmark (✓)      | Green  | "found", "found_anchor_text_only", etc.         |
 // | Partial Match | Checkmark (✓)      | Amber  | "found_on_other_page", "partial_text_found"  |
-// | Not Found     | Warning triangle   | Red    | "not_found"                                  |
+// | Not Found     | X icon (✕)         | Red    | "not_found"                                  |
 //
 // Use `renderIndicator` prop to customize. Use `variant="indicator"` to show only the icon.
 // =============================================================================
