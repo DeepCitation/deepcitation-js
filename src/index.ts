@@ -15,6 +15,10 @@ export type {
   FileInput,
   FileDataPart,
   PrepareFilesResult,
+  ExtendExpirationDuration,
+  ExtendExpirationOptions,
+  ExtendExpirationResponse,
+  DeleteAttachmentResponse,
 } from "./client/index.js";
 
 // Parsing

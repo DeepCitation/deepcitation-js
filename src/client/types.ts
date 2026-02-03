@@ -44,6 +44,8 @@ export interface UploadFileResponse {
   processingTimeMs?: number;
   /** Error message if status is "error" */
   error?: string;
+  /** Optional expiration date for the attachment (ISO 8601 string). After this date, the attachment may be deleted. */
+  expiresAt?: string;
 }
 
 /**
@@ -190,4 +192,41 @@ export interface ConvertFileResponse {
 export interface PrepareConvertedFileOptions {
   /** The attachment ID from a previous convertFile call */
   attachmentId: string;
+}
+
+/**
+ * Duration to extend the expiration by
+ */
+export type ExtendExpirationDuration = "month" | "year";
+
+/**
+ * Options for extending an attachment's expiration
+ */
+export interface ExtendExpirationOptions {
+  /** The attachment ID to extend */
+  attachmentId: string;
+  /** Duration to extend by: "month" (30 days) or "year" (365 days) */
+  duration: ExtendExpirationDuration;
+}
+
+/**
+ * Response from extending an attachment's expiration
+ */
+export interface ExtendExpirationResponse {
+  /** The attachment ID that was extended */
+  attachmentId: string;
+  /** The new expiration date (ISO 8601 string) */
+  expiresAt: string;
+  /** The previous expiration date (ISO 8601 string), if any */
+  previousExpiresAt?: string;
+}
+
+/**
+ * Response from deleting an attachment
+ */
+export interface DeleteAttachmentResponse {
+  /** The attachment ID that was deleted */
+  attachmentId: string;
+  /** Whether the deletion was successful */
+  deleted: boolean;
 }
