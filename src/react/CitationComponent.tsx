@@ -355,16 +355,9 @@ export interface CitationComponentProps extends BaseCitationProps {
    */
   content?: CitationContent;
   /**
-   * Controls the eagerness of popover/tooltip interactions.
-   *
-   * - `eager` (default): Hover shows popover immediately, click opens image/expands details
-   * - `lazy`: Hover only applies style effects (no popover), click toggles popover,
-   *           second click toggles search details
-   *
-   * Use `lazy` mode when citations are densely packed and hover popovers
-   * would be distracting. Users can still access verification details by clicking.
-   *
-   * @default "eager"
+   * @deprecated The interactionMode prop has been removed. The component now always uses
+   * lazy mode behavior: click toggles popover, second click toggles search details.
+   * This prop is ignored for backwards compatibility.
    */
   interactionMode?: CitationInteractionMode;
   /** Event handlers for citation interactions */
@@ -835,63 +828,16 @@ const MissIndicator = () => (
 );
 
 // =============================================================================
-// KEYSPAN FOCUSED IMAGE COMPONENT
+// VERIFICATION IMAGE COMPONENT
 // =============================================================================
 
 /**
- * Calculate the bounding box that encompasses all anchorText boxes.
- * Falls back to phraseMatchDeepItem if no anchorText boxes are available.
- */
-function getKeySpanBoundingBox(verification: Verification | null): {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-} | null {
-  if (!verification) return null;
-
-  // Prefer anchorTextMatchDeepItems for multi-box spans
-  const boxes = verification.anchorTextMatchDeepItems;
-  if (boxes && boxes.length > 0) {
-    // Calculate bounding box encompassing all anchorText boxes
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    for (const box of boxes) {
-      minX = Math.min(minX, box.x);
-      minY = Math.min(minY, box.y);
-      maxX = Math.max(maxX, box.x + box.width);
-      maxY = Math.max(maxY, box.y + box.height);
-    }
-
-    return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-    };
-  }
-
-  // Fall back to phraseMatchDeepItem
-  const phrase = verification.phraseMatchDeepItem;
-  if (phrase) {
-    return {
-      x: phrase.x,
-      y: phrase.y,
-      width: phrase.width,
-      height: phrase.height,
-    };
-  }
-
-  return null;
-}
-
-/**
- * Displays a verification image in a scrollable container that initially
- * focuses on the anchorText position. Uses the anchorTextMatchDeepItems or
- * phraseMatchDeepItem coordinates to calculate the initial scroll position.
+ * Displays a verification image that fits within the container dimensions.
+ * The image is scaled to fit (without distortion) and can be clicked to expand.
+ *
+ * Note: This component uses simple object-fit: contain for predictable sizing.
+ * Previous scroll-to-anchor-text logic was removed for simplicity - users can
+ * click to see the full-size image if more detail is needed.
  */
 function AnchorTextFocusedImage({
   verification,
@@ -904,70 +850,10 @@ function AnchorTextFocusedImage({
   maxWidth?: string;
   maxHeight?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const hasInitializedScrollRef = useRef(false);
-
-  const anchorTextBox = useMemo(
-    () => getKeySpanBoundingBox(verification),
-    [verification]
-  );
-
-  // Set initial scroll position when image loads, only once
-  const handleImageLoad = useCallback(() => {
-    if (
-      hasInitializedScrollRef.current ||
-      !containerRef.current ||
-      !imageRef.current ||
-      !anchorTextBox
-    ) {
-      return;
-    }
-
-    const container = containerRef.current;
-    const image = imageRef.current;
-    const imageDimensions = verification.verificationImageDimensions;
-
-    // We need to know the original image dimensions to calculate scale
-    // If not provided in verification, use the natural image dimensions
-    const originalWidth = imageDimensions?.width || image.naturalWidth;
-    const originalHeight = imageDimensions?.height || image.naturalHeight;
-
-    if (originalWidth === 0 || originalHeight === 0) return;
-
-    // Calculate the scale factor: displayed size / original size
-    const scaleX = image.clientWidth / originalWidth;
-    const scaleY = image.clientHeight / originalHeight;
-
-    // Calculate the anchorText center in displayed image coordinates
-    const anchorTextCenterX =
-      (anchorTextBox.x + anchorTextBox.width / 2) * scaleX;
-    const anchorTextCenterY =
-      (anchorTextBox.y + anchorTextBox.height / 2) * scaleY;
-
-    // Calculate scroll position to center the anchorText in the viewport
-    // with some vertical bias towards showing content above the anchorText
-    const scrollX = Math.max(0, anchorTextCenterX - container.clientWidth / 2);
-    const scrollY = Math.max(
-      0,
-      anchorTextCenterY - container.clientHeight * 0.4
-    );
-
-    container.scrollLeft = scrollX;
-    container.scrollTop = scrollY;
-    hasInitializedScrollRef.current = true;
-  }, [anchorTextBox, verification.verificationImageDimensions]);
-
-  // Reset scroll initialization when verification changes
-  useEffect(() => {
-    hasInitializedScrollRef.current = false;
-  }, [verification.verificationImageBase64]);
-
   return (
     <button
       type="button"
-      // Removed bg-gray-50/bg-gray-800 - the evidence image's grey overlay provides visual separation
-      className="group block cursor-zoom-in relative"
+      className="group block cursor-zoom-in relative w-full"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -976,29 +862,22 @@ function AnchorTextFocusedImage({
       aria-label="Click to view full size"
     >
       <div
-        ref={containerRef}
-        className="overflow-auto"
+        className="overflow-hidden"
         style={{
           maxWidth,
           maxHeight,
         }}
       >
         <img
-          ref={imageRef}
           src={verification.verificationImageBase64 as string}
           alt="Citation verification"
-          className="block"
+          className="block w-full h-auto"
           style={{
-            // Let the image display at its natural size for scrolling,
-            // but cap it at reasonable maximums for very large images
-            maxWidth: "none",
-            maxHeight: "none",
-            width: "auto",
-            height: "auto",
+            maxHeight,
+            objectFit: "contain",
           }}
           loading="eager"
           decoding="async"
-          onLoad={handleImageLoad}
         />
       </div>
       {/* Bottom bar with expand hint on hover */}
@@ -1354,13 +1233,6 @@ function DefaultPopoverContent({
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
 
-  // Check if we have anchorText position data for focused scrolling
-  const hasAnchorTextPosition = !!(
-    verification &&
-    (verification.anchorTextMatchDeepItems?.length ||
-      verification.phraseMatchDeepItem)
-  );
-
   // Determine if we should show the verification log (for non-success states)
   const showVerificationLog = isMiss || isPartialMatch;
 
@@ -1455,41 +1327,10 @@ function DefaultPopoverContent({
 
           {/* Verification image */}
           <div className="p-2">
-            {hasAnchorTextPosition ? (
-              <AnchorTextFocusedImage
-                verification={verification}
-                onImageClick={onImageClick}
-              />
-            ) : (
-              <button
-                type="button"
-                // Removed bg-gray-50/bg-gray-800 and rounded-md - the evidence image's grey overlay provides visual separation
-                className="group block cursor-zoom-in relative overflow-hidden w-full"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onImageClick?.();
-                }}
-                aria-label="Click to view full size"
-              >
-                <img
-                  src={verification.verificationImageBase64 as string}
-                  alt="Citation verification"
-                  className="block w-full"
-                  style={{
-                    maxHeight: "min(50vh, 300px)",
-                    objectFit: "contain",
-                  }}
-                  loading="eager"
-                  decoding="async"
-                />
-                <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent">
-                  <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
-                    Click to expand
-                  </span>
-                </span>
-              </button>
-            )}
+            <AnchorTextFocusedImage
+              verification={verification}
+              onImageClick={onImageClick}
+            />
           </div>
 
           {/* Expandable search details for verified matches */}
@@ -1551,41 +1392,10 @@ function DefaultPopoverContent({
                 </div>
               )}
               <div className="p-2">
-                {hasAnchorTextPosition ? (
-                  <AnchorTextFocusedImage
-                    verification={verification}
-                    onImageClick={onImageClick}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    // Removed bg-gray-50/bg-gray-800 and rounded-md - the evidence image's grey overlay provides visual separation
-                    className="group block cursor-zoom-in relative overflow-hidden w-full"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onImageClick?.();
-                    }}
-                    aria-label="Click to view full size"
-                  >
-                    <img
-                      src={verification.verificationImageBase64 as string}
-                      alt="Citation verification"
-                      className="block w-full"
-                      style={{
-                        maxHeight: "min(50vh, 300px)",
-                        objectFit: "contain",
-                      }}
-                      loading="eager"
-                      decoding="async"
-                    />
-                    <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent">
-                      <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
-                        Click to expand
-                      </span>
-                    </span>
-                  </button>
-                )}
+                <AnchorTextFocusedImage
+                  verification={verification}
+                  onImageClick={onImageClick}
+                />
               </div>
             </>
           ) : (
@@ -1843,9 +1653,11 @@ function DiffDetails({
  *
  * ## Interaction Pattern
  *
- * - **Hover**: Shows popover with verification image or details
- * - **Click**: Opens full-size image overlay (if image available)
- * - **Escape / Click overlay**: Closes the image overlay
+ * - **Hover**: Style effects only (no popover)
+ * - **First Click**: Shows popover with verification image and details
+ * - **Second Click**: Toggles search details expansion within the popover
+ * - **Click Image**: Expands verification image to full-size overlay
+ * - **Click Outside / Escape**: Closes the popover
  *
  * ## Customization
  *
@@ -1866,7 +1678,7 @@ export const CitationComponent = forwardRef<
       isLoading = false,
       variant = "linter",
       content: contentProp,
-      interactionMode = "eager",
+      interactionMode: _interactionMode, // Deprecated, ignored
       eventHandlers,
       behaviorConfig,
       isMobile: isMobileProp,
@@ -1881,8 +1693,14 @@ export const CitationComponent = forwardRef<
     },
     ref
   ) => {
-    // Lazy mode: hover doesn't open popover, click toggles popover, second click toggles search details
-    const isLazyMode = interactionMode === "lazy";
+    // Warn about deprecated interactionMode prop in development
+    if (process.env.NODE_ENV !== "production" && _interactionMode !== undefined) {
+      console.warn(
+        "CitationComponent: interactionMode prop is deprecated and has no effect. " +
+          "The component now always uses click-to-show-popover behavior."
+      );
+    }
+
     // Get overlay context for blocking hover when any image overlay is open
     const { isAnyOverlayOpen } = useCitationOverlay();
 
@@ -2150,26 +1968,16 @@ export const CitationComponent = forwardRef<
           return;
         }
 
-        // Lazy mode: click toggles popover visibility, second click toggles search details
-        if (isLazyMode) {
-          if (!isHovering) {
-            // First click: open popover
-            handleTapAction(e, "showPopover");
-          } else {
-            // Popover is open: toggle search details
-            handleTapAction(e, "toggleDetails");
-          }
-          return;
-        }
-
-        // Eager mode: click opens image (if available) or toggles search details
-        if (verification?.verificationImageBase64) {
-          handleTapAction(e, "expandImage");
+        // Click toggles popover visibility, second click toggles search details
+        if (!isHovering) {
+          // First click: open popover
+          handleTapAction(e, "showPopover");
         } else {
+          // Popover is open: toggle search details
           handleTapAction(e, "toggleDetails");
         }
       },
-      [isMobile, isLazyMode, isHovering, handleTapAction, verification?.verificationImageBase64]
+      [isMobile, isHovering, handleTapAction]
     );
 
     // Keyboard handler for accessibility - Enter/Space triggers tap action
@@ -2179,25 +1987,15 @@ export const CitationComponent = forwardRef<
           e.preventDefault();
           e.stopPropagation();
 
-          // Lazy mode: toggle popover, then toggle search details
-          if (isLazyMode) {
-            if (!isHovering) {
-              handleTapAction(e, "showPopover");
-            } else {
-              handleTapAction(e, "toggleDetails");
-            }
-            return;
-          }
-
-          // Eager mode: expand image (if available) or toggle search details
-          if (verification?.verificationImageBase64) {
-            handleTapAction(e, "expandImage");
+          // Toggle popover, then toggle search details
+          if (!isHovering) {
+            handleTapAction(e, "showPopover");
           } else {
             handleTapAction(e, "toggleDetails");
           }
         }
       },
-      [isLazyMode, isHovering, handleTapAction, verification?.verificationImageBase64]
+      [isHovering, handleTapAction]
     );
 
     // Hover handlers with delay for popover accessibility
@@ -2220,10 +2018,7 @@ export const CitationComponent = forwardRef<
       if (isAnyOverlayOpen) return;
 
       cancelHoverCloseTimeout();
-      // In lazy mode, don't show popover on hover (only style hover effects)
-      if (!isLazyMode) {
-        setIsHovering(true);
-      }
+      // Don't show popover on hover - only on click (lazy mode behavior)
       if (behaviorConfig?.onHover?.onEnter) {
         behaviorConfig.onHover.onEnter(getBehaviorContext());
       }
@@ -2236,7 +2031,6 @@ export const CitationComponent = forwardRef<
       getBehaviorContext,
       cancelHoverCloseTimeout,
       isAnyOverlayOpen,
-      isLazyMode,
     ]);
 
     const handleMouseLeave = useCallback(() => {
@@ -2724,15 +2518,8 @@ export const CitationComponent = forwardRef<
 
     // Shared trigger element props
     // All variants use status-aware hover colors (green/amber/red/gray)
-    // Cursor changes based on mode:
-    // - eager mode with image: cursor-zoom-in (click zooms image)
-    // - eager mode without image: cursor-pointer (click toggles details)
-    // - lazy mode: cursor-pointer (click toggles popover/details)
-    const cursorClass = isLazyMode
-      ? "cursor-pointer"
-      : hasImage
-        ? "cursor-zoom-in"
-        : "cursor-pointer";
+    // Cursor is always pointer since click toggles popover/details
+    const cursorClass = "cursor-pointer";
 
     // Generate unique popover ID for ARIA attributes
     const popoverId = `citation-popover-${citationInstanceId}`;

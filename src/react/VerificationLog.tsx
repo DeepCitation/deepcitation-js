@@ -567,8 +567,12 @@ interface PageBadgeProps {
 /**
  * Displays page location information.
  * Shows arrow format (Pg 5 → 7) when location differs from expected.
+ *
+ * Note: Pages are 1-indexed for user display. Page 0 is treated as invalid/unset
+ * since documents start at "Page 1" in user-facing contexts.
  */
 function PageBadge({ expectedPage, foundPage }: PageBadgeProps) {
+  // Pages are 1-indexed for display; page 0 indicates unset/invalid
   const hasExpected = expectedPage != null && expectedPage > 0;
   const hasFound = foundPage != null && foundPage > 0;
   const locationDiffers = hasExpected && hasFound && expectedPage !== foundPage;
@@ -994,10 +998,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText }: AuditSea
 
   return (
     <div className="px-4 py-3 space-y-4 text-sm">
-      {/* Looking for section - shows original citation text */}
-      <LookingForSection anchorText={anchorText} fullPhrase={fullPhrase} />
-
-      {/* Search attempts timeline */}
+      {/* Search attempts timeline - shows what was searched and where */}
       <div>
         <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Search attempts</div>
         <div className="space-y-0.5">
@@ -1019,20 +1020,27 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText }: AuditSea
 
 interface VerificationLogAttemptProps {
   attempt: SearchAttempt;
-  expectedPage?: number;
 }
 
 /**
- * Single attempt row - simplified, only shows meaningful info.
- * For success: shows where found (if different from expected).
+ * Single attempt row - shows search phrase and location info.
+ * For success: shows the phrase that was matched and where it was found.
+ * For failure: shows the phrase that was searched.
  */
-function VerificationLogAttempt({ attempt, expectedPage }: VerificationLogAttemptProps) {
+function VerificationLogAttempt({ attempt }: VerificationLogAttemptProps) {
   const isSuccess = attempt.success;
-  const methodName = getMethodDisplayName(attempt.method);
 
-  // Only show location detail if found on different page than expected
-  const foundPage = attempt.foundLocation?.page;
-  const showLocationDetail = isSuccess && foundPage && expectedPage && foundPage !== expectedPage;
+  // Get the phrase that was searched (or matched)
+  const phrase = attempt.searchPhrase ?? "";
+  const displayPhrase =
+    phrase.length === 0
+      ? "(empty)"
+      : phrase.length > MAX_PHRASE_DISPLAY_LENGTH
+        ? phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH) + "..."
+        : phrase;
+
+  // Get location info
+  const foundPage = attempt.foundLocation?.page ?? attempt.pageSearched;
 
   // Icon component and color
   const IconComponent = isSuccess ? CheckIcon : MissIcon;
@@ -1044,11 +1052,11 @@ function VerificationLogAttempt({ attempt, expectedPage }: VerificationLogAttemp
       <span className={cn("size-3.5 max-w-3.5 max-h-3.5 flex-shrink-0", iconColorClass)}>
         <IconComponent />
       </span>
-      {/* Method name */}
-      <span className="flex-1 text-xs text-gray-700 dark:text-gray-300">{methodName}</span>
-      {/* Location detail - only when found on different page */}
-      {showLocationDetail && (
-        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-shrink-0">→ Pg {foundPage}</span>
+      {/* Phrase that was matched/searched */}
+      <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 font-mono truncate">"{displayPhrase}"</span>
+      {/* Page location (1-indexed; page 0 indicates unset/invalid) */}
+      {foundPage != null && foundPage > 0 && (
+        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-shrink-0">Pg {foundPage}</span>
       )}
     </div>
   );
@@ -1100,7 +1108,7 @@ function VerificationLogTimeline({
           ? attempt.lineSearched.join("-")
           : (attempt.lineSearched ?? "none");
         const key = `${attempt.method}-${attempt.pageSearched ?? "doc"}-${lineKey}-${index}`;
-        return <VerificationLogAttempt key={key} attempt={attempt} expectedPage={expectedPage} />;
+        return <VerificationLogAttempt key={key} attempt={attempt} />;
       })}
     </div>
   );
