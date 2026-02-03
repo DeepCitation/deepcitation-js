@@ -2504,15 +2504,8 @@ export const CitationComponent = forwardRef<
 
     // Shared trigger element props
     // All variants use status-aware hover colors (green/amber/red/gray)
-    // Cursor changes based on mode:
-    // - eager mode with image: cursor-zoom-in (click zooms image)
-    // - eager mode without image: cursor-pointer (click toggles details)
-    // - lazy mode: cursor-pointer (click toggles popover/details)
-    const cursorClass = isLazyMode
-      ? "cursor-pointer"
-      : hasImage
-        ? "cursor-zoom-in"
-        : "cursor-pointer";
+    // Cursor is always pointer since click toggles popover/details
+    const cursorClass = "cursor-pointer";
 
     // Generate unique popover ID for ARIA attributes
     const popoverId = `citation-popover-${citationInstanceId}`;
