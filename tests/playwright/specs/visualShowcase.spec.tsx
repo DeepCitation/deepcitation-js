@@ -552,18 +552,18 @@ test.describe("Popover Showcase - Desktop Dark Mode", () => {
   });
 });
 
-test.describe("Popover Showcase - Interactive Hover Dark Mode", () => {
+test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
   test.use({ colorScheme: 'dark' });
 
-  test("hovering citation shows popover in dark mode", async ({ mount, page }) => {
+  test("clicking citation shows popover in dark mode", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
     // Find the verified interactive citation
     const verifiedCitation = page.locator('[data-interactive-popover="verified"] [data-citation-id]');
     await expect(verifiedCitation).toBeVisible();
 
-    // Hover over the citation
-    await verifiedCitation.hover();
+    // Click the citation to open popover (lazy mode - hover no longer shows popover)
+    await verifiedCitation.click();
 
     // Wait for popover to appear
     await page.waitForTimeout(200);
@@ -573,15 +573,15 @@ test.describe("Popover Showcase - Interactive Hover Dark Mode", () => {
     await expect(popover).toBeVisible();
   });
 
-  test("hovering not-found citation shows verification log in dark mode", async ({ mount, page }) => {
+  test("clicking not-found citation shows verification log in dark mode", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
     // Find the not-found interactive citation
     const notFoundCitation = page.locator('[data-interactive-popover="not-found"] [data-citation-id]');
     await expect(notFoundCitation).toBeVisible();
 
-    // Hover over the citation
-    await notFoundCitation.hover();
+    // Click the citation to open popover (lazy mode - hover no longer shows popover)
+    await notFoundCitation.click();
 
     // Wait for popover to appear
     await page.waitForTimeout(200);
