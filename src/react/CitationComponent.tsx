@@ -38,6 +38,7 @@ import {
   SpinnerIcon,
   WarningIcon,
   XCircleIcon,
+  XIcon,
 } from "./icons.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./Popover.js";
 import type {
@@ -763,12 +764,21 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 // Use `renderIndicator` prop to customize. Use `variant="indicator"` to show only the icon.
 // =============================================================================
 
+/**
+ * Dynamic indicator size styles.
+ * Uses em units so the indicator scales with the parent font size.
+ * 0.85em provides good visibility at most text sizes while staying proportional.
+ */
+const INDICATOR_SIZE_STYLE = { width: '0.85em', height: '0.85em', minWidth: '10px', minHeight: '10px' };
+
 /** Verified indicator - green checkmark for exact matches (subscript-positioned)
  * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ * Dynamic sizing via em units for font-proportional scaling.
  */
 const VerifiedIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-green-600 dark:text-green-500 [text-decoration:none]"
+    className="inline-flex relative ml-0.5 top-[0.1em] text-green-600 dark:text-green-500 [text-decoration:none]"
+    style={INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   >
     <CheckIcon />
@@ -777,10 +787,12 @@ const VerifiedIndicator = () => (
 
 /** Partial match indicator - amber checkmark for partial/relocated matches (subscript-positioned)
  * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ * Dynamic sizing via em units for font-proportional scaling.
  */
 const PartialIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.15em] size-2.5 text-amber-600 dark:text-amber-500 [text-decoration:none]"
+    className="inline-flex relative ml-0.5 top-[0.1em] text-amber-600 dark:text-amber-500 [text-decoration:none]"
+    style={INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   >
     <CheckIcon />
@@ -789,28 +801,33 @@ const PartialIndicator = () => (
 
 /** Pending indicator - spinner for loading state (subscript-positioned)
  * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ * Dynamic sizing via em units for font-proportional scaling.
  */
 const PendingIndicator = () => (
   <span
-    className="inline-flex relative ml-1 top-[0.15em] size-2.5 animate-spin text-gray-400 dark:text-gray-500 [text-decoration:none]"
+    className="inline-flex relative ml-1 top-[0.1em] animate-spin text-gray-400 dark:text-gray-500 [text-decoration:none]"
+    style={INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   >
     <SpinnerIcon />
   </span>
 );
 
-/** Miss indicator - red X in circle for not found (centered, not subscript)
- * Uses XCircleIcon for consistent visual language with URL citations.
+/** Miss indicator - red X for not found (centered, not subscript)
+ * Uses simple XIcon for better visibility at all sizes.
+ * The circle in XCircleIcon becomes hard to see at small font sizes.
  * Centered vertically (not subscript) to make the "not found" status more prominent.
  * aria-hidden="true" because parent component already conveys verification status.
  * Uses [text-decoration:none] to prevent inheriting line-through from parent.
+ * Dynamic sizing via em units for font-proportional scaling.
  */
 const MissIndicator = () => (
   <span
-    className="inline-flex items-center ml-0.5 size-2.5 text-red-500 dark:text-red-400 [text-decoration:none]"
+    className="inline-flex items-center ml-0.5 text-red-500 dark:text-red-400 [text-decoration:none]"
+    style={INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   >
-    <XCircleIcon />
+    <XIcon />
   </span>
 );
 

@@ -109,6 +109,7 @@ export {
   DocumentIcon,
   GlobeIcon,
   XCircleIcon,
+  XIcon,
 } from "./icons.js";
 
 // Sources List Components (Anthropic-style aggregated citations)
