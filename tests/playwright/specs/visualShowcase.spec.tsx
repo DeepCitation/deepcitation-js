@@ -309,16 +309,16 @@ test.describe("Popover Showcase - Desktop", () => {
   });
 });
 
-test.describe("Popover Showcase - Interactive Hover", () => {
-  test("hovering citation shows popover with verification details", async ({ mount, page }) => {
+test.describe("Popover Showcase - Interactive Click", () => {
+  test("clicking citation shows popover with verification details", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
     // Find the verified interactive citation
     const verifiedCitation = page.locator('[data-interactive-popover="verified"] [data-citation-id]');
     await expect(verifiedCitation).toBeVisible();
 
-    // Hover over the citation
-    await verifiedCitation.hover();
+    // Click the citation to open popover (lazy mode - hover no longer shows popover)
+    await verifiedCitation.click();
 
     // Wait for popover to appear
     await page.waitForTimeout(200);
@@ -328,15 +328,15 @@ test.describe("Popover Showcase - Interactive Hover", () => {
     await expect(popover).toBeVisible();
   });
 
-  test("hovering not-found citation shows verification log", async ({ mount, page }) => {
+  test("clicking not-found citation shows verification log", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
     // Find the not-found interactive citation
     const notFoundCitation = page.locator('[data-interactive-popover="not-found"] [data-citation-id]');
     await expect(notFoundCitation).toBeVisible();
 
-    // Hover over the citation
-    await notFoundCitation.hover();
+    // Click the citation to open popover (lazy mode - hover no longer shows popover)
+    await notFoundCitation.click();
 
     // Wait for popover to appear
     await page.waitForTimeout(200);
@@ -349,15 +349,15 @@ test.describe("Popover Showcase - Interactive Hover", () => {
     await expect(popover).toContainText("couldn't find");
   });
 
-  test("hovering pending citation shows loading state", async ({ mount, page }) => {
+  test("clicking pending citation shows loading state", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
     // Find the pending interactive citation
     const pendingCitation = page.locator('[data-interactive-popover="pending"] [data-citation-id]');
     await expect(pendingCitation).toBeVisible();
 
-    // Hover over the citation
-    await pendingCitation.hover();
+    // Click the citation to open popover (lazy mode - hover no longer shows popover)
+    await pendingCitation.click();
 
     // Wait for popover to appear
     await page.waitForTimeout(200);
