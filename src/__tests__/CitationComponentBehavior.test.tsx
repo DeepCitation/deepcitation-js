@@ -28,6 +28,22 @@ const HOVER_CLOSE_DELAY_MS = 150;
 const waitForHoverCloseDelay = () =>
   new Promise((resolve) => setTimeout(resolve, HOVER_CLOSE_DELAY_MS + 50));
 
+// Helper to wait for popover to become visible
+const waitForPopoverVisible = async (container: HTMLElement) => {
+  await waitFor(() => {
+    const popover = container.querySelector('[data-state="open"]');
+    expect(popover).toBeInTheDocument();
+  });
+};
+
+// Helper to wait for popover to be dismissed
+const waitForPopoverDismissed = async (container: HTMLElement) => {
+  await waitFor(() => {
+    const popover = container.querySelector('[data-state="open"]');
+    expect(popover).not.toBeInTheDocument();
+  });
+};
+
 describe("CitationComponent behaviorConfig", () => {
   afterEach(() => {
     cleanup();
@@ -310,10 +326,7 @@ describe("CitationComponent behaviorConfig", () => {
       ).not.toBeInTheDocument();
 
       // Popover should be shown
-      await waitFor(() => {
-        const popoverContent = container.querySelector('[data-state="open"]');
-        expect(popoverContent).toBeInTheDocument();
-      });
+      await waitForPopoverVisible(container);
     });
 
     it("toggles search details on second click (not image overlay)", async () => {
@@ -1019,10 +1032,7 @@ describe("CitationComponent behaviorConfig", () => {
       ).not.toBeInTheDocument();
 
       // Popover should be shown
-      await waitFor(() => {
-        const popoverContent = container.querySelector('[data-state="open"]');
-        expect(popoverContent).toBeInTheDocument();
-      });
+      await waitForPopoverVisible(container);
     });
 
     it("handles empty behaviorConfig object", async () => {
@@ -1043,10 +1053,7 @@ describe("CitationComponent behaviorConfig", () => {
       ).not.toBeInTheDocument();
 
       // Popover should be shown
-      await waitFor(() => {
-        const popoverContent = container.querySelector('[data-state="open"]');
-        expect(popoverContent).toBeInTheDocument();
-      });
+      await waitForPopoverVisible(container);
     });
 
     it("handles verification without image correctly in context", () => {
@@ -1548,19 +1555,13 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // Popover should be visible
-      await waitFor(() => {
-        const popoverContent = container.querySelector('[data-state="open"]');
-        expect(popoverContent).toBeInTheDocument();
-      });
+      await waitForPopoverVisible(container);
 
       // Tap outside (on document body) - should dismiss popover
       fireEvent.touchStart(document.body);
 
       // Popover should be dismissed
-      await waitFor(() => {
-        const popoverContent = container.querySelector('[data-state="open"]');
-        expect(popoverContent).not.toBeInTheDocument();
-      });
+      await waitForPopoverDismissed(container);
     });
 
     it("tapping inside the popover content does NOT dismiss it", async () => {

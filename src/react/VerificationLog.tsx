@@ -567,8 +567,12 @@ interface PageBadgeProps {
 /**
  * Displays page location information.
  * Shows arrow format (Pg 5 → 7) when location differs from expected.
+ *
+ * Note: Pages are 1-indexed for user display. Page 0 is treated as invalid/unset
+ * since documents start at "Page 1" in user-facing contexts.
  */
 function PageBadge({ expectedPage, foundPage }: PageBadgeProps) {
+  // Pages are 1-indexed for display; page 0 indicates unset/invalid
   const hasExpected = expectedPage != null && expectedPage > 0;
   const hasFound = foundPage != null && foundPage > 0;
   const locationDiffers = hasExpected && hasFound && expectedPage !== foundPage;
@@ -1050,7 +1054,7 @@ function VerificationLogAttempt({ attempt }: VerificationLogAttemptProps) {
       </span>
       {/* Phrase that was matched/searched */}
       <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 font-mono truncate">"{displayPhrase}"</span>
-      {/* Page location */}
+      {/* Page location (1-indexed; page 0 indicates unset/invalid) */}
       {foundPage != null && foundPage > 0 && (
         <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-shrink-0">Pg {foundPage}</span>
       )}

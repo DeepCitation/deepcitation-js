@@ -834,6 +834,10 @@ const MissIndicator = () => (
 /**
  * Displays a verification image that fits within the container dimensions.
  * The image is scaled to fit (without distortion) and can be clicked to expand.
+ *
+ * Note: This component uses simple object-fit: contain for predictable sizing.
+ * Previous scroll-to-anchor-text logic was removed for simplicity - users can
+ * click to see the full-size image if more detail is needed.
  */
 function AnchorTextFocusedImage({
   verification,
@@ -1689,6 +1693,14 @@ export const CitationComponent = forwardRef<
     },
     ref
   ) => {
+    // Warn about deprecated interactionMode prop in development
+    if (process.env.NODE_ENV !== "production" && _interactionMode !== undefined) {
+      console.warn(
+        "CitationComponent: interactionMode prop is deprecated and has no effect. " +
+          "The component now always uses click-to-show-popover behavior."
+      );
+    }
+
     // Get overlay context for blocking hover when any image overlay is open
     const { isAnyOverlayOpen } = useCitationOverlay();
 
