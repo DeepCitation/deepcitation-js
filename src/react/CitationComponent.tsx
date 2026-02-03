@@ -2300,6 +2300,7 @@ export const CitationComponent = forwardRef<
       }
 
       // Variant: superscript (footnote style)
+      // Hover styling is applied here (not on parent) to keep hover contained within superscript bounds
       if (variant === "superscript") {
         const supStatusClasses = cn(
           // Default text color for dark mode compatibility
@@ -2310,8 +2311,21 @@ export const CitationComponent = forwardRef<
         return (
           <sup
             className={cn(
-              "text-xs font-medium transition-colors hover:underline inline-flex items-baseline",
-              supStatusClasses
+              "text-xs font-medium transition-colors inline-flex items-baseline px-0.5 rounded",
+              supStatusClasses,
+              // Status-aware hover styling (contained within the superscript)
+              isVerified &&
+                !isPartialMatch &&
+                !shouldShowSpinner &&
+                "hover:bg-green-600/15 dark:hover:bg-green-500/15",
+              isPartialMatch &&
+                !shouldShowSpinner &&
+                "hover:bg-amber-600/15 dark:hover:bg-amber-500/15",
+              isMiss &&
+                !shouldShowSpinner &&
+                "hover:bg-red-500/15 dark:hover:bg-red-400/15",
+              (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
+                "hover:bg-gray-200 dark:hover:bg-gray-700"
             )}
           >
             [
@@ -2538,9 +2552,9 @@ export const CitationComponent = forwardRef<
     // Generate unique popover ID for ARIA attributes
     const popoverId = `citation-popover-${citationInstanceId}`;
 
-    // Chip and badge variants have their own hover styles, so we shouldn't add
-    // hover backgrounds to the outer wrapper (it would extend beyond the chip bounds)
-    const variantHasOwnHover = variant === "chip" || variant === "badge" || variant === "linter";
+    // Chip, badge, superscript variants have their own hover styles, so we shouldn't add
+    // hover backgrounds to the outer wrapper (it would extend beyond their bounds)
+    const variantHasOwnHover = variant === "chip" || variant === "badge" || variant === "linter" || variant === "superscript";
 
     const triggerProps = {
       "data-citation-id": citationKey,
