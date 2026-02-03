@@ -33,4 +33,4 @@ export type {
 } from "./search.js";
 
 // Box/geometry types
-export type { ScreenBox, DeepTextItem, IVertex } from "./boxes.js";
+export type { ScreenBox, DeepTextItem, IVertex, Page } from "./boxes.js";
