@@ -318,6 +318,28 @@ pre {
     > a:not(.site-title) {
       display: none !important;
     }
+
+    // Hide the default Just the Docs logo image element
+    // (we use our custom title.html with inline logo instead)
+    > img {
+      display: none !important;
+    }
+
+    // Hide empty site-title/lh-tight elements rendered by Just the Docs
+    // Even with logo config commented out, theme may render these with whitespace
+    // The :empty selector catches truly empty elements (no children, no text)
+    .lh-tight:empty,
+    .site-title:empty {
+      display: none !important;
+    }
+
+    // Fallback for elements with whitespace-only content
+    // Uses :has() to detect missing .site-logo child (our custom logo)
+    // Note: :has() requires Safari 15.4+, Firefox 121+, Chrome 105+
+    // Browsers without :has() fall back to :empty rule above
+    .site-title.lh-tight:not(:has(.site-logo)) {
+      display: none !important;
+    }
   }
 
   // Site title with logo
@@ -582,6 +604,7 @@ blockquote {
 
 // -----------------------------------------------------
 // Override Just the Docs purple (#7253ed) in specific places
+// This includes focus rings that default to purple/blue
 // -----------------------------------------------------
 
 // Search icon color when input is focused
@@ -592,4 +615,37 @@ blockquote {
 // Anchor heading SVG (the link icon that appears on hover)
 .main-content .anchor-heading svg {
   color: var(--link-color);
+}
+
+// Override all focus rings to use brand blue instead of purple/pure blue
+// Just the Docs uses rgba(0, 0, 255, 0.25) for focus rings by default
+// We use box-shadow for consistent appearance across browsers
+.main-content a:focus,
+.main-content a:focus-visible,
+.main-content button:focus,
+.main-content button:focus-visible,
+.main-content input:focus,
+.main-content input:focus-visible,
+.main-content [tabindex]:focus,
+.main-content [tabindex]:focus-visible,
+.side-bar a:focus,
+.side-bar a:focus-visible,
+.side-bar button:focus,
+.side-bar button:focus-visible,
+.side-bar input:focus,
+.side-bar input:focus-visible,
+.site-header a:focus,
+.site-header a:focus-visible,
+.site-header button:focus,
+.site-header button:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+.btn:focus,
+.btn:focus-visible,
+.nav-list-link:focus,
+.nav-list-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring-color);
 }
