@@ -44,6 +44,8 @@ export interface UploadFileResponse {
   processingTimeMs?: number;
   /** Error message if status is "error" */
   error?: string;
+  /** Optional expiration date for the attachment (ISO 8601 string). If "never", the attachment does not expire (enterprise). */
+  expiresAt?: string | "never";
 }
 
 /**
@@ -190,4 +192,48 @@ export interface ConvertFileResponse {
 export interface PrepareConvertedFileOptions {
   /** The attachment ID from a previous convertFile call */
   attachmentId: string;
+}
+
+/**
+ * Expiration value for attachments and pages.
+ * - ISO 8601 date string (e.g., "2025-12-31T23:59:59Z"): expires at this date
+ * - "never": does not expire (enterprise feature)
+ */
+export type ExpirationValue = string | "never";
+
+/**
+ * Duration to extend the expiration by
+ */
+export type ExtendExpirationDuration = "month" | "year";
+
+/**
+ * Options for extending an attachment's expiration
+ */
+export interface ExtendExpirationOptions {
+  /** The attachment ID to extend */
+  attachmentId: string;
+  /** Duration to extend by: "month" (30 days) or "year" (365 days) */
+  duration: ExtendExpirationDuration;
+}
+
+/**
+ * Response from extending an attachment's expiration
+ */
+export interface ExtendExpirationResponse {
+  /** The attachment ID that was extended */
+  attachmentId: string;
+  /** The new expiration date (ISO 8601 string), or "never" for enterprise attachments that don't expire */
+  expiresAt: string | "never";
+  /** The previous expiration date (ISO 8601 string), "never", or undefined if not previously set */
+  previousExpiresAt?: string | "never";
+}
+
+/**
+ * Response from deleting an attachment
+ */
+export interface DeleteAttachmentResponse {
+  /** The attachment ID that was deleted */
+  attachmentId: string;
+  /** Whether the deletion was successful */
+  deleted: boolean;
 }

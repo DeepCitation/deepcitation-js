@@ -7,6 +7,9 @@ import type {
   ConvertFileInput,
   ConvertFileResponse,
   DeepCitationConfig,
+  DeleteAttachmentResponse,
+  ExtendExpirationOptions,
+  ExtendExpirationResponse,
   FileDataPart,
   FileInput,
   PrepareConvertedFileOptions,
@@ -713,5 +716,83 @@ export class DeepCitation {
     }
 
     return { verifications: allVerifications };
+  }
+
+  /**
+   * Extend the expiration date of an attachment.
+   *
+   * Use this to keep an attachment available for longer. Attachments have
+   * an optional expiration date after which they may be deleted.
+   *
+   * @param options - Options with attachmentId and duration
+   * @returns Response with the new expiration date
+   *
+   * @example
+   * ```typescript
+   * // Extend by one month (30 days)
+   * const result = await deepcitation.extendExpiration({
+   *   attachmentId: "abc123",
+   *   duration: "month",
+   * });
+   * console.log(`New expiration: ${result.expiresAt}`);
+   *
+   * // Extend by one year (365 days)
+   * const result = await deepcitation.extendExpiration({
+   *   attachmentId: "abc123",
+   *   duration: "year",
+   * });
+   * ```
+   */
+  async extendExpiration(
+    options: ExtendExpirationOptions
+  ): Promise<ExtendExpirationResponse> {
+    const response = await fetch(`${this.apiUrl}/attachments/${options.attachmentId}/extend`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        duration: options.duration,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, "Extend expiration"));
+    }
+
+    return (await response.json()) as ExtendExpirationResponse;
+  }
+
+  /**
+   * Delete an attachment immediately.
+   *
+   * Use this to remove an attachment before its expiration date. This action
+   * is irreversible - the attachment and all associated data will be deleted.
+   *
+   * @param attachmentId - The attachment ID to delete
+   * @returns Response confirming the deletion
+   *
+   * @example
+   * ```typescript
+   * const result = await deepcitation.deleteAttachment("abc123");
+   * if (result.deleted) {
+   *   console.log("Attachment deleted successfully");
+   * }
+   * ```
+   */
+  async deleteAttachment(attachmentId: string): Promise<DeleteAttachmentResponse> {
+    const response = await fetch(`${this.apiUrl}/attachments/${attachmentId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(await extractErrorMessage(response, "Delete attachment"));
+    }
+
+    return (await response.json()) as DeleteAttachmentResponse;
   }
 }

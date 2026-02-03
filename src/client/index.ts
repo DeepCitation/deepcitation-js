@@ -14,4 +14,9 @@ export type {
   ConvertFileInput,
   ConvertFileResponse,
   PrepareConvertedFileOptions,
+  ExpirationValue,
+  ExtendExpirationDuration,
+  ExtendExpirationOptions,
+  ExtendExpirationResponse,
+  DeleteAttachmentResponse,
 } from "./types.js";
