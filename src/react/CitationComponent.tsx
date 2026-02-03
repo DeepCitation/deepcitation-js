@@ -2255,6 +2255,17 @@ export const CitationComponent = forwardRef<
     // the two-tap mobile interaction pattern (first tap shows popover, second tap opens image).
     // However, it means we need custom touch handling to dismiss the popover on outside taps.
     //
+    // Event order when tapping the trigger while popover is open:
+    // 1. handleOutsideTouch (capture phase, document) - checks .contains(), returns early
+    // 2. handleTouchStart (bubble phase, trigger) - reads isHoveringRef.current
+    // 3. handleTouchEnd/handleClick - determines first vs second tap action
+    // The .contains() check in step 1 ensures we don't dismiss when tapping the trigger,
+    // allowing the normal two-tap flow to proceed.
+    //
+    // Portal note: popoverContentRef works with portaled content because Radix renders
+    // the popover content as a child of document.body, but we hold a direct ref to that
+    // DOM element, so .contains() correctly detects touches inside it.
+    //
     // Cleanup: The listener only attaches when isMobile AND isHovering are both true.
     // It's automatically removed when either condition becomes false or on unmount.
     // This minimizes document-level listener churn since popovers open/close frequently.
@@ -2273,7 +2284,7 @@ export const CitationComponent = forwardRef<
           return;
         }
 
-        // Check if touch is inside the popover content
+        // Check if touch is inside the popover content (works with portaled content)
         if (popoverContentRef.current?.contains(target)) {
           return;
         }
@@ -2293,7 +2304,7 @@ export const CitationComponent = forwardRef<
           capture: true,
         });
       };
-    }, [isMobile, isHovering]);
+    }, [isMobile, isHovering, setIsHovering]);
 
     // Touch start handler for mobile - captures popover state before touch ends.
     // Reads isHoveringRef.current (which is kept in sync with isHovering state above)
