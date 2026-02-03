@@ -325,10 +325,19 @@ pre {
       display: none !important;
     }
 
-    // Hide any empty site-title or lh-tight elements
-    // These are rendered by Just the Docs when logo is configured
+    // Hide empty site-title/lh-tight elements rendered by Just the Docs
+    // Even with logo config commented out, theme may render these with whitespace
+    // The :empty selector catches truly empty elements (no children, no text)
     .lh-tight:empty,
     .site-title:empty {
+      display: none !important;
+    }
+
+    // Fallback for elements with whitespace-only content
+    // Uses :has() to detect missing .site-logo child (our custom logo)
+    // Note: :has() requires Safari 15.4+, Firefox 121+, Chrome 105+
+    // Browsers without :has() fall back to :empty rule above
+    .site-title.lh-tight:not(:has(.site-logo)) {
       display: none !important;
     }
   }
@@ -342,11 +351,6 @@ pre {
     align-items: center;
     gap: 0.5rem;
     text-decoration: none;
-
-    // Hide if only contains whitespace (Just the Docs default)
-    &.lh-tight:not(:has(.site-logo)) {
-      display: none !important;
-    }
 
     // No hover color change - site title should stay as heading color
     &:hover {
@@ -614,24 +618,26 @@ blockquote {
 }
 
 // Override all focus rings to use brand blue instead of purple/pure blue
-// This targets the default browser/theme focus ring that uses rgba(0, 0, 255, 0.25)
-// More targeted than universal * selector to avoid unintended side effects
-.main-content *:focus,
-.main-content *:focus-visible,
-.side-bar *:focus,
-.side-bar *:focus-visible,
-.site-header *:focus,
-.site-header *:focus-visible {
-  outline-color: var(--link-color) !important;
-}
-
-// Override focus rings with box-shadow approach (consistent with --focus-ring-color variable)
-a:focus,
-a:focus-visible,
-button:focus,
-button:focus-visible,
-input:focus,
-input:focus-visible,
+// Just the Docs uses rgba(0, 0, 255, 0.25) for focus rings by default
+// We use box-shadow for consistent appearance across browsers
+.main-content a:focus,
+.main-content a:focus-visible,
+.main-content button:focus,
+.main-content button:focus-visible,
+.main-content input:focus,
+.main-content input:focus-visible,
+.main-content [tabindex]:focus,
+.main-content [tabindex]:focus-visible,
+.side-bar a:focus,
+.side-bar a:focus-visible,
+.side-bar button:focus,
+.side-bar button:focus-visible,
+.side-bar input:focus,
+.side-bar input:focus-visible,
+.site-header a:focus,
+.site-header a:focus-visible,
+.site-header button:focus,
+.site-header button:focus-visible,
 select:focus,
 select:focus-visible,
 textarea:focus,
@@ -639,9 +645,7 @@ textarea:focus-visible,
 .btn:focus,
 .btn:focus-visible,
 .nav-list-link:focus,
-.nav-list-link:focus-visible,
-[tabindex]:focus,
-[tabindex]:focus-visible {
-  box-shadow: 0 0 0 3px var(--focus-ring-color) !important;
-  outline: none !important;
+.nav-list-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring-color);
 }
