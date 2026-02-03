@@ -1549,7 +1549,7 @@ describe("CitationComponent mobile/touch detection", () => {
       });
     });
 
-    it("tapping the trigger while popover is open advances to image overlay", async () => {
+    it("tapping the trigger while popover is open toggles search details (not image overlay)", async () => {
       mockTouchDevice(true);
 
       const { container } = render(
@@ -1572,12 +1572,13 @@ describe("CitationComponent mobile/touch detection", () => {
         expect(popoverContent).toBeInTheDocument();
       });
 
-      // Second tap on trigger - should open image overlay (not dismiss popover)
+      // Second tap on trigger - should toggle search details (not open image overlay)
+      // In lazy/mobile mode, second tap toggles details instead of opening image
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
 
-      // Image overlay should be visible
-      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+      // Image overlay should NOT be visible (second tap toggles details, not image)
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("desktop mode (isMobile=false) does not dismiss on outside click", async () => {
