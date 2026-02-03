@@ -12,3 +12,19 @@ export interface ScreenBox extends IVertex {
   width: number;
   height: number;
 }
+
+/**
+ * Represents a page in a document with its metadata and dimensions.
+ * Used for tracking page information in multi-page documents.
+ */
+export interface Page {
+  /** Page number (1-indexed) */
+  pageNumber: number;
+  /** Page dimensions in pixels or PDF units */
+  dimensions: {
+    width: number;
+    height: number;
+  };
+  /** Source URL for the page image/render */
+  source: string;
+}
