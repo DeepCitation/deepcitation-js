@@ -217,6 +217,49 @@ class CitationErrorBoundary extends React.Component<
 // UTILITY FUNCTIONS
 // =============================================================================
 
+/** Variants that handle their own hover styling (don't need parent hover) */
+const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>([
+  "chip",
+  "badge",
+  "linter",
+  "superscript",
+]);
+
+/**
+ * Get status-aware hover classes for contained hover styling.
+ * Used by chip, superscript, and other variants that need hover contained within their bounds.
+ *
+ * @param isVerified - Whether the citation is verified
+ * @param isPartialMatch - Whether it's a partial match
+ * @param isMiss - Whether it's not found
+ * @param shouldShowSpinner - Whether to show loading spinner
+ * @param opacity - Opacity level for hover backgrounds (default: 15)
+ * @returns Array of Tailwind class strings for hover states
+ */
+function getStatusHoverClasses(
+  isVerified: boolean,
+  isPartialMatch: boolean,
+  isMiss: boolean,
+  shouldShowSpinner: boolean,
+  opacity: 10 | 15 = 15
+): (string | false)[] {
+  const opacitySuffix = opacity === 10 ? "/10" : "/15";
+  return [
+    isVerified &&
+      !isPartialMatch &&
+      !shouldShowSpinner &&
+      `hover:bg-green-600${opacitySuffix} dark:hover:bg-green-500${opacitySuffix}`,
+    isPartialMatch &&
+      !shouldShowSpinner &&
+      `hover:bg-amber-600${opacitySuffix} dark:hover:bg-amber-500${opacitySuffix}`,
+    isMiss &&
+      !shouldShowSpinner &&
+      `hover:bg-red-500${opacitySuffix} dark:hover:bg-red-400${opacitySuffix}`,
+    (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
+      "hover:bg-gray-200 dark:hover:bg-gray-700",
+  ];
+}
+
 /**
  * Get the default content type based on variant.
  */
@@ -2271,18 +2314,7 @@ export const CitationComponent = forwardRef<
               // Neutral gray background - status shown via icon color only
               "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
               // Status-aware hover styling (contained within the chip)
-              isVerified &&
-                !isPartialMatch &&
-                !shouldShowSpinner &&
-                "hover:bg-green-600/15 dark:hover:bg-green-500/15",
-              isPartialMatch &&
-                !shouldShowSpinner &&
-                "hover:bg-amber-600/15 dark:hover:bg-amber-500/15",
-              isMiss &&
-                !shouldShowSpinner &&
-                "hover:bg-red-500/15 dark:hover:bg-red-400/15",
-              (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
-                "hover:bg-gray-200 dark:hover:bg-gray-700"
+              ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner)
             )}
           >
             <span
@@ -2333,18 +2365,7 @@ export const CitationComponent = forwardRef<
                 "text-xs font-medium transition-colors inline-flex items-baseline px-0.5 rounded",
                 supStatusClasses,
                 // Status-aware hover styling (contained within the superscript)
-                isVerified &&
-                  !isPartialMatch &&
-                  !shouldShowSpinner &&
-                  "hover:bg-green-600/15 dark:hover:bg-green-500/15",
-                isPartialMatch &&
-                  !shouldShowSpinner &&
-                  "hover:bg-amber-600/15 dark:hover:bg-amber-500/15",
-                isMiss &&
-                  !shouldShowSpinner &&
-                  "hover:bg-red-500/15 dark:hover:bg-red-400/15",
-                (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
-                  "hover:bg-gray-200 dark:hover:bg-gray-700"
+                ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner)
               )}
             >
               [
@@ -2572,9 +2593,8 @@ export const CitationComponent = forwardRef<
     // Generate unique popover ID for ARIA attributes
     const popoverId = `citation-popover-${citationInstanceId}`;
 
-    // Chip, badge, superscript variants have their own hover styles, so we shouldn't add
-    // hover backgrounds to the outer wrapper (it would extend beyond their bounds)
-    const variantHasOwnHover = variant === "chip" || variant === "badge" || variant === "linter" || variant === "superscript";
+    // Variants with their own hover styles don't need parent hover (would extend beyond bounds)
+    const variantHasOwnHover = VARIANTS_WITH_OWN_HOVER.has(variant);
 
     const triggerProps = {
       "data-citation-id": citationKey,
@@ -2587,23 +2607,10 @@ export const CitationComponent = forwardRef<
         // Improved touch target size on mobile (minimum 44px recommended)
         // Using py-1.5 for better touch accessibility without breaking layout
         isMobile && "py-1.5 touch-manipulation",
-        // Status-aware hover for variants that don't handle their own hover styling
-        !variantHasOwnHover &&
-          isVerified &&
-          !isPartialMatch &&
-          !shouldShowSpinner &&
-          "hover:bg-green-600/10 dark:hover:bg-green-500/10",
-        !variantHasOwnHover &&
-          isPartialMatch &&
-          !shouldShowSpinner &&
-          "hover:bg-amber-600/10 dark:hover:bg-amber-500/10",
-        !variantHasOwnHover &&
-          isMiss &&
-          !shouldShowSpinner &&
-          "hover:bg-red-500/10 dark:hover:bg-red-400/10",
-        !variantHasOwnHover &&
-          (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
-          "hover:bg-gray-500/10 dark:hover:bg-gray-400/10",
+        // Status-aware hover for variants that don't handle their own hover styling (10% opacity)
+        ...(variantHasOwnHover
+          ? []
+          : getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner, 10)),
         // Focus styles for keyboard accessibility
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
         className

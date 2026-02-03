@@ -1020,9 +1020,6 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText }: AuditSea
 
 interface VerificationLogTimelineProps {
   searchAttempts: SearchAttempt[];
-  expectedPage?: number;
-  /** For miss states: show audit-focused phrase display instead of method list */
-  showAuditDisplay?: boolean;
   fullPhrase?: string;
   anchorText?: string;
 }
@@ -1034,8 +1031,6 @@ interface VerificationLogTimelineProps {
  */
 function VerificationLogTimeline({
   searchAttempts,
-  expectedPage: _expectedPage,
-  showAuditDisplay: _showAuditDisplay,
   fullPhrase,
   anchorText,
 }: VerificationLogTimelineProps) {
@@ -1110,8 +1105,6 @@ export function VerificationLog({
       {isExpanded && (
         <VerificationLogTimeline
           searchAttempts={searchAttempts}
-          expectedPage={expectedPage}
-          showAuditDisplay={status === "not_found"}
           fullPhrase={fullPhrase}
           anchorText={anchorText}
         />
