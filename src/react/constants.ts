@@ -55,3 +55,10 @@ export const BROKEN_WAVY_UNDERLINE_STYLE = MISS_WAVY_UNDERLINE_STYLE;
  * Used for copy-to-clipboard feedback in various components.
  */
 export const COPY_FEEDBACK_DURATION_MS = 2000;
+
+/**
+ * Base CSS classes for popover containers in CitationComponent.
+ * Provides consistent styling for all popover states (pending, success, partial, error).
+ */
+export const POPOVER_CONTAINER_BASE_CLASSES =
+  "rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md max-h-[inherit] overflow-y-auto";
