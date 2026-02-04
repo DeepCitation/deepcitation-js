@@ -753,8 +753,8 @@ export function StatusHeader({
                   ? "text-red-500 dark:text-red-400"
                   : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
             )}
-            aria-label={copyState === "copied" ? "Copied!" : "Copy anchor text"}
-            title={copyState === "copied" ? "Copied!" : "Copy"}
+            aria-label={copyState === "copied" ? "Copied!" : "Copy quoted text"}
+            title={copyState === "copied" ? "Copied!" : "Copy quote"}
           >
             <span className="size-3.5 block">
               {copyState === "copied" ? <CheckIcon /> : <CopyIcon />}

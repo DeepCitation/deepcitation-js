@@ -2441,9 +2441,9 @@ export const CitationComponent = forwardRef<
         );
         return (
           <>
-            {/* Anchor text displayed as unstyled inline text - no wavy underline, indicator conveys status */}
+            {/* Anchor text displayed inline - font-normal prevents bold inheritance like other variants */}
             {anchorTextDisplay && (
-              <span>
+              <span className="font-normal">
                 {anchorTextDisplay}
               </span>
             )}
