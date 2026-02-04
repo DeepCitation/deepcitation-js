@@ -129,7 +129,7 @@ The LLM output contains a `<<<CITATION_DATA>>>` block that **MUST BE STRIPPED** 
 Revenue grew 23% in Q4.<cite n="1" />
 
 <<<CITATION_DATA>>>
-{"1":{"pageNumber":1,"lineId":"5","fullPhrase":"Revenue grew 23% in Q4"}}
+{"1":{"pageId":"page_number_1_index_0","lineId":"5","fullPhrase":"Revenue grew 23% in Q4"}}
 <<<END_CITATION_DATA>>>
 ```
 
