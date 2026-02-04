@@ -82,14 +82,13 @@ test.describe("ChipCitation", () => {
 
     // Wrapper has background color, text color is on inner span
     await expect(chip).toHaveClass(/bg-red-/);
-    // wavy underline is applied via inline style on the inner text span
-    const hasWavyUnderline = await chip.evaluate((el) => {
-      const spans = el.querySelectorAll("span");
-      return Array.from(spans).some(
-        (span) => (span as HTMLElement).style.textDecorationStyle === "wavy"
-      );
-    });
-    expect(hasWavyUnderline).toBe(true);
+    // Chip variant does NOT use wavy underline - status is conveyed via indicator icon
+    // Check that the X indicator is present (red text color indicates miss state icon)
+    const xIndicator = chip.locator('span.text-red-500, span.text-red-400').first();
+    await expect(xIndicator).toBeVisible();
+    // Verify text span has reduced opacity (the span with opacity-70 class)
+    const textSpan = chip.locator('span.opacity-70');
+    await expect(textSpan).toBeVisible();
   });
 
   test("renders with partial match state", async ({ mount, page }) => {
@@ -122,18 +121,24 @@ test.describe("ChipCitation", () => {
     await expect(chip.locator(".opacity-70")).toBeVisible();
   });
 
-  test("renders small size", async ({ mount, page }) => {
+  test("renders with consistent sizing", async ({ mount, page }) => {
+    // Chip variant uses consistent minimal sizing (0.9em) for inline text flow
+    // Size prop is now ignored for better space-awareness
     await mount(<ChipCitation citation={baseCitation} size="sm" />);
     const chip = page.locator('[data-variant="chip"]');
 
-    await expect(chip).toHaveClass(/text-xs/);
+    // Verify chip has consistent styling regardless of size prop
+    await expect(chip).toHaveClass(/text-\[0\.9em\]/);
+    await expect(chip).toHaveClass(/font-normal/);
   });
 
-  test("renders large size", async ({ mount, page }) => {
+  test("renders with minimal padding", async ({ mount, page }) => {
+    // Chip variant uses minimal padding for seamless inline text layouts
     await mount(<ChipCitation citation={baseCitation} size="lg" />);
     const chip = page.locator('[data-variant="chip"]');
 
-    await expect(chip).toHaveClass(/text-base/);
+    await expect(chip).toHaveClass(/px-1\.5/);
+    await expect(chip).toHaveClass(/py-0/);
   });
 
   test("shows icon when showIcon is true", async ({ mount, page }) => {
@@ -240,14 +245,12 @@ test.describe("SuperscriptCitation", () => {
     const sup = page.locator('[data-variant="superscript"]');
 
     await expect(sup).toHaveClass(/text-red-/);
-    // wavy underline is applied via inline style on the inner text span
-    const hasWavyUnderline = await sup.evaluate((el) => {
-      const spans = el.querySelectorAll("span");
-      return Array.from(spans).some(
-        (span) => (span as HTMLElement).style.textDecorationStyle === "wavy"
-      );
+    // Superscript variant does NOT use wavy underline - status is conveyed via indicator icon
+    // Check that the X indicator is present
+    const hasXIndicator = await sup.evaluate((el) => {
+      return el.querySelector('svg') !== null || el.textContent?.includes('✕') || el.querySelector('[aria-hidden="true"]') !== null;
     });
-    expect(hasWavyUnderline).toBe(true);
+    expect(hasXIndicator).toBe(true);
   });
 });
 
@@ -500,6 +503,8 @@ test.describe("CitationVariantFactory", () => {
   });
 
   test("passes variant-specific props", async ({ mount, page }) => {
+    // Note: size prop is now ignored for chip - uses consistent sizing for inline text flow
+    // This test verifies the factory component works with chip variant
     await mount(
       <CitationVariantFactory
         variant="chip"
@@ -509,7 +514,8 @@ test.describe("CitationVariantFactory", () => {
     );
     const chip = page.locator('[data-variant="chip"]');
 
-    await expect(chip).toHaveClass(/text-base/);
+    // Chip uses consistent 0.9em sizing regardless of size prop
+    await expect(chip).toHaveClass(/text-\[0\.9em\]/);
   });
 });
 
