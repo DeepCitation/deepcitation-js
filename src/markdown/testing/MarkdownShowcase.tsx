@@ -212,7 +212,7 @@ export function MarkdownShowcase() {
                       const indicator = getIndicator(status, style);
                       return (
                         <td key={name} className="p-2 font-mono text-lg text-gray-800 dark:text-gray-200" data-indicator={name.toLowerCase()}>
-                          {indicator || <span className="text-gray-400 dark:text-gray-600">(none)</span>}
+                          {indicator || <span className="text-gray-400 dark:text-gray-500">(none)</span>}
                         </td>
                       );
                     })}

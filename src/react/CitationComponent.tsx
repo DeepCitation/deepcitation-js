@@ -996,7 +996,7 @@ function AnchorTextFocusedImage({
             type="button"
             onClick={handleCopy}
             className={cn(
-              "flex items-center gap-1 text-xs transition-colors cursor-pointer",
+              "flex items-center text-xs transition-colors cursor-pointer",
               copyState === "copied"
                 ? "text-green-600 dark:text-green-400"
                 : copyState === "error"

@@ -83,14 +83,12 @@ test.describe("ChipCitation", () => {
     // Wrapper has background color, text color is on inner span
     await expect(chip).toHaveClass(/bg-red-/);
     // Chip variant does NOT use wavy underline - status is conveyed via indicator icon
-    // Check that the X indicator is present
-    const hasXIndicator = await chip.evaluate((el) => {
-      return el.querySelector('svg') !== null || el.textContent?.includes('✕') || el.querySelector('[aria-hidden="true"]') !== null;
-    });
-    expect(hasXIndicator).toBe(true);
-    // Verify text has reduced opacity
-    const textSpan = chip.locator('span').first();
-    await expect(textSpan).toHaveClass(/opacity-70/);
+    // Check that the X indicator is present (red text color indicates miss state icon)
+    const xIndicator = chip.locator('span.text-red-500, span.text-red-400').first();
+    await expect(xIndicator).toBeVisible();
+    // Verify text span has reduced opacity (the span with opacity-70 class)
+    const textSpan = chip.locator('span.opacity-70');
+    await expect(textSpan).toBeVisible();
   });
 
   test("renders with partial match state", async ({ mount, page }) => {

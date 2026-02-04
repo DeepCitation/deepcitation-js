@@ -716,8 +716,8 @@ export function StatusHeader({
   // Consistent single-row layout: icon + text + copy button + page badge
   // Display priority: headerText (status description) > anchorText (quoted phrase)
   const displayText = headerText || (anchorText ? `"${anchorText}"` : null);
-  // Show copy button when we have anchor text and no header text (i.e., showing the quoted anchor text)
-  const shouldShowCopyButton = showCopyButton && anchorText && !headerText;
+  // Show copy button whenever we have anchor text - users may want to copy even when headerText is displayed
+  const shouldShowCopyButton = showCopyButton && anchorText;
 
   return (
     <div
