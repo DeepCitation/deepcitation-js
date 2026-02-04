@@ -21,42 +21,52 @@ import {
 const CITE_TAG_REGEX = /<cite\s+[^>]*?\/>/g;
 
 /**
- * Module-level regex for parsing cite tag attributes.
- * Compiled once for better performance when processing multiple citations.
+ * Regex pattern for parsing cite tag attributes.
+ * Stored as pattern (not pre-compiled) so we can create fresh RegExp instances
+ * in parseCiteAttributes. This avoids stateful lastIndex issues that occur when
+ * reusing a global regex across multiple exec() calls on different strings.
  */
-const ATTR_REGEX = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
+const ATTR_REGEX_PATTERN = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
+
+/**
+ * Map of attribute key aliases to their normalized form.
+ * Keys are lowercase variants that should map to a canonical attribute name.
+ */
+const ATTR_KEY_NORMALIZATION: Record<string, string> = {
+  fileid: "attachment_id",
+  file_id: "attachment_id",
+  attachmentid: "attachment_id",
+  anchortext: "anchor_text",
+  anchor_text: "anchor_text",
+  fullphrase: "full_phrase",
+  full_phrase: "full_phrase",
+  lineids: "line_ids",
+  line_ids: "line_ids",
+  pagenumber: "page_number",
+  page_number: "page_number",
+  citationnumber: "citation_number",
+  citation_number: "citation_number",
+};
 
 /**
  * Parse attributes from a cite tag.
  */
 function parseCiteAttributes(citeTag: string): Record<string, string | undefined> {
   const attrs: Record<string, string | undefined> = {};
-  // Reset lastIndex since we're reusing the module-level regex
-  ATTR_REGEX.lastIndex = 0;
+  // Create fresh regex instance to avoid stateful lastIndex issues
+  const attrRegex = new RegExp(ATTR_REGEX_PATTERN.source, ATTR_REGEX_PATTERN.flags);
   let match;
 
-  while ((match = ATTR_REGEX.exec(citeTag)) !== null) {
+  while ((match = attrRegex.exec(citeTag)) !== null) {
+    // Two-step normalization:
+    // 1. Convert camelCase to snake_case (e.g., "attachmentId" -> "attachment_id")
+    // 2. Lookup in alias map for legacy/alternate names (e.g., "fileid" -> "attachment_id")
     const key = match[1]
-      .toLowerCase()
       .replace(/([a-z])([A-Z])/g, "$1_$2")
       .toLowerCase();
     const value = match[3];
 
-    // Normalize key names
-    const normalizedKey =
-      key === "fileid" || key === "file_id" || key === "attachmentid"
-        ? "attachment_id"
-        : key === "anchortext" || key === "anchor_text"
-          ? "anchor_text"
-          : key === "fullphrase" || key === "full_phrase"
-            ? "full_phrase"
-            : key === "lineids" || key === "line_ids"
-              ? "line_ids"
-              : key === "pagenumber" || key === "page_number"
-                ? "page_number"
-                : key === "citationnumber" || key === "citation_number"
-                  ? "citation_number"
-                  : key;
+    const normalizedKey = ATTR_KEY_NORMALIZATION[key] ?? key;
 
     attrs[normalizedKey] = value;
   }

@@ -71,7 +71,7 @@ import {
   StatusHeader,
   VerificationLog,
 } from "./VerificationLog.js";
-import { MISS_WAVY_UNDERLINE_STYLE, COPY_FEEDBACK_DURATION_MS } from "./constants.js";
+import { MISS_WAVY_UNDERLINE_STYLE, COPY_FEEDBACK_DURATION_MS, POPOVER_CONTAINER_BASE_CLASSES } from "./constants.js";
 
 // Re-export types for convenience
 export type {
@@ -1395,7 +1395,7 @@ function DefaultPopoverContent({
   if (isLoading || isPending) {
     const searchingPhrase = fullPhrase || anchorText;
     return (
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md min-w-[200px] max-w-[400px] max-h-[inherit] overflow-y-auto">
+      <div className={`${POPOVER_CONTAINER_BASE_CLASSES} min-w-[200px] max-w-[400px]`}>
         {/* Source context header */}
         <SourceContextHeader
           citation={citation}
@@ -1436,7 +1436,7 @@ function DefaultPopoverContent({
     return (
       <Activity mode={isVisible ? "visible" : "hidden"}>
         <div
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md max-h-[inherit] overflow-y-auto"
+          className={POPOVER_CONTAINER_BASE_CLASSES}
           style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}
         >
           {/* Source context header */}
@@ -1494,7 +1494,7 @@ function DefaultPopoverContent({
     return (
       <Activity mode={isVisible ? "visible" : "hidden"}>
         <div
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md max-h-[inherit] overflow-y-auto"
+          className={POPOVER_CONTAINER_BASE_CLASSES}
           style={{ width: POPOVER_WIDTH, maxWidth: POPOVER_MAX_WIDTH }}
         >
           {/* Source context header */}
@@ -1584,7 +1584,7 @@ function DefaultPopoverContent({
   if (!hasSnippet && !statusLabel) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md min-w-[180px] max-w-full max-h-[inherit] overflow-y-auto">
+    <div className={`${POPOVER_CONTAINER_BASE_CLASSES} min-w-[180px] max-w-full`}>
       {/* Source context header */}
       <SourceContextHeader
         citation={citation}

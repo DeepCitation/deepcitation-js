@@ -13,13 +13,14 @@ import { INDICATOR_SETS, SUPERSCRIPT_DIGITS } from "./types.js";
 /**
  * Line position thresholds for humanizing line IDs.
  * These define the boundaries for categorizing where on a page a line appears.
+ * Each threshold is exclusive (uses < comparison).
  */
 const LINE_POSITION_THRESHOLDS = {
-  START: 0.2,   // 0-20% of page
-  EARLY: 0.33,  // 20-33% of page
-  MIDDLE: 0.66, // 33-66% of page
-  LATE: 0.8,    // 66-80% of page
-  // END: 80-100% of page (implicit)
+  START: 0.2,   // 0% to <20% of page
+  EARLY: 0.33,  // 20% to <33% of page
+  MIDDLE: 0.66, // 33% to <66% of page
+  LATE: 0.8,    // 66% to <80% of page
+  // END: 80% to 100% of page (implicit)
 } as const;
 
 /** Maximum characters for truncated fullPhrase fallback in inline variant */
@@ -44,10 +45,16 @@ export function getIndicator(
 
 /**
  * Convert a number to unicode superscript.
+ * @param num - A non-negative integer
+ * @returns The number as unicode superscript characters
  * @example toSuperscript(123) => "¹²³"
  */
 export function toSuperscript(num: number): string {
-  return String(num)
+  // Handle non-integers by truncating to integer
+  const intNum = Math.trunc(num);
+  // Handle negative numbers by using absolute value
+  const absNum = Math.abs(intNum);
+  return String(absNum)
     .split("")
     .map((digit) => SUPERSCRIPT_DIGITS[parseInt(digit, 10)] || digit)
     .join("");
@@ -76,7 +83,7 @@ export function humanizeLinePosition(
 }
 
 /**
- * Get fallback text for inline citations when anchorText is missing.
+ * Get fallback text for inline/academic citations when anchorText is missing.
  * Fallback chain: anchorText -> truncated fullPhrase -> citation number bracket
  */
 function getInlineFallbackText(citation: Citation, citationNumber: number): string {
@@ -94,6 +101,8 @@ function getInlineFallbackText(citation: Citation, citationNumber: number): stri
 
 /**
  * Get display text from a citation based on variant needs.
+ * For inline/academic variants, uses the same fallback logic as renderCitationVariant
+ * to ensure consistency between the returned displayText and the actual rendered output.
  */
 export function getCitationDisplayText(
   citation: Citation,
@@ -108,7 +117,8 @@ export function getCitationDisplayText(
     case "academic":
     case "inline":
     default:
-      return citation.anchorText || citation.fullPhrase || String(citation.citationNumber || 1);
+      // Use getInlineFallbackText to match the behavior in renderCitationVariant
+      return getInlineFallbackText(citation, citation.citationNumber || 1);
   }
 }
 
