@@ -122,18 +122,24 @@ test.describe("ChipCitation", () => {
     await expect(chip.locator(".opacity-70")).toBeVisible();
   });
 
-  test("renders small size", async ({ mount, page }) => {
+  test("renders with consistent sizing", async ({ mount, page }) => {
+    // Chip variant uses consistent minimal sizing (0.9em) for inline text flow
+    // Size prop is now ignored for better space-awareness
     await mount(<ChipCitation citation={baseCitation} size="sm" />);
     const chip = page.locator('[data-variant="chip"]');
 
-    await expect(chip).toHaveClass(/text-xs/);
+    // Verify chip has consistent styling regardless of size prop
+    await expect(chip).toHaveClass(/text-\[0\.9em\]/);
+    await expect(chip).toHaveClass(/font-normal/);
   });
 
-  test("renders large size", async ({ mount, page }) => {
+  test("renders with minimal padding", async ({ mount, page }) => {
+    // Chip variant uses minimal padding for seamless inline text layouts
     await mount(<ChipCitation citation={baseCitation} size="lg" />);
     const chip = page.locator('[data-variant="chip"]');
 
-    await expect(chip).toHaveClass(/text-base/);
+    await expect(chip).toHaveClass(/px-1\.5/);
+    await expect(chip).toHaveClass(/py-0/);
   });
 
   test("shows icon when showIcon is true", async ({ mount, page }) => {
