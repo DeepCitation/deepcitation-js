@@ -26,6 +26,18 @@ import {
   classNames,
 } from "./utils.js";
 
+/**
+ * Style for wavy underline in miss/not-found state.
+ * Uses wavy text decoration (like spell-checker) instead of strikethrough
+ * to indicate "this has a problem" rather than "this was deleted".
+ */
+const MISS_WAVY_UNDERLINE_STYLE: React.CSSProperties = {
+  textDecoration: "underline",
+  textDecorationStyle: "wavy",
+  textDecorationColor: "#ef4444", // red-500
+  textUnderlineOffset: "2px",
+};
+
 interface CitationContextValue {
   citation: CitationType;
   citationKey: string;
@@ -227,8 +239,8 @@ export const CitationTrigger = forwardRef<
       status.isVerified &&
         !status.isPartialMatch &&
         "text-green-600 dark:text-green-500",
-      status.isPartialMatch && "text-amber-600 dark:text-amber-500",
-      status.isMiss && "text-red-500 dark:text-red-400 line-through",
+      status.isPartialMatch && "text-amber-500 dark:text-amber-400",
+      status.isMiss && "text-red-500 dark:text-red-400",
       status.isPending && "text-gray-400 dark:text-gray-500"
     );
 
@@ -242,6 +254,7 @@ export const CitationTrigger = forwardRef<
           statusClasses,
           className
         )}
+        style={status.isMiss ? MISS_WAVY_UNDERLINE_STYLE : undefined}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseEnter={handleMouseEnter}
@@ -407,7 +420,7 @@ export const CitationIndicator = forwardRef<
           ref={ref}
           className={classNames(
             baseClasses,
-            "text-amber-600 dark:text-amber-500",
+            "text-amber-500 dark:text-amber-400",
             className
           )}
           aria-label="Partial match"

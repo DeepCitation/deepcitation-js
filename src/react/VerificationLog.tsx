@@ -21,7 +21,7 @@ const MAX_QUOTE_BOX_LENGTH = 150;
 const MAX_ANCHOR_TEXT_PREVIEW_LENGTH = 50;
 
 /** Maximum height for the scrollable timeline */
-const MAX_TIMELINE_HEIGHT = "200px";
+const MAX_TIMELINE_HEIGHT = "280px";
 
 /** Maximum length for phrase display in search attempt rows */
 const MAX_PHRASE_DISPLAY_LENGTH = 60;
@@ -32,7 +32,7 @@ const MAX_URL_DISPLAY_LENGTH = 35;
 /** Icon color classes by status - defined outside component to avoid recreation on every render */
 const ICON_COLOR_CLASSES = {
   green: "text-green-600 dark:text-green-400",
-  amber: "text-amber-600 dark:text-amber-400",
+  amber: "text-amber-500 dark:text-amber-400",
   red: "text-red-500 dark:text-red-400",
   gray: "text-gray-400 dark:text-gray-500",
 } as const;
@@ -628,7 +628,7 @@ export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
     >
       <div className="flex items-start gap-2">
         <svg
-          className="size-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
+          className="size-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

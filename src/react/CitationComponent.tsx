@@ -93,10 +93,10 @@ const DEFAULT_VISIBLE_GROUP_COUNT = 2;
 const MAX_PHRASE_LENGTH = 50;
 
 /** Popover container width */
-const POPOVER_WIDTH = "380px";
+const POPOVER_WIDTH = "400px";
 
 /** Popover container max width (viewport-relative) */
-const POPOVER_MAX_WIDTH = "90vw";
+const POPOVER_MAX_WIDTH = "92vw";
 
 /** Maximum characters to show for matched text display in search results */
 const MAX_MATCHED_TEXT_LENGTH = 40;
@@ -109,6 +109,18 @@ const MAX_VARIATION_LENGTH = 30;
 
 /** Debounce threshold for ignoring click events after touch (ms) */
 const TOUCH_CLICK_DEBOUNCE_MS = 100;
+
+/**
+ * Style for wavy underline in miss/not-found state.
+ * Uses wavy text decoration (like spell-checker) instead of strikethrough
+ * to indicate "this has a problem" rather than "this was deleted".
+ */
+const MISS_WAVY_UNDERLINE_STYLE: React.CSSProperties = {
+  textDecoration: "underline",
+  textDecorationStyle: "wavy",
+  textDecorationColor: "#ef4444", // red-500
+  textUnderlineOffset: "2px",
+};
 
 // =============================================================================
 // TOUCH DEVICE DETECTION
@@ -256,7 +268,7 @@ function getStatusHoverClasses(
       `hover:bg-green-600${opacitySuffix} dark:hover:bg-green-500${opacitySuffix}`,
     isPartialMatch &&
       !shouldShowSpinner &&
-      `hover:bg-amber-600${opacitySuffix} dark:hover:bg-amber-500${opacitySuffix}`,
+      `hover:bg-amber-500${opacitySuffix} dark:hover:bg-amber-500${opacitySuffix}`,
     isMiss &&
       !shouldShowSpinner &&
       `hover:bg-red-500${opacitySuffix} dark:hover:bg-red-400${opacitySuffix}`,
@@ -835,7 +847,7 @@ const VerifiedIndicator = () => (
  */
 const PartialIndicator = () => (
   <span
-    className="inline-flex relative ml-0.5 top-[0.1em] text-amber-600 dark:text-amber-500 [text-decoration:none]"
+    className="inline-flex relative ml-0.5 top-[0.1em] text-amber-500 dark:text-amber-400 [text-decoration:none]"
     style={INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   >
@@ -1238,7 +1250,7 @@ function SearchAttemptRow({ group }: { group: GroupedSearchAttempt }) {
       className={cn(
         "inline-flex size-3 flex-shrink-0",
         isLowTrustMatch(group.successfulAttempt?.matchedVariation)
-          ? "text-amber-600 dark:text-amber-400"
+          ? "text-amber-500 dark:text-amber-400"
           : "text-green-600 dark:text-green-400"
       )}
     >
@@ -1586,7 +1598,7 @@ function DefaultPopoverContent({
               status.isVerified &&
                 !status.isPartialMatch &&
                 "text-green-600 dark:text-green-400",
-              status.isPartialMatch && "text-amber-600 dark:text-amber-400",
+              status.isPartialMatch && "text-amber-500 dark:text-amber-400",
               status.isMiss && "text-red-500 dark:text-red-400",
               status.isPending && "text-gray-500 dark:text-gray-400"
             )}
@@ -1684,7 +1696,7 @@ function DiffDetails({
         <div
           className={cn(
             "text-[10px] font-medium px-1.5 py-0.5 rounded inline-flex items-center gap-1",
-            "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+            "bg-amber-100 dark:bg-amber-900/30 text-amber-500 dark:text-amber-400"
           )}
         >
           <span className="size-2">
@@ -2342,7 +2354,7 @@ export const CitationComponent = forwardRef<
       (isVerified || isPartialMatch) &&
         variant === "brackets" &&
         "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline",
-      isMiss && "opacity-70 line-through text-gray-700 dark:text-gray-200",
+      isMiss && "opacity-70 text-gray-700 dark:text-gray-200",
       shouldShowSpinner && "text-gray-500 dark:text-gray-400"
     );
 
@@ -2397,9 +2409,10 @@ export const CitationComponent = forwardRef<
             <span
               className={cn(
                 "max-w-60 overflow-hidden text-ellipsis whitespace-nowrap",
-                // Miss state: add line-through for visual distinction (on text only, not indicator)
-                isMiss && !shouldShowSpinner && "line-through opacity-70"
+                // Miss state: add wavy underline for visual distinction (on text only, not indicator)
+                isMiss && !shouldShowSpinner && "opacity-70"
               )}
+              style={isMiss && !shouldShowSpinner ? MISS_WAVY_UNDERLINE_STYLE : undefined}
             >
               {displayText}
             </span>
@@ -2429,9 +2442,10 @@ export const CitationComponent = forwardRef<
             {anchorTextDisplay && (
               <span
                 className={cn(
-                  // Miss state: add line-through for visual distinction
-                  isMiss && !shouldShowSpinner && "line-through opacity-70"
+                  // Miss state: add wavy underline for visual distinction
+                  isMiss && !shouldShowSpinner && "opacity-70"
                 )}
+                style={isMiss && !shouldShowSpinner ? MISS_WAVY_UNDERLINE_STYLE : undefined}
               >
                 {anchorTextDisplay}
               </span>
@@ -2448,8 +2462,9 @@ export const CitationComponent = forwardRef<
               [
               <span
                 className={cn(
-                  isMiss && !shouldShowSpinner && "line-through opacity-60"
+                  isMiss && !shouldShowSpinner && "opacity-60"
                 )}
+                style={isMiss && !shouldShowSpinner ? MISS_WAVY_UNDERLINE_STYLE : undefined}
               >
                 {citationNumber}
               </span>
@@ -2485,7 +2500,7 @@ export const CitationComponent = forwardRef<
                 "hover:bg-green-600/10 dark:hover:bg-green-500/10",
               isPartialMatch &&
                 !shouldShowSpinner &&
-                "hover:bg-amber-600/10 dark:hover:bg-amber-500/10",
+                "hover:bg-amber-500/10 dark:hover:bg-amber-500/10",
               isMiss &&
                 !shouldShowSpinner &&
                 "hover:bg-red-500/10 dark:hover:bg-red-400/10",
@@ -2507,9 +2522,10 @@ export const CitationComponent = forwardRef<
             <span
               className={cn(
                 "max-w-40 overflow-hidden text-ellipsis whitespace-nowrap",
-                // Miss state: add line-through for visual distinction (on text only, not indicator)
-                isMiss && !shouldShowSpinner && "line-through opacity-70"
+                // Miss state: add wavy underline for visual distinction (on text only, not indicator)
+                isMiss && !shouldShowSpinner && "opacity-70"
               )}
+              style={isMiss && !shouldShowSpinner ? MISS_WAVY_UNDERLINE_STYLE : undefined}
             >
               {displayText}
             </span>
@@ -2567,7 +2583,7 @@ export const CitationComponent = forwardRef<
         } else if (isPartialState) {
           linterStyles.textDecorationStyle = "dashed";
           linterStyles.textDecorationColor =
-            "var(--dc-linter-warning, #d97706)"; // amber-600
+            "var(--dc-linter-warning, #f59e0b)"; // amber-500
         } else if (isVerifiedState) {
           linterStyles.textDecorationStyle = "solid";
           linterStyles.textDecorationColor =
@@ -2590,7 +2606,7 @@ export const CitationComponent = forwardRef<
           // Verified: subtle green background wash on hover only (10% opacity)
           isVerifiedState && "hover:bg-green-600/10 dark:hover:bg-green-500/10",
           // Partial: subtle amber background on hover (using amber-600 to match component)
-          isPartialState && "hover:bg-amber-600/10 dark:hover:bg-amber-500/10",
+          isPartialState && "hover:bg-amber-500/10 dark:hover:bg-amber-500/10",
           // Miss: subtle red background on hover (using red-500 to match component)
           isMissState && "hover:bg-red-500/10 dark:hover:bg-red-400/10",
           // Pending: subtle gray background
