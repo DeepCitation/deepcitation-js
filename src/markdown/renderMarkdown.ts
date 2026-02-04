@@ -22,7 +22,9 @@ const CITE_TAG_REGEX = /<cite\s+[^>]*?\/>/g;
 
 /**
  * Regex pattern for parsing cite tag attributes.
- * Used to create fresh RegExp instances in parseCiteAttributes.
+ * Stored as pattern (not pre-compiled) so we can create fresh RegExp instances
+ * in parseCiteAttributes. This avoids stateful lastIndex issues that occur when
+ * reusing a global regex across multiple exec() calls on different strings.
  */
 const ATTR_REGEX_PATTERN = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
 
@@ -56,12 +58,14 @@ function parseCiteAttributes(citeTag: string): Record<string, string | undefined
   let match;
 
   while ((match = attrRegex.exec(citeTag)) !== null) {
+    // Two-step normalization:
+    // 1. Convert camelCase to snake_case (e.g., "attachmentId" -> "attachment_id")
+    // 2. Lookup in alias map for legacy/alternate names (e.g., "fileid" -> "attachment_id")
     const key = match[1]
       .replace(/([a-z])([A-Z])/g, "$1_$2")
       .toLowerCase();
     const value = match[3];
 
-    // Normalize key names using lookup map
     const normalizedKey = ATTR_KEY_NORMALIZATION[key] ?? key;
 
     attrs[normalizedKey] = value;

@@ -447,6 +447,32 @@ describe("edge cases", () => {
     expect(result2.citations[0].citation.anchorText).toBe("Second");
     expect(result3.citations[0].citation.anchorText).toBe("Third");
   });
+
+  it("normalizes attribute key aliases correctly", () => {
+    // Test camelCase variants
+    const input1 = `<cite attachmentId='abc' anchorText='test1' fullPhrase='phrase1' pageNumber='5' />`;
+    // Test snake_case variants
+    const input2 = `<cite attachment_id='def' anchor_text='test2' full_phrase='phrase2' page_number='10' />`;
+    // Test legacy fileId alias
+    const input3 = `<cite fileId='ghi' />`;
+
+    const result1 = renderCitationsAsMarkdown(input1);
+    const result2 = renderCitationsAsMarkdown(input2);
+    const result3 = renderCitationsAsMarkdown(input3);
+
+    // All variants should normalize to the same canonical field names
+    expect(result1.citations[0].citation.attachmentId).toBe("abc");
+    expect(result1.citations[0].citation.anchorText).toBe("test1");
+    expect(result1.citations[0].citation.fullPhrase).toBe("phrase1");
+    expect(result1.citations[0].citation.pageNumber).toBe(5);
+
+    expect(result2.citations[0].citation.attachmentId).toBe("def");
+    expect(result2.citations[0].citation.anchorText).toBe("test2");
+    expect(result2.citations[0].citation.fullPhrase).toBe("phrase2");
+    expect(result2.citations[0].citation.pageNumber).toBe(10);
+
+    expect(result3.citations[0].citation.attachmentId).toBe("ghi");
+  });
 });
 
 // =============================================================================
