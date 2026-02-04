@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import type { SearchAttempt, SearchStatus, SearchMethod, VariationType } from "../types/search.js";
 import type { Citation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { CheckIcon, MissIcon, SpinnerIcon, DocumentIcon, GlobeIcon, XCircleIcon } from "./icons.js";
+import { CheckIcon, MissIcon, SpinnerIcon, DocumentIcon, GlobeIcon, XCircleIcon, ExternalLinkIcon } from "./icons.js";
 import { cn, isUrlCitation } from "./utils.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
@@ -27,7 +27,7 @@ const MAX_TIMELINE_HEIGHT = "280px";
 const MAX_PHRASE_DISPLAY_LENGTH = 60;
 
 /** Maximum length for URL display in popover header */
-const MAX_URL_DISPLAY_LENGTH = 35;
+const MAX_URL_DISPLAY_LENGTH = 45;
 
 /** Icon color classes by status - defined outside component to avoid recreation on every render */
 const ICON_COLOR_CLASSES = {
@@ -197,12 +197,10 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
   const isUrl = isUrlCitation(citation);
 
   if (isUrl) {
-    // URL citation: show favicon + URL on first row, status + phrase on second row
+    // URL citation: show status + favicon + URL on first row, quoted text on second row
     const faviconUrl = verification?.verifiedFaviconUrl || citation.faviconUrl;
     const domain = verification?.verifiedDomain || citation.domain;
     const url = citation.url || "";
-    const pageNumber = verification?.verifiedPageNumber ?? citation.pageNumber;
-    const lineIds = verification?.verifiedLineIds ?? citation.lineIds;
 
     // Map the search status to URL fetch status for display
     const urlFetchStatus = mapSearchStatusToUrlFetchStatus(status);
@@ -218,28 +216,24 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
             ? XCircleIcon
             : SpinnerIcon;
 
-    // Format page/line text
-    const pageLineText = formatPageLineText(pageNumber, lineIds);
-
     // Get the anchor text to display (found text or searched-for text)
     const anchorText = verification?.verifiedAnchorText || citation.anchorText;
     const displayAnchorText = anchorText
-      ? (anchorText.length > MAX_MISS_ANCHOR_TEXT_LENGTH
-          ? anchorText.slice(0, MAX_MISS_ANCHOR_TEXT_LENGTH) + "..."
+      ? (anchorText.length > MAX_MATCHED_TEXT_LENGTH
+          ? anchorText.slice(0, MAX_MATCHED_TEXT_LENGTH) + "..."
           : anchorText)
       : null;
 
-    // Determine if we need to show the second line (status + phrase)
-    // Show for all resolved states, or if status indicates a miss
-    const isMiss = status === "not_found";
+    // Show second line only when resolved (status icon already conveys outcome)
     const isResolved = status && status !== "pending" && status !== "loading";
-    const showSecondLine = isResolved || isMiss;
 
     return (
       <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-        {/* First row: URL citation (no border variant for header) */}
+        {/* Row 1: Status icon + favicon + URL + external link */}
         <div className="flex items-center gap-2">
-          {/* URL citation component - inline chip style without border */}
+          <span className={cn("size-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
+            <IconComponent />
+          </span>
           <div className="flex-1 min-w-0">
             <UrlCitationComponent
               urlMeta={{
@@ -259,24 +253,23 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
               className="!bg-transparent !px-0 !py-0 hover:!bg-transparent"
             />
           </div>
-          {/* Page/line info */}
-          {pageLineText && (
-            <span className="text-[10px] text-gray-500 dark:text-gray-400 flex-shrink-0 uppercase tracking-wide">
-              {pageLineText}
-            </span>
+          {url && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+              aria-label="Open URL in new tab"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLinkIcon />
+            </a>
           )}
         </div>
-        {/* Second row: Status icon + phrase (like document citations) */}
-        {showSecondLine && (
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className={cn("size-4 max-w-4 max-h-4 flex-shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
-              <IconComponent />
-            </span>
-            {displayAnchorText && (
-              <span className="text-sm text-gray-700 dark:text-gray-200 truncate">
-                "{displayAnchorText}"
-              </span>
-            )}
+        {/* Row 2: Quoted text we searched for (only when resolved) */}
+        {isResolved && displayAnchorText && (
+          <div className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400 truncate">
+            "{displayAnchorText}"
           </div>
         )}
       </div>
