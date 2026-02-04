@@ -179,14 +179,17 @@ function repairJson(jsonString: string): { repaired: string; repairs: string[] }
   // Valid escapes: \" \\ \/ \b \f \n \r \t \uXXXX
   // Invalid escapes like \~ \x \a etc. should have the backslash removed.
   // We need to be careful to only process content inside string values.
+  // Note: \u is only valid when followed by exactly 4 hex digits (e.g., \u0020).
+  // Invalid \u sequences (like \utest) should have the backslash removed.
   const beforeInvalidEscapes = repaired;
   repaired = repaired.replace(
     /"(?:[^"\\]|\\.)*"/g,
     (match) => {
       // Inside a JSON string, fix invalid escape sequences
-      // by removing the backslash before non-standard escape characters
+      // by removing the backslash before non-standard escape characters.
+      // Use negative lookahead to preserve valid unicode escapes (\uXXXX).
       return match.replace(
-        /\\([^"\\\/bfnrtu])/g,
+        /\\(?!u[0-9a-fA-F]{4})([^"\\\/bfnrt])/g,
         (_, char) => char
       );
     }

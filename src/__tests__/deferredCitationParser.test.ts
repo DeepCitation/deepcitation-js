@@ -788,6 +788,105 @@ ${CITATION_DATA_END_DELIMITER}`;
     expect(result.citations[0].full_phrase).toBe("Output ~100/hr");
     expect(result.citations[0].attachment_id).toBe("0");
   });
+
+  it("preserves valid unicode escape sequences like \\u0020", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "space\\u0020here", "anchor_text": "space here"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u0020 is a valid unicode escape for space and should be preserved
+    expect(result.citations[0].full_phrase).toBe("space here");
+  });
+
+  it("preserves multiple valid unicode escapes in same string", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "a\\u0041b\\u0042c", "anchor_text": "aAbBc"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u0041 = 'A', \u0042 = 'B'
+    expect(result.citations[0].full_phrase).toBe("aAbBc");
+  });
+
+  it("repairs invalid unicode-like sequences (not followed by 4 hex digits)", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\utest", "anchor_text": "testutest"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \utest is invalid (not 4 hex digits), backslash should be removed
+    expect(result.citations[0].full_phrase).toBe("testutest");
+  });
+
+  it("handles mixed valid unicode escapes and invalid escapes", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "\\~prefix\\u0020middle\\u0020\\xsuffix", "anchor_text": "prefix middle suffix"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \~ and \x should be repaired (backslash removed)
+    // \u0020 should be preserved as space
+    expect(result.citations[0].full_phrase).toBe("~prefix middle xsuffix");
+  });
+
+  it("preserves unicode escapes with lowercase hex digits", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u00e9test", "anchor_text": "testétest"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u00e9 = 'é' (valid lowercase hex)
+    expect(result.citations[0].full_phrase).toBe("testétest");
+  });
+
+  it("preserves unicode escapes with uppercase hex digits", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u00E9test", "anchor_text": "testétest"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u00E9 = 'é' (valid uppercase hex)
+    expect(result.citations[0].full_phrase).toBe("testétest");
+  });
+
+  it("repairs \\u followed by only 3 hex digits", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u00Fvalue", "anchor_text": "testu00Fvalue"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u00F is invalid (only 3 hex digits), backslash should be removed
+    expect(result.citations[0].full_phrase).toBe("testu00Fvalue");
+  });
 });
 
 describe("grouped format with numeric string keys", () => {
