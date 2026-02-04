@@ -76,6 +76,68 @@ export function getVariationLabel(variationType: VariationType | undefined): str
 }
 
 // =============================================================================
+// URL ANCHOR TEXT ROW (with copy button)
+// =============================================================================
+
+/**
+ * Row showing quoted anchor text with copy button for URL citations.
+ * Matches the style of StatusHeader's copy button for document citations.
+ */
+function UrlAnchorTextRow({ anchorText, displayAnchorText }: { anchorText: string; displayAnchorText: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
+  // Auto-reset copy state after feedback duration
+  useEffect(() => {
+    if (copyState === "idle") return;
+    const timeoutId = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
+    return () => clearTimeout(timeoutId);
+  }, [copyState]);
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!anchorText) return;
+
+      try {
+        await navigator.clipboard.writeText(anchorText);
+        setCopyState("copied");
+      } catch (err) {
+        console.error("Failed to copy text:", err);
+        setCopyState("error");
+      }
+    },
+    [anchorText]
+  );
+
+  return (
+    <div className="mt-1 pl-6 flex items-center gap-1.5">
+      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+        "{displayAnchorText}"
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className={cn(
+          "flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer",
+          copyState === "copied"
+            ? "text-green-600 dark:text-green-400"
+            : copyState === "error"
+              ? "text-red-500 dark:text-red-400"
+              : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+        )}
+        aria-label={copyState === "copied" ? "Copied!" : "Copy quoted text"}
+        title={copyState === "copied" ? "Copied!" : "Copy quote"}
+      >
+        <span className="size-3.5 block">
+          {copyState === "copied" ? <CheckIcon /> : <CopyIcon />}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// =============================================================================
 // SOURCE CONTEXT HEADER COMPONENT
 // =============================================================================
 
@@ -267,11 +329,9 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
             </a>
           )}
         </div>
-        {/* Row 2: Quoted text we searched for (only when resolved) */}
+        {/* Row 2: Quoted text we searched for with copy button (only when resolved) */}
         {isResolved && displayAnchorText && (
-          <div className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400 truncate">
-            "{displayAnchorText}"
-          </div>
+          <UrlAnchorTextRow anchorText={anchorText || ""} displayAnchorText={displayAnchorText} />
         )}
       </div>
     );
