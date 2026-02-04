@@ -471,7 +471,7 @@ describe("getCitationDisplayText", () => {
     };
 
     const result = getCitationDisplayText(citation, "inline");
-    expect(result).toBe("This is a very long phrase that exceeds fifty cha...");
+    expect(result).toBe("This is a very long phrase that exceeds fifty char...");
     expect(result.length).toBe(53); // 50 chars + "..."
   });
 
