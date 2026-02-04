@@ -35,10 +35,12 @@ import type {
 import {
   CheckIcon,
   CloseIcon,
+  CopyIcon,
   SpinnerIcon,
   WarningIcon,
   XCircleIcon,
   XIcon,
+  ZoomInIcon,
 } from "./icons.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./Popover.js";
 import type {
@@ -891,6 +893,9 @@ const MissIndicator = () => (
 // VERIFICATION IMAGE COMPONENT
 // =============================================================================
 
+/** Duration in ms to show "Copied" feedback before resetting to idle state */
+const COPY_FEEDBACK_DURATION_MS = 2000;
+
 /**
  * Displays a verification image that fits within the container dimensions.
  * The image is scaled to fit (without distortion) and can be clicked to expand.
@@ -913,21 +918,28 @@ function AnchorTextFocusedImage({
   maxWidth?: string;
   maxHeight?: string;
 }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
+    "idle"
+  );
 
-  const handleCopy = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!anchorText) return;
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!anchorText) return;
 
-    try {
-      await navigator.clipboard.writeText(anchorText);
-      setCopyState("copied");
-      setTimeout(() => setCopyState("idle"), 2000);
-    } catch (err) {
-      console.error("Failed to copy text:", err);
-    }
-  }, [anchorText]);
+      try {
+        await navigator.clipboard.writeText(anchorText);
+        setCopyState("copied");
+        setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
+      } catch (err) {
+        console.error("Failed to copy text:", err);
+        setCopyState("error");
+        setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
+      }
+    },
+    [anchorText]
+  );
 
   return (
     <div className="relative">
@@ -965,7 +977,7 @@ function AnchorTextFocusedImage({
 
       {/* Action bar - always visible below image */}
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-b-md border-t border-gray-200 dark:border-gray-700">
-        {/* Zoom button on left */}
+        {/* Zoom button on left - using text-gray-600 for better contrast (WCAG AA) */}
         <button
           type="button"
           onClick={(e) => {
@@ -973,16 +985,11 @@ function AnchorTextFocusedImage({
             e.stopPropagation();
             onImageClick?.();
           }}
-          className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+          className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
           aria-label="Expand image"
         >
           <span className="size-3.5">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="11" y1="8" x2="11" y2="14" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
+            <ZoomInIcon />
           </span>
           <span>Expand</span>
         </button>
@@ -992,23 +999,35 @@ function AnchorTextFocusedImage({
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-            aria-label={copyState === "copied" ? "Copied!" : "Copy anchor text"}
+            className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+            aria-label={
+              copyState === "copied"
+                ? "Copied!"
+                : copyState === "error"
+                  ? "Failed to copy"
+                  : "Copy anchor text"
+            }
           >
             {copyState === "copied" ? (
               <>
                 <span className="size-3.5 text-green-600 dark:text-green-400">
                   <CheckIcon />
                 </span>
-                <span className="text-green-600 dark:text-green-400">Copied</span>
+                <span className="text-green-600 dark:text-green-400">
+                  Copied
+                </span>
+              </>
+            ) : copyState === "error" ? (
+              <>
+                <span className="size-3.5 text-red-500 dark:text-red-400">
+                  <XCircleIcon />
+                </span>
+                <span className="text-red-500 dark:text-red-400">Failed</span>
               </>
             ) : (
               <>
                 <span className="size-3.5">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
+                  <CopyIcon />
                 </span>
                 <span>Copy quote</span>
               </>
@@ -2560,7 +2579,7 @@ export const CitationComponent = forwardRef<
         // Build inline styles for text-decoration since Tailwind doesn't support all decoration styles
         // Using Tailwind color values to match the rest of the component:
         // - green-600: #16a34a (verified)
-        // - amber-600: #d97706 (partial)
+        // - amber-500: #f59e0b (partial - more yellow amber)
         // - red-500: #ef4444 (miss)
         // - gray-400: #9ca3af (pending)
         //
@@ -2605,7 +2624,7 @@ export const CitationComponent = forwardRef<
           isPendingState && "text-gray-500 dark:text-gray-400",
           // Verified: subtle green background wash on hover only (10% opacity)
           isVerifiedState && "hover:bg-green-600/10 dark:hover:bg-green-500/10",
-          // Partial: subtle amber background on hover (using amber-600 to match component)
+          // Partial: subtle amber background on hover (using amber-500 to match component)
           isPartialState && "hover:bg-amber-500/10 dark:hover:bg-amber-500/10",
           // Miss: subtle red background on hover (using red-500 to match component)
           isMissState && "hover:bg-red-500/10 dark:hover:bg-red-400/10",
