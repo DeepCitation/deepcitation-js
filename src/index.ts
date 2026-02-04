@@ -133,3 +133,26 @@ export {
 } from "./prompts/promptCompression.js";
 
 export type { CompressedResult } from "./prompts/types.js";
+
+// Markdown output
+export {
+  renderCitationsAsMarkdown,
+  toMarkdown,
+  getVerificationIndicator,
+  getIndicator,
+  toSuperscript,
+  humanizeLinePosition,
+  renderReferencesSection,
+  INDICATOR_SETS,
+  SUPERSCRIPT_DIGITS,
+} from "./markdown/index.js";
+
+export type {
+  MarkdownVariant,
+  IndicatorStyle,
+  LinePosition,
+  RenderMarkdownOptions,
+  MarkdownOutput,
+  CitationWithStatus,
+  IndicatorSet,
+} from "./markdown/index.js";
