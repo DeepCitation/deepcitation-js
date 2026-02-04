@@ -2129,6 +2129,9 @@ export const CitationComponent = forwardRef<
     ]);
 
     const handleMouseLeave = useCallback(() => {
+      // Don't close the popover if an image overlay is open - user expects to return to popover
+      // after closing the zoomed image
+      if (isAnyOverlayOpen) return;
       // Delay closing to allow mouse to move to popover
       cancelHoverCloseTimeout();
       hoverCloseTimeoutRef.current = setTimeout(() => {
@@ -2147,6 +2150,7 @@ export const CitationComponent = forwardRef<
       citationKey,
       getBehaviorContext,
       cancelHoverCloseTimeout,
+      isAnyOverlayOpen,
     ]);
 
     // Popover content hover handlers
@@ -2157,6 +2161,9 @@ export const CitationComponent = forwardRef<
 
     const handlePopoverMouseLeave = useCallback(() => {
       isOverPopoverRef.current = false;
+      // Don't close the popover if an image overlay is open - user expects to return to popover
+      // after closing the zoomed image
+      if (isAnyOverlayOpen) return;
       // Delay closing to allow mouse to move back to trigger
       cancelHoverCloseTimeout();
       hoverCloseTimeoutRef.current = setTimeout(() => {
@@ -2173,6 +2180,7 @@ export const CitationComponent = forwardRef<
       citationKey,
       getBehaviorContext,
       cancelHoverCloseTimeout,
+      isAnyOverlayOpen,
     ]);
 
     // Cleanup hover timeout on unmount
