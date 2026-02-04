@@ -8,15 +8,30 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](https://www.npmjs.com/package/@deepcitation/deepcitation-js)
 
-[Documentation](https://docs.deepcitation.com) · [Get API Key](https://deepcitation.com/signup) · [Examples](./examples)
+[Documentation](https://docs.deepcitation.com) · [Get API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Agent Integration](./INTEGRATION.md)
 
 </div>
 
 ---
 
+**Spot hallucinations instantly.** Visual evidence for every AI citation:
+
+<div align="center">
+<a href="https://github.com/DeepCitation/deepcitation-js/blob/main/examples/assets/deepcitation-demo-medical.avif">
+<img src="https://raw.githubusercontent.com/DeepCitation/deepcitation-js/main/examples/assets/deepcitation-demo-medical.avif" alt="DeepCitation Demo - solid underlines for verified citations, wavy red for hallucinations" width="600" />
+</a>
+</div>
+
+**Multiple display variants.** From inline linter-style underlines to chips, badges, and superscripts:
+
+<details>
+<summary><strong>View Component Showcase</strong></summary>
+
 <div align="center">
 <img src="https://raw.githubusercontent.com/DeepCitation/deepcitation-js/main/tests/playwright/specs/__snapshots__/visualShowcase.spec.tsx-snapshots/desktop-showcase-chromium-linux.png" alt="DeepCitation Component Showcase" width="700" />
 </div>
+
+</details>
 
 ## Install
 
@@ -52,9 +67,8 @@ const { verifications } = await deepcitation.verify({ llmOutput: response.conten
 
 | Component | Description |
 |-----------|-------------|
-| `CitationComponent` | Inline citations with 6 variants: `brackets`, `chip`, `text`, `superscript`, `minimal`, `linter` |
+| `CitationComponent` | Inline citations with 6 variants: `linter` (default), `chip`, `brackets`, `text`, `superscript`, `badge` |
 | `UrlCitationComponent` | URL citations with favicon and status badges |
-| `SourcesListComponent` | Aggregated sources panel/drawer (like Gemini) |
 
 > Requires Tailwind CSS or import `@deepcitation/deepcitation-js/styles.css`
 
