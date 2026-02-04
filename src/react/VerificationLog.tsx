@@ -48,6 +48,14 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   expanded_window: "Wider area",
   regex_search: "Entire document",
   first_word_fallback: "First word",
+  first_half_fallback: "First half",
+  last_half_fallback: "Last half",
+  first_quarter_fallback: "First quarter",
+  second_quarter_fallback: "Second quarter",
+  third_quarter_fallback: "Third quarter",
+  fourth_quarter_fallback: "Fourth quarter",
+  longest_word_fallback: "Longest word",
+  custom_phrase_fallback: "Custom search",
   keyspan_fallback: "Anchor text",
 };
 
@@ -73,6 +81,68 @@ const VARIATION_TYPE_LABELS: Record<VariationType, string> = {
 export function getVariationLabel(variationType: VariationType | undefined): string | null {
   if (!variationType) return null;
   return VARIATION_TYPE_LABELS[variationType];
+}
+
+// =============================================================================
+// URL ANCHOR TEXT ROW (with copy button)
+// =============================================================================
+
+/**
+ * Row showing quoted anchor text with copy button for URL citations.
+ * Matches the style of StatusHeader's copy button for document citations.
+ */
+function UrlAnchorTextRow({ anchorText, displayAnchorText }: { anchorText: string; displayAnchorText: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
+  // Auto-reset copy state after feedback duration
+  useEffect(() => {
+    if (copyState === "idle") return;
+    const timeoutId = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
+    return () => clearTimeout(timeoutId);
+  }, [copyState]);
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!anchorText) return;
+
+      try {
+        await navigator.clipboard.writeText(anchorText);
+        setCopyState("copied");
+      } catch (err) {
+        console.error("Failed to copy text:", err);
+        setCopyState("error");
+      }
+    },
+    [anchorText]
+  );
+
+  return (
+    <div className="mt-1 pl-6 flex items-center gap-1.5">
+      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+        "{displayAnchorText}"
+      </span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className={cn(
+          "flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer",
+          copyState === "copied"
+            ? "text-green-600 dark:text-green-400"
+            : copyState === "error"
+              ? "text-red-500 dark:text-red-400"
+              : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+        )}
+        aria-label={copyState === "copied" ? "Copied!" : "Copy quoted text"}
+        title={copyState === "copied" ? "Copied!" : "Copy quote"}
+      >
+        <span className="size-3.5 block">
+          {copyState === "copied" ? <CheckIcon /> : <CopyIcon />}
+        </span>
+      </button>
+    </div>
+  );
 }
 
 // =============================================================================
@@ -267,11 +337,9 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
             </a>
           )}
         </div>
-        {/* Row 2: Quoted text we searched for (only when resolved) */}
+        {/* Row 2: Quoted text we searched for with copy button (only when resolved) */}
         {isResolved && displayAnchorText && (
-          <div className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400 truncate">
-            "{displayAnchorText}"
-          </div>
+          <UrlAnchorTextRow anchorText={anchorText || ""} displayAnchorText={displayAnchorText} />
         )}
       </div>
     );
@@ -938,15 +1006,7 @@ function SearchAttemptRow({ attempt, index, totalCount }: SearchAttemptRowProps)
         : "";
 
   // Get method display name with safe fallback
-  // For first_word_fallback, show the actual word searched
-  let methodName = METHOD_DISPLAY_NAMES[attempt.method] ?? attempt.method ?? "Search";
-  if (attempt.method === "first_word_fallback" && phrase) {
-    const trimmedPhrase = phrase.trim();
-    const firstWord = trimmedPhrase.length > 0 ? trimmedPhrase.split(/\s+/)[0] : null;
-    if (firstWord) {
-      methodName = `First word: "${firstWord}"`;
-    }
-  }
+  const methodName = METHOD_DISPLAY_NAMES[attempt.method] ?? attempt.method ?? "Search";
 
   // Calculate the width needed for the index number (for alignment)
   const indexWidth = String(totalCount).length;
