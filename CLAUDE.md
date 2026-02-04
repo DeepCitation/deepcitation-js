@@ -765,3 +765,27 @@ The Next.js example uses these models (DO NOT CHANGE):
 ```
 
 When building user-facing features (markdown export, reference sections, tooltips), always use `pageNumber` and omit `lineIds`.
+
+### Humanizing Line Position (Acceptable)
+
+While raw line IDs should never be shown, you **can** humanize them into relative positions when showing location mismatches:
+
+```typescript
+// Convert lineId to human-readable position
+function humanizeLinePosition(lineId: number, totalLinesOnPage: number): string {
+  const ratio = lineId / totalLinesOnPage;
+  if (ratio < 0.2) return "start";
+  if (ratio < 0.33) return "early";
+  if (ratio < 0.66) return "middle";
+  if (ratio < 0.8) return "late";
+  return "end";
+}
+
+// ACCEPTABLE - humanized position
+`Page 3 (expected early, found middle)`  // ✓ Helpful context without exposing internals
+
+// WRONG - raw line IDs
+`Page 3, Lines 12-15`  // ❌ Still confusing
+```
+
+This gives users helpful context about location mismatches without exposing internal line numbering.
