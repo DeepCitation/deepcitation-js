@@ -885,7 +885,7 @@ const MissIndicator = () => (
 /**
  * Displays a verification image that fits within the container dimensions.
  * The image is scaled to fit (without distortion) and can be clicked to expand.
- * Includes an action bar with zoom and copy buttons.
+ * Includes an action bar with zoom button and optional "View page" button.
  *
  * Note: This component uses simple object-fit: contain for predictable sizing.
  * Previous scroll-to-anchor-text logic was removed for simplicity - users can
@@ -894,49 +894,17 @@ const MissIndicator = () => (
 function AnchorTextFocusedImage({
   verification,
   onImageClick,
-  anchorText,
+  onViewPageClick,
   maxWidth = "min(70vw, 384px)",
   maxHeight = "min(50vh, 300px)",
 }: {
   verification: Verification;
   onImageClick?: () => void;
-  anchorText?: string;
+  /** Optional callback for "View page" button. When provided, shows the button. */
+  onViewPageClick?: () => void;
   maxWidth?: string;
   maxHeight?: string;
 }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
-    "idle"
-  );
-
-  // Auto-reset copy state after feedback duration (with cleanup to prevent memory leaks)
-  useEffect(() => {
-    if (copyState === "idle") {
-      return; // No timeout needed for idle state
-    }
-    const timeoutId = setTimeout(
-      () => setCopyState("idle"),
-      COPY_FEEDBACK_DURATION_MS
-    );
-    return () => clearTimeout(timeoutId);
-  }, [copyState]);
-
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!anchorText) return;
-
-      try {
-        await navigator.clipboard.writeText(anchorText);
-        setCopyState("copied");
-      } catch (err) {
-        console.error("Failed to copy text:", err);
-        setCopyState("error");
-      }
-    },
-    [anchorText]
-  );
-
   return (
     <div className="relative">
       {/* Image container - clickable to zoom */}
@@ -990,31 +958,19 @@ function AnchorTextFocusedImage({
           <span>Expand</span>
         </button>
 
-        {/* Copy button on right (only if anchorText exists) - icon only */}
-        {anchorText && (
+        {/* View page button on right (only shown when onViewPageClick is provided) */}
+        {onViewPageClick && (
           <button
             type="button"
-            onClick={handleCopy}
-            className={cn(
-              "flex items-center text-xs transition-colors cursor-pointer",
-              copyState === "copied"
-                ? "text-green-600 dark:text-green-400"
-                : copyState === "error"
-                  ? "text-red-500 dark:text-red-400"
-                  : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-            )}
-            aria-label={
-              copyState === "copied"
-                ? "Copied!"
-                : copyState === "error"
-                  ? "Failed to copy"
-                  : "Copy anchor text"
-            }
-            title={copyState === "copied" ? "Copied!" : copyState === "error" ? "Failed" : "Copy"}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onViewPageClick();
+            }}
+            className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer"
+            aria-label="View full page"
           >
-            <span className="size-3.5">
-              {copyState === "copied" ? <CheckIcon /> : copyState === "error" ? <XCircleIcon /> : <CopyIcon />}
-            </span>
+            <span>View page</span>
           </button>
         )}
       </div>
@@ -1462,7 +1418,6 @@ function DefaultPopoverContent({
             <AnchorTextFocusedImage
               verification={verification}
               onImageClick={onImageClick}
-              anchorText={anchorText}
             />
           </div>
 
@@ -1528,7 +1483,6 @@ function DefaultPopoverContent({
                 <AnchorTextFocusedImage
                   verification={verification}
                   onImageClick={onImageClick}
-                  anchorText={anchorText}
                 />
               </div>
             </>
