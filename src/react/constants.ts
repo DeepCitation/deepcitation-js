@@ -49,3 +49,9 @@ export const MISS_WAVY_UNDERLINE_STYLE: React.CSSProperties = {
  * Same styling, different semantic name for clarity in URL citation context.
  */
 export const BROKEN_WAVY_UNDERLINE_STYLE = MISS_WAVY_UNDERLINE_STYLE;
+
+/**
+ * Duration in ms to show "Copied" feedback before resetting to idle state.
+ * Used for copy-to-clipboard feedback in various components.
+ */
+export const COPY_FEEDBACK_DURATION_MS = 2000;

@@ -71,7 +71,7 @@ import {
   StatusHeader,
   VerificationLog,
 } from "./VerificationLog.js";
-import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
+import { MISS_WAVY_UNDERLINE_STYLE, COPY_FEEDBACK_DURATION_MS } from "./constants.js";
 
 // Re-export types for convenience
 export type {
@@ -882,9 +882,6 @@ const MissIndicator = () => (
 // VERIFICATION IMAGE COMPONENT
 // =============================================================================
 
-/** Duration in ms to show "Copied" feedback before resetting to idle state */
-const COPY_FEEDBACK_DURATION_MS = 2000;
-
 /**
  * Displays a verification image that fits within the container dimensions.
  * The image is scaled to fit (without distortion) and can be clicked to expand.
@@ -913,13 +910,14 @@ function AnchorTextFocusedImage({
 
   // Auto-reset copy state after feedback duration (with cleanup to prevent memory leaks)
   useEffect(() => {
-    if (copyState !== "idle") {
-      const timeoutId = setTimeout(
-        () => setCopyState("idle"),
-        COPY_FEEDBACK_DURATION_MS
-      );
-      return () => clearTimeout(timeoutId);
+    if (copyState === "idle") {
+      return; // No timeout needed for idle state
     }
+    const timeoutId = setTimeout(
+      () => setCopyState("idle"),
+      COPY_FEEDBACK_DURATION_MS
+    );
+    return () => clearTimeout(timeoutId);
   }, [copyState]);
 
   const handleCopy = useCallback(
@@ -975,7 +973,7 @@ function AnchorTextFocusedImage({
 
       {/* Action bar - always visible below image */}
       <div className="flex items-center justify-between px-2 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-b-md border-t border-gray-200 dark:border-gray-700">
-        {/* Zoom button on left - using text-gray-600 for better contrast (WCAG AA) */}
+        {/* Zoom button on left - using text-gray-700 for WCAG AA contrast (7.0:1 ratio on gray-100) */}
         <button
           type="button"
           onClick={(e) => {
@@ -983,7 +981,7 @@ function AnchorTextFocusedImage({
             e.stopPropagation();
             onImageClick?.();
           }}
-          className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+          className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
           aria-label="Expand image"
         >
           <span className="size-3.5">
@@ -997,7 +995,7 @@ function AnchorTextFocusedImage({
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
             aria-label={
               copyState === "copied"
                 ? "Copied!"
