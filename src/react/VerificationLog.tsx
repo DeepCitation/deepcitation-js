@@ -761,12 +761,14 @@ interface VerificationLogSummaryProps {
  * Shows what kind of match was found (or that nothing was found).
  */
 function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttempts: SearchAttempt[]): string {
-  const successfulAttempt = searchAttempts.find(a => a.success);
-
+  // Early return for not_found - no need to search for successful attempt
   if (!status || status === "not_found") {
     const totalCount = searchAttempts.length;
     return `${totalCount} ${totalCount === 1 ? "search" : "searches"} tried`;
   }
+
+  // Only search for successful attempt when we know something was found
+  const successfulAttempt = searchAttempts.find(a => a.success);
 
   // For found states, describe the match type
   if (successfulAttempt?.matchedVariation) {
