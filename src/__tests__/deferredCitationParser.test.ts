@@ -798,3 +798,142 @@ ${CITATION_DATA_END_DELIMITER}`;
     expect(citationValues[0].startPageId).toBe("page_number_0_index_0");
   });
 });
+
+describe("real-world medical document scenario", () => {
+  it("parses grouped format with compact keys and real attachment ID", () => {
+    const response = `Here is a summary of the key information from the document:
+Patient Information:
+Story/Timeline:
+Medical History:
+Plan:
+Vitals/Assessment:
+Labs:
+Medications (Gtts):
+Devices/Other:
+LDAs (Lines/Drains/Arteries):
+Consults:
+Family:
+${CITATION_DATA_START_DELIMITER}
+{
+  "646274488": [
+    {"id": 1, "r": "patient demographics", "f": "10 John Doe 50/M Full", "k": "John Doe 50/M", "p": "0_0", "l": [1, 2, 3]},
+    {"id": 1, "r": "states story of the patient", "f": "15/15-worsening SUB at home 5/17-admitted at outside hospital", "k": "worsening SUB at home", "p": "0_0", "l": [12, 13, 14, 15]},
+    {"id": 1, "r": "lists patient's medical history", "f": "HTN, CAD, HFrEF, Hypothyroid, HLD", "k": "HTN, CAD, HFrEF", "p": "0_0", "l": [8, 9, 10]},
+    {"id": 1, "r": "lists the plan for the patient", "f": "PLAN: Optimize for transplant", "k": "Optimize for transplant", "p": "0_0", "l": [23]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(4);
+
+    // Check first citation - patient demographics
+    expect(result.citations[0].attachment_id).toBe("646274488");
+    expect(result.citations[0].id).toBe(1);
+    expect(result.citations[0].reasoning).toBe("patient demographics");
+    expect(result.citations[0].full_phrase).toBe("10 John Doe 50/M Full");
+    expect(result.citations[0].anchor_text).toBe("John Doe 50/M");
+    expect(result.citations[0].page_id).toBe("0_0");
+    expect(result.citations[0].line_ids).toEqual([1, 2, 3]);
+
+    // Check last citation - plan
+    expect(result.citations[3].reasoning).toBe("lists the plan for the patient");
+    expect(result.citations[3].anchor_text).toBe("Optimize for transplant");
+  });
+
+  it("converts medical document citations to standard Citation format", () => {
+    const response = `Summary [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "646274488": [
+    {"id": 1, "r": "patient demographics", "f": "10 John Doe 50/M Full", "k": "John Doe 50/M", "p": "0_0", "l": [1, 2, 3]},
+    {"id": 1, "r": "lists patient's labs", "f": "Na+ 138 k+ 4.4 Mg 1.7 Cr 1.21 WBC 18", "k": "Na+ 138", "p": "0_0", "l": [68, 69, 70]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const citations = getAllCitationsFromDeferredResponse(response);
+    const citationValues = Object.values(citations);
+
+    expect(citationValues.length).toBe(2);
+
+    // Verify first citation conversion
+    expect(citationValues[0].attachmentId).toBe("646274488");
+    expect(citationValues[0].fullPhrase).toBe("10 John Doe 50/M Full");
+    expect(citationValues[0].anchorText).toBe("John Doe 50/M");
+    expect(citationValues[0].pageNumber).toBe(0);
+    expect(citationValues[0].startPageId).toBe("page_number_0_index_0");
+    expect(citationValues[0].lineIds).toEqual([1, 2, 3]);
+    expect(citationValues[0].reasoning).toBe("patient demographics");
+
+    // Verify second citation conversion
+    expect(citationValues[1].fullPhrase).toBe("Na+ 138 k+ 4.4 Mg 1.7 Cr 1.21 WBC 18");
+    expect(citationValues[1].anchorText).toBe("Na+ 138");
+  });
+
+  it("handles multiple citations with same id in grouped format", () => {
+    const response = `Patient info [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "abc123": [
+    {"id": 1, "r": "first item", "f": "First phrase", "k": "First", "p": "0_0", "l": [1]},
+    {"id": 1, "r": "second item", "f": "Second phrase", "k": "Second", "p": "0_0", "l": [5]},
+    {"id": 1, "r": "third item", "f": "Third phrase", "k": "Third", "p": "0_0", "l": [10]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(3);
+
+    // All should have the same id but different content
+    expect(result.citations[0].id).toBe(1);
+    expect(result.citations[1].id).toBe(1);
+    expect(result.citations[2].id).toBe(1);
+
+    expect(result.citations[0].full_phrase).toBe("First phrase");
+    expect(result.citations[1].full_phrase).toBe("Second phrase");
+    expect(result.citations[2].full_phrase).toBe("Third phrase");
+  });
+
+  it("handles special characters in medical notation", () => {
+    const response = `Patient vitals [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "doc123": [
+    {"id": 1, "r": "vitals", "f": "NSR w/ PVCs Pulses 2/2 Edema 1+", "k": "NSR w/ PVCs", "p": "0_0", "l": [26]},
+    {"id": 1, "r": "labs", "f": "Na+ 138 k+ 4.4 iCal Mg+ 1.7", "k": "Na+ 138", "p": "0_0", "l": [68]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(2);
+    expect(result.citations[0].full_phrase).toBe("NSR w/ PVCs Pulses 2/2 Edema 1+");
+    expect(result.citations[1].full_phrase).toBe("Na+ 138 k+ 4.4 iCal Mg+ 1.7");
+  });
+
+  it("handles Unicode characters like arrows and symbols", () => {
+    const response = `Patient story [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "doc123": [
+    {"id": 1, "r": "story", "f": "Cardiac cath showing ↑ pulm HTN, low CI", "k": "↑ pulm HTN", "p": "0_0", "l": [14]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(1);
+    expect(result.citations[0].full_phrase).toBe("Cardiac cath showing ↑ pulm HTN, low CI");
+    expect(result.citations[0].anchor_text).toBe("↑ pulm HTN");
+  });
+});
