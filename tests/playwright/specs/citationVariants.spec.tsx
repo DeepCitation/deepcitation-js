@@ -505,6 +505,8 @@ test.describe("CitationVariantFactory", () => {
   });
 
   test("passes variant-specific props", async ({ mount, page }) => {
+    // Note: size prop is now ignored for chip - uses consistent sizing for inline text flow
+    // This test verifies the factory component works with chip variant
     await mount(
       <CitationVariantFactory
         variant="chip"
@@ -514,7 +516,8 @@ test.describe("CitationVariantFactory", () => {
     );
     const chip = page.locator('[data-variant="chip"]');
 
-    await expect(chip).toHaveClass(/text-base/);
+    // Chip uses consistent 0.9em sizing regardless of size prop
+    await expect(chip).toHaveClass(/text-\[0\.9em\]/);
   });
 });
 
