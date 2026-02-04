@@ -41,24 +41,21 @@ At the END of your response, append a citation block. Group citations by attachm
 <<<CITATION_DATA>>>
 {
   "attachment_id_here": [
-    {"id": 1, "reasoning": "why", "full_phrase": "quote", "anchor_text": "key", "page_id": "2_1", "line_ids": [12]}
+    {"id": 1, "reasoning": "why", "full_phrase": "quote", "anchor_text": "key", "page_id": "page_number_2_index_1", "line_ids": [12]}
   ]
 }
 <<<END_CITATION_DATA>>>
 \`\`\`
 
-### Shorthand (Optional)
-To save tokens: n=id, r=reasoning, f=full_phrase, k=anchor_text, p=page_id, l=line_ids
-
 ### JSON Field Rules
 
 1. **Group key**: The attachment_id (exact ID from source document)
-2. **id** (or n): Must match the [N] marker in your text (integer)
-3. **reasoning** (or r): Brief explanation connecting the citation to your claim (think first!)
-4. **full_phrase** (or f): Copy text VERBATIM from source. Use proper JSON escaping for quotes.
-5. **anchor_text** (or k): The 1-3 most important words from full_phrase
-6. **page_id** (or p): Format "N_I" where N=page number, I=index (from \`<page_number_N_index_I>\` tags)
-7. **line_ids** (or l): Array of line numbers. Infer intermediate lines since only every 5th is shown.
+2. **id**: Must match the [N] marker in your text (integer)
+3. **reasoning**: Brief explanation connecting the citation to your claim (think first!)
+4. **full_phrase**: Copy text VERBATIM from source. Use proper JSON escaping for quotes.
+5. **anchor_text**: The 1-3 most important words from full_phrase
+6. **page_id**: Format "page_number_N_index_I" where N=page number, I=index (copy exactly from \`<page_number_N_index_I>\` tags in the source)
+7. **line_ids**: Array of line numbers. Infer intermediate lines since only every 5th is shown.
 
 ### Placement Rules
 
@@ -74,11 +71,11 @@ The company reported strong growth [1]. Revenue increased significantly in Q4 [2
 <<<CITATION_DATA>>>
 {
   "abc123": [
-    {"id": 1, "reasoning": "directly states growth metrics", "full_phrase": "The company achieved 45% year-over-year growth", "anchor_text": "45% year-over-year growth", "page_id": "2_1", "line_ids": [12, 13]},
-    {"id": 2, "reasoning": "states Q4 revenue figure", "full_phrase": "Q4 revenue reached $2.3 billion, up from $1.8 billion", "anchor_text": "$2.3 billion", "page_id": "3_2", "line_ids": [5, 6, 7]}
+    {"id": 1, "reasoning": "directly states growth metrics", "full_phrase": "The company achieved 45% year-over-year growth", "anchor_text": "45% year-over-year growth", "page_id": "page_number_2_index_1", "line_ids": [12, 13]},
+    {"id": 2, "reasoning": "states Q4 revenue figure", "full_phrase": "Q4 revenue reached $2.3 billion, up from $1.8 billion", "anchor_text": "$2.3 billion", "page_id": "page_number_3_index_2", "line_ids": [5, 6, 7]}
   ],
   "def456": [
-    {"id": 3, "reasoning": "competitor data", "full_phrase": "Competitor X reported 20% growth", "anchor_text": "20% growth", "page_id": "1_0", "line_ids": [8]}
+    {"id": 3, "reasoning": "competitor data", "full_phrase": "Competitor X reported 20% growth", "anchor_text": "20% growth", "page_id": "page_number_1_index_0", "line_ids": [8]}
   ]
 }
 <<<END_CITATION_DATA>>>
@@ -341,7 +338,8 @@ export const CITATION_JSON_OUTPUT_FORMAT = {
     },
     page_id: {
       type: "string",
-      description: "Page ID in format 'N_I' (pageNumber_index)",
+      description:
+        "Page ID in format 'page_number_N_index_I' (copy from <page_number_N_index_I> tags)",
     },
     line_ids: {
       type: "array",
@@ -399,6 +397,8 @@ export const CITATION_AV_JSON_OUTPUT_FORMAT = {
 /**
  * Compact citation data format from LLM output.
  * Uses single-character keys for token efficiency.
+ * @deprecated Shorthand keys are no longer recommended in the prompt.
+ * The parser still supports them for backwards compatibility.
  */
 export interface CompactCitationData {
   /** Citation number (n) - matches [N] marker */
@@ -411,7 +411,7 @@ export interface CompactCitationData {
   f?: string;
   /** Key phrase (k) - anchor text */
   k?: string;
-  /** Page ID (p) - format "N_I" */
+  /** Page ID (p) - format "page_number_N_index_I" */
   p?: string;
   /** Line IDs (l) */
   l?: number[];
@@ -440,7 +440,7 @@ export interface CitationData {
   full_phrase?: string;
   /** Anchor text (1-3 words). Compact key: k */
   anchor_text?: string;
-  /** Page ID in format "N_I" or legacy "page_number_N_index_I". Compact key: p */
+  /** Page ID in format "page_number_N_index_I". Compact key: p */
   page_id?: string;
   /** Line IDs array. Compact key: l */
   line_ids?: number[];
