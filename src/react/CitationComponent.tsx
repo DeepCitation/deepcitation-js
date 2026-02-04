@@ -540,13 +540,13 @@ interface GroupedSearchAttempt {
  */
 function getMethodLabel(method: string): string {
   const labels: Record<string, string> = {
-    exact_line_match: "exact line",
-    line_with_buffer: "line buffer",
+    exact_line_match: "exact location",
+    line_with_buffer: "nearby lines",
     current_page: "expected page",
     anchor_text_fallback: "anchor text",
-    adjacent_pages: "adjacent pages",
-    expanded_window: "expanded search",
-    regex_search: "regex",
+    adjacent_pages: "nearby pages",
+    expanded_window: "wider search",
+    regex_search: "entire document",
     first_word_fallback: "first word",
   };
   return labels[method] || method;
@@ -882,6 +882,7 @@ const MissIndicator = () => (
 /**
  * Displays a verification image that fits within the container dimensions.
  * The image is scaled to fit (without distortion) and can be clicked to expand.
+ * Includes an action bar with zoom and copy buttons.
  *
  * Note: This component uses simple object-fit: contain for predictable sizing.
  * Previous scroll-to-anchor-text logic was removed for simplicity - users can
@@ -890,51 +891,120 @@ const MissIndicator = () => (
 function AnchorTextFocusedImage({
   verification,
   onImageClick,
+  anchorText,
   maxWidth = "min(70vw, 384px)",
   maxHeight = "min(50vh, 300px)",
 }: {
   verification: Verification;
   onImageClick?: () => void;
+  anchorText?: string;
   maxWidth?: string;
   maxHeight?: string;
 }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+
+  const handleCopy = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!anchorText) return;
+
+    try {
+      await navigator.clipboard.writeText(anchorText);
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 2000);
+    } catch (err) {
+      console.error("Failed to copy text:", err);
+    }
+  }, [anchorText]);
+
   return (
-    <button
-      type="button"
-      className="group block cursor-zoom-in relative w-full"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onImageClick?.();
-      }}
-      aria-label="Click to view full size"
-    >
-      <div
-        className="overflow-hidden"
-        style={{
-          maxWidth,
-          maxHeight,
+    <div className="relative">
+      {/* Image container - clickable to zoom */}
+      <button
+        type="button"
+        className="group block cursor-zoom-in relative w-full"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onImageClick?.();
         }}
+        aria-label="Click to view full size"
       >
-        <img
-          src={verification.verificationImageBase64 as string}
-          alt="Citation verification"
-          className="block w-full h-auto"
+        <div
+          className="overflow-hidden rounded-t-md"
           style={{
+            maxWidth,
             maxHeight,
-            objectFit: "contain",
           }}
-          loading="eager"
-          decoding="async"
-        />
+        >
+          <img
+            src={verification.verificationImageBase64 as string}
+            alt="Citation verification"
+            className="block w-full h-auto"
+            style={{
+              maxHeight,
+              objectFit: "contain",
+            }}
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+      </button>
+
+      {/* Action bar - always visible below image */}
+      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-b-md border-t border-gray-200 dark:border-gray-700">
+        {/* Zoom button on left */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onImageClick?.();
+          }}
+          className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+          aria-label="Expand image"
+        >
+          <span className="size-3.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line x1="11" y1="8" x2="11" y2="14" />
+              <line x1="8" y1="11" x2="14" y2="11" />
+            </svg>
+          </span>
+          <span>Expand</span>
+        </button>
+
+        {/* Copy button on right (only if anchorText exists) */}
+        {anchorText && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+            aria-label={copyState === "copied" ? "Copied!" : "Copy anchor text"}
+          >
+            {copyState === "copied" ? (
+              <>
+                <span className="size-3.5 text-green-600 dark:text-green-400">
+                  <CheckIcon />
+                </span>
+                <span className="text-green-600 dark:text-green-400">Copied</span>
+              </>
+            ) : (
+              <>
+                <span className="size-3.5">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </span>
+                <span>Copy quote</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
-      {/* Bottom bar with expand hint on hover */}
-      <span className="absolute left-0 right-0 bottom-0 flex items-center justify-end px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/50 to-transparent pointer-events-none">
-        <span className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] opacity-0 group-hover:opacity-100 transition-opacity">
-          Click to expand
-        </span>
-      </span>
-    </button>
+    </div>
   );
 }
 
@@ -1378,6 +1448,7 @@ function DefaultPopoverContent({
             <AnchorTextFocusedImage
               verification={verification}
               onImageClick={onImageClick}
+              anchorText={anchorText}
             />
           </div>
 
@@ -1443,6 +1514,7 @@ function DefaultPopoverContent({
                 <AnchorTextFocusedImage
                   verification={verification}
                   onImageClick={onImageClick}
+                  anchorText={anchorText}
                 />
               </div>
             </>
