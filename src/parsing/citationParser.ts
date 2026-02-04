@@ -159,6 +159,7 @@ export type { CitationData, ParsedCitationResponse } from "../prompts/citationPr
  * - Single quotes instead of double quotes (in JSON context)
  * - Missing closing brackets
  * - Unescaped newlines in strings
+ * - Invalid escape sequences (like \~ or \x)
  *
  * @param jsonString - The potentially malformed JSON string
  * @returns The repaired JSON string
@@ -172,6 +173,26 @@ function repairJson(jsonString: string): { repaired: string; repairs: string[] }
   repaired = repaired.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   if (repaired !== beforeMarkdownRemoval) {
     repairs.push("removed markdown code block markers");
+  }
+
+  // Fix invalid escape sequences inside JSON strings.
+  // Valid escapes: \" \\ \/ \b \f \n \r \t \uXXXX
+  // Invalid escapes like \~ \x \a etc. should have the backslash removed.
+  // We need to be careful to only process content inside string values.
+  const beforeInvalidEscapes = repaired;
+  repaired = repaired.replace(
+    /"(?:[^"\\]|\\.)*"/g,
+    (match) => {
+      // Inside a JSON string, fix invalid escape sequences
+      // by removing the backslash before non-standard escape characters
+      return match.replace(
+        /\\([^"\\\/bfnrtu])/g,
+        (_, char) => char
+      );
+    }
+  );
+  if (repaired !== beforeInvalidEscapes) {
+    repairs.push("fixed invalid escape sequences");
   }
 
   // Fix trailing commas before ] or }

@@ -670,3 +670,131 @@ describe("simplified page_id format", () => {
     expect(citation.startPageId).toBeUndefined();
   });
 });
+
+describe("JSON repair - invalid escape sequences", () => {
+  it("repairs invalid escape sequences like \\~", () => {
+    const response = `Patient info [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "Output \\~100/hr", "anchor_text": "Output ~100/hr"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(1);
+    expect(result.citations[0].full_phrase).toBe("Output ~100/hr");
+  });
+
+  it("repairs multiple invalid escape sequences in same string", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "\\~test\\xvalue\\!", "anchor_text": "test"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations[0].full_phrase).toBe("~testxvalue!");
+  });
+
+  it("preserves valid escape sequences while fixing invalid ones", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "line1\\nline2\\~test", "anchor_text": "test"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \n should be preserved, \~ should become ~
+    expect(result.citations[0].full_phrase).toBe("line1\nline2~test");
+  });
+
+  it("handles medical notation with special characters", () => {
+    const response = `Patient is John Doe [1].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "reasoning": "summarizes info", "full_phrase": "Output \\~100/hr", "anchor_text": "Output ~100/hr", "page_id": "0_0", "line_ids": [30]},
+    {"id": 1, "reasoning": "summarizes info", "full_phrase": "Na+ 138", "anchor_text": "Na+ 138", "page_id": "0_0", "line_ids": [36]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(2);
+    expect(result.citations[0].full_phrase).toBe("Output ~100/hr");
+    expect(result.citations[0].attachment_id).toBe("0");
+  });
+});
+
+describe("grouped format with numeric string keys", () => {
+  it("parses grouped format with numeric string key like '0'", () => {
+    const response = `Patient info [1].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "reasoning": "summarizes info", "full_phrase": "John Doe 50/M", "anchor_text": "John Doe", "page_id": "0_0", "line_ids": [1]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(1);
+    // The numeric string "0" should be used as-is for attachment_id
+    expect(result.citations[0].attachment_id).toBe("0");
+    expect(result.citations[0].page_id).toBe("0_0");
+  });
+
+  it("parses grouped format with multiple numeric string keys", () => {
+    const response = `From page 0 [1] and page 1 [2].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "full_phrase": "content from page 0", "anchor_text": "page 0", "page_id": "0_0", "line_ids": [1]}
+  ],
+  "1": [
+    {"id": 2, "full_phrase": "content from page 1", "anchor_text": "page 1", "page_id": "1_0", "line_ids": [1]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(2);
+    expect(result.citations[0].attachment_id).toBe("0");
+    expect(result.citations[1].attachment_id).toBe("1");
+  });
+
+  it("converts numeric string key grouped format to standard Citation format", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "full_phrase": "the quote", "anchor_text": "quote", "page_id": "0_0", "line_ids": [10, 11]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const citations = getAllCitationsFromDeferredResponse(response);
+    const citationValues = Object.values(citations);
+
+    expect(citationValues.length).toBe(1);
+    expect(citationValues[0].attachmentId).toBe("0");
+    expect(citationValues[0].fullPhrase).toBe("the quote");
+    expect(citationValues[0].pageNumber).toBe(0);
+    expect(citationValues[0].startPageId).toBe("page_number_0_index_0");
+  });
+});
