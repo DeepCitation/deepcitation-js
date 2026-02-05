@@ -669,4 +669,457 @@ describe("simplified page_id format", () => {
     expect(citation.pageNumber).toBeUndefined();
     expect(citation.startPageId).toBeUndefined();
   });
+
+  it("auto-corrects 0_0 to page 1 (only when both page and index are 0)", () => {
+    // page_id "0_0" should be corrected to page 1, index 0
+    const zeroIndexed = deferredCitationToCitation({
+      id: 1,
+      page_id: "0_0",
+      full_phrase: "test",
+    });
+    expect(zeroIndexed.pageNumber).toBe(1);
+    expect(zeroIndexed.startPageId).toBe("page_number_1_index_0");
+  });
+
+  it("does NOT auto-correct ambiguous page_ids like 0_5", () => {
+    // page_id "0_5" is ambiguous - could be page 0 with index 5, or a mistake
+    // We should NOT guess, so leave it as page 0
+    const zeroWithIndex = deferredCitationToCitation({
+      id: 2,
+      page_id: "0_5",
+      full_phrase: "test",
+    });
+    expect(zeroWithIndex.pageNumber).toBe(0);
+    expect(zeroWithIndex.startPageId).toBe("page_number_0_index_5");
+  });
+
+  it("does NOT change non-zero page numbers", () => {
+    // Non-zero page numbers should NOT be corrected
+    const pageTwo = deferredCitationToCitation({
+      id: 3,
+      page_id: "2_0",
+      full_phrase: "test",
+    });
+    expect(pageTwo.pageNumber).toBe(2);
+    expect(pageTwo.startPageId).toBe("page_number_2_index_0");
+  });
+
+  it("auto-corrects legacy format page_number_0_index_0", () => {
+    // Legacy format "page_number_0_index_0" should also be corrected
+    const legacyZero = deferredCitationToCitation({
+      id: 1,
+      page_id: "page_number_0_index_0",
+      full_phrase: "test",
+    });
+    expect(legacyZero.pageNumber).toBe(1);
+    expect(legacyZero.startPageId).toBe("page_number_1_index_0");
+  });
+
+  it("does NOT auto-correct ambiguous legacy format like page_number_0_index_5", () => {
+    // Legacy format with page 0 but non-zero index is ambiguous
+    const legacyAmbiguous = deferredCitationToCitation({
+      id: 1,
+      page_id: "page_number_0_index_5",
+      full_phrase: "test",
+    });
+    expect(legacyAmbiguous.pageNumber).toBe(0);
+    expect(legacyAmbiguous.startPageId).toBe("page_number_0_index_5");
+  });
+});
+
+describe("JSON repair - invalid escape sequences", () => {
+  it("repairs invalid escape sequences like \\~", () => {
+    const response = `Patient info [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "Output \\~100/hr", "anchor_text": "Output ~100/hr"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(1);
+    expect(result.citations[0].full_phrase).toBe("Output ~100/hr");
+  });
+
+  it("repairs multiple invalid escape sequences in same string", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "\\~test\\xvalue\\!", "anchor_text": "test"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations[0].full_phrase).toBe("~testxvalue!");
+  });
+
+  it("preserves valid escape sequences while fixing invalid ones", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "line1\\nline2\\~test", "anchor_text": "test"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \n should be preserved, \~ should become ~
+    expect(result.citations[0].full_phrase).toBe("line1\nline2~test");
+  });
+
+  it("handles medical notation with special characters", () => {
+    const response = `Patient is John Doe [1].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "reasoning": "summarizes info", "full_phrase": "Output \\~100/hr", "anchor_text": "Output ~100/hr", "page_id": "0_0", "line_ids": [30]},
+    {"id": 1, "reasoning": "summarizes info", "full_phrase": "Na+ 138", "anchor_text": "Na+ 138", "page_id": "0_0", "line_ids": [36]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(2);
+    expect(result.citations[0].full_phrase).toBe("Output ~100/hr");
+    expect(result.citations[0].attachment_id).toBe("0");
+  });
+
+  it("preserves valid unicode escape sequences like \\u0020", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "space\\u0020here", "anchor_text": "space here"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u0020 is a valid unicode escape for space and should be preserved
+    expect(result.citations[0].full_phrase).toBe("space here");
+  });
+
+  it("preserves multiple valid unicode escapes in same string", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "a\\u0041b\\u0042c", "anchor_text": "aAbBc"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u0041 = 'A', \u0042 = 'B'
+    expect(result.citations[0].full_phrase).toBe("aAbBc");
+  });
+
+  it("repairs invalid unicode-like sequences (not followed by 4 hex digits)", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\utest", "anchor_text": "testutest"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \utest is invalid (not 4 hex digits), backslash should be removed
+    expect(result.citations[0].full_phrase).toBe("testutest");
+  });
+
+  it("handles mixed valid unicode escapes and invalid escapes", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "\\~prefix\\u0020middle\\u0020\\xsuffix", "anchor_text": "prefix middle suffix"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \~ and \x should be repaired (backslash removed)
+    // \u0020 should be preserved as space
+    expect(result.citations[0].full_phrase).toBe("~prefix middle xsuffix");
+  });
+
+  it("preserves unicode escapes with lowercase hex digits", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u00e9test", "anchor_text": "testétest"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u00e9 = 'é' (valid lowercase hex)
+    expect(result.citations[0].full_phrase).toBe("testétest");
+  });
+
+  it("preserves unicode escapes with uppercase hex digits", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u00E9test", "anchor_text": "testétest"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u00E9 = 'é' (valid uppercase hex)
+    expect(result.citations[0].full_phrase).toBe("testétest");
+  });
+
+  it("repairs \\u followed by only 3 hex digits", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u00Fvalue", "anchor_text": "testu00Fvalue"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u00F is invalid (only 3 hex digits), backslash should be removed
+    expect(result.citations[0].full_phrase).toBe("testu00Fvalue");
+  });
+
+  it("repairs consecutive invalid unicode-like escapes", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\utest\\u00Gend", "anchor_text": "testutestu00Gend"}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \utest is invalid (non-hex chars), \u00G is invalid (G is not hex)
+    // Both should have backslashes removed
+    expect(result.citations[0].full_phrase).toBe("testutestu00Gend");
+  });
+
+  it("preserves valid unicode escape at end of string", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+[{"id": 1, "attachment_id": "doc", "full_phrase": "test\\u0020", "anchor_text": "test "}]
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    // \u0020 at end of string should be preserved as space
+    expect(result.citations[0].full_phrase).toBe("test ");
+  });
+});
+
+describe("grouped format with numeric string keys", () => {
+  it("parses grouped format with numeric string key like '0'", () => {
+    const response = `Patient info [1].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "reasoning": "summarizes info", "full_phrase": "John Doe 50/M", "anchor_text": "John Doe", "page_id": "0_0", "line_ids": [1]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(1);
+    // The numeric string "0" should be used as-is for attachment_id
+    expect(result.citations[0].attachment_id).toBe("0");
+    expect(result.citations[0].page_id).toBe("0_0");
+  });
+
+  it("parses grouped format with multiple numeric string keys", () => {
+    const response = `From page 0 [1] and page 1 [2].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "full_phrase": "content from page 0", "anchor_text": "page 0", "page_id": "0_0", "line_ids": [1]}
+  ],
+  "1": [
+    {"id": 2, "full_phrase": "content from page 1", "anchor_text": "page 1", "page_id": "1_0", "line_ids": [1]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(2);
+    expect(result.citations[0].attachment_id).toBe("0");
+    expect(result.citations[1].attachment_id).toBe("1");
+  });
+
+  it("converts numeric string key grouped format to standard Citation format", () => {
+    const response = `Test [1].
+
+${CITATION_DATA_START_DELIMITER}
+{
+  "0": [
+    {"id": 1, "full_phrase": "the quote", "anchor_text": "quote", "page_id": "0_0", "line_ids": [10, 11]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const citations = getAllCitationsFromDeferredResponse(response);
+    const citationValues = Object.values(citations);
+
+    expect(citationValues.length).toBe(1);
+    expect(citationValues[0].attachmentId).toBe("0");
+    expect(citationValues[0].fullPhrase).toBe("the quote");
+    // page_id "0_0" is auto-corrected to page 1 (1-indexed)
+    expect(citationValues[0].pageNumber).toBe(1);
+    expect(citationValues[0].startPageId).toBe("page_number_1_index_0");
+  });
+});
+
+describe("real-world medical document scenario", () => {
+  it("parses grouped format with compact keys and real attachment ID", () => {
+    const response = `Here is a summary of the key information from the document:
+Patient Information:
+Story/Timeline:
+Medical History:
+Plan:
+Vitals/Assessment:
+Labs:
+Medications (Gtts):
+Devices/Other:
+LDAs (Lines/Drains/Arteries):
+Consults:
+Family:
+${CITATION_DATA_START_DELIMITER}
+{
+  "646274488": [
+    {"id": 1, "r": "patient demographics", "f": "10 John Doe 50/M Full", "k": "John Doe 50/M", "p": "0_0", "l": [1, 2, 3]},
+    {"id": 1, "r": "states story of the patient", "f": "15/15-worsening SUB at home 5/17-admitted at outside hospital", "k": "worsening SUB at home", "p": "0_0", "l": [12, 13, 14, 15]},
+    {"id": 1, "r": "lists patient's medical history", "f": "HTN, CAD, HFrEF, Hypothyroid, HLD", "k": "HTN, CAD, HFrEF", "p": "0_0", "l": [8, 9, 10]},
+    {"id": 1, "r": "lists the plan for the patient", "f": "PLAN: Optimize for transplant", "k": "Optimize for transplant", "p": "0_0", "l": [23]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(4);
+
+    // Check first citation - patient demographics
+    expect(result.citations[0].attachment_id).toBe("646274488");
+    expect(result.citations[0].id).toBe(1);
+    expect(result.citations[0].reasoning).toBe("patient demographics");
+    expect(result.citations[0].full_phrase).toBe("10 John Doe 50/M Full");
+    expect(result.citations[0].anchor_text).toBe("John Doe 50/M");
+    expect(result.citations[0].page_id).toBe("0_0");
+    expect(result.citations[0].line_ids).toEqual([1, 2, 3]);
+
+    // Check last citation - plan
+    expect(result.citations[3].reasoning).toBe("lists the plan for the patient");
+    expect(result.citations[3].anchor_text).toBe("Optimize for transplant");
+  });
+
+  it("converts medical document citations to standard Citation format", () => {
+    const response = `Summary [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "646274488": [
+    {"id": 1, "r": "patient demographics", "f": "10 John Doe 50/M Full", "k": "John Doe 50/M", "p": "0_0", "l": [1, 2, 3]},
+    {"id": 1, "r": "lists patient's labs", "f": "Na+ 138 k+ 4.4 Mg 1.7 Cr 1.21 WBC 18", "k": "Na+ 138", "p": "0_0", "l": [68, 69, 70]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const citations = getAllCitationsFromDeferredResponse(response);
+    const citationValues = Object.values(citations);
+
+    expect(citationValues.length).toBe(2);
+
+    // Verify first citation conversion
+    expect(citationValues[0].attachmentId).toBe("646274488");
+    expect(citationValues[0].fullPhrase).toBe("10 John Doe 50/M Full");
+    expect(citationValues[0].anchorText).toBe("John Doe 50/M");
+    // page_id "0_0" is auto-corrected to page 1 (1-indexed)
+    expect(citationValues[0].pageNumber).toBe(1);
+    expect(citationValues[0].startPageId).toBe("page_number_1_index_0");
+    expect(citationValues[0].lineIds).toEqual([1, 2, 3]);
+    expect(citationValues[0].reasoning).toBe("patient demographics");
+
+    // Verify second citation conversion
+    expect(citationValues[1].fullPhrase).toBe("Na+ 138 k+ 4.4 Mg 1.7 Cr 1.21 WBC 18");
+    expect(citationValues[1].anchorText).toBe("Na+ 138");
+  });
+
+  it("handles multiple citations with same id in grouped format", () => {
+    const response = `Patient info [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "abc123": [
+    {"id": 1, "r": "first item", "f": "First phrase", "k": "First", "p": "0_0", "l": [1]},
+    {"id": 1, "r": "second item", "f": "Second phrase", "k": "Second", "p": "0_0", "l": [5]},
+    {"id": 1, "r": "third item", "f": "Third phrase", "k": "Third", "p": "0_0", "l": [10]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(3);
+
+    // All should have the same id but different content
+    expect(result.citations[0].id).toBe(1);
+    expect(result.citations[1].id).toBe(1);
+    expect(result.citations[2].id).toBe(1);
+
+    expect(result.citations[0].full_phrase).toBe("First phrase");
+    expect(result.citations[1].full_phrase).toBe("Second phrase");
+    expect(result.citations[2].full_phrase).toBe("Third phrase");
+  });
+
+  it("handles special characters in medical notation", () => {
+    const response = `Patient vitals [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "doc123": [
+    {"id": 1, "r": "vitals", "f": "NSR w/ PVCs Pulses 2/2 Edema 1+", "k": "NSR w/ PVCs", "p": "0_0", "l": [26]},
+    {"id": 1, "r": "labs", "f": "Na+ 138 k+ 4.4 iCal Mg+ 1.7", "k": "Na+ 138", "p": "0_0", "l": [68]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(2);
+    expect(result.citations[0].full_phrase).toBe("NSR w/ PVCs Pulses 2/2 Edema 1+");
+    expect(result.citations[1].full_phrase).toBe("Na+ 138 k+ 4.4 iCal Mg+ 1.7");
+  });
+
+  it("handles Unicode characters like arrows and symbols", () => {
+    const response = `Patient story [1].
+${CITATION_DATA_START_DELIMITER}
+{
+  "doc123": [
+    {"id": 1, "r": "story", "f": "Cardiac cath showing ↑ pulm HTN, low CI", "k": "↑ pulm HTN", "p": "0_0", "l": [14]}
+  ]
+}
+${CITATION_DATA_END_DELIMITER}`;
+
+    const result = parseDeferredCitationResponse(response);
+
+    expect(result.success).toBe(true);
+    expect(result.citations.length).toBe(1);
+    expect(result.citations[0].full_phrase).toBe("Cardiac cath showing ↑ pulm HTN, low CI");
+    expect(result.citations[0].anchor_text).toBe("↑ pulm HTN");
+  });
 });

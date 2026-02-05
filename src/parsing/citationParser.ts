@@ -159,6 +159,7 @@ export type { CitationData, ParsedCitationResponse } from "../prompts/citationPr
  * - Single quotes instead of double quotes (in JSON context)
  * - Missing closing brackets
  * - Unescaped newlines in strings
+ * - Invalid escape sequences (like \~ or \x)
  *
  * @param jsonString - The potentially malformed JSON string
  * @returns The repaired JSON string
@@ -172,6 +173,29 @@ function repairJson(jsonString: string): { repaired: string; repairs: string[] }
   repaired = repaired.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   if (repaired !== beforeMarkdownRemoval) {
     repairs.push("removed markdown code block markers");
+  }
+
+  // Fix invalid escape sequences inside JSON strings.
+  // Valid escapes: \" \\ \/ \b \f \n \r \t \uXXXX
+  // Invalid escapes like \~ \x \a etc. should have the backslash removed.
+  // We need to be careful to only process content inside string values.
+  // Note: \u is only valid when followed by exactly 4 hex digits (e.g., \u0020).
+  // Invalid \u sequences (like \utest) should have the backslash removed.
+  const beforeInvalidEscapes = repaired;
+  repaired = repaired.replace(
+    /"(?:[^"\\]|\\.)*"/g,
+    (match) => {
+      // Inside a JSON string, fix invalid escape sequences
+      // by removing the backslash before non-standard escape characters.
+      // Use negative lookahead to preserve valid unicode escapes (\uXXXX).
+      return match.replace(
+        /\\(?!u[0-9a-fA-F]{4})([^"\\\/bfnrt])/g,
+        (_, char) => char
+      );
+    }
+  );
+  if (repaired !== beforeInvalidEscapes) {
+    repairs.push("fixed invalid escape sequences");
   }
 
   // Fix trailing commas before ] or }
@@ -331,6 +355,10 @@ export function parseDeferredCitationResponse(
  * Parses a page_id string to extract page number and index.
  * Supports both compact "N_I" format and legacy "page_number_N_index_I" format.
  *
+ * Page numbers are 1-indexed (page 1 is the first page). If page_id is "0_0"
+ * (both page and index are 0), it will be auto-corrected to page 1, index 0.
+ * Other cases like "0_5" are left as-is since they are ambiguous.
+ *
  * @param pageId - The page ID string
  * @returns Object with pageNumber and normalized startPageId, or undefined values
  */
@@ -338,8 +366,15 @@ function parsePageId(pageId: string): { pageNumber?: number; startPageId?: strin
   // Try compact format first: "N_I" (e.g., "2_1")
   const compactMatch = pageId.match(/^(\d+)_(\d+)$/);
   if (compactMatch) {
-    const pageNum = parseInt(compactMatch[1], 10);
+    let pageNum = parseInt(compactMatch[1], 10);
     const index = parseInt(compactMatch[2], 10);
+
+    // Only auto-correct "0_0" to page 1 (when both page and index are 0)
+    // Other cases like "0_5" are ambiguous and should not be guessed
+    if (pageNum === 0 && index === 0) {
+      pageNum = 1;
+    }
+
     return {
       pageNumber: pageNum,
       startPageId: `page_number_${pageNum}_index_${index}`,
@@ -349,8 +384,14 @@ function parsePageId(pageId: string): { pageNumber?: number; startPageId?: strin
   // Try legacy format: "page_number_N_index_I" or variations
   const legacyMatch = pageId.match(/page[_a-zA-Z]*(\d+)_index_(\d+)/i);
   if (legacyMatch) {
-    const pageNum = parseInt(legacyMatch[1], 10);
+    let pageNum = parseInt(legacyMatch[1], 10);
     const index = parseInt(legacyMatch[2], 10);
+
+    // Only auto-correct "page_number_0_index_0" to page 1
+    if (pageNum === 0 && index === 0) {
+      pageNum = 1;
+    }
+
     return {
       pageNumber: pageNum,
       startPageId: `page_number_${pageNum}_index_${index}`,
