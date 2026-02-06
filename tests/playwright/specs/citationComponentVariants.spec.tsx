@@ -193,33 +193,6 @@ test.describe("CitationComponent - Text Variant", () => {
 });
 
 // =============================================================================
-// MINIMAL VARIANT TESTS
-// =============================================================================
-
-test.describe("CitationComponent - Minimal Variant", () => {
-  test("renders citation number", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} variant="minimal" />);
-    const citation = page.locator("[data-citation-id]");
-
-    await expect(citation).toBeVisible();
-    await expect(citation).toContainText("42");
-  });
-
-  test("shows verified indicator", async ({ mount, page }) => {
-    await mount(
-      <CitationComponent
-        citation={baseCitation}
-        variant="minimal"
-        verification={verifiedVerification}
-      />
-    );
-    const citation = page.locator("[data-citation-id]");
-
-    await expect(citation).toBeVisible();
-  });
-});
-
-// =============================================================================
 // CHIP VARIANT TESTS
 // =============================================================================
 
@@ -400,14 +373,6 @@ test.describe("CitationComponent - All Variants Visual", () => {
           />
         </div>
         <div>
-          <strong>Minimal:</strong>{" "}
-          <CitationComponent
-            citation={baseCitation}
-            variant="minimal"
-            verification={verifiedVerification}
-          />
-        </div>
-        <div>
           <strong>Chip:</strong>{" "}
           <CitationComponent
             citation={baseCitation}
@@ -428,7 +393,7 @@ test.describe("CitationComponent - All Variants Visual", () => {
 
     // Verify all variants are rendered
     const citations = page.locator("[data-citation-id]");
-    await expect(citations).toHaveCount(7);
+    await expect(citations).toHaveCount(6);
   });
 
   test("renders all variants with all verification states", async ({ mount, page }) => {
@@ -441,7 +406,6 @@ test.describe("CitationComponent - All Variants Visual", () => {
             <CitationComponent citation={baseCitation} variant="brackets" verification={verifiedVerification} />
             <CitationComponent citation={baseCitation} variant="superscript" verification={verifiedVerification} />
             <CitationComponent citation={baseCitation} variant="text" verification={verifiedVerification} />
-            <CitationComponent citation={baseCitation} variant="minimal" verification={verifiedVerification} />
             <CitationComponent citation={baseCitation} variant="chip" verification={verifiedVerification} />
             <CitationComponent citation={baseCitation} variant="linter" verification={verifiedVerification} />
           </div>
@@ -454,7 +418,6 @@ test.describe("CitationComponent - All Variants Visual", () => {
             <CitationComponent citation={baseCitation} variant="brackets" verification={partialVerification} />
             <CitationComponent citation={baseCitation} variant="superscript" verification={partialVerification} />
             <CitationComponent citation={baseCitation} variant="text" verification={partialVerification} />
-            <CitationComponent citation={baseCitation} variant="minimal" verification={partialVerification} />
             <CitationComponent citation={baseCitation} variant="chip" verification={partialVerification} />
             <CitationComponent citation={baseCitation} variant="linter" verification={partialVerification} />
           </div>
@@ -467,7 +430,6 @@ test.describe("CitationComponent - All Variants Visual", () => {
             <CitationComponent citation={baseCitation} variant="brackets" verification={missVerification} />
             <CitationComponent citation={baseCitation} variant="superscript" verification={missVerification} />
             <CitationComponent citation={baseCitation} variant="text" verification={missVerification} />
-            <CitationComponent citation={baseCitation} variant="minimal" verification={missVerification} />
             <CitationComponent citation={baseCitation} variant="chip" verification={missVerification} />
             <CitationComponent citation={baseCitation} variant="linter" verification={missVerification} />
           </div>
@@ -480,7 +442,6 @@ test.describe("CitationComponent - All Variants Visual", () => {
             <CitationComponent citation={baseCitation} variant="brackets" verification={pendingVerification} />
             <CitationComponent citation={baseCitation} variant="superscript" verification={pendingVerification} />
             <CitationComponent citation={baseCitation} variant="text" verification={pendingVerification} />
-            <CitationComponent citation={baseCitation} variant="minimal" verification={pendingVerification} />
             <CitationComponent citation={baseCitation} variant="chip" verification={pendingVerification} />
             <CitationComponent citation={baseCitation} variant="linter" verification={pendingVerification} />
           </div>
@@ -493,7 +454,6 @@ test.describe("CitationComponent - All Variants Visual", () => {
             <CitationComponent citation={baseCitation} variant="brackets" />
             <CitationComponent citation={baseCitation} variant="superscript" />
             <CitationComponent citation={baseCitation} variant="text" />
-            <CitationComponent citation={baseCitation} variant="minimal" />
             <CitationComponent citation={baseCitation} variant="chip" />
             <CitationComponent citation={baseCitation} variant="linter" />
           </div>
@@ -503,7 +463,7 @@ test.describe("CitationComponent - All Variants Visual", () => {
 
     // Just verify the page rendered successfully with multiple citations
     const citations = page.locator("[data-citation-id]");
-    await expect(citations).toHaveCount(30); // 6 variants × 5 states
+    await expect(citations).toHaveCount(25); // 5 variants × 5 states
   });
 });
 

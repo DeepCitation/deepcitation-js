@@ -27,7 +27,6 @@ test.describe("Visual Showcase - Desktop", () => {
       "chip",
       "text",
       "superscript",
-      "minimal",
       "linter",
     ]) {
       const row = page.locator(`[data-variant-row="${variant}"]`);
@@ -472,7 +471,6 @@ test.describe("Visual Showcase - Desktop Dark Mode", () => {
       "chip",
       "text",
       "superscript",
-      "minimal",
       "linter",
     ]) {
       const row = page.locator(`[data-variant-row="${variant}"]`);
@@ -527,7 +525,6 @@ test.describe("Visual Showcase - Mobile Dark Mode", () => {
       "brackets",
       "chip",
       "superscript",
-      "minimal",
       "linter",
     ]) {
       const variantEl = page.locator(`[data-mobile-variant="${variant}"]`);

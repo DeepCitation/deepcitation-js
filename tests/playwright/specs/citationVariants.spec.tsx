@@ -4,7 +4,6 @@ import {
   SuperscriptCitation,
   FootnoteCitation,
   InlineCitation,
-  MinimalCitation,
   CitationVariantFactory,
 } from "../../../src/react/CitationVariants";
 import type { Citation } from "../../../src/types/citation";
@@ -433,15 +432,6 @@ test.describe("CitationVariantFactory", () => {
     await expect(inline).toHaveAttribute("data-variant", "inline");
   });
 
-  test("renders minimal variant", async ({ mount, page }) => {
-    await mount(
-      <CitationVariantFactory variant="minimal" citation={baseCitation} />
-    );
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    await expect(minimal).toHaveAttribute("data-variant", "minimal");
-  });
-
   test("passes variant-specific props", async ({ mount, page }) => {
     // Note: size prop is now ignored for chip - uses consistent sizing for inline text flow
     // This test verifies the factory component works with chip variant
@@ -491,13 +481,6 @@ test.describe("Accessibility", () => {
     const inline = page.locator('[data-variant="inline"]');
 
     await expect(inline).toHaveAttribute("aria-label", /Citation:/);
-  });
-
-  test("minimal citation has aria-label", async ({ mount, page }) => {
-    await mount(<MinimalCitation citation={baseCitation} />);
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    await expect(minimal).toHaveAttribute("aria-label", /Citation 1/);
   });
 
   test("verified icon is aria-hidden", async ({ mount, page }) => {

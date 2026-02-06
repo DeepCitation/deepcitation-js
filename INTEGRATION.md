@@ -692,7 +692,7 @@ import "@deepcitation/deepcitation-js/styles.css";
 <CitationComponent
   citation={citation}
   verification={verification}
-  variant="chip"           // "brackets" | "chip" | "text" | "superscript" | "minimal" | "linter"
+  variant="chip"           // "brackets" | "chip" | "text" | "superscript" | "linter"
   content="anchorText"     // "anchorText" | "number" | "indicator"
 />
 ```
@@ -705,7 +705,6 @@ import "@deepcitation/deepcitation-js/styles.css";
 | `"brackets"` | `[1✓]` | Academic, footnote style |
 | `"chip"` | pill badge | Modern UI, inline highlights |
 | `"superscript"` | `¹✓` | Compact footnotes |
-| `"minimal"` | `1✓` | Space-constrained UI |
 | `"text"` | plain text | Inheriting parent styles |
 | `"linter"` | underlined | Grammar-check style indicators |
 

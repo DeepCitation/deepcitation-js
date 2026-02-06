@@ -274,18 +274,6 @@ describe("renderCitationsAsMarkdown", () => {
     });
   });
 
-  describe("variant: minimal", () => {
-    it("renders only indicator", () => {
-      const result = renderCitationsAsMarkdown(simpleInput, {
-        variant: "minimal",
-        indicatorStyle: "check",
-        linkStyle: "none",
-      });
-
-      expect(result.markdown).toContain("◌");
-      expect(result.markdown).not.toContain("[1");
-    });
-  });
 });
 
 // =============================================================================
@@ -519,7 +507,6 @@ describe("getCitationDisplayText", () => {
     expect(getCitationDisplayText(citation, "brackets")).toBe("3");
     expect(getCitationDisplayText(citation, "superscript")).toBe("3");
     expect(getCitationDisplayText(citation, "footnote")).toBe("3");
-    expect(getCitationDisplayText(citation, "minimal")).toBe("3");
   });
 
   it("matches displayText in CitationWithStatus from renderCitationsAsMarkdown", () => {
