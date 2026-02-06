@@ -473,7 +473,7 @@ return result.toTextStreamResponse();
 - [ ] Parse citations: `getAllCitationsFromLlmOutput(llmOutput)` → returns `CitationRecord` (an **object**, NOT an array)
 - [ ] Extract visible text: `extractVisibleText(llmOutput)` → strips the `<<<CITATION_DATA>>>` block
 - [ ] Handle "no citations" case gracefully
-- [ ] If you used prompt compression in Phase 1, decompress first: `decompressPromptIds(llmOutput, prefixMap)`
+- [ ] If you used prompt compression in Phase 1, **decompress BEFORE parsing**: `decompressPromptIds(llmOutput, prefixMap)` — this must be the first step
 
 ### Parse Citations
 
@@ -596,12 +596,14 @@ for await (const chunk of stream) {
   updateUI(cleanSoFar);
 }
 
+// CRITICAL: Wait for stream to fully complete before parsing citations!
+// The <<<CITATION_DATA>>> block arrives at the END of the response.
 // After stream completes — proceed to Phase 3 parse, then Phase 5 verify
 ```
 
 ### GATE
 
-✅ Users see clean, readable text. No raw `<cite>` tags or `<<<CITATION_DATA>>>` blocks are visible. Proceed to Phase 5.
+✅ You have displayable text with no raw `<cite>` tags or `<<<CITATION_DATA>>>` blocks. Users see clean, readable content. Proceed to Phase 5.
 
 ---
 
@@ -711,7 +713,7 @@ try {
 
 ### GATE
 
-✅ You have `verifications` (`VerificationRecord`) keyed by the same citation key hashes as your `CitationRecord`. Proceed to Phase 6.
+✅ You have `verifications` (`VerificationRecord`) keyed by the same citation key hashes as your `CitationRecord`. See [Verification Status Reference](#verification-status-reference) for detailed status meanings. Proceed to Phase 6.
 
 ---
 
@@ -892,7 +894,7 @@ function renderWithCitations(text: string, verifications: VerificationRecord) {
 
 ### GATE
 
-✅ Users see verification indicators next to citations. Green check (verified), amber warning (partial), red X (not found), or spinner (pending). Integration is complete.
+✅ You have rendered output with verification indicators (✓ ⚠ ✗ ◌) next to citations. Integration is complete.
 
 ---
 
