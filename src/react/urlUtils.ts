@@ -6,11 +6,7 @@
  */
 
 import type { UrlFetchStatus } from "./types.js";
-import {
-  isBlockedStatus,
-  isErrorStatus,
-  isVerifiedStatus,
-} from "./urlStatus.js";
+import { isBlockedStatus, isErrorStatus, isVerifiedStatus } from "./urlStatus.js";
 
 /**
  * Extracts domain from URL for compact display.

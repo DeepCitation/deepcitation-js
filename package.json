@@ -40,11 +40,11 @@
     "size": "size-limit",
     "analyze": "size-limit --why",
     "prepublishOnly": "npm run build",
-    "lint": "biome lint ./src",
-    "lint:fix": "biome lint --fix ./src",
+    "lint": "biome ci ./src",
+    "lint:fix": "biome check --fix ./src",
     "format": "biome format --write ./src",
     "format:check": "biome format ./src",
-    "check": "biome check ./src",
+    "check": "biome ci ./src",
     "check:fix": "biome check --fix ./src"
   },
   "engines": {

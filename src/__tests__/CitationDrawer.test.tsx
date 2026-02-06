@@ -2,15 +2,9 @@ import { afterEach, describe, expect, it, jest, mock } from "@jest/globals";
 import { act, cleanup, fireEvent, render, renderHook } from "@testing-library/react";
 import type React from "react";
 import { CitationComponent } from "../react/CitationComponent";
-import {
-  CitationDrawer,
-  CitationDrawerItemComponent,
-} from "../react/CitationDrawer";
-import {
-  groupCitationsBySource,
-  useCitationDrawer,
-} from "../react/CitationDrawer.utils";
+import { CitationDrawer, CitationDrawerItemComponent } from "../react/CitationDrawer";
 import type { CitationDrawerItem, SourceCitationGroup } from "../react/CitationDrawer.types";
+import { groupCitationsBySource, useCitationDrawer } from "../react/CitationDrawer.utils";
 import type { Citation } from "../types/citation";
 import type { Verification } from "../types/verification";
 

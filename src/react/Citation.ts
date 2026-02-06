@@ -4,15 +4,15 @@
  */
 
 import {
-  CitationRoot,
-  CitationTrigger,
-  CitationBracket,
-  CitationNumber,
   CitationAnchorText,
+  CitationBracket,
   CitationIndicator,
-  CitationStatusComponent,
-  CitationPhrase,
+  CitationNumber,
   CitationPage,
+  CitationPhrase,
+  CitationRoot,
+  CitationStatusComponent,
+  CitationTrigger,
 } from "./primitives.js";
 
 /** Citation primitives namespace for composable citation components. */

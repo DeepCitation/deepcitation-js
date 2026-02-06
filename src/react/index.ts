@@ -11,6 +11,8 @@
  * @packageDocumentation
  */
 
+// Citation Primitives Namespace (composable building blocks)
+export { Citation } from "./Citation.js";
 // Components
 export {
   CitationComponent,
@@ -27,20 +29,22 @@ export {
   groupCitationsBySource,
   useCitationDrawer,
 } from "./CitationDrawer.utils.js";
-// Citation Context (for accessing citation data within Citation.Root)
-export {
-  useCitationContext,
-  useCitationContextSafe,
-  type CitationContextValue,
-} from "./useCitationContext.js";
-// Citation Primitives Namespace (composable building blocks)
-export { Citation } from "./Citation.js";
 // Citation Overlay Context (for blocking hover when image is expanded)
 export {
   CitationOverlayProvider,
   useCitationOverlay,
   useHasCitationOverlayProvider,
 } from "./CitationOverlayContext.js";
+// Constants - Shared styling and configuration
+export {
+  BROKEN_WAVY_UNDERLINE_STYLE,
+  COPY_FEEDBACK_DURATION_MS,
+  INDICATOR_SIZE_STYLE,
+  MISS_WAVY_UNDERLINE_STYLE,
+  POPOVER_CONTAINER_BASE_CLASSES,
+  WAVY_UNDERLINE_COLOR_VAR,
+  WAVY_UNDERLINE_DEFAULT_COLOR,
+} from "./constants.js";
 // Icons
 export {
   CheckIcon,
@@ -76,8 +80,8 @@ export {
 // Sources List Utilities
 export {
   detectSourceType,
-  getPlatformName,
   getFaviconUrl,
+  getPlatformName,
   sourceCitationsToListItems,
   useSourcesList,
 } from "./SourcesListComponent.utils.js";
@@ -90,9 +94,7 @@ export {
   type SplitDiffDisplayProps,
 } from "./SplitDiffDisplay.js";
 // Status Message Utilities
-export {
-  getContextualStatusMessage,
-} from "./statusMessage.js";
+export { getContextualStatusMessage } from "./statusMessage.js";
 // Types - Useful for implementing your own citation components
 export type {
   CitationBehaviorActions,
@@ -152,10 +154,12 @@ export {
   STATUS_ICONS as URL_STATUS_ICONS,
   urlDisplayUtils,
 } from "./urlUtils.js";
-// URL Metadata hook
+// Citation Context (for accessing citation data within Citation.Root)
 export {
-  useUrlMeta,
-} from "./useUrlMeta.js";
+  type CitationContextValue,
+  useCitationContext,
+  useCitationContextSafe,
+} from "./useCitationContext.js";
 // Smart Diff Hook
 export {
   type DiffBlock,
@@ -163,6 +167,8 @@ export {
   type DiffPart,
   useSmartDiff,
 } from "./useSmartDiff.js";
+// URL Metadata hook
+export { useUrlMeta } from "./useUrlMeta.js";
 // Utilities - For generating citation keys and display text
 export {
   CITATION_X_PADDING,
@@ -175,16 +181,6 @@ export {
   getCitationNumber,
   isUrlCitation,
 } from "./utils.js";
-// Constants - Shared styling and configuration
-export {
-  BROKEN_WAVY_UNDERLINE_STYLE,
-  COPY_FEEDBACK_DURATION_MS,
-  INDICATOR_SIZE_STYLE,
-  MISS_WAVY_UNDERLINE_STYLE,
-  POPOVER_CONTAINER_BASE_CLASSES,
-  WAVY_UNDERLINE_COLOR_VAR,
-  WAVY_UNDERLINE_DEFAULT_COLOR,
-} from "./constants.js";
 // Verification Log Components (Search attempt timeline display)
 export {
   AttemptingToVerify,
@@ -201,9 +197,7 @@ export {
   VerificationLog,
   type VerificationLogProps,
 } from "./VerificationLog.js";
-// Variation Label Utilities
-export {
-  getVariationLabel,
-} from "./variationLabels.js";
 // Verification Tabs Component
 export { VerificationTabs } from "./VerificationTabs.js";
+// Variation Label Utilities
+export { getVariationLabel } from "./variationLabels.js";

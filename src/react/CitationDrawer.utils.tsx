@@ -4,7 +4,11 @@ import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
 
 // Import icon components for JSX rendering in getStatusInfo
-import { CheckIcon as CheckIconComponent, SpinnerIcon as SpinnerIconComponent, WarningIcon as WarningIconComponent } from "./icons.js";
+import {
+  CheckIcon as CheckIconComponent,
+  SpinnerIcon as SpinnerIconComponent,
+  WarningIcon as WarningIconComponent,
+} from "./icons.js";
 
 /**
  * Groups citations by their source domain/name.

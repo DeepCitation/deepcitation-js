@@ -1,8 +1,8 @@
 import type React from "react";
 import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { SourcesListItemProps, SourcesListProps, SourcesTriggerProps } from "./types.js";
 import { detectSourceType, getFaviconUrl, getPlatformName } from "./SourcesListComponent.utils.js";
+import type { SourcesListItemProps, SourcesListProps, SourcesTriggerProps } from "./types.js";
 import { extractDomain } from "./urlUtils.js";
 import { classNames } from "./utils.js";
 

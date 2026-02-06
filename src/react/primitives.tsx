@@ -15,12 +15,8 @@ import {
 import { getCitationStatus } from "../parsing/parseCitation.js";
 import type { CitationStatus, Citation as CitationType } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import {
-  CitationContext,
-  useCitationContext,
-  type CitationContextValue,
-} from "./useCitationContext.js";
 import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
+import { CitationContext, type CitationContextValue, useCitationContext } from "./useCitationContext.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
 
 export interface CitationRootProps {

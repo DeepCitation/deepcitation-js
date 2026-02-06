@@ -15,8 +15,8 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
-import { getVariationLabel } from "./variationLabels.js";
 import { cn, isUrlCitation } from "./utils.js";
+import { getVariationLabel } from "./variationLabels.js";
 
 // =============================================================================
 // CONSTANTS
@@ -68,7 +68,6 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   custom_phrase_fallback: "Custom search",
   keyspan_fallback: "Anchor text",
 };
-
 
 // =============================================================================
 // URL ANCHOR TEXT ROW (with copy button)
