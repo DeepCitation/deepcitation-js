@@ -73,16 +73,15 @@ describe("sanitizeUrl", () => {
 });
 
 describe("safeWindowOpen", () => {
-  let openSpy: ReturnType<typeof vi.fn>;
+  let openSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    openSpy = vi.fn();
-    // Create a minimal window mock for the Node test environment
-    vi.stubGlobal("window", { open: openSpy });
+    // Use spyOn which works in both vitest and bun test (happy-dom provides window)
+    openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    openSpy.mockRestore();
   });
 
   it("opens safe https URLs", () => {
