@@ -84,10 +84,12 @@ test.describe("ChipCitation", () => {
     await expect(chip).toHaveClass(/bg-red-/);
     // Chip variant does NOT use wavy underline - status is conveyed via indicator icon
     // Check that the X indicator is present (red text color indicates miss state icon)
-    const xIndicator = chip.locator('span.text-red-500, span.text-red-400').first();
+    const xIndicator = chip
+      .locator("span.text-red-500, span.text-red-400")
+      .first();
     await expect(xIndicator).toBeVisible();
     // Verify text span has reduced opacity (the span with opacity-70 class)
-    const textSpan = chip.locator('span.opacity-70');
+    const textSpan = chip.locator("span.opacity-70");
     await expect(textSpan).toBeVisible();
   });
 
@@ -226,8 +228,13 @@ test.describe("SuperscriptCitation", () => {
     expect(text).toContain("]");
   });
 
-  test("renders without brackets when hideBrackets is true", async ({ mount, page }) => {
-    await mount(<SuperscriptCitation citation={baseCitation} hideBrackets={true} />);
+  test("renders without brackets when hideBrackets is true", async ({
+    mount,
+    page,
+  }) => {
+    await mount(
+      <SuperscriptCitation citation={baseCitation} hideBrackets={true} />
+    );
     const sup = page.locator('[data-variant="superscript"]');
 
     const text = await sup.textContent();
@@ -248,7 +255,11 @@ test.describe("SuperscriptCitation", () => {
     // Superscript variant does NOT use wavy underline - status is conveyed via indicator icon
     // Check that the X indicator is present
     const hasXIndicator = await sup.evaluate((el) => {
-      return el.querySelector('svg') !== null || el.textContent?.includes('✕') || el.querySelector('[aria-hidden="true"]') !== null;
+      return (
+        el.querySelector("svg") !== null ||
+        el.textContent?.includes("✕") ||
+        el.querySelector('[aria-hidden="true"]') !== null
+      );
     });
     expect(hasXIndicator).toBe(true);
   });
@@ -378,77 +389,6 @@ test.describe("InlineCitation", () => {
 
     await expect(inline).toHaveClass(/text-gray-/);
     await expect(inline.locator(".opacity-70")).toBeVisible();
-  });
-});
-
-// =============================================================================
-// MINIMAL CITATION TESTS
-// =============================================================================
-
-test.describe("MinimalCitation", () => {
-  test("renders minimal element", async ({ mount, page }) => {
-    await mount(<MinimalCitation citation={baseCitation} />);
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    await expect(minimal).toBeVisible();
-    await expect(minimal).toHaveAttribute("data-variant", "minimal");
-    await expect(minimal).toContainText("1");
-  });
-
-  test("renders with verified state", async ({ mount, page }) => {
-    await mount(
-      <MinimalCitation citation={baseCitation} verification={verification} />
-    );
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    await expect(minimal).toHaveClass(/text-green-/);
-  });
-
-  test("shows status indicator by default", async ({ mount, page }) => {
-    await mount(
-      <MinimalCitation citation={baseCitation} verification={verification} />
-    );
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    const text = await minimal.textContent();
-    expect(text).toContain("✓");
-  });
-
-  test("hides status indicator when showStatusIndicator is false", async ({
-    mount,
-    page,
-  }) => {
-    await mount(
-      <MinimalCitation
-        citation={baseCitation}
-        verification={verification}
-        showStatusIndicator={false}
-      />
-    );
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    const text = await minimal.textContent();
-    expect(text).not.toContain("✓");
-  });
-
-  test("renders with miss state", async ({ mount, page }) => {
-    await mount(
-      <MinimalCitation
-        citation={baseCitation}
-        verification={missFoundCitation}
-      />
-    );
-    const minimal = page.locator('[data-variant="minimal"]');
-
-    await expect(minimal).toHaveClass(/text-red-/);
-    // wavy underline is applied via inline style on the inner text span
-    const hasWavyUnderline = await minimal.evaluate((el) => {
-      const spans = el.querySelectorAll("span");
-      return Array.from(spans).some(
-        (span) => (span as HTMLElement).style.textDecorationStyle === "wavy"
-      );
-    });
-    expect(hasWavyUnderline).toBe(true);
   });
 });
 

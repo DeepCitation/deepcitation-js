@@ -11,7 +11,12 @@ export default defineConfig({
     "react/index": "src/react/index.ts",
   },
   format: ["esm", "cjs"],
-  dts: true,
+  dts: {
+    compilerOptions: {
+      composite: false,
+      declarationMap: false,
+    },
+  },
   clean: true,
   minify: true,
   treeshake: true,

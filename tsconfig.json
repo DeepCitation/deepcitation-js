@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
       "target": "ESNext",
-      "module": "NodeNext",
-      "moduleResolution": "NodeNext",
+      "module": "ESNext",
+      "moduleResolution": "node",
       "outDir": "./lib",
       "rootDir": "./src",
       "baseUrl": ".",
@@ -15,11 +15,11 @@
       "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true,
       "jsx": "react-jsx",
-      "types": ["node", "react", "react-dom"],
+      "types": ["node", "react", "react-dom", "jest","@testing-library/jest-dom" ],
       "paths": {
         "@/*": ["src/*"]
       }
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules", "lib", "src/__tests__", "tests"]
+    "exclude": ["node_modules", "lib", "src/__tests__", "src/react/testing", "tests"]
   }
