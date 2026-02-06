@@ -27,6 +27,14 @@ export {
   groupCitationsBySource,
   useCitationDrawer,
 } from "./CitationDrawer.utils.js";
+// Citation Context (for accessing citation data within Citation.Root)
+export {
+  useCitationContext,
+  useCitationContextSafe,
+  type CitationContextValue,
+} from "./useCitationContext.js";
+// Citation Primitives Namespace (composable building blocks)
+export { Citation } from "./Citation.js";
 // Citation Overlay Context (for blocking hover when image is expanded)
 export {
   CitationOverlayProvider,
@@ -77,11 +85,14 @@ export {
 export {
   CollapsibleText,
   type DiffDisplayMode,
-  getContextualStatusMessage,
   MatchQualityBar,
   SplitDiffDisplay,
   type SplitDiffDisplayProps,
 } from "./SplitDiffDisplay.js";
+// Status Message Utilities
+export {
+  getContextualStatusMessage,
+} from "./statusMessage.js";
 // Types - Useful for implementing your own citation components
 export type {
   CitationBehaviorActions,
@@ -190,5 +201,9 @@ export {
   VerificationLog,
   type VerificationLogProps,
 } from "./VerificationLog.js";
+// Variation Label Utilities
+export {
+  getVariationLabel,
+} from "./variationLabels.js";
 // Verification Tabs Component
 export { VerificationTabs } from "./VerificationTabs.js";

@@ -46,11 +46,11 @@ interface InteractionLabelProps {
   hover?: string;
   click?: string;
   secondClick?: string;
-  escape?: string;
+  escapeKey?: string;
   children?: React.ReactNode;
 }
 
-function InteractionLabel({ hover, click, secondClick, escape, children }: InteractionLabelProps) {
+function InteractionLabel({ hover, click, secondClick, escapeKey, children }: InteractionLabelProps) {
   return (
     <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
       <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
@@ -72,9 +72,9 @@ function InteractionLabel({ hover, click, secondClick, escape, children }: Inter
             <span className="font-medium text-gray-600 dark:text-gray-300">2nd Click:</span> {secondClick}
           </li>
         )}
-        {escape && (
+        {escapeKey && (
           <li>
-            <span className="font-medium text-gray-600 dark:text-gray-300">Escape:</span> {escape}
+            <span className="font-medium text-gray-600 dark:text-gray-300">Escape:</span> {escapeKey}
           </li>
         )}
         {children}
@@ -639,7 +639,7 @@ export function VisualShowcase() {
             hover="Highlight effect on component"
             click="Opens popover with verification details"
             secondClick="Toggles search details expansion in popover"
-            escape="Closes popover"
+            escapeKey="Closes popover"
           />
         </ShowcaseCard>
       </ShowcaseSection>
@@ -1268,7 +1268,7 @@ export function PopoverShowcase() {
         </ShowcaseCard>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {allVerificationStatuses.map(({ status, label, description, color }) => {
+          {allVerificationStatuses.map(({ status, description, color }) => {
             const isUnexpectedLocation = status === "found_on_other_page" || status === "found_on_other_line";
             const foundPage =
               status !== "not_found" && status !== "pending" && status !== "loading"
@@ -1660,7 +1660,7 @@ export function PopoverShowcase() {
               </div>
             </div>
           </div>
-          <InteractionLabel click="Closes overlay (click anywhere)" escape="Closes overlay">
+          <InteractionLabel click="Closes overlay (click anywhere)" escapeKey="Closes overlay">
             <li className="text-[10px]">
               <span className="font-medium text-gray-600 dark:text-gray-300">Opens via:</span> Clicking image in popover
               or via behaviorConfig.onClick returning setImageExpanded
@@ -1704,7 +1704,7 @@ export function PopoverShowcase() {
             hover="Highlight effect only (no popover)"
             click="Opens popover with verification details"
             secondClick="Toggles search details expansion"
-            escape="Closes popover"
+            escapeKey="Closes popover"
           />
         </ShowcaseCard>
       </ShowcaseSection>
@@ -1776,5 +1776,3 @@ export function PopoverShowcase() {
   );
 }
 
-// Export the URL statuses for tests
-export { allUrlStatuses, allVerificationStatuses };

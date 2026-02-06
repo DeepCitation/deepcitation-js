@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
-import type { SearchAttempt, SearchMethod, SearchStatus, VariationType } from "../types/search.js";
+import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { COPY_FEEDBACK_DURATION_MS } from "./constants.js";
 import {
@@ -15,6 +15,7 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
+import { getVariationLabel } from "./variationLabels.js";
 import { cn, isUrlCitation } from "./utils.js";
 
 // =============================================================================
@@ -68,29 +69,6 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   keyspan_fallback: "Anchor text",
 };
 
-/**
- * User-friendly labels for variation types shown in search attempts.
- * Maps technical variation type keys to human-readable labels.
- * @example getVariationLabel("currency") -> "Price formats"
- */
-const VARIATION_TYPE_LABELS: Record<VariationType, string> = {
-  exact: "Exact match",
-  normalized: "Normalized",
-  currency: "Price formats",
-  date: "Date formats",
-  numeric: "Number formats",
-  symbol: "Symbol variants",
-  accent: "Accent variants",
-};
-
-/**
- * Get the user-friendly label for a variation type.
- * Returns null for undefined types (caller should fall back to "Also tried").
- */
-export function getVariationLabel(variationType: VariationType | undefined): string | null {
-  if (!variationType) return null;
-  return VARIATION_TYPE_LABELS[variationType];
-}
 
 // =============================================================================
 // URL ANCHOR TEXT ROW (with copy button)

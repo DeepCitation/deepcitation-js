@@ -21,8 +21,6 @@ import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { CitationOverlayContext } from "./CitationOverlayContext.hooks.js";
 
-import type { CitationOverlayContextValue } from "./CitationOverlayContext.hooks.js";
-
 /**
  * Provider component that manages overlay state for all child citations.
  *

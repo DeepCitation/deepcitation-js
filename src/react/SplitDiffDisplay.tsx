@@ -346,5 +346,3 @@ export const SplitDiffDisplay: React.FC<SplitDiffDisplayProps> = memo(
 SplitDiffDisplay.displayName = "SplitDiffDisplay";
 
 export { MatchQualityBar, CollapsibleText };
-export { getContextualStatusMessage } from "./statusMessage.js";
-export default SplitDiffDisplay;

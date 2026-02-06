@@ -4,49 +4,24 @@
  */
 
 import {
-  createContext,
   forwardRef,
   type HTMLAttributes,
   type MouseEvent,
   type ReactNode,
   type TouchEvent,
   useCallback,
-  useContext,
   useMemo,
 } from "react";
 import { getCitationStatus } from "../parsing/parseCitation.js";
 import type { CitationStatus, Citation as CitationType } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
+import {
+  CitationContext,
+  useCitationContext,
+  type CitationContextValue,
+} from "./useCitationContext.js";
 import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
-
-interface CitationContextValue {
-  citation: CitationType;
-  citationKey: string;
-  citationInstanceId: string;
-  status: CitationStatus;
-  verification: Verification | null;
-  config: {
-    fallbackDisplay: string | null;
-    pendingContent: ReactNode;
-  };
-}
-
-const CitationContext = createContext<CitationContextValue | null>(null);
-
-/** Access citation context. Must be used within Citation.Root. */
-export function useCitationContext(): CitationContextValue {
-  const context = useContext(CitationContext);
-  if (!context) {
-    throw new Error("Citation components must be used within a Citation.Root");
-  }
-  return context;
-}
-
-/** Safely access citation context (returns null if not in context). */
-export function useCitationContextSafe(): CitationContextValue | null {
-  return useContext(CitationContext);
-}
 
 export interface CitationRootProps {
   citation: CitationType;
@@ -449,18 +424,5 @@ export const CitationPage = forwardRef<HTMLSpanElement, CitationPageProps>(
 );
 
 CitationPage.displayName = "Citation.Page";
-
-/** Citation primitives namespace for composable citation components. */
-export const Citation = {
-  Root: CitationRoot,
-  Trigger: CitationTrigger,
-  Bracket: CitationBracket,
-  Number: CitationNumber,
-  AnchorText: CitationAnchorText,
-  Indicator: CitationIndicator,
-  Status: CitationStatusComponent,
-  Phrase: CitationPhrase,
-  Page: CitationPage,
-} as const;
 
 // Types are exported at their definitions above

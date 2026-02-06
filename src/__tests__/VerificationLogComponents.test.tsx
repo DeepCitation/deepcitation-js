@@ -4,10 +4,10 @@ import {
   type AmbiguityInfo,
   AmbiguityWarning,
   FaviconImage,
-  getVariationLabel,
   LookingForSection,
   SourceContextHeader,
 } from "../react/VerificationLog";
+import { getVariationLabel } from "../react/variationLabels";
 import type { Citation } from "../types/citation";
 import type { Verification } from "../types/verification";
 
