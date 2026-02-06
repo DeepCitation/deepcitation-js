@@ -219,7 +219,7 @@ export interface BaseCitationProps {
    * - `brackets` → `number`
    * - `text` → `anchorText`
    * - `superscript` → `number`
-   * - `minimal` → `number`
+   * - `linter` → `anchorText`
    */
   content?: CitationContent;
   /** Fallback display text when citation anchorText is empty */

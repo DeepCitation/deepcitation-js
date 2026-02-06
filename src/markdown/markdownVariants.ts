@@ -112,7 +112,6 @@ export function getCitationDisplayText(
     case "brackets":
     case "superscript":
     case "footnote":
-    case "minimal":
       return String(citation.citationNumber || 1);
     case "academic":
     case "inline":
@@ -203,11 +202,6 @@ export function renderCitationVariant(
       const anchor = linkStyle === "anchor"
         ? `[(${sourceLabel}${page})${indicator}](#ref-${num})`
         : `(${sourceLabel}${page})${indicator}`;
-      return anchor;
-    }
-
-    case "minimal": {
-      const anchor = linkStyle === "anchor" ? `[${indicator}](#ref-${num})` : indicator;
       return anchor;
     }
 

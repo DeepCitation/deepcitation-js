@@ -10,8 +10,7 @@ export type MarkdownVariant =
   | "brackets"    // "[1✓]" - bracketed number with indicator
   | "superscript" // "¹✓" - unicode superscript number
   | "footnote"    // "[^1]" - markdown footnote syntax with reference section
-  | "academic"    // "(Source, p.5)✓" - academic citation style
-  | "minimal";    // Just "✓" - indicator only
+  | "academic";   // "(Source, p.5)✓" - academic citation style
 
 /**
  * Indicator styles for verification status.

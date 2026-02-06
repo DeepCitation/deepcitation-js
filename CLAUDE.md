@@ -521,13 +521,6 @@ const urlCitation: Citation = {
   citationNumber: 1,
 };
 
-// Display with minimal variant for compact inline display
-<CitationComponent
-  citation={urlCitation}
-  verification={verification}
-  variant="minimal"
-  content="indicator"
-/>
 ```
 
 #### Citation Fields by Type

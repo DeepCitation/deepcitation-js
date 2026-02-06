@@ -610,132 +610,6 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
 InlineCitation.displayName = "InlineCitation";
 
 // =============================================================================
-// MINIMAL VARIANT - Just the number, minimal decoration
-// =============================================================================
-
-export interface MinimalCitationProps extends CitationVariantProps {
-  /** Whether to show status indicator */
-  showStatusIndicator?: boolean;
-}
-
-/**
- * Minimal style citation component.
- * Displays just the citation number with minimal decoration.
- *
- * @example
- * ```tsx
- * <MinimalCitation citation={citation} />
- * // Renders: 1
- * ```
- */
-export const MinimalCitation = forwardRef<
-  HTMLSpanElement,
-  MinimalCitationProps
->(
-  (
-    {
-      citation,
-      children,
-      className,
-      fallbackDisplay,
-      verification,
-      eventHandlers,
-      preventTooltips = false,
-      pendingContent = TWO_DOTS_THINKING_CONTENT,
-      renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
-      renderPartialIndicator = () => <DefaultPartialIndicator />,
-      showStatusIndicator = true,
-    },
-    ref
-  ) => {
-    const { citationKey, citationInstanceId, status } = useCitationData(
-      citation,
-      verification
-    );
-    const { isVerified, isMiss, isPartialMatch, isPending } = status;
-
-    // MinimalCitation shows number by default
-    const displayText = useMemo(
-      () => getCitationNumber(citation),
-      [citation]
-    );
-
-    const handleClick = useCallback(
-      (e: React.MouseEvent<HTMLSpanElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        eventHandlers?.onClick?.(citation, citationKey, e);
-      },
-      [eventHandlers, citation, citationKey]
-    );
-
-    const handleMouseEnter = useCallback(() => {
-      eventHandlers?.onMouseEnter?.(citation, citationKey);
-    }, [eventHandlers, citation, citationKey]);
-
-    const handleMouseLeave = useCallback(() => {
-      eventHandlers?.onMouseLeave?.(citation, citationKey);
-    }, [eventHandlers, citation, citationKey]);
-
-    // Check partial first since isVerified is true when isPartialMatch is true
-    // Note: For miss state, text gets line-through but status indicator should NOT
-    const statusClass = isPartialMatch
-      ? "text-amber-500 dark:text-amber-400"
-      : isMiss
-      ? "text-red-500 dark:text-red-400"
-      : isVerified
-      ? "text-green-600 dark:text-green-500"
-      : isPending
-      ? "text-gray-400 dark:text-gray-500"
-      : "text-blue-600 dark:text-blue-400";
-
-    return (
-      <>
-        {children}
-        <span
-          ref={ref}
-          data-citation-id={citationKey}
-          data-citation-instance={citationInstanceId}
-          data-variant="minimal"
-          className={classNames(
-            "cursor-pointer transition-colors hover:underline inline-flex items-baseline",
-            statusClass,
-            className
-          )}
-          onMouseEnter={preventTooltips ? undefined : handleMouseEnter}
-          onMouseLeave={preventTooltips ? undefined : handleMouseLeave}
-          onMouseDown={handleClick}
-          onClick={(e) => e.stopPropagation()}
-          aria-label={`Citation ${displayText}`}
-        >
-          <span
-            className={isMiss ? "opacity-70" : undefined}
-            style={isMiss ? MISS_WAVY_UNDERLINE_STYLE : undefined}
-          >{displayText}</span>
-          {showStatusIndicator && (
-            <>
-              {isPartialMatch && renderPartialIndicator(status)}
-              {isVerified && !isPartialMatch && renderVerifiedIndicator(status)}
-              {isMiss && (
-                <>
-                  <span className="text-red-500 dark:text-red-400 ml-0.5 flex-shrink-0" style={INDICATOR_SIZE_STYLE} aria-hidden="true">
-                    <XIcon />
-                  </span>
-                  <span className="sr-only">not found</span>
-                </>
-              )}
-              {isPending && pendingContent}
-            </>
-          )}
-        </span>
-      </>
-    );
-  }
-);
-
-MinimalCitation.displayName = "MinimalCitation";
-
-// =============================================================================
 // VARIANT FACTORY - Creates the appropriate variant component
 // =============================================================================
 
@@ -750,8 +624,6 @@ export interface VariantCitationProps extends CitationVariantProps {
   footnoteProps?: Partial<FootnoteCitationProps>;
   /** Inline-specific props */
   inlineProps?: Partial<InlineCitationProps>;
-  /** Minimal-specific props */
-  minimalProps?: Partial<MinimalCitationProps>;
 }
 
 /**
@@ -773,7 +645,6 @@ export const CitationVariantFactory = forwardRef<
       superscriptProps,
       footnoteProps,
       inlineProps,
-      minimalProps,
       ...props
     },
     ref
@@ -789,8 +660,6 @@ export const CitationVariantFactory = forwardRef<
         return <FootnoteCitation ref={ref} {...props} {...footnoteProps} />;
       case "inline":
         return <InlineCitation ref={ref} {...props} {...inlineProps} />;
-      case "minimal":
-        return <MinimalCitation ref={ref} {...props} {...minimalProps} />;
       case "bracket":
       default:
         // For bracket variant, we return null here as CitationComponent handles it
@@ -807,5 +676,4 @@ export const MemoizedChipCitation = memo(ChipCitation);
 export const MemoizedSuperscriptCitation = memo(SuperscriptCitation);
 export const MemoizedFootnoteCitation = memo(FootnoteCitation);
 export const MemoizedInlineCitation = memo(InlineCitation);
-export const MemoizedMinimalCitation = memo(MinimalCitation);
 export const MemoizedCitationVariantFactory = memo(CitationVariantFactory);

@@ -73,7 +73,6 @@ import type { Citation, Verification } from "@deepcitation/deepcitation-js";
 | `chip`        | Pill/badge style with background color                   |
 | `text`        | Plain text, inherits parent styling                      |
 | `superscript` | Academic superscript style like footnotes¹               |
-| `minimal`     | Compact text with truncation                             |
 | `linter`      | Inline text with semantic underlines (grammar-check style) |
 
 The `linter` variant uses underline styles to convey verification status:

@@ -20,11 +20,18 @@ interface ShowcaseLabelProps {
   uxIntent: string;
 }
 
-function ShowcaseLabel({ component, variant, state, uxIntent }: ShowcaseLabelProps) {
+function ShowcaseLabel({
+  component,
+  variant,
+  state,
+  uxIntent,
+}: ShowcaseLabelProps) {
   return (
     <div className="mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
       <div className="flex flex-wrap gap-2 items-center text-xs">
-        <span className="font-semibold text-blue-600 dark:text-blue-400">{component}</span>
+        <span className="font-semibold text-blue-600 dark:text-blue-400">
+          {component}
+        </span>
         {variant && (
           <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded font-mono">
             {variant}
@@ -36,7 +43,9 @@ function ShowcaseLabel({ component, variant, state, uxIntent }: ShowcaseLabelPro
           </span>
         )}
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">{uxIntent}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+        {uxIntent}
+      </p>
     </div>
   );
 }
@@ -50,7 +59,13 @@ interface InteractionLabelProps {
   children?: React.ReactNode;
 }
 
-function InteractionLabel({ hover, click, secondClick, escape, children }: InteractionLabelProps) {
+function InteractionLabel({
+  hover,
+  click,
+  secondClick,
+  escape,
+  children,
+}: InteractionLabelProps) {
   return (
     <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
       <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
@@ -59,22 +74,34 @@ function InteractionLabel({ hover, click, secondClick, escape, children }: Inter
       <ul className="text-[10px] text-gray-500 dark:text-gray-400 space-y-0.5">
         {hover && (
           <li>
-            <span className="font-medium text-gray-600 dark:text-gray-300">Hover:</span> {hover}
+            <span className="font-medium text-gray-600 dark:text-gray-300">
+              Hover:
+            </span>{" "}
+            {hover}
           </li>
         )}
         {click && (
           <li>
-            <span className="font-medium text-gray-600 dark:text-gray-300">Click:</span> {click}
+            <span className="font-medium text-gray-600 dark:text-gray-300">
+              Click:
+            </span>{" "}
+            {click}
           </li>
         )}
         {secondClick && (
           <li>
-            <span className="font-medium text-gray-600 dark:text-gray-300">2nd Click:</span> {secondClick}
+            <span className="font-medium text-gray-600 dark:text-gray-300">
+              2nd Click:
+            </span>{" "}
+            {secondClick}
           </li>
         )}
         {escape && (
           <li>
-            <span className="font-medium text-gray-600 dark:text-gray-300">Escape:</span> {escape}
+            <span className="font-medium text-gray-600 dark:text-gray-300">
+              Escape:
+            </span>{" "}
+            {escape}
           </li>
         )}
         {children}
@@ -91,11 +118,22 @@ interface ShowcaseSectionProps {
   "data-testid"?: string;
 }
 
-function ShowcaseSection({ title, description, children, "data-testid": testId }: ShowcaseSectionProps) {
+function ShowcaseSection({
+  title,
+  description,
+  children,
+  "data-testid": testId,
+}: ShowcaseSectionProps) {
   return (
     <section className="mb-10" data-testid={testId}>
-      <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">{title}</h2>
-      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>}
+      <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">
+        {title}
+      </h2>
+      {description && (
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {description}
+        </p>
+      )}
       {children}
     </section>
   );
@@ -130,10 +168,21 @@ function ShowcaseCard({
 // =============================================================================
 
 /** All citation variant types */
-const CITATION_VARIANTS = ["brackets", "chip", "text", "superscript", "minimal", "linter"] as const;
+const CITATION_VARIANTS = [
+  "brackets",
+  "chip",
+  "text",
+  "superscript",
+  "linter",
+] as const;
 
 /** Mobile-friendly citation variants */
-const MOBILE_CITATION_VARIANTS = ["brackets", "chip", "superscript", "minimal", "linter"] as const;
+const MOBILE_CITATION_VARIANTS = [
+  "brackets",
+  "chip",
+  "superscript",
+  "linter",
+] as const;
 
 /** Content type options */
 const CONTENT_TYPES = ["number", "anchorText", "indicator"] as const;
@@ -142,7 +191,11 @@ const CONTENT_TYPES = ["number", "anchorText", "indicator"] as const;
 const URL_VARIANTS = ["badge", "chip", "inline", "bracket"] as const;
 
 /** Mobile URL status examples */
-const MOBILE_URL_STATUSES = ["verified", "blocked_login", "error_not_found"] as const;
+const MOBILE_URL_STATUSES = [
+  "verified",
+  "blocked_login",
+  "error_not_found",
+] as const;
 
 /** Border color mapping for status headers */
 const BORDER_COLOR_MAP: Record<string, string> = {
@@ -319,7 +372,8 @@ const urlCitation: Citation = {
   url: "https://www.fitandwell.com/features/kettlebell-moves",
   domain: "fitandwell.com",
   title: "Build muscular arms with kettlebell moves",
-  fullPhrase: "The TGU transitions and Halos require control, not brute strength.",
+  fullPhrase:
+    "The TGU transitions and Halos require control, not brute strength.",
   anchorText: "require control, not brute strength",
   citationNumber: 1,
 };
@@ -327,7 +381,8 @@ const urlCitation: Citation = {
 const urlVerifiedVerification: Verification = {
   status: "found",
   verifiedPageNumber: 1,
-  verifiedMatchSnippet: "The TGU transitions and Halos require control, not brute strength.",
+  verifiedMatchSnippet:
+    "The TGU transitions and Halos require control, not brute strength.",
   verificationImageBase64:
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
 };
@@ -349,7 +404,10 @@ const searchWithVariations: SearchAttempt[] = [
     success: false,
     searchPhrase: "Patient is allergic to penicillin",
     searchPhraseType: "full_phrase",
-    searchVariations: ["Patient is allergic to Penicillin", "patient is allergic to penicillin"],
+    searchVariations: [
+      "Patient is allergic to Penicillin",
+      "patient is allergic to penicillin",
+    ],
     pageSearched: 1,
     note: "not found on expected page",
   },
@@ -554,10 +612,16 @@ const allUrlStatuses: Array<{ status: UrlFetchStatus; description: string }> = [
 
 export function VisualShowcase() {
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="visual-showcase">
-      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Citation Component Visual Showcase</h1>
+    <div
+      className="p-6 bg-white dark:bg-gray-900 min-h-screen"
+      data-testid="visual-showcase"
+    >
+      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+        Citation Component Visual Showcase
+      </h1>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Visual reference for all citation component variants, states, and configurations
+        Visual reference for all citation component variants, states, and
+        configurations
       </p>
 
       {/* Section: All Variants x All States */}
@@ -575,7 +639,9 @@ export function VisualShowcase() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left p-2 text-gray-600 dark:text-gray-400">Variant</th>
+                  <th className="text-left p-2 text-gray-600 dark:text-gray-400">
+                    Variant
+                  </th>
                   <th className="text-left p-2 text-gray-600 dark:text-gray-400">
                     <span className="inline-flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-green-500"></span>
@@ -603,20 +669,42 @@ export function VisualShowcase() {
                 </tr>
               </thead>
               <tbody>
-                {CITATION_VARIANTS.map(variant => (
-                  <tr key={variant} className="border-b border-gray-100 dark:border-gray-800" data-variant-row={variant}>
-                    <td className="p-2 font-mono text-gray-700 dark:text-gray-300 text-xs">{variant}</td>
-                    <td className="p-2">
-                      <CitationComponent citation={baseCitation} verification={verifiedVerification} variant={variant} />
+                {CITATION_VARIANTS.map((variant) => (
+                  <tr
+                    key={variant}
+                    className="border-b border-gray-100 dark:border-gray-800"
+                    data-variant-row={variant}
+                  >
+                    <td className="p-2 font-mono text-gray-700 dark:text-gray-300 text-xs">
+                      {variant}
                     </td>
                     <td className="p-2">
-                      <CitationComponent citation={baseCitation} verification={partialVerification} variant={variant} />
+                      <CitationComponent
+                        citation={baseCitation}
+                        verification={verifiedVerification}
+                        variant={variant}
+                      />
                     </td>
                     <td className="p-2">
-                      <CitationComponent citation={baseCitation} verification={notFoundVerification} variant={variant} />
+                      <CitationComponent
+                        citation={baseCitation}
+                        verification={partialVerification}
+                        variant={variant}
+                      />
                     </td>
                     <td className="p-2">
-                      <CitationComponent citation={baseCitation} verification={pendingVerification} variant={variant} />
+                      <CitationComponent
+                        citation={baseCitation}
+                        verification={notFoundVerification}
+                        variant={variant}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <CitationComponent
+                        citation={baseCitation}
+                        verification={pendingVerification}
+                        variant={variant}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -639,7 +727,7 @@ export function VisualShowcase() {
         data-testid="content-section"
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {CONTENT_TYPES.map(content => (
+          {CONTENT_TYPES.map((content) => (
             <ShowcaseCard key={content} data-content-type={content}>
               <ShowcaseLabel
                 component="CitationComponent"
@@ -681,7 +769,11 @@ export function VisualShowcase() {
               uxIntent="Default - shows verification status icon"
             />
             <div className="py-2">
-              <CitationComponent citation={baseCitation} verification={verifiedVerification} variant="brackets" />
+              <CitationComponent
+                citation={baseCitation}
+                verification={verifiedVerification}
+                variant="brackets"
+              />
             </div>
           </ShowcaseCard>
           <ShowcaseCard data-show-indicator="false">
@@ -708,7 +800,11 @@ export function VisualShowcase() {
               uxIntent="Chip with indicator - prominent status display"
             />
             <div className="py-2">
-              <CitationComponent citation={baseCitation} verification={verifiedVerification} variant="chip" />
+              <CitationComponent
+                citation={baseCitation}
+                verification={verifiedVerification}
+                variant="chip"
+              />
             </div>
           </ShowcaseCard>
           <ShowcaseCard data-show-indicator="chip-off">
@@ -753,22 +849,6 @@ export function VisualShowcase() {
               />
             </div>
           </ShowcaseCard>
-          <ShowcaseCard>
-            <ShowcaseLabel
-              component="CitationComponent"
-              variant="minimal"
-              state="long anchorText"
-              uxIntent="Minimal variant with long text - inline flow"
-            />
-            <div className="py-2">
-              <CitationComponent
-                citation={longCitation}
-                verification={verifiedVerification}
-                variant="minimal"
-                content="anchorText"
-              />
-            </div>
-          </ShowcaseCard>
         </div>
       </ShowcaseSection>
 
@@ -779,7 +859,10 @@ export function VisualShowcase() {
         data-testid="audit-log-section"
       >
         <div className="space-y-4">
-          <ShowcaseCard className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10" data-audit="not-found">
+          <ShowcaseCard
+            className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
+            data-audit="not-found"
+          >
             <ShowcaseLabel
               component="CitationComponent"
               variant="brackets"
@@ -787,7 +870,11 @@ export function VisualShowcase() {
               uxIntent="Not Found - shows 6 failed search attempts in popover audit log"
             />
             <div className="py-2">
-              <CitationComponent citation={baseCitation} verification={notFoundWithAudit} variant="brackets" />
+              <CitationComponent
+                citation={baseCitation}
+                verification={notFoundWithAudit}
+                variant="brackets"
+              />
             </div>
             <InteractionLabel
               click="Opens popover showing 'couldn't find' status"
@@ -795,7 +882,10 @@ export function VisualShowcase() {
             />
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10" data-audit="partial">
+          <ShowcaseCard
+            className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10"
+            data-audit="partial"
+          >
             <ShowcaseLabel
               component="CitationComponent"
               variant="brackets"
@@ -803,7 +893,11 @@ export function VisualShowcase() {
               uxIntent="Partial Match - found on page 7 instead of expected page 5"
             />
             <div className="py-2">
-              <CitationComponent citation={baseCitation} verification={partialWithAudit} variant="brackets" />
+              <CitationComponent
+                citation={baseCitation}
+                verification={partialWithAudit}
+                variant="brackets"
+              />
             </div>
             <InteractionLabel
               click="Opens popover showing page mismatch"
@@ -811,7 +905,10 @@ export function VisualShowcase() {
             />
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10" data-audit="low-trust">
+          <ShowcaseCard
+            className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10"
+            data-audit="low-trust"
+          >
             <ShowcaseLabel
               component="CitationComponent"
               variant="brackets"
@@ -819,11 +916,18 @@ export function VisualShowcase() {
               uxIntent="Low Trust - only first word matched, requires manual review"
             />
             <div className="py-2">
-              <CitationComponent citation={baseCitation} verification={lowTrustWithAudit} variant="brackets" />
+              <CitationComponent
+                citation={baseCitation}
+                verification={lowTrustWithAudit}
+                variant="brackets"
+              />
             </div>
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10" data-audit="with-variations">
+          <ShowcaseCard
+            className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
+            data-audit="with-variations"
+          >
             <ShowcaseLabel
               component="CitationComponent"
               variant="brackets"
@@ -843,7 +947,10 @@ export function VisualShowcase() {
             </div>
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10" data-audit="rejected-matches">
+          <ShowcaseCard
+            className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
+            data-audit="rejected-matches"
+          >
             <ShowcaseLabel
               component="CitationComponent"
               variant="brackets"
@@ -863,7 +970,10 @@ export function VisualShowcase() {
             </div>
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10" data-audit="many-pages">
+          <ShowcaseCard
+            className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
+            data-audit="many-pages"
+          >
             <ShowcaseLabel
               component="CitationComponent"
               variant="brackets"
@@ -905,8 +1015,14 @@ export function VisualShowcase() {
                 fetchStatus: status,
               };
               return (
-                <div key={status} className="p-2 bg-gray-50 dark:bg-gray-800 rounded" data-url-status={status}>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1 font-mono truncate">{status}</p>
+                <div
+                  key={status}
+                  className="p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                  data-url-status={status}
+                >
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1 font-mono truncate">
+                    {status}
+                  </p>
                   <UrlCitationComponent urlMeta={meta} />
                 </div>
               );
@@ -926,7 +1042,7 @@ export function VisualShowcase() {
         data-testid="url-variants-section"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {URL_VARIANTS.map(variant => {
+          {URL_VARIANTS.map((variant) => {
             const meta: UrlCitationMeta = {
               url: "https://docs.example.com/api/v2/citations",
               domain: "docs.example.com",
@@ -971,15 +1087,21 @@ export function VisualShowcase() {
           />
           <div className="py-4 text-gray-700 dark:text-gray-300">
             <p className="leading-relaxed">
-              According to the Q4 financial report, the company saw significant growth
-              <CitationComponent citation={baseCitation} verification={verifiedVerification} variant="superscript" />
+              According to the Q4 financial report, the company saw significant
+              growth
+              <CitationComponent
+                citation={baseCitation}
+                verification={verifiedVerification}
+                variant="superscript"
+              />
               with revenue increasing by 15%
               <CitationComponent
                 citation={{ ...baseCitation, citationNumber: 2 }}
                 verification={partialVerification}
                 variant="superscript"
               />
-              compared to the previous quarter. However, some claims could not be verified
+              compared to the previous quarter. However, some claims could not
+              be verified
               <CitationComponent
                 citation={{ ...baseCitation, citationNumber: 3 }}
                 verification={notFoundVerification}
@@ -1004,50 +1126,72 @@ export function VisualShowcase() {
 
 export function MobileShowcase() {
   return (
-    <div className="p-4 bg-white dark:bg-gray-900 min-h-screen" data-testid="mobile-showcase">
-      <h1 className="text-lg font-bold mb-1 text-gray-900 dark:text-white">Mobile View (375px)</h1>
+    <div
+      className="p-4 bg-white dark:bg-gray-900 min-h-screen"
+      data-testid="mobile-showcase"
+    >
+      <h1 className="text-lg font-bold mb-1 text-gray-900 dark:text-white">
+        Mobile View (375px)
+      </h1>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
         Testing overflow handling and touch interactions on mobile viewports
       </p>
 
       {/* Compact variants for mobile */}
       <section className="mb-6" data-testid="mobile-variants">
-        <h2 className="text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200">Citation Variants</h2>
+        <h2 className="text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200">
+          Citation Variants
+        </h2>
         <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
           All variants should fit within 375px width without horizontal scroll
         </p>
         <div className="space-y-2">
-          {MOBILE_CITATION_VARIANTS.map(variant => (
+          {MOBILE_CITATION_VARIANTS.map((variant) => (
             <div
               key={variant}
               className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded"
               data-mobile-variant={variant}
             >
-              <span className="text-xs text-gray-500 dark:text-gray-400 w-20 font-mono shrink-0">{variant}</span>
-              <CitationComponent citation={baseCitation} verification={verifiedVerification} variant={variant} />
+              <span className="text-xs text-gray-500 dark:text-gray-400 w-20 font-mono shrink-0">
+                {variant}
+              </span>
+              <CitationComponent
+                citation={baseCitation}
+                verification={verifiedVerification}
+                variant={variant}
+              />
             </div>
           ))}
         </div>
         <div className="mt-2 p-2 border border-dashed border-gray-300 dark:border-gray-600 rounded text-[10px] text-gray-500 dark:text-gray-400">
-          <strong>Interaction:</strong> Tap to open popover (touch-friendly tap targets)
+          <strong>Interaction:</strong> Tap to open popover (touch-friendly tap
+          targets)
         </div>
       </section>
 
       {/* URL citations mobile */}
       <section className="mb-6" data-testid="mobile-urls">
-        <h2 className="text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200">URL Citations</h2>
+        <h2 className="text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200">
+          URL Citations
+        </h2>
         <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
           Long URLs should truncate with ellipsis, not cause overflow
         </p>
         <div className="space-y-2">
-          {MOBILE_URL_STATUSES.map(status => {
+          {MOBILE_URL_STATUSES.map((status) => {
             const meta: UrlCitationMeta = {
               url: `https://very-long-domain-name.example.com/path/to/article/${status}`,
               fetchStatus: status,
             };
             return (
-              <div key={status} className="p-2 bg-gray-50 dark:bg-gray-800 rounded" data-mobile-url={status}>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono">{status}</p>
+              <div
+                key={status}
+                className="p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                data-mobile-url={status}
+              >
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono">
+                  {status}
+                </p>
                 <UrlCitationComponent urlMeta={meta} />
               </div>
             );
@@ -1057,14 +1201,20 @@ export function MobileShowcase() {
 
       {/* Inline text on mobile */}
       <section data-testid="mobile-inline">
-        <h2 className="text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200">Inline Text</h2>
+        <h2 className="text-sm font-semibold mb-1 text-gray-800 dark:text-gray-200">
+          Inline Text
+        </h2>
         <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
           Superscript citations should flow naturally with paragraph text
         </p>
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-sm text-gray-700 dark:text-gray-300">
           <p>
             The report shows growth
-            <CitationComponent citation={baseCitation} verification={verifiedVerification} variant="superscript" />
+            <CitationComponent
+              citation={baseCitation}
+              verification={verifiedVerification}
+              variant="superscript"
+            />
             but some data is unverified
             <CitationComponent
               citation={{ ...baseCitation, citationNumber: 2 }}
@@ -1075,7 +1225,8 @@ export function MobileShowcase() {
           </p>
         </div>
         <div className="mt-2 p-2 border border-dashed border-gray-300 dark:border-gray-600 rounded text-[10px] text-gray-500 dark:text-gray-400">
-          <strong>Touch:</strong> Tap superscript to open popover positioned for mobile viewport
+          <strong>Touch:</strong> Tap superscript to open popover positioned for
+          mobile viewport
         </div>
       </section>
     </div>
@@ -1087,10 +1238,25 @@ export function MobileShowcase() {
 // =============================================================================
 
 /** All verification statuses for comprehensive popover showcase */
-const allVerificationStatuses: Array<{ status: SearchStatus; label: string; description: string; color: string }> = [
+const allVerificationStatuses: Array<{
+  status: SearchStatus;
+  label: string;
+  description: string;
+  color: string;
+}> = [
   // Green statuses
-  { status: "found", label: "Found", description: "Exact match verified", color: "green" },
-  { status: "found_anchor_text_only", label: "Anchor Text Only", description: "Anchor text matched", color: "green" },
+  {
+    status: "found",
+    label: "Found",
+    description: "Exact match verified",
+    color: "green",
+  },
+  {
+    status: "found_anchor_text_only",
+    label: "Anchor Text Only",
+    description: "Anchor text matched",
+    color: "green",
+  },
   {
     status: "found_phrase_missed_anchor_text",
     label: "Phrase (Missed Anchor)",
@@ -1098,15 +1264,50 @@ const allVerificationStatuses: Array<{ status: SearchStatus; label: string; desc
     color: "green",
   },
   // Amber statuses
-  { status: "found_on_other_page", label: "Other Page", description: "Found on different page", color: "amber" },
-  { status: "found_on_other_line", label: "Other Line", description: "Found on different line", color: "amber" },
-  { status: "partial_text_found", label: "Partial Text", description: "Partial text matched", color: "amber" },
-  { status: "first_word_found", label: "First Word", description: "Only first word matched", color: "amber" },
+  {
+    status: "found_on_other_page",
+    label: "Other Page",
+    description: "Found on different page",
+    color: "amber",
+  },
+  {
+    status: "found_on_other_line",
+    label: "Other Line",
+    description: "Found on different line",
+    color: "amber",
+  },
+  {
+    status: "partial_text_found",
+    label: "Partial Text",
+    description: "Partial text matched",
+    color: "amber",
+  },
+  {
+    status: "first_word_found",
+    label: "First Word",
+    description: "Only first word matched",
+    color: "amber",
+  },
   // Red statuses
-  { status: "not_found", label: "Not Found", description: "Citation could not be verified", color: "red" },
+  {
+    status: "not_found",
+    label: "Not Found",
+    description: "Citation could not be verified",
+    color: "red",
+  },
   // Gray statuses
-  { status: "pending", label: "Pending", description: "Verification in progress", color: "gray" },
-  { status: "loading", label: "Loading", description: "Loading verification", color: "gray" },
+  {
+    status: "pending",
+    label: "Pending",
+    description: "Verification in progress",
+    color: "gray",
+  },
+  {
+    status: "loading",
+    label: "Loading",
+    description: "Loading verification",
+    color: "gray",
+  },
 ];
 
 /** Sample verification image (1x1 green pixel base64) */
@@ -1124,12 +1325,16 @@ const sampleLargeImage =
  */
 export function PopoverShowcase() {
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="popover-showcase">
+    <div
+      className="p-6 bg-white dark:bg-gray-900 min-h-screen"
+      data-testid="popover-showcase"
+    >
       <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
         Popover & Sub-Components Visual Showcase
       </h1>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Visual reference for all popover states, sub-components, and interactive behaviors
+        Visual reference for all popover states, sub-components, and interactive
+        behaviors
       </p>
 
       {/* ========================================================================
@@ -1157,7 +1362,9 @@ export function PopoverShowcase() {
               <p className="p-2 bg-gray-100 dark:bg-gray-700 rounded font-mono text-[11px] break-words text-gray-600 dark:text-gray-400 italic">
                 "Revenue increased by 15% in Q4 2024."
               </p>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Looking on page 5</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Looking on page 5
+              </span>
             </div>
           </ShowcaseCard>
 
@@ -1175,9 +1382,12 @@ export function PopoverShowcase() {
                 Searching...
               </span>
               <p className="p-2 bg-gray-100 dark:bg-gray-700 rounded font-mono text-[11px] break-words text-gray-600 dark:text-gray-400 italic">
-                "The quarterly financial report indicates that revenue increased by 15% compared…"
+                "The quarterly financial report indicates that revenue increased
+                by 15% compared…"
               </p>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Looking on page 12</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Looking on page 12
+              </span>
             </div>
           </ShowcaseCard>
         </div>
@@ -1198,7 +1408,9 @@ export function PopoverShowcase() {
           />
           <InteractionLabel>
             <li className="text-[10px]">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Colors:</span>{" "}
+              <span className="font-medium text-gray-600 dark:text-gray-300">
+                Colors:
+              </span>{" "}
               <span className="text-green-600">Green</span>=verified,{" "}
               <span className="text-amber-600">Amber</span>=partial/mismatch,{" "}
               <span className="text-red-600">Red</span>=not found,{" "}
@@ -1208,35 +1420,47 @@ export function PopoverShowcase() {
         </ShowcaseCard>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {allVerificationStatuses.map(({ status, label, description, color }) => {
-            const isUnexpectedLocation = status === "found_on_other_page" || status === "found_on_other_line";
-            const foundPage =
-              status !== "not_found" && status !== "pending" && status !== "loading"
-                ? isUnexpectedLocation
-                  ? 7
-                  : 5
-                : undefined;
-            const expectedPage = 5;
-            const borderColor = BORDER_COLOR_MAP[color] ?? "border-gray-200 dark:border-gray-700";
+          {allVerificationStatuses.map(
+            ({ status, label, description, color }) => {
+              const isUnexpectedLocation =
+                status === "found_on_other_page" ||
+                status === "found_on_other_line";
+              const foundPage =
+                status !== "not_found" &&
+                status !== "pending" &&
+                status !== "loading"
+                  ? isUnexpectedLocation
+                    ? 7
+                    : 5
+                  : undefined;
+              const expectedPage = 5;
+              const borderColor =
+                BORDER_COLOR_MAP[color] ??
+                "border-gray-200 dark:border-gray-700";
 
-            return (
-              <ShowcaseCard key={status} className={borderColor} data-status-header={status}>
-                <ShowcaseLabel
-                  component="StatusHeader"
-                  state={status}
-                  uxIntent={description}
-                />
-                <div className="mt-2 rounded overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <StatusHeader
-                    status={status}
-                    foundPage={foundPage}
-                    expectedPage={expectedPage}
-                    anchorText="revenue increased by 15%"
+              return (
+                <ShowcaseCard
+                  key={status}
+                  className={borderColor}
+                  data-status-header={status}
+                >
+                  <ShowcaseLabel
+                    component="StatusHeader"
+                    state={status}
+                    uxIntent={description}
                   />
-                </div>
-              </ShowcaseCard>
-            );
-          })}
+                  <div className="mt-2 rounded overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <StatusHeader
+                      status={status}
+                      foundPage={foundPage}
+                      expectedPage={expectedPage}
+                      anchorText="revenue increased by 15%"
+                    />
+                  </div>
+                </ShowcaseCard>
+              );
+            }
+          )}
         </div>
       </ShowcaseSection>
 
@@ -1297,11 +1521,11 @@ export function PopoverShowcase() {
             component="VerificationLog"
             uxIntent="Audit trail of search attempts - shows methods tried, pages searched, and why matches were accepted/rejected"
           />
-          <InteractionLabel
-            click="Toggle expansion to show/hide full search timeline"
-          >
+          <InteractionLabel click="Toggle expansion to show/hide full search timeline">
             <li className="text-[10px]">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Timeline icons:</span>{" "}
+              <span className="font-medium text-gray-600 dark:text-gray-300">
+                Timeline icons:
+              </span>{" "}
               <span className="text-green-600">●</span>=success,{" "}
               <span className="text-red-600">●</span>=failed attempt
             </li>
@@ -1309,7 +1533,10 @@ export function PopoverShowcase() {
         </ShowcaseCard>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <ShowcaseCard className="border-red-200 dark:border-red-800" data-verification-log="not-found">
+          <ShowcaseCard
+            className="border-red-200 dark:border-red-800"
+            data-verification-log="not-found"
+          >
             <ShowcaseLabel
               component="VerificationLog"
               state="not_found"
@@ -1325,7 +1552,10 @@ export function PopoverShowcase() {
             </div>
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-amber-200 dark:border-amber-800" data-verification-log="partial-page">
+          <ShowcaseCard
+            className="border-amber-200 dark:border-amber-800"
+            data-verification-log="partial-page"
+          >
             <ShowcaseLabel
               component="VerificationLog"
               state="found_on_other_page"
@@ -1341,7 +1571,10 @@ export function PopoverShowcase() {
             </div>
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-amber-200 dark:border-amber-800" data-verification-log="partial-line">
+          <ShowcaseCard
+            className="border-amber-200 dark:border-amber-800"
+            data-verification-log="partial-line"
+          >
             <ShowcaseLabel
               component="VerificationLog"
               state="found_on_other_line"
@@ -1379,7 +1612,10 @@ export function PopoverShowcase() {
             </div>
           </ShowcaseCard>
 
-          <ShowcaseCard className="border-amber-200 dark:border-amber-800" data-verification-log="low-trust">
+          <ShowcaseCard
+            className="border-amber-200 dark:border-amber-800"
+            data-verification-log="low-trust"
+          >
             <ShowcaseLabel
               component="VerificationLog"
               state="first_word_found"
@@ -1503,7 +1739,11 @@ export function PopoverShowcase() {
               className="mt-2 overflow-hidden rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-900"
               style={{ width: "380px", maxWidth: "100%" }}
             >
-              <StatusHeader status="found_on_other_page" foundPage={7} expectedPage={5} />
+              <StatusHeader
+                status="found_on_other_page"
+                foundPage={7}
+                expectedPage={5}
+              />
               <div className="p-2">
                 <div className="group block relative overflow-hidden rounded-md bg-gray-50 dark:bg-gray-800 w-full">
                   <img
@@ -1564,11 +1804,15 @@ export function PopoverShowcase() {
               uxIntent="Minimal fallback when no image - just status, quote, and page"
             />
             <div className="mt-2 p-3 flex flex-col gap-2 min-w-[180px] max-w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900">
-              <span className="text-xs font-medium text-green-600 dark:text-green-500">Verified Match</span>
+              <span className="text-xs font-medium text-green-600 dark:text-green-500">
+                Verified Match
+              </span>
               <span className="text-sm text-gray-700 dark:text-gray-300 italic">
                 "Revenue increased by 15% in Q4 2024."
               </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Page 5</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Page 5
+              </span>
             </div>
           </ShowcaseCard>
         </div>
@@ -1589,8 +1833,9 @@ export function PopoverShowcase() {
           />
           <div className="mt-4">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              The image overlay appears when clicking on a verification image in the popover.
-              It displays the image at full size with a dark backdrop.
+              The image overlay appears when clicking on a verification image in
+              the popover. It displays the image at full size with a dark
+              backdrop.
             </p>
             {/* Static preview of overlay appearance */}
             <div
@@ -1607,8 +1852,18 @@ export function PopoverShowcase() {
               </div>
               {/* Close button preview */}
               <div className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </div>
             </div>
@@ -1618,8 +1873,11 @@ export function PopoverShowcase() {
             escape="Closes overlay"
           >
             <li className="text-[10px]">
-              <span className="font-medium text-gray-600 dark:text-gray-300">Opens via:</span>{" "}
-              Clicking image in popover or via behaviorConfig.onClick returning setImageExpanded
+              <span className="font-medium text-gray-600 dark:text-gray-300">
+                Opens via:
+              </span>{" "}
+              Clicking image in popover or via behaviorConfig.onClick returning
+              setImageExpanded
             </li>
           </InteractionLabel>
         </ShowcaseCard>
@@ -1639,21 +1897,57 @@ export function PopoverShowcase() {
             uxIntent="Test actual click/popover behavior - popovers open on click (lazy mode)"
           />
           <div className="flex flex-wrap gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg mt-4">
-            <div className="flex items-center gap-2" data-interactive-popover="verified">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Verified:</span>
-              <CitationComponent citation={baseCitation} verification={verifiedVerification} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="verified"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Verified:
+              </span>
+              <CitationComponent
+                citation={baseCitation}
+                verification={verifiedVerification}
+                variant="brackets"
+              />
             </div>
-            <div className="flex items-center gap-2" data-interactive-popover="partial">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Partial:</span>
-              <CitationComponent citation={baseCitation} verification={partialWithAudit} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="partial"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Partial:
+              </span>
+              <CitationComponent
+                citation={baseCitation}
+                verification={partialWithAudit}
+                variant="brackets"
+              />
             </div>
-            <div className="flex items-center gap-2" data-interactive-popover="not-found">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Not Found:</span>
-              <CitationComponent citation={baseCitation} verification={notFoundWithAudit} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="not-found"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Not Found:
+              </span>
+              <CitationComponent
+                citation={baseCitation}
+                verification={notFoundWithAudit}
+                variant="brackets"
+              />
             </div>
-            <div className="flex items-center gap-2" data-interactive-popover="pending">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Pending:</span>
-              <CitationComponent citation={baseCitation} verification={pendingVerification} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="pending"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Pending:
+              </span>
+              <CitationComponent
+                citation={baseCitation}
+                verification={pendingVerification}
+                variant="brackets"
+              />
             </div>
           </div>
           <InteractionLabel
@@ -1680,17 +1974,44 @@ export function PopoverShowcase() {
             uxIntent="URL citations show source URL in header instead of page number"
           />
           <div className="flex flex-wrap gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg mt-4">
-            <div className="flex items-center gap-2" data-interactive-popover="url-verified">
-              <span className="text-sm text-gray-600 dark:text-gray-400">URL Verified:</span>
-              <CitationComponent citation={urlCitation} verification={urlVerifiedVerification} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="url-verified"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                URL Verified:
+              </span>
+              <CitationComponent
+                citation={urlCitation}
+                verification={urlVerifiedVerification}
+                variant="brackets"
+              />
             </div>
-            <div className="flex items-center gap-2" data-interactive-popover="url-not-found">
-              <span className="text-sm text-gray-600 dark:text-gray-400">URL Not Found:</span>
-              <CitationComponent citation={urlCitation} verification={urlNotFoundVerification} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="url-not-found"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                URL Not Found:
+              </span>
+              <CitationComponent
+                citation={urlCitation}
+                verification={urlNotFoundVerification}
+                variant="brackets"
+              />
             </div>
-            <div className="flex items-center gap-2" data-interactive-popover="url-pending">
-              <span className="text-sm text-gray-600 dark:text-gray-400">URL Pending:</span>
-              <CitationComponent citation={urlCitation} verification={pendingVerification} variant="brackets" />
+            <div
+              className="flex items-center gap-2"
+              data-interactive-popover="url-pending"
+            >
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                URL Pending:
+              </span>
+              <CitationComponent
+                citation={urlCitation}
+                verification={pendingVerification}
+                variant="brackets"
+              />
             </div>
           </div>
         </ShowcaseCard>
@@ -1711,23 +2032,43 @@ export function PopoverShowcase() {
           />
           <div className="mt-4 p-6 bg-gray-200 dark:bg-gray-700 rounded-lg space-y-4">
             <div className="flex flex-wrap items-center gap-4">
-              <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">Linter variants:</span>
-              <CitationComponent citation={baseCitation} verification={verifiedVerification} variant="linter" />
-              <CitationComponent citation={baseCitation} verification={partialVerification} variant="linter" />
-              <CitationComponent citation={baseCitation} verification={notFoundVerification} variant="linter" />
-              <CitationComponent citation={baseCitation} verification={pendingVerification} variant="linter" />
+              <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">
+                Linter variants:
+              </span>
+              <CitationComponent
+                citation={baseCitation}
+                verification={verifiedVerification}
+                variant="linter"
+              />
+              <CitationComponent
+                citation={baseCitation}
+                verification={partialVerification}
+                variant="linter"
+              />
+              <CitationComponent
+                citation={baseCitation}
+                verification={notFoundVerification}
+                variant="linter"
+              />
+              <CitationComponent
+                citation={baseCitation}
+                verification={pendingVerification}
+                variant="linter"
+              />
             </div>
             <div className="flex flex-wrap items-center gap-4">
-              <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">Inline context:</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">
+                Inline context:
+              </span>
               <span className="text-gray-700 dark:text-gray-200">
                 Text with citation
-                <CitationComponent citation={baseCitation} verification={notFoundVerification} variant="superscript" />
+                <CitationComponent
+                  citation={baseCitation}
+                  verification={notFoundVerification}
+                  variant="superscript"
+                />
                 continues here
               </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">Minimal:</span>
-              <CitationComponent citation={baseCitation} verification={notFoundVerification} variant="minimal" />
             </div>
           </div>
         </ShowcaseCard>

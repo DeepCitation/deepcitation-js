@@ -136,7 +136,6 @@ const MARKDOWN_VARIANTS: MarkdownVariant[] = [
   "superscript",
   "footnote",
   "academic",
-  "minimal",
 ];
 
 // Status types for testing

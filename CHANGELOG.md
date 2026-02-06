@@ -124,7 +124,7 @@ This release marks the first comprehensive public release of DeepCitation, conso
 ### React Components
 
 #### CitationComponent
-- **5 Visual Variants**: `brackets` (default), `chip`, `text`, `superscript`, `minimal`
+- **5 Visual Variants**: `brackets` (default), `chip`, `text`, `superscript`, `linter`
 - **3 Content Modes**: `anchorText`, `number`, `indicator`
 - **Status Indicators**: Pending (spinner), Verified (green ✓), Partial (amber ✓), Not Found (red △)
 - **Interactive Popover**: Hover shows verification image, click expands to full-size
