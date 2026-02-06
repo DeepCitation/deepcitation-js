@@ -80,7 +80,7 @@ function getPrefetchCacheState(): PrefetchCacheState | null {
         lastCleanup: 0,
       };
     }
-    return win[PREFETCH_CACHE_KEY]!;
+    return win[PREFETCH_CACHE_KEY] as PrefetchCacheState;
   } catch {
     // In strict CSP or sandboxed environments, window property access may throw
     // Gracefully degrade by disabling the prefetch cache
