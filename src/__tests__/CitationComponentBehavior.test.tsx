@@ -1,17 +1,8 @@
 import { afterEach, describe, expect, it, jest, mock } from "@jest/globals";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  waitFor,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type React from "react";
 import { CitationComponent } from "../react/CitationComponent";
-import type {
-  CitationBehaviorActions,
-  CitationBehaviorContext,
-} from "../react/types";
+import type { CitationBehaviorActions, CitationBehaviorContext } from "../react/types";
 import type { Citation } from "../types/citation";
 import type { Verification } from "../types/verification";
 
@@ -25,8 +16,7 @@ mock.module("react-dom", () => ({
 const HOVER_CLOSE_DELAY_MS = 150;
 
 // Helper to wait for hover close delay
-const waitForHoverCloseDelay = () =>
-  new Promise((resolve) => setTimeout(resolve, HOVER_CLOSE_DELAY_MS + 50));
+const waitForHoverCloseDelay = () => new Promise(resolve => setTimeout(resolve, HOVER_CLOSE_DELAY_MS + 50));
 
 // Helper to wait for popover to become visible
 const waitForPopoverVisible = async (container: HTMLElement) => {
@@ -86,12 +76,7 @@ describe("CitationComponent behaviorConfig", () => {
 
   describe("status derivation from verification", () => {
     it("shows spinner for pending status", () => {
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={pendingVerification}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={pendingVerification} />);
 
       // Should have a spinner (svg with animate-spin class)
       const spinner = container.querySelector(".animate-spin svg");
@@ -99,9 +84,7 @@ describe("CitationComponent behaviorConfig", () => {
     });
 
     it("does not show spinner when verification is null (use isLoading prop)", () => {
-      const { container } = render(
-        <CitationComponent citation={baseCitation} verification={null} />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={null} />);
 
       // Should NOT have a spinner by default - use isLoading prop to show spinner
       const spinner = container.querySelector(".animate-spin svg");
@@ -109,9 +92,7 @@ describe("CitationComponent behaviorConfig", () => {
     });
 
     it("does not show spinner when verification has no status (use isLoading prop)", () => {
-      const { container } = render(
-        <CitationComponent citation={baseCitation} verification={{}} />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={{}} />);
 
       // Should NOT have a spinner by default - use isLoading prop to show spinner
       const spinner = container.querySelector(".animate-spin svg");
@@ -119,13 +100,7 @@ describe("CitationComponent behaviorConfig", () => {
     });
 
     it("shows spinner when isLoading prop is true", () => {
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={null}
-          isLoading={true}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={null} isLoading={true} />);
 
       // Should have a spinner when isLoading is true
       const spinner = container.querySelector(".animate-spin svg");
@@ -134,11 +109,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("does NOT show spinner with isLoading when verification has definitive status", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-          isLoading={true}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} isLoading={true} />,
       );
 
       // A definitive verification status should override isLoading
@@ -153,10 +124,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("shows check icon for found status", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />,
       );
 
       // Should NOT have a spinner
@@ -169,12 +137,7 @@ describe("CitationComponent behaviorConfig", () => {
     });
 
     it("shows X circle icon for not_found status", () => {
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={missVerification}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={missVerification} />);
 
       // Should NOT have a spinner
       const spinner = container.querySelector(".animate-spin svg");
@@ -192,12 +155,7 @@ describe("CitationComponent behaviorConfig", () => {
         status: "found_on_other_page",
       };
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={partialVerification}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={partialVerification} />);
 
       // Should have amber check (text-amber-500 class - more yellow amber)
       const amberCheck = container.querySelector(".text-amber-500");
@@ -212,10 +170,7 @@ describe("CitationComponent behaviorConfig", () => {
   describe("showIndicator prop", () => {
     it("shows indicator by default (showIndicator=true)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />,
       );
 
       // Should have green check indicator
@@ -225,11 +180,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("hides indicator when showIndicator=false", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-          showIndicator={false}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} showIndicator={false} />,
       );
 
       // Should NOT have any status indicators
@@ -244,11 +195,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("hides spinner when showIndicator=false and isPending", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={pendingVerification}
-          showIndicator={false}
-        />
+        <CitationComponent citation={baseCitation} verification={pendingVerification} showIndicator={false} />,
       );
 
       // Should NOT have spinner
@@ -257,9 +204,7 @@ describe("CitationComponent behaviorConfig", () => {
     });
 
     it("custom renderIndicator takes precedence over showIndicator=false", () => {
-      const customIndicator = (
-        <span data-testid="custom-indicator">Custom</span>
-      );
+      const customIndicator = <span data-testid="custom-indicator">Custom</span>;
 
       const { container, getByTestId } = render(
         <CitationComponent
@@ -268,7 +213,7 @@ describe("CitationComponent behaviorConfig", () => {
           variant="brackets"
           showIndicator={false}
           renderIndicator={() => customIndicator}
-        />
+        />,
       );
 
       // Custom indicator should still be rendered
@@ -286,7 +231,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={missVerification}
           variant="brackets"
           showIndicator={false}
-        />
+        />,
       );
 
       // Should NOT have red X circle indicator
@@ -305,12 +250,7 @@ describe("CitationComponent behaviorConfig", () => {
 
   describe("default click behavior", () => {
     it("shows popover on first click (not image overlay)", async () => {
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
       expect(citation).toBeInTheDocument();
@@ -319,74 +259,50 @@ describe("CitationComponent behaviorConfig", () => {
       fireEvent.click(citation!);
 
       // Image overlay should NOT be visible (first click shows popover)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Popover should be shown
       await waitForPopoverVisible(container);
     });
 
     it("toggles search details on second click (not image overlay)", async () => {
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
       // First click - shows popover
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second click - toggles search details (not image overlay)
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("does not open image overlay on click when no image is available", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
 
       // Click should not open overlay (no image)
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("always calls eventHandlers.onClick", () => {
       const onClick = jest.fn();
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          eventHandlers={{ onClick }}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} eventHandlers={{ onClick }} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       expect(onClick).toHaveBeenCalledTimes(1);
-      expect(onClick).toHaveBeenCalledWith(
-        baseCitation,
-        expect.any(String),
-        expect.any(Object)
-      );
+      expect(onClick).toHaveBeenCalledWith(baseCitation, expect.any(String), expect.any(Object));
     });
   });
 
@@ -403,16 +319,14 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
 
       // Click should not open image (onClick replaces default behavior)
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
       expect(customOnClick).toHaveBeenCalledTimes(1);
     });
 
@@ -424,7 +338,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -434,9 +348,7 @@ describe("CitationComponent behaviorConfig", () => {
       fireEvent.click(citation!);
       fireEvent.click(citation!);
 
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
       expect(customOnClick).toHaveBeenCalledTimes(3);
     });
 
@@ -450,7 +362,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
           eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -474,7 +386,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -501,7 +413,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -511,9 +423,7 @@ describe("CitationComponent behaviorConfig", () => {
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // No state changes occurred (onClick replaces defaults)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("prevents any state changes when returning false", () => {
@@ -524,7 +434,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -534,16 +444,14 @@ describe("CitationComponent behaviorConfig", () => {
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // Default behavior should NOT have occurred
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("applies returned actions to open image", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: true,
-        })
+        }),
       );
 
       const { container } = render(
@@ -551,7 +459,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -566,7 +474,7 @@ describe("CitationComponent behaviorConfig", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: customImageSrc,
-        })
+        }),
       );
 
       const { container } = render(
@@ -574,7 +482,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -590,7 +498,7 @@ describe("CitationComponent behaviorConfig", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: true,
-        })
+        }),
       );
 
       const { container } = render(
@@ -598,7 +506,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -610,9 +518,7 @@ describe("CitationComponent behaviorConfig", () => {
       // Click overlay to close
       const overlay = container.querySelector("[role='dialog']");
       fireEvent.click(overlay!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("still calls eventHandlers.onClick when custom handler returns actions", () => {
@@ -620,7 +526,7 @@ describe("CitationComponent behaviorConfig", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: true,
-        })
+        }),
       );
 
       const { container } = render(
@@ -629,7 +535,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
           eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -649,7 +555,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
           eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -677,7 +583,7 @@ describe("CitationComponent behaviorConfig", () => {
               trackingData.push(`clicked:${citationKey}`);
             },
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -686,9 +592,7 @@ describe("CitationComponent behaviorConfig", () => {
       fireEvent.click(citation!);
       expect(trackingData).toHaveLength(1);
       // Default behavior (image opening) should NOT happen
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("eventHandlers.onClick runs even when behaviorConfig.onClick is provided", () => {
@@ -700,7 +604,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{
-            onClick: (_context) => {
+            onClick: _context => {
               behaviorConfigCalls.push("behavior");
               return { setImageExpanded: true };
             },
@@ -710,7 +614,7 @@ describe("CitationComponent behaviorConfig", () => {
               eventHandlerCalls.push("event");
             },
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -735,7 +639,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -752,7 +656,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -774,7 +678,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -795,7 +699,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -821,7 +725,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter: behaviorOnEnter } }}
           eventHandlers={{ onMouseEnter: eventHandlerOnEnter }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -841,7 +745,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave: behaviorOnLeave } }}
           eventHandlers={{ onMouseLeave: eventHandlerOnLeave }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -864,7 +768,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -884,7 +788,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -911,7 +815,7 @@ describe("CitationComponent behaviorConfig", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: true,
-        })
+        }),
       );
 
       const { container } = render(
@@ -921,7 +825,7 @@ describe("CitationComponent behaviorConfig", () => {
           behaviorConfig={{
             onClick: customOnClick,
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -944,7 +848,7 @@ describe("CitationComponent behaviorConfig", () => {
             onClick: customOnClick,
             onHover: { onEnter, onLeave },
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -964,31 +868,27 @@ describe("CitationComponent behaviorConfig", () => {
       // Click behavior is replaced by custom onClick (which does nothing)
       fireEvent.click(citation!);
       expect(customOnClick).toHaveBeenCalledTimes(1);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("context is updated between clicks when using custom onClick", () => {
       const contexts: CitationBehaviorContext[] = [];
-      const customOnClick = jest.fn(
-        (context: CitationBehaviorContext): CitationBehaviorActions => {
-          contexts.push({ ...context });
-          // Toggle image
-          if (context.isImageExpanded) {
-            return { setImageExpanded: false };
-          } else {
-            return { setImageExpanded: true };
-          }
+      const customOnClick = jest.fn((context: CitationBehaviorContext): CitationBehaviorActions => {
+        contexts.push({ ...context });
+        // Toggle image
+        if (context.isImageExpanded) {
+          return { setImageExpanded: false };
+        } else {
+          return { setImageExpanded: true };
         }
-      );
+      });
 
       const { container } = render(
         <CitationComponent
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1001,9 +901,7 @@ describe("CitationComponent behaviorConfig", () => {
       // Second click - image should now be expanded
       fireEvent.click(citation!);
       expect(contexts[1].isImageExpanded).toBe(true);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
   });
 
@@ -1014,20 +912,14 @@ describe("CitationComponent behaviorConfig", () => {
   describe("edge cases", () => {
     it("handles undefined behaviorConfig gracefully", async () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={undefined}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} behaviorConfig={undefined} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
 
       // Should work with default behavior (first click shows popover, not image overlay)
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Popover should be shown
       await waitForPopoverVisible(container);
@@ -1035,20 +927,14 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("handles empty behaviorConfig object", async () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          behaviorConfig={{}}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} behaviorConfig={{}} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
 
       // Should work with default behavior (first click shows popover, not image overlay)
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Popover should be shown
       await waitForPopoverVisible(container);
@@ -1062,7 +948,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithoutImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1076,11 +962,7 @@ describe("CitationComponent behaviorConfig", () => {
       const onEnter = jest.fn();
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={null}
-          behaviorConfig={{ onHover: { onEnter } }}
-        />
+        <CitationComponent citation={baseCitation} verification={null} behaviorConfig={{ onHover: { onEnter } }} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1099,7 +981,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={missVerification}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1169,12 +1051,7 @@ describe("CitationComponent mobile/touch detection", () => {
     it("auto-detects touch device when isMobile prop is not provided", () => {
       mockTouchDevice(true);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
       expect(citation).toBeInTheDocument();
@@ -1194,12 +1071,7 @@ describe("CitationComponent mobile/touch detection", () => {
     it("does not auto-enable mobile mode on non-touch devices", async () => {
       mockTouchDevice(false);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
@@ -1208,9 +1080,7 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // Should NOT open image overlay directly (lazy mode)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Should show popover instead
       await waitFor(() => {
@@ -1225,11 +1095,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(false);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={true}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1247,11 +1113,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={false}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={false} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1260,9 +1122,7 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // Should NOT open image overlay directly (lazy mode)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Should show popover instead
       await waitFor(() => {
@@ -1276,12 +1136,7 @@ describe("CitationComponent mobile/touch detection", () => {
     it("first tap shows popover, second tap toggles search details", () => {
       mockTouchDevice(true);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
@@ -1290,52 +1145,37 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // No image overlay yet
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second tap - now popover is already open, should toggle search details (not image)
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
 
       // No image overlay - second tap toggles details, not image
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("multiple taps toggle search details without opening image overlay", () => {
       mockTouchDevice(true);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
       // First tap - show popover
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second tap - toggle search details
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Third tap - toggle search details again
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("mobile tap without verification image still shows popover on first tap", () => {
@@ -1346,12 +1186,7 @@ describe("CitationComponent mobile/touch detection", () => {
         verifiedMatchSnippet: "Test match snippet",
       };
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationNoImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationNoImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
@@ -1360,16 +1195,12 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // No image overlay (no image available)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second tap - still no image overlay (no image available)
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("cross-citation tapping is not incorrectly debounced (each citation has its own timer)", () => {
@@ -1389,15 +1220,9 @@ describe("CitationComponent mobile/touch detection", () => {
 
       const { container } = render(
         <>
-          <CitationComponent
-            citation={citation1}
-            verification={verificationWithImage}
-          />
-          <CitationComponent
-            citation={citation2}
-            verification={verificationWithImage}
-          />
-        </>
+          <CitationComponent citation={citation1} verification={verificationWithImage} />
+          <CitationComponent citation={citation2} verification={verificationWithImage} />
+        </>,
       );
 
       const citations = container.querySelectorAll("[data-citation-id]");
@@ -1415,18 +1240,14 @@ describe("CitationComponent mobile/touch detection", () => {
 
       // Both citations should have responded to their first tap
       // (no image overlay since it's first tap for each)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Now second tap on citation B should toggle details (proves citation B wasn't incorrectly debounced)
       fireEvent.touchStart(citationB!);
       fireEvent.click(citationB!);
 
       // No image overlay - second tap toggles details, not image
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("second tap toggles phrase expansion for miss citations (no image)", () => {
@@ -1453,12 +1274,7 @@ describe("CitationComponent mobile/touch detection", () => {
         ],
       };
 
-      const { container } = render(
-        <CitationComponent
-          citation={missCitation}
-          verification={missVerification}
-        />
-      );
+      const { container } = render(<CitationComponent citation={missCitation} verification={missVerification} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
@@ -1467,18 +1283,14 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // No image overlay (it's a miss, no image)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second tap - should toggle phrase expansion (not image overlay)
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
 
       // Still no image overlay (miss citation behavior toggles phrases, not image)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("custom behaviorConfig.onClick receives TouchEvent on mobile", () => {
@@ -1493,7 +1305,7 @@ describe("CitationComponent mobile/touch detection", () => {
           behaviorConfig={{
             onClick: onClickMock,
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1515,11 +1327,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1529,18 +1337,14 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // No image overlay yet (first tap shows popover)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second tap - should toggle details (not open image in lazy mode)
       fireEvent.touchStart(citation!);
       fireEvent.click(citation!);
 
       // No image overlay - second tap toggles details, not image
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
   });
 
@@ -1549,11 +1353,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={true}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1576,11 +1376,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={true}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1610,11 +1406,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={true}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1635,20 +1427,14 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.click(citation!);
 
       // Image overlay should NOT be visible (second tap toggles details, not image)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("desktop mode (isMobile=false) does not dismiss on outside click", async () => {
       mockTouchDevice(false);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={false}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={false} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1666,7 +1452,7 @@ describe("CitationComponent mobile/touch detection", () => {
       fireEvent.touchStart(document.body);
 
       // Give time for any state changes
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       // Popover should still be visible (desktop uses mouse leave, not touch)
       const popoverContent = container.querySelector('[data-state="open"]');
@@ -1677,11 +1463,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container, unmount } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          isMobile={true}
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1714,88 +1496,57 @@ describe("CitationComponent mobile/touch detection", () => {
     it("Enter key shows popover first, second press toggles details", () => {
       mockTouchDevice(false);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
       // First Enter - should show popover (not image)
       fireEvent.keyDown(citation!, { key: "Enter" });
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second Enter - toggles details (not image)
       fireEvent.keyDown(citation!, { key: "Enter" });
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("Space key shows popover first, second press toggles details", () => {
       mockTouchDevice(false);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
       // First Space - should show popover (not image)
       fireEvent.keyDown(citation!, { key: " " });
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second Space - toggles details (not image)
       fireEvent.keyDown(citation!, { key: " " });
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("Enter key with deprecated interactionMode still uses lazy behavior", () => {
       mockTouchDevice(false);
 
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
 
       // First Enter - should show popover (not image)
       fireEvent.keyDown(citation!, { key: "Enter" });
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second Enter - toggles details (not image in lazy mode)
       fireEvent.keyDown(citation!, { key: "Enter" });
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("citation has correct ARIA attributes", () => {
       mockTouchDevice(false);
 
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
@@ -1810,12 +1561,7 @@ describe("CitationComponent mobile/touch detection", () => {
     it("defaults to non-touch on server (window undefined)", () => {
       // In happy-dom/jsdom, window is defined, but we can test the fallback
       // by checking that the component renders without errors when detection runs
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       expect(container.querySelector("[data-citation-id]")).toBeInTheDocument();
     });
@@ -1854,8 +1600,7 @@ describe("CitationComponent interactionMode", () => {
   const HOVER_CLOSE_DELAY_MS = 150;
 
   // Helper to wait for hover close delay
-  const _waitForHoverCloseDelay = () =>
-    new Promise((resolve) => setTimeout(resolve, HOVER_CLOSE_DELAY_MS + 50));
+  const _waitForHoverCloseDelay = () => new Promise(resolve => setTimeout(resolve, HOVER_CLOSE_DELAY_MS + 50));
 
   describe("deprecated eager mode (now uses lazy behavior)", () => {
     it("does NOT show popover on hover (deprecated eager mode uses lazy behavior)", async () => {
@@ -1867,7 +1612,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="eager"
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1878,7 +1623,7 @@ describe("CitationComponent interactionMode", () => {
 
       // Give time for popover to appear if it would
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
 
       // Popover should NOT appear on hover (lazy behavior)
@@ -1888,20 +1633,14 @@ describe("CitationComponent interactionMode", () => {
 
     it("shows popover on first click (deprecated eager mode uses lazy behavior)", async () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="eager"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="eager" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       // First click should show popover, NOT image overlay (lazy behavior)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Popover should be shown
       await waitFor(() => {
@@ -1912,11 +1651,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("has cursor-pointer class (not cursor-zoom-in) even with image available", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="eager"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="eager" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1925,11 +1660,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("has cursor-pointer class when no image is available", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-          interactionMode="eager"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} interactionMode="eager" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1937,20 +1668,13 @@ describe("CitationComponent interactionMode", () => {
     });
 
     it("default behavior (no interactionMode) uses lazy mode", async () => {
-      const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-        />
-      );
+      const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const citation = container.querySelector("[data-citation-id]");
 
       // Click should show popover, not image directly (lazy mode is default)
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Popover should be shown
       await waitFor(() => {
@@ -1970,7 +1694,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1981,7 +1705,7 @@ describe("CitationComponent interactionMode", () => {
 
       // Give time for popover to appear if it would
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
 
       // Popover should NOT appear on hover in lazy mode
@@ -1991,20 +1715,14 @@ describe("CitationComponent interactionMode", () => {
 
     it("shows popover on first click (not image overlay)", async () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
       fireEvent.click(citation!);
 
       // First click should NOT open image overlay
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Popover should be shown instead (hover state activated via click)
       await waitFor(() => {
@@ -2015,36 +1733,24 @@ describe("CitationComponent interactionMode", () => {
 
     it("toggles search details on second click (not image overlay)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
 
       // First click - shows popover
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second click - toggles search details (not image overlay in lazy mode)
       fireEvent.click(citation!);
       // In lazy mode, second click toggles search details, not image overlay
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("has cursor-pointer class initially (before popover is shown)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2053,11 +1759,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("stays cursor-pointer after first click (lazy mode doesn't zoom)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2074,11 +1776,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("stays cursor-pointer throughout interactions in lazy mode", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2104,7 +1802,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           eventHandlers={{ onClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2120,11 +1818,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("works correctly without image (no zoom needed)", () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithoutImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2133,15 +1827,11 @@ describe("CitationComponent interactionMode", () => {
       fireEvent.click(citation!);
 
       // Image overlay should NOT open (no image available)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Second click - still no image to zoom
       fireEvent.click(citation!);
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
 
       // Cursor should remain pointer (no image to zoom)
       expect(citation).toHaveClass("cursor-pointer");
@@ -2149,11 +1839,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("applies hover styles but not popover on hover", async () => {
       const { container } = render(
-        <CitationComponent
-          citation={baseCitation}
-          verification={verificationWithImage}
-          interactionMode="lazy"
-        />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2166,7 +1852,7 @@ describe("CitationComponent interactionMode", () => {
 
       // Give time for popover to appear if it would
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
       });
 
       // But popover should NOT appear in lazy mode on hover
@@ -2185,7 +1871,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2195,16 +1881,14 @@ describe("CitationComponent interactionMode", () => {
       expect(customOnClick).toHaveBeenCalledTimes(1);
 
       // Neither popover nor image overlay should open (custom handler takes over)
-      expect(
-        container.querySelector("[role='dialog']")
-      ).not.toBeInTheDocument();
+      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("custom onClick returning actions works in lazy mode", () => {
       const customOnClick = jest.fn(
         (): CitationBehaviorActions => ({
           setImageExpanded: true,
-        })
+        }),
       );
 
       const { container } = render(
@@ -2213,7 +1897,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2232,7 +1916,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
