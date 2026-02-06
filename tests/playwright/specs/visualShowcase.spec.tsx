@@ -22,11 +22,18 @@ test.describe("Visual Showcase - Desktop", () => {
   test("all variant rows render correctly", async ({ mount, page }) => {
     await mount(<VisualShowcase />);
 
-    for (const variant of ["brackets", "chip", "text", "superscript", "minimal", "linter"]) {
+    for (const variant of [
+      "brackets",
+      "chip",
+      "text",
+      "superscript",
+      "minimal",
+      "linter",
+    ]) {
       const row = page.locator(`[data-variant-row="${variant}"]`);
       await expect(row).toBeVisible();
       // Each row should have 4 citations (verified, partial, not found, pending)
-      const citations = row.locator('[data-citation-id]');
+      const citations = row.locator("[data-citation-id]");
       await expect(citations).toHaveCount(4);
     }
   });
@@ -40,7 +47,10 @@ test.describe("Visual Showcase - Desktop", () => {
     }
   });
 
-  test("showIndicator prop section renders correctly", async ({ mount, page }) => {
+  test("showIndicator prop section renders correctly", async ({
+    mount,
+    page,
+  }) => {
     await mount(<VisualShowcase />);
 
     const section = page.locator('[data-testid="show-indicator-section"]');
@@ -48,12 +58,17 @@ test.describe("Visual Showcase - Desktop", () => {
 
     // Check both on and off states
     for (const indicator of ["default", "false", "chip-on", "chip-off"]) {
-      const indicatorSection = page.locator(`[data-show-indicator="${indicator}"]`);
+      const indicatorSection = page.locator(
+        `[data-show-indicator="${indicator}"]`
+      );
       await expect(indicatorSection).toBeVisible();
     }
   });
 
-  test("audit log section shows failed search attempts", async ({ mount, page }) => {
+  test("audit log section shows failed search attempts", async ({
+    mount,
+    page,
+  }) => {
     await mount(<VisualShowcase />);
 
     const notFoundAudit = page.locator('[data-audit="not-found"]');
@@ -93,11 +108,11 @@ test.describe("Visual Showcase - Desktop", () => {
     await expect(showcase).toBeVisible();
 
     // Wait for all citations to render
-    await expect(page.locator('[data-citation-id]').first()).toBeVisible();
+    await expect(page.locator("[data-citation-id]").first()).toBeVisible();
 
     // Take screenshot of the showcase element
-    await expect(showcase).toHaveScreenshot('desktop-showcase.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("desktop-showcase.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1, // Allow small differences across platforms
     });
   });
@@ -120,7 +135,7 @@ test.describe("Visual Showcase - Mobile", () => {
   test("mobile variants render without overflow", async ({ mount, page }) => {
     await mount(<MobileShowcase />);
 
-    for (const variant of ["brackets", "chip", "superscript", "minimal", "linter"]) {
+    for (const variant of ["brackets", "chip", "superscript", "linter"]) {
       const variantEl = page.locator(`[data-mobile-variant="${variant}"]`);
       await expect(variantEl).toBeVisible();
 
@@ -152,10 +167,10 @@ test.describe("Visual Showcase - Mobile", () => {
     await expect(showcase).toBeVisible();
 
     // Wait for citations to render
-    await expect(page.locator('[data-citation-id]').first()).toBeVisible();
+    await expect(page.locator("[data-citation-id]").first()).toBeVisible();
 
-    await expect(showcase).toHaveScreenshot('mobile-showcase.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("mobile-showcase.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
@@ -176,10 +191,10 @@ test.describe("Visual Showcase - Tablet", () => {
     await expect(showcase).toBeVisible();
 
     // Wait for citations to render
-    await expect(page.locator('[data-citation-id]').first()).toBeVisible();
+    await expect(page.locator("[data-citation-id]").first()).toBeVisible();
 
-    await expect(showcase).toHaveScreenshot('tablet-showcase.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("tablet-showcase.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
@@ -200,7 +215,9 @@ test.describe("Popover Showcase - Desktop", () => {
   test("pending section shows loading states", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
-    const pendingSection = page.locator('[data-testid="popover-pending-section"]');
+    const pendingSection = page.locator(
+      '[data-testid="popover-pending-section"]'
+    );
     await expect(pendingSection).toBeVisible();
 
     // Check both pending state variations
@@ -208,14 +225,21 @@ test.describe("Popover Showcase - Desktop", () => {
     await expect(pendingState).toBeVisible();
     await expect(pendingState).toContainText("Searching...");
 
-    const longPendingState = page.locator('[data-popover-state="loading-long"]');
+    const longPendingState = page.locator(
+      '[data-popover-state="loading-long"]'
+    );
     await expect(longPendingState).toBeVisible();
   });
 
-  test("status headers section shows all verification statuses", async ({ mount, page }) => {
+  test("status headers section shows all verification statuses", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const headersSection = page.locator('[data-testid="popover-status-headers-section"]');
+    const headersSection = page.locator(
+      '[data-testid="popover-status-headers-section"]'
+    );
     await expect(headersSection).toBeVisible();
 
     // Check that all verification statuses are displayed
@@ -225,10 +249,15 @@ test.describe("Popover Showcase - Desktop", () => {
     }
   });
 
-  test("quote box section shows different quote lengths", async ({ mount, page }) => {
+  test("quote box section shows different quote lengths", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const quoteSection = page.locator('[data-testid="popover-quotebox-section"]');
+    const quoteSection = page.locator(
+      '[data-testid="popover-quotebox-section"]'
+    );
     await expect(quoteSection).toBeVisible();
 
     // Check all quote box variations
@@ -238,14 +267,24 @@ test.describe("Popover Showcase - Desktop", () => {
     }
   });
 
-  test("verification log section shows all log states", async ({ mount, page }) => {
+  test("verification log section shows all log states", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const logSection = page.locator('[data-testid="popover-verification-log-section"]');
+    const logSection = page.locator(
+      '[data-testid="popover-verification-log-section"]'
+    );
     await expect(logSection).toBeVisible();
 
     // Check all verification log variations
-    for (const type of ["not-found", "partial-page", "partial-line", "low-trust"]) {
+    for (const type of [
+      "not-found",
+      "partial-page",
+      "partial-line",
+      "low-trust",
+    ]) {
       const verificationLog = page.locator(`[data-verification-log="${type}"]`);
       await expect(verificationLog).toBeVisible();
     }
@@ -254,39 +293,58 @@ test.describe("Popover Showcase - Desktop", () => {
   test("expanded verification log shows timeline", async ({ mount, page }) => {
     await mount(<PopoverShowcase />);
 
-    const expandedSection = page.locator('[data-testid="popover-verification-log-expanded-section"]');
+    const expandedSection = page.locator(
+      '[data-testid="popover-verification-log-expanded-section"]'
+    );
     await expect(expandedSection).toBeVisible();
 
     const expandedLog = page.locator('[data-verification-log="expanded"]');
     await expect(expandedLog).toBeVisible();
 
     // The expanded log should show the timeline
-    const timeline = expandedLog.locator('#verification-log-timeline');
+    const timeline = expandedLog.locator("#verification-log-timeline");
     await expect(timeline).toBeVisible();
   });
 
-  test("complete popover layouts show full compositions", async ({ mount, page }) => {
+  test("complete popover layouts show full compositions", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const layoutsSection = page.locator('[data-testid="popover-complete-layouts-section"]');
+    const layoutsSection = page.locator(
+      '[data-testid="popover-complete-layouts-section"]'
+    );
     await expect(layoutsSection).toBeVisible();
 
     // Check all complete popover variations
-    for (const type of ["verified-with-image", "partial-with-image", "not-found-no-image", "text-only"]) {
+    for (const type of [
+      "verified-with-image",
+      "partial-with-image",
+      "not-found-no-image",
+      "text-only",
+    ]) {
       const completePopover = page.locator(`[data-complete-popover="${type}"]`);
       await expect(completePopover).toBeVisible();
     }
   });
 
-  test("interactive popover section has hoverable citations", async ({ mount, page }) => {
+  test("interactive popover section has hoverable citations", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const interactiveSection = page.locator('[data-testid="popover-interactive-section"]');
+    const interactiveSection = page.locator(
+      '[data-testid="popover-interactive-section"]'
+    );
     await expect(interactiveSection).toBeVisible();
 
     // Check all interactive examples exist
     for (const type of ["verified", "partial", "not-found", "pending"]) {
-      const interactivePopover = page.locator(`[data-interactive-popover="${type}"]`);
+      const interactivePopover = page.locator(
+        `[data-interactive-popover="${type}"]`
+      );
       await expect(interactivePopover).toBeVisible();
     }
   });
@@ -302,19 +360,24 @@ test.describe("Popover Showcase - Desktop", () => {
     await page.waitForTimeout(500);
 
     // Take screenshot of the popover showcase
-    await expect(showcase).toHaveScreenshot('popover-showcase.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("popover-showcase.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
 });
 
 test.describe("Popover Showcase - Interactive Click", () => {
-  test("clicking citation shows popover with verification details", async ({ mount, page }) => {
+  test("clicking citation shows popover with verification details", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     // Find the verified interactive citation
-    const verifiedCitation = page.locator('[data-interactive-popover="verified"] [data-citation-id]');
+    const verifiedCitation = page.locator(
+      '[data-interactive-popover="verified"] [data-citation-id]'
+    );
     await expect(verifiedCitation).toBeVisible();
 
     // Click the citation to open popover (lazy mode - hover no longer shows popover)
@@ -324,15 +387,20 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared (Radix renders via portal)
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await expect(popover).toBeVisible();
   });
 
-  test("clicking not-found citation shows verification log", async ({ mount, page }) => {
+  test("clicking not-found citation shows verification log", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     // Find the not-found interactive citation
-    const notFoundCitation = page.locator('[data-interactive-popover="not-found"] [data-citation-id]');
+    const notFoundCitation = page.locator(
+      '[data-interactive-popover="not-found"] [data-citation-id]'
+    );
     await expect(notFoundCitation).toBeVisible();
 
     // Click the citation to open popover (lazy mode - hover no longer shows popover)
@@ -342,18 +410,23 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await expect(popover).toBeVisible();
 
     // The popover should contain the "couldn't find" message (status text was removed, icon is self-explanatory)
     await expect(popover).toContainText("couldn't find");
   });
 
-  test("clicking pending citation shows loading state", async ({ mount, page }) => {
+  test("clicking pending citation shows loading state", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     // Find the pending interactive citation
-    const pendingCitation = page.locator('[data-interactive-popover="pending"] [data-citation-id]');
+    const pendingCitation = page.locator(
+      '[data-interactive-popover="pending"] [data-citation-id]'
+    );
     await expect(pendingCitation).toBeVisible();
 
     // Click the citation to open popover (lazy mode - hover no longer shows popover)
@@ -363,7 +436,7 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await expect(popover).toBeVisible();
 
     // The popover should contain "Searching..." text
@@ -376,7 +449,7 @@ test.describe("Popover Showcase - Interactive Click", () => {
 // =============================================================================
 
 test.describe("Visual Showcase - Desktop Dark Mode", () => {
-  test.use({ colorScheme: 'dark' });
+  test.use({ colorScheme: "dark" });
 
   test("renders complete showcase in dark mode", async ({ mount, page }) => {
     await mount(<VisualShowcase />);
@@ -388,19 +461,32 @@ test.describe("Visual Showcase - Desktop Dark Mode", () => {
     await expect(showcase).toHaveClass(/dark:bg-gray-900/);
   });
 
-  test("all variant rows render correctly in dark mode", async ({ mount, page }) => {
+  test("all variant rows render correctly in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<VisualShowcase />);
 
-    for (const variant of ["brackets", "chip", "text", "superscript", "minimal", "linter"]) {
+    for (const variant of [
+      "brackets",
+      "chip",
+      "text",
+      "superscript",
+      "minimal",
+      "linter",
+    ]) {
       const row = page.locator(`[data-variant-row="${variant}"]`);
       await expect(row).toBeVisible();
       // Each row should have 4 citations (verified, partial, not found, pending)
-      const citations = row.locator('[data-citation-id]');
+      const citations = row.locator("[data-citation-id]");
       await expect(citations).toHaveCount(4);
     }
   });
 
-  test("visual snapshot - desktop showcase dark mode", async ({ mount, page }) => {
+  test("visual snapshot - desktop showcase dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<VisualShowcase />);
 
     // Wait for the showcase to be visible and stable
@@ -408,11 +494,11 @@ test.describe("Visual Showcase - Desktop Dark Mode", () => {
     await expect(showcase).toBeVisible();
 
     // Wait for all citations to render
-    await expect(page.locator('[data-citation-id]').first()).toBeVisible();
+    await expect(page.locator("[data-citation-id]").first()).toBeVisible();
 
     // Take screenshot of the showcase element in dark mode
-    await expect(showcase).toHaveScreenshot('desktop-showcase-dark.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("desktop-showcase-dark.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
@@ -421,7 +507,7 @@ test.describe("Visual Showcase - Desktop Dark Mode", () => {
 test.describe("Visual Showcase - Mobile Dark Mode", () => {
   test.use({
     viewport: { width: 375, height: 667 },
-    colorScheme: 'dark',
+    colorScheme: "dark",
   });
 
   test("renders mobile showcase in dark mode", async ({ mount, page }) => {
@@ -431,10 +517,19 @@ test.describe("Visual Showcase - Mobile Dark Mode", () => {
     await expect(showcase).toBeVisible();
   });
 
-  test("mobile variants render without overflow in dark mode", async ({ mount, page }) => {
+  test("mobile variants render without overflow in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<MobileShowcase />);
 
-    for (const variant of ["brackets", "chip", "superscript", "minimal", "linter"]) {
+    for (const variant of [
+      "brackets",
+      "chip",
+      "superscript",
+      "minimal",
+      "linter",
+    ]) {
       const variantEl = page.locator(`[data-mobile-variant="${variant}"]`);
       await expect(variantEl).toBeVisible();
 
@@ -445,7 +540,10 @@ test.describe("Visual Showcase - Mobile Dark Mode", () => {
     }
   });
 
-  test("visual snapshot - mobile showcase dark mode", async ({ mount, page }) => {
+  test("visual snapshot - mobile showcase dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<MobileShowcase />);
 
     // Wait for the mobile showcase to be visible and stable
@@ -453,10 +551,10 @@ test.describe("Visual Showcase - Mobile Dark Mode", () => {
     await expect(showcase).toBeVisible();
 
     // Wait for citations to render
-    await expect(page.locator('[data-citation-id]').first()).toBeVisible();
+    await expect(page.locator("[data-citation-id]").first()).toBeVisible();
 
-    await expect(showcase).toHaveScreenshot('mobile-showcase-dark.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("mobile-showcase-dark.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
@@ -465,10 +563,13 @@ test.describe("Visual Showcase - Mobile Dark Mode", () => {
 test.describe("Visual Showcase - Tablet Dark Mode", () => {
   test.use({
     viewport: { width: 768, height: 1024 },
-    colorScheme: 'dark',
+    colorScheme: "dark",
   });
 
-  test("visual snapshot - tablet showcase dark mode", async ({ mount, page }) => {
+  test("visual snapshot - tablet showcase dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<VisualShowcase />);
 
     // Wait for the showcase to be visible and stable
@@ -476,29 +577,37 @@ test.describe("Visual Showcase - Tablet Dark Mode", () => {
     await expect(showcase).toBeVisible();
 
     // Wait for citations to render
-    await expect(page.locator('[data-citation-id]').first()).toBeVisible();
+    await expect(page.locator("[data-citation-id]").first()).toBeVisible();
 
-    await expect(showcase).toHaveScreenshot('tablet-showcase-dark.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("tablet-showcase-dark.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
 });
 
 test.describe("Popover Showcase - Desktop Dark Mode", () => {
-  test.use({ colorScheme: 'dark' });
+  test.use({ colorScheme: "dark" });
 
-  test("renders complete popover showcase in dark mode", async ({ mount, page }) => {
+  test("renders complete popover showcase in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     const showcase = page.locator('[data-testid="popover-showcase"]');
     await expect(showcase).toBeVisible();
   });
 
-  test("status headers render correctly in dark mode", async ({ mount, page }) => {
+  test("status headers render correctly in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const headersSection = page.locator('[data-testid="popover-status-headers-section"]');
+    const headersSection = page.locator(
+      '[data-testid="popover-status-headers-section"]'
+    );
     await expect(headersSection).toBeVisible();
 
     // Check that all verification statuses are displayed
@@ -508,33 +617,56 @@ test.describe("Popover Showcase - Desktop Dark Mode", () => {
     }
   });
 
-  test("verification logs render correctly in dark mode", async ({ mount, page }) => {
+  test("verification logs render correctly in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const logSection = page.locator('[data-testid="popover-verification-log-section"]');
+    const logSection = page.locator(
+      '[data-testid="popover-verification-log-section"]'
+    );
     await expect(logSection).toBeVisible();
 
     // Check all verification log variations
-    for (const type of ["not-found", "partial-page", "partial-line", "low-trust"]) {
+    for (const type of [
+      "not-found",
+      "partial-page",
+      "partial-line",
+      "low-trust",
+    ]) {
       const verificationLog = page.locator(`[data-verification-log="${type}"]`);
       await expect(verificationLog).toBeVisible();
     }
   });
 
-  test("complete popover layouts render correctly in dark mode", async ({ mount, page }) => {
+  test("complete popover layouts render correctly in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
-    const layoutsSection = page.locator('[data-testid="popover-complete-layouts-section"]');
+    const layoutsSection = page.locator(
+      '[data-testid="popover-complete-layouts-section"]'
+    );
     await expect(layoutsSection).toBeVisible();
 
     // Check all complete popover variations
-    for (const type of ["verified-with-image", "partial-with-image", "not-found-no-image", "text-only"]) {
+    for (const type of [
+      "verified-with-image",
+      "partial-with-image",
+      "not-found-no-image",
+      "text-only",
+    ]) {
       const completePopover = page.locator(`[data-complete-popover="${type}"]`);
       await expect(completePopover).toBeVisible();
     }
   });
 
-  test("visual snapshot - popover showcase dark mode", async ({ mount, page }) => {
+  test("visual snapshot - popover showcase dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     // Wait for the showcase to be visible and stable
@@ -545,21 +677,26 @@ test.describe("Popover Showcase - Desktop Dark Mode", () => {
     await page.waitForTimeout(500);
 
     // Take screenshot of the popover showcase in dark mode
-    await expect(showcase).toHaveScreenshot('popover-showcase-dark.png', {
-      animations: 'disabled',
+    await expect(showcase).toHaveScreenshot("popover-showcase-dark.png", {
+      animations: "disabled",
       maxDiffPixelRatio: 0.1,
     });
   });
 });
 
 test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
-  test.use({ colorScheme: 'dark' });
+  test.use({ colorScheme: "dark" });
 
-  test("clicking citation shows popover in dark mode", async ({ mount, page }) => {
+  test("clicking citation shows popover in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     // Find the verified interactive citation
-    const verifiedCitation = page.locator('[data-interactive-popover="verified"] [data-citation-id]');
+    const verifiedCitation = page.locator(
+      '[data-interactive-popover="verified"] [data-citation-id]'
+    );
     await expect(verifiedCitation).toBeVisible();
 
     // Click the citation to open popover (lazy mode - hover no longer shows popover)
@@ -569,15 +706,20 @@ test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared (Radix renders via portal)
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await expect(popover).toBeVisible();
   });
 
-  test("clicking not-found citation shows verification log in dark mode", async ({ mount, page }) => {
+  test("clicking not-found citation shows verification log in dark mode", async ({
+    mount,
+    page,
+  }) => {
     await mount(<PopoverShowcase />);
 
     // Find the not-found interactive citation
-    const notFoundCitation = page.locator('[data-interactive-popover="not-found"] [data-citation-id]');
+    const notFoundCitation = page.locator(
+      '[data-interactive-popover="not-found"] [data-citation-id]'
+    );
     await expect(notFoundCitation).toBeVisible();
 
     // Click the citation to open popover (lazy mode - hover no longer shows popover)
@@ -587,7 +729,7 @@ test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await expect(popover).toBeVisible();
 
     // The popover should contain the "couldn't find" message (status text was removed, icon is self-explanatory)
