@@ -24,7 +24,9 @@
     "sideEffects": false,
     "files": [
         "lib",
-        "src/tailwind.css"
+        "src/tailwind.css",
+        "!lib/**/*.map"
+
     ],
     "scripts": {
         "build": "tsup && npm run build:css",

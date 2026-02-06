@@ -680,7 +680,7 @@ const indicator = getVerificationTextIndicator(verification);
 
 ```tsx
 import { CitationComponent } from "@deepcitation/deepcitation-js/react";
-import "@deepcitation/deepcitation-js/react/styles.css";
+import "@deepcitation/deepcitation-js/styles.css";
 
 // Basic usage
 <CitationComponent
