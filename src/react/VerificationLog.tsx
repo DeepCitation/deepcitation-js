@@ -15,6 +15,7 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
+import { sanitizeUrl } from "./urlUtils.js";
 import { cn, isUrlCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
 
@@ -306,9 +307,9 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
               className="!bg-transparent !px-0 !py-0 hover:!bg-transparent"
             />
           </div>
-          {url && (
+          {url && sanitizeUrl(url) && (
             <a
-              href={url}
+              href={sanitizeUrl(url)!}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"

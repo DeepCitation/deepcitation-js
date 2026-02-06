@@ -151,6 +151,8 @@ export {
 // URL Display utilities
 export {
   extractDomain,
+  safeWindowOpen,
+  sanitizeUrl,
   STATUS_ICONS as URL_STATUS_ICONS,
   urlDisplayUtils,
 } from "./urlUtils.js";
