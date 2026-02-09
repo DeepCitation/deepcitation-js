@@ -1962,7 +1962,7 @@ export function CitationDrawerShowcase() {
             <ShowcaseLabel
               component="CitationDrawerTrigger"
               state="all-verified"
-              uxIntent="All citations verified — green dots signal confidence"
+              uxIntent="All citations verified — green checkmark icons signal confidence"
             />
             <div className="mt-3">
               <CitationDrawerTrigger citationGroups={allVerifiedGroups} />
@@ -1973,7 +1973,7 @@ export function CitationDrawerShowcase() {
             <ShowcaseLabel
               component="CitationDrawerTrigger"
               state="mixed"
-              uxIntent="Mixed statuses — dots show at-a-glance verification breakdown"
+              uxIntent="Mixed statuses — stacked icons show at-a-glance verification breakdown"
             />
             <div className="mt-3">
               <CitationDrawerTrigger citationGroups={mixedGroups} />
@@ -1984,7 +1984,7 @@ export function CitationDrawerShowcase() {
             <ShowcaseLabel
               component="CitationDrawerTrigger"
               state="all-pending"
-              uxIntent="All citations pending — gray dots indicate in-progress verification"
+              uxIntent="All citations pending — gray spinner icons indicate in-progress verification"
             />
             <div className="mt-3">
               <CitationDrawerTrigger citationGroups={allPendingGroups} />
@@ -2020,7 +2020,7 @@ export function CitationDrawerShowcase() {
           ======== */}
       <ShowcaseSection
         title="2. Hover Progressive Disclosure"
-        description="On hover, the trigger expands to show individual source rows with their statuses"
+        description="On hover, stacked verification icons spread horizontally. Hovering individual icons shows source tooltips with proof thumbnails."
         data-testid="drawer-trigger-hover-section"
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -2028,13 +2028,13 @@ export function CitationDrawerShowcase() {
             <ShowcaseLabel
               component="CitationDrawerTrigger"
               state="collapsed"
-              uxIntent="Default collapsed state — compact summary bar"
+              uxIntent="Default collapsed state — stacked verification icons in single line"
             />
             <div className="mt-3">
               <CitationDrawerTrigger citationGroups={mixedGroups} />
             </div>
             <InteractionLabel
-              hover="Expands to show individual source rows"
+              hover="Icons spread horizontally, hover individual icon for source tooltip"
               click="Opens full citation drawer"
               escapeKey="N/A (not a modal)"
             />
@@ -2043,52 +2043,14 @@ export function CitationDrawerShowcase() {
           <ShowcaseCard data-drawer-hover-state="expanded-preview">
             <ShowcaseLabel
               component="CitationDrawerTrigger"
-              state="expanded (hover preview)"
-              uxIntent="Hover state — progressively disclosed source details"
+              state="hover behavior"
+              uxIntent="Hover spreads icons horizontally — each icon shows source tooltip with filename and proof"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-3 italic">
-              Preview of the expanded hover content (normally triggered on mouse hover):
+              Hover the trigger below to see icons spread. Then hover individual icons for source details:
             </p>
-            {/* Static render of what hover content looks like */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              {/* Collapsed bar */}
-              <div className="flex items-center gap-3 px-3 py-2">
-                <div className="flex items-center -space-x-1" aria-hidden="true">
-                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-green-500" />
-                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-amber-500" />
-                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-red-500" />
-                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-gray-400" />
-                </div>
-                <span className="flex-1 text-sm text-gray-600 dark:text-gray-300 truncate">
-                  5 sources · 2 verified, 1 partial, 1 not found, 1 pending
-                </span>
-                <svg
-                  className="w-4 h-4 text-gray-400 dark:text-gray-500 rotate-180"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              {/* Expanded source rows */}
-              <div className="px-3 pb-2 pt-1 border-t border-gray-200 dark:border-gray-700 space-y-0.5">
-                {mixedGroups.map(group => (
-                  <div
-                    key={group.sourceDomain ?? group.sourceName}
-                    className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 py-0.5"
-                  >
-                    <span className="w-3.5 h-3.5 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[8px] font-medium flex-shrink-0">
-                      {group.sourceName.charAt(0).toUpperCase()}
-                    </span>
-                    <span className="truncate">{group.sourceName}</span>
-                    {group.citations.length > 1 && (
-                      <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">×{group.citations.length}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={mixedGroups} />
             </div>
           </ShowcaseCard>
         </div>
@@ -2156,7 +2118,7 @@ export function CitationDrawerShowcase() {
             />
           </div>
           <InteractionLabel
-            hover="Shows individual source rows"
+            hover="Spreads verification icons, hover individual icon for source tooltip"
             click="Opens full citation drawer"
             escapeKey="Closes drawer"
           />

@@ -1,7 +1,8 @@
 import type React from "react";
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Verification } from "../types/verification.js";
 import type { SourceCitationGroup } from "./CitationDrawer.types.js";
-import { getStatusInfo } from "./CitationDrawer.utils.js";
+import { getStatusInfo, getStatusPriority } from "./CitationDrawer.utils.js";
 import { cn } from "./utils.js";
 
 // =========
@@ -27,14 +28,18 @@ export interface CitationDrawerTriggerProps {
   citationGroups: SourceCitationGroup[];
   /** Click handler — typically opens the full CitationDrawer */
   onClick?: () => void;
+  /** Click handler for a specific source icon (opens drawer focused on that source) */
+  onSourceClick?: (group: SourceCitationGroup) => void;
   /** Whether the drawer is currently open (controls aria-expanded) */
   isOpen?: boolean;
   /** Additional class name */
   className?: string;
   /** Label text override (default: auto-generated from status counts) */
   label?: string;
-  /** Maximum favicon icons to display in collapsed state */
+  /** Maximum status icons to display (default: 5) */
   maxIcons?: number;
+  /** Whether to show proof image thumbnails in hover tooltips (default: true) */
+  showProofThumbnails?: boolean;
 }
 
 // =========
@@ -44,6 +49,9 @@ export interface CitationDrawerTriggerProps {
 const handleFaviconError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
   (e.target as HTMLImageElement).style.opacity = "0";
 };
+
+/** Delay in ms before hiding tooltip on mouse leave (prevents flicker) */
+const TOOLTIP_HIDE_DELAY_MS = 80;
 
 // =========
 // Internal utilities
@@ -84,69 +92,218 @@ function generateDefaultLabel(summary: CitationStatusSummary): string {
   return `${summary.total} sources · ${parts.join(", ")}`;
 }
 
+/**
+ * Get the "worst" verification in a group for aggregate display.
+ * Priority: not_found > partial > pending > verified
+ */
+function getGroupAggregateVerification(group: SourceCitationGroup): Verification | null {
+  let worst: { v: Verification | null; p: number } = { v: null, p: 0 };
+  for (const item of group.citations) {
+    const p = getStatusPriority(item.verification);
+    if (p > worst.p) worst = { v: item.verification, p };
+  }
+  return worst.v;
+}
+
+/**
+ * Get background color class for a status icon chip.
+ */
+function getStatusBgColor(label: string): string {
+  switch (label) {
+    case "Verified":
+      return "bg-green-100 dark:bg-green-900/30";
+    case "Partial match":
+      return "bg-amber-100 dark:bg-amber-900/30";
+    case "Not found":
+      return "bg-red-100 dark:bg-red-900/30";
+    default:
+      return "bg-gray-100 dark:bg-gray-800";
+  }
+}
+
 // =========
-// StatusDots — compact stacked status indicators
+// StatusIconChip — individual status icon in the stacked row
 // =========
 
-function StatusDots({ summary }: { summary: CitationStatusSummary }) {
-  const dots: Array<{ color: string; count: number; label: string }> = [];
-  if (summary.verified > 0) dots.push({ color: "bg-green-500", count: summary.verified, label: "verified" });
-  if (summary.partial > 0) dots.push({ color: "bg-amber-500", count: summary.partial, label: "partial" });
-  if (summary.notFound > 0) dots.push({ color: "bg-red-500", count: summary.notFound, label: "not found" });
-  if (summary.pending > 0) dots.push({ color: "bg-gray-400", count: summary.pending, label: "pending" });
+function StatusIconChip({ group, size = 20 }: { group: SourceCitationGroup; size?: number }) {
+  const aggregateVerification = getGroupAggregateVerification(group);
+  const statusInfo = getStatusInfo(aggregateVerification);
+  const isPending =
+    !aggregateVerification?.status ||
+    aggregateVerification.status === "pending" ||
+    aggregateVerification.status === "loading";
 
   return (
-    <div className="flex items-center -space-x-1" aria-hidden="true">
-      {dots.map(dot => (
-        <span
-          key={dot.label}
-          className={cn("w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800", dot.color)}
-          title={`${dot.count} ${dot.label}`}
-        />
-      ))}
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-full ring-2 ring-white dark:ring-gray-800",
+        getStatusBgColor(statusInfo.label),
+        statusInfo.color,
+      )}
+      style={{ width: size, height: size }}
+      title={`${group.sourceName}: ${statusInfo.label}`}
+    >
+      <span className={cn("w-3 h-3", isPending && "animate-spin")}>{statusInfo.icon}</span>
+    </span>
+  );
+}
+
+// =========
+// SourceTooltip — popover shown when hovering individual spread-out icon
+// =========
+
+function SourceTooltip({
+  group,
+  showProofThumbnail,
+  onSourceClick,
+}: {
+  group: SourceCitationGroup;
+  showProofThumbnail: boolean;
+  onSourceClick?: (group: SourceCitationGroup) => void;
+}) {
+  const aggregateVerification = getGroupAggregateVerification(group);
+  const statusInfo = getStatusInfo(aggregateVerification);
+  const sourceName = group.sourceName || "Source";
+
+  // Find the first verification with a proof image, validating the data URL
+  const rawProofImage = showProofThumbnail
+    ? group.citations.find(c => c.verification?.verificationImageBase64)?.verification?.verificationImageBase64
+    : null;
+  const proofImage =
+    typeof rawProofImage === "string" &&
+    (rawProofImage.startsWith("data:image/") ||
+      rawProofImage.startsWith("https://api.deepcitation.com/") ||
+      rawProofImage.startsWith("https://cdn.deepcitation.com/"))
+      ? rawProofImage
+      : null;
+
+  const handleProofClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSourceClick?.(group);
+  };
+
+  return (
+    <div
+      className={cn(
+        "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50",
+        "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700",
+        "rounded-lg shadow-lg min-w-[180px] max-w-[260px]",
+        "pointer-events-auto",
+      )}
+      data-testid="source-tooltip"
+    >
+      {/* Source header: favicon + name + status */}
+      <div className="flex items-center gap-2 px-3 py-2">
+        {group.sourceFavicon ? (
+          <img
+            src={group.sourceFavicon}
+            alt=""
+            className="w-4 h-4 rounded-sm object-contain flex-shrink-0"
+            loading="lazy"
+            onError={handleFaviconError}
+          />
+        ) : (
+          <span className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[8px] font-medium text-gray-600 dark:text-gray-300 flex-shrink-0">
+            {sourceName.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{sourceName}</span>
+        <span className={cn("inline-flex w-3.5 h-3.5 flex-shrink-0", statusInfo.color)} title={statusInfo.label}>
+          {statusInfo.icon}
+        </span>
+      </div>
+
+      {/* Citation count */}
+      <div className="px-3 pb-2 text-[11px] text-gray-500 dark:text-gray-400">
+        {group.citations.length} citation{group.citations.length !== 1 ? "s" : ""} · {statusInfo.label}
+      </div>
+
+      {/* Proof image thumbnail */}
+      {proofImage && (
+        <div className="px-2 pb-2">
+          <button
+            type="button"
+            className="block w-full rounded overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
+            onClick={handleProofClick}
+            aria-label={`View proof for ${sourceName}`}
+          >
+            <img
+              src={proofImage}
+              alt="Verification proof"
+              className="w-full h-auto max-h-16 object-cover"
+              loading="lazy"
+            />
+          </button>
+          <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">
+            Click to view details
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
 // =========
-// HoverSourceRow — individual source shown in hover expansion
+// StackedStatusIcons — horizontally expanding icon row
 // =========
 
-function HoverSourceRow({ group }: { group: SourceCitationGroup }) {
-  const firstItem = group.citations[0];
-  if (!firstItem) return null;
-
-  const statusInfo = getStatusInfo(firstItem.verification ?? null);
-  const isPending =
-    !firstItem.verification?.status ||
-    firstItem.verification.status === "pending" ||
-    firstItem.verification.status === "loading";
+function StackedStatusIcons({
+  citationGroups,
+  isHovered,
+  maxIcons,
+  hoveredGroupIndex,
+  onIconHover,
+  onIconLeave,
+  showProofThumbnails,
+  onSourceClick,
+}: {
+  citationGroups: SourceCitationGroup[];
+  isHovered: boolean;
+  maxIcons: number;
+  hoveredGroupIndex: number | null;
+  onIconHover: (index: number) => void;
+  onIconLeave: () => void;
+  showProofThumbnails: boolean;
+  onSourceClick?: (group: SourceCitationGroup) => void;
+}) {
+  const displayGroups = citationGroups.slice(0, maxIcons);
+  const hasOverflow = citationGroups.length > maxIcons;
+  const overflowCount = citationGroups.length - maxIcons;
 
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 py-0.5">
-      {group.sourceFavicon ? (
-        <img
-          src={group.sourceFavicon}
-          alt=""
-          className="w-3.5 h-3.5 rounded-sm object-contain flex-shrink-0"
-          loading="lazy"
-          onError={handleFaviconError}
-        />
-      ) : (
-        <span className="w-3.5 h-3.5 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[8px] font-medium flex-shrink-0">
-          {group.sourceName.charAt(0).toUpperCase()}
-        </span>
+    <div className="flex items-center" role="group" aria-label="Source verification status">
+      {displayGroups.map((group, i) => (
+        <div
+          key={`${group.sourceDomain ?? group.sourceName}-${i}`}
+          className="relative transition-[margin-left] duration-300 ease-out"
+          style={{
+            marginLeft: i === 0 ? 0 : isHovered ? 6 : -8,
+            zIndex: Math.min(displayGroups.length - i, 10),
+          }}
+          onMouseEnter={() => onIconHover(i)}
+          onMouseLeave={onIconLeave}
+        >
+          <StatusIconChip group={group} />
+          {/* Tooltip when this specific icon is hovered/focused and bar is expanded */}
+          {isHovered && hoveredGroupIndex === i && (
+            <SourceTooltip group={group} showProofThumbnail={showProofThumbnails} onSourceClick={onSourceClick} />
+          )}
+        </div>
+      ))}
+      {hasOverflow && (
+        <div
+          className="transition-[margin-left] duration-300 ease-out"
+          style={{
+            marginLeft: isHovered ? 6 : -8,
+            zIndex: 0,
+          }}
+        >
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 text-[9px] font-medium text-gray-600 dark:text-gray-300">
+            +{overflowCount}
+          </span>
+        </div>
       )}
-      <span className="truncate">{group.sourceName}</span>
-      {group.citations.length > 1 && (
-        <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">×{group.citations.length}</span>
-      )}
-      <span
-        className={cn("inline-flex w-3 h-3 flex-shrink-0", statusInfo.color, isPending ? "animate-spin" : "")}
-        title={statusInfo.label}
-      >
-        {statusInfo.icon}
-      </span>
     </div>
   );
 }
@@ -156,11 +313,11 @@ function HoverSourceRow({ group }: { group: SourceCitationGroup }) {
 // =========
 
 /**
- * Compact summary bar for citation verification status.
+ * Compact single-line summary bar for citation verification status.
  *
  * Sits at the bottom of AI-generated content and provides progressive disclosure:
- * - **Collapsed**: Stacked status dots + label + stacked favicons
- * - **Hover**: Expands to show individual source rows
+ * - **Collapsed**: Stacked verification icons + label + stacked favicons
+ * - **Hover**: Icons spread horizontally, individual icon hover shows source tooltip with proof
  * - **Click**: Opens the full CitationDrawer
  *
  * @example
@@ -176,8 +333,13 @@ function HoverSourceRow({ group }: { group: SourceCitationGroup }) {
  * ```
  */
 export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawerTriggerProps>(
-  ({ citationGroups, onClick, isOpen, className, label, maxIcons = 3 }, ref) => {
+  (
+    { citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 5, showProofThumbnails = true },
+    ref,
+  ) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [hoveredGroupIndex, setHoveredGroupIndex] = useState<number | null>(null);
+    const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     const summary = useMemo(() => computeStatusSummary(citationGroups), [citationGroups]);
     const displayLabel = label ?? generateDefaultLabel(summary);
@@ -186,9 +348,36 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
     const hasMoreFavicons = citationGroups.length > maxIcons;
 
     const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-    const handleMouseLeave = useCallback(() => setIsHovered(false), []);
-    const handleFocus = useCallback(() => setIsHovered(true), []);
-    const handleBlur = useCallback(() => setIsHovered(false), []);
+    const handleMouseLeave = useCallback(() => {
+      setIsHovered(false);
+      setHoveredGroupIndex(null);
+      clearTimeout(leaveTimeoutRef.current);
+    }, []);
+    const handleFocus = useCallback(() => {
+      clearTimeout(leaveTimeoutRef.current);
+      setIsHovered(true);
+    }, []);
+    const handleBlur = useCallback(() => {
+      leaveTimeoutRef.current = setTimeout(() => {
+        setIsHovered(false);
+        setHoveredGroupIndex(null);
+      }, TOOLTIP_HIDE_DELAY_MS);
+    }, []);
+
+    const handleIconHover = useCallback((index: number) => {
+      clearTimeout(leaveTimeoutRef.current);
+      setHoveredGroupIndex(index);
+    }, []);
+
+    const handleIconLeave = useCallback(() => {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = setTimeout(() => setHoveredGroupIndex(null), TOOLTIP_HIDE_DELAY_MS);
+    }, []);
+
+    // Clean up timeout on unmount
+    useEffect(() => {
+      return () => clearTimeout(leaveTimeoutRef.current);
+    }, []);
 
     if (summary.total === 0) return null;
 
@@ -213,10 +402,19 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
         aria-label={`Citations: ${displayLabel}`}
         data-testid="citation-drawer-trigger"
       >
-        {/* Collapsed bar — always visible */}
+        {/* Single-line bar — always one line */}
         <div className="flex items-center gap-3 px-3 py-2">
-          {/* Status dots */}
-          <StatusDots summary={summary} />
+          {/* Stacked/spread verification icons */}
+          <StackedStatusIcons
+            citationGroups={citationGroups}
+            isHovered={isHovered}
+            maxIcons={maxIcons}
+            hoveredGroupIndex={hoveredGroupIndex}
+            onIconHover={handleIconHover}
+            onIconLeave={handleIconLeave}
+            showProofThumbnails={showProofThumbnails}
+            onSourceClick={onSourceClick}
+          />
 
           {/* Label */}
           <span className="flex-1 text-sm text-gray-600 dark:text-gray-300 truncate">{displayLabel}</span>
@@ -254,38 +452,16 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
             )}
           </div>
 
-          {/* Chevron */}
+          {/* Chevron — static arrow indicating "click to open" */}
           <svg
-            className={cn(
-              "w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 flex-shrink-0",
-              isHovered && "rotate-180",
-            )}
+            className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-        </div>
-
-        {/* Hover expansion — source rows */}
-        <div
-          className={cn(
-            "overflow-hidden transition-all duration-200 ease-in-out",
-            isHovered ? "max-h-60 opacity-100" : "max-h-0 opacity-0",
-          )}
-        >
-          <div className="px-3 pb-2 pt-1 border-t border-gray-200 dark:border-gray-700 space-y-0.5">
-            {citationGroups.slice(0, 5).map((group, index) => (
-              <HoverSourceRow key={`${group.sourceDomain ?? group.sourceName}-${index}`} group={group} />
-            ))}
-            {citationGroups.length > 5 && (
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                +{citationGroups.length - 5} more sources
-              </span>
-            )}
-          </div>
         </div>
       </button>
     );
