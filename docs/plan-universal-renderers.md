@@ -11,9 +11,9 @@ DeepCitation currently renders citations in two targets: **React** (interactive 
 
 This plan introduces a **universal renderer architecture** that:
 
-1. Extracts shared rendering logic into a framework-agnostic core
-2. Adds 3 new render targets: **Slack**, **GitHub Markdown**, **HTML/Email**
-3. Enhances the existing Markdown renderer to serve as the foundation for all text-based targets
+1. Adds 4 new render targets: **Slack**, **GitHub Markdown**, **HTML/Email**, **Terminal/CLI**
+2. Adds new code (proof URL builders, render target types) without moving or re-exporting existing functions
+3. New renderers import shared logic directly from canonical locations (`parsing/`, `markdown/`, `react/utils`)
 4. Defines the **backend API contract** needed to host proof pages and serve proof images at URLs (replacing inline base64 for non-React surfaces)
 
 ---
@@ -54,73 +54,99 @@ This plan introduces a **universal renderer architecture** that:
 
 ```
 src/
-├── react/                  ← React renderer (2500+ LOC, tightly coupled)
-│   ├── CitationComponent   ← Monolithic: variants + popover + behavior + status
+├── react/                  ← React renderer (2500+ LOC)
+│   ├── CitationComponent   ← Interactive: variants + popover + behavior + status
 │   ├── CitationVariants    ← React-specific variant rendering
-│   └── utils.ts            ← generateCitationKey (shared but lives in react/)
+│   └── utils.ts            ← generateCitationKey() — canonical location
 ├── markdown/               ← Markdown renderer (standalone, clean)
 │   ├── renderMarkdown      ← cite tag → markdown string
-│   └── markdownVariants    ← Text variant rendering
+│   ├── markdownVariants    ← getIndicator(), INDICATOR_SETS — canonical location
+│   └── types.ts            ← INDICATOR_SETS, SUPERSCRIPT_DIGITS — canonical location
 ├── types/                  ← Shared types (Citation, Verification, etc.)
-└── parsing/                ← getCitationStatus (shared but lives in parsing/)
+├── parsing/                ← getCitationStatus() — canonical location
+└── client/                 ← API client
 ```
 
 **Problems:**
-- `generateCitationKey` lives in `react/utils.ts` but is imported by markdown and main exports
-- `getCitationStatus` lives in `parsing/parseCitation.ts` but is core rendering logic
 - No shared "proof URL" concept — everything is base64
-- Each target re-implements status→indicator logic independently
-- No way to generate linked citations without React DOM
+- No way to generate linked citations for non-React surfaces
+- Markdown is the only text-based target
 
 ### 3.2 Proposed Architecture (After)
 
 ```
 src/
-├── rendering/                    ← NEW: Universal rendering core
-│   ├── core/                     ← Shared logic (framework-agnostic)
-│   │   ├── status.ts             ← getCitationStatus() — moved from parsing/
-│   │   ├── indicators.ts         ← getIndicator(), INDICATOR_SETS — moved from markdown/
-│   │   ├── displayText.ts        ← getCitationDisplayText() — extracted
-│   │   ├── proofUrl.ts           ← buildProofUrl(), buildSnippetImageUrl()
-│   │   ├── citationKey.ts        ← generateCitationKey() — moved from react/utils
-│   │   └── types.ts              ← RenderedCitation, RenderTarget, RenderOptions
+├── rendering/                    ← NEW: Render target implementations
+│   ├── proofUrl.ts               ← NEW: buildProofUrl(), buildSnippetImageUrl()
+│   ├── types.ts                  ← NEW: RenderOptions, RenderedOutput interfaces
 │   │
-│   ├── targets/                  ← Render target implementations
-│   │   ├── slack/                ← Slack mrkdwn renderer
-│   │   │   ├── index.ts
-│   │   │   ├── slackRenderer.ts  ← renderCitationsForSlack()
-│   │   │   ├── slackVariants.ts  ← mrkdwn formatting per variant
-│   │   │   └── types.ts          ← SlackRenderOptions, SlackOutput
-│   │   │
-│   │   ├── github/               ← GitHub-flavored Markdown renderer
-│   │   │   ├── index.ts
-│   │   │   ├── githubRenderer.ts ← renderCitationsForGitHub()
-│   │   │   ├── githubVariants.ts ← GFM + <details> + image support
-│   │   │   └── types.ts          ← GitHubRenderOptions, GitHubOutput
-│   │   │
-│   │   ├── html/                 ← Static HTML renderer
-│   │   │   ├── index.ts
-│   │   │   ├── htmlRenderer.ts   ← renderCitationsAsHtml()
-│   │   │   ├── htmlVariants.ts   ← <span> based, CSS-only interactivity
-│   │   │   ├── styles.ts         ← Inline CSS / <style> block generation
-│   │   │   └── types.ts          ← HtmlRenderOptions, HtmlOutput
-│   │   │
-│   │   └── terminal/             ← Terminal/ANSI renderer
-│   │       ├── index.ts
-│   │       ├── terminalRenderer.ts ← renderCitationsForTerminal()
-│   │       ├── ansiColors.ts     ← ANSI escape sequences for status colors
-│   │       └── types.ts          ← TerminalRenderOptions, TerminalOutput
+│   ├── slack/                    ← Slack mrkdwn renderer
+│   │   ├── slackRenderer.ts      ← renderCitationsForSlack()
+│   │   ├── slackVariants.ts      ← mrkdwn formatting per variant
+│   │   └── types.ts              ← SlackRenderOptions, SlackOutput
 │   │
-│   └── index.ts                  ← Re-exports, createRenderer() factory
+│   ├── github/                   ← GitHub-flavored Markdown renderer
+│   │   ├── githubRenderer.ts     ← renderCitationsForGitHub()
+│   │   ├── githubVariants.ts     ← GFM + <details> + image support
+│   │   └── types.ts              ← GitHubRenderOptions, GitHubOutput
+│   │
+│   ├── html/                     ← Static HTML renderer
+│   │   ├── htmlRenderer.ts       ← renderCitationsAsHtml()
+│   │   ├── htmlVariants.ts       ← <span> based, CSS-only interactivity
+│   │   ├── styles.ts             ← Inline CSS / <style> block generation
+│   │   └── types.ts              ← HtmlRenderOptions, HtmlOutput
+│   │
+│   └── terminal/                 ← Terminal/ANSI renderer
+│       ├── terminalRenderer.ts   ← renderCitationsForTerminal()
+│       ├── ansiColors.ts         ← ANSI escape sequences for status colors
+│       └── types.ts              ← TerminalRenderOptions, TerminalOutput
 │
-├── react/                        ← React renderer (unchanged, imports from rendering/core)
-├── markdown/                     ← Existing markdown renderer (refactored to use core)
-├── types/                        ← Shared types (unchanged)
-├── parsing/                      ← Citation parsing (getCitationStatus moved to core, re-exported)
-└── client/                       ← API client (unchanged)
+├── react/                        ← React renderer (UNCHANGED)
+├── markdown/                     ← Existing markdown renderer (UNCHANGED)
+├── types/                        ← Shared types (UNCHANGED)
+├── parsing/                      ← Citation parsing (UNCHANGED)
+└── client/                       ← API client (UNCHANGED)
 ```
 
-### 3.3 Key Design Principles
+### 3.3 No Variable Re-Exports (Critical Rule)
+
+**This project does NOT allow re-exporting variables.** Re-exporting causes bundler issues,
+circular dependency problems, and makes the dependency graph harder to trace. Each
+function/constant has ONE canonical location, and all consumers import directly from it.
+
+**DO NOT create wrapper files that re-export from other modules.**
+
+**Canonical locations for shared utilities (DO NOT move or duplicate):**
+
+| Symbol | Canonical location | Import from |
+|--------|-------------------|-------------|
+| `getCitationStatus()` | `src/parsing/parseCitation.ts` | `../../parsing/parseCitation.js` |
+| `generateCitationKey()` | `src/react/utils.ts` | `../../react/utils.js` |
+| `getIndicator()` | `src/markdown/markdownVariants.ts` | `../../markdown/markdownVariants.js` |
+| `INDICATOR_SETS` | `src/markdown/types.ts` | `../../markdown/types.js` |
+| `SUPERSCRIPT_DIGITS` | `src/markdown/types.ts` | `../../markdown/types.js` |
+| `toSuperscript()` | `src/markdown/markdownVariants.ts` | `../../markdown/markdownVariants.js` |
+| `humanizeLinePosition()` | `src/markdown/markdownVariants.ts` | `../../markdown/markdownVariants.js` |
+| `formatPageLocation()` | `src/markdown/markdownVariants.ts` | `../../markdown/markdownVariants.js` |
+
+**New renderers import directly from canonical locations:**
+
+```typescript
+// Example: rendering/slack/slackRenderer.ts
+import { getCitationStatus } from "../../parsing/parseCitation.js";
+import { generateCitationKey } from "../../react/utils.js";
+import { getIndicator } from "../../markdown/markdownVariants.js";
+import { INDICATOR_SETS } from "../../markdown/types.js";
+import { buildProofUrl } from "../proofUrl.js";            // NEW code, canonical here
+import type { RenderOptions } from "../types.js";           // NEW code, canonical here
+```
+
+**Only truly new code lives in `rendering/`:**
+- `proofUrl.ts` — proof URL construction (new, canonical here)
+- `types.ts` — shared render target interfaces (new, canonical here)
+- Target-specific renderers and variants (new, canonical in each target dir)
+
+### 3.4 Key Design Principles
 
 1. **Same proof object, multiple renderers.** All targets consume `Citation` + `Verification` and produce target-specific output. No data transformation needed.
 
@@ -131,9 +157,11 @@ src/
 
 3. **Proof URLs are the universal bridge.** Non-React targets can't embed base64 images inline. The backend provides hosted proof URLs that serve as the click-through target and image source for all surfaces.
 
-4. **Text targets share indicator logic.** Slack, GitHub, Terminal, and Markdown all use the same `getIndicator()` → `IndicatorSet` system. Only the wrapping/linking differs.
+4. **Text targets share indicator logic.** Slack, GitHub, Terminal, and Markdown all import and use the same `getIndicator()` → `IndicatorSet` system from `markdown/`. Only the wrapping/linking differs.
 
-5. **No framework dependencies in core.** `rendering/core/` has zero dependencies on React, DOM, or any UI framework. Pure TypeScript functions that return strings or data objects.
+5. **No framework dependencies in rendering/.** `rendering/` has zero dependencies on React, DOM, or any UI framework. Pure TypeScript functions that return strings or data objects.
+
+6. **No variable re-exports.** New renderers import from canonical locations. No wrapper modules, no barrel re-exports of variables, no `export { X } from "../../other.js"` patterns.
 
 ---
 
@@ -431,14 +459,18 @@ The React renderer continues to use base64 images from `Verification.verificatio
 
 ---
 
-## 5. Shared Core (`rendering/core/`)
+## 5. New Shared Code (`rendering/`)
 
-### 5.1 Proof URL Builder
+Only truly new code lives in `rendering/`. Existing shared utilities stay in their
+canonical locations and are imported directly by each renderer.
+
+### 5.1 Proof URL Builder (NEW — `rendering/proofUrl.ts`)
 
 The critical new piece: a function to construct proof page URLs from citation/verification data.
+This is new code with its canonical location in `rendering/proofUrl.ts`.
 
 ```typescript
-// rendering/core/proofUrl.ts
+// rendering/proofUrl.ts — CANONICAL LOCATION for proof URL logic
 
 export interface ProofUrlOptions {
   /** Base URL for the proof service (e.g., "https://proof.deepcitation.com") */
@@ -458,10 +490,8 @@ export interface ProofUrlOptions {
 }
 
 /**
- * Build a proof page URL from a citation key and verification data.
- *
- * The proof ID is derived from the verification response, NOT the citation key.
- * The backend assigns proof IDs during verification.
+ * Build a proof page URL from a proof ID.
+ * The proof ID comes from the verification response (assigned by backend).
  */
 export function buildProofUrl(proofId: string, options: ProofUrlOptions): string;
 
@@ -481,39 +511,22 @@ export function buildProofUrls(
 ): Record<string, string>;
 ```
 
-### 5.2 Shared Status & Indicators
+### 5.2 Shared Render Types (NEW — `rendering/types.ts`)
 
-Consolidate status logic currently split across `parsing/` and `markdown/`:
-
-```typescript
-// rendering/core/status.ts — re-export from parsing (no duplication)
-export { getCitationStatus } from "../../parsing/parseCitation.js";
-
-// rendering/core/indicators.ts — moved from markdown/types.ts
-export { getIndicator, INDICATOR_SETS, SUPERSCRIPT_DIGITS } from "./indicators.js";
-export type { IndicatorStyle, IndicatorSet } from "./indicators.js";
-```
-
-### 5.3 Shared Display Text
+Common interfaces for all text-based render targets. This is new code.
 
 ```typescript
-// rendering/core/displayText.ts
-export function getCitationDisplayText(citation: Citation, variant: string): string;
-export function getSourceLabel(citation: Citation, verification: Verification | null, sourceLabels?: Record<string, string>): string;
-export function formatPageLocation(citation: Citation, verification: Verification | null): string;
-```
+// rendering/types.ts — CANONICAL LOCATION for render target interfaces
+// NOTE: Imports IndicatorStyle from its canonical location in markdown/types.ts
 
-### 5.4 Renderer Interface
-
-All text-based targets implement a common pattern:
-
-```typescript
-// rendering/core/types.ts
+import type { IndicatorStyle } from "../markdown/types.js";
+import type { CitationWithStatus } from "../markdown/types.js";
+import type { VerificationRecord } from "../types/citation.js";
 
 export interface RenderOptions {
   /** Verification results keyed by citationKey */
   verifications?: VerificationRecord;
-  /** Indicator style */
+  /** Indicator style (uses IndicatorStyle from markdown/types.ts) */
   indicatorStyle?: IndicatorStyle;
   /** Base URL for proof pages */
   proofBaseUrl?: string;
@@ -532,7 +545,7 @@ export interface RenderedOutput {
   sources?: string;
   /** Combined content + sources */
   full: string;
-  /** Citation metadata */
+  /** Citation metadata (uses CitationWithStatus from markdown/types.ts) */
   citations: CitationWithStatus[];
   /** Proof URLs by citationKey (if proofBaseUrl provided) */
   proofUrls?: Record<string, string>;
@@ -540,6 +553,26 @@ export interface RenderedOutput {
 ```
 
 Each target extends these with target-specific options (e.g., `maxMessageLength` for Slack, `includeImages` for GitHub).
+
+### 5.3 Existing Shared Utilities (NOT moved, NOT re-exported)
+
+New renderers import these directly from their canonical locations:
+
+```typescript
+// Status computation — import from parsing/
+import { getCitationStatus } from "../../parsing/parseCitation.js";
+
+// Indicator rendering — import from markdown/
+import { getIndicator, toSuperscript, humanizeLinePosition, formatPageLocation } from "../../markdown/markdownVariants.js";
+import { INDICATOR_SETS, SUPERSCRIPT_DIGITS } from "../../markdown/types.js";
+import type { IndicatorStyle, CitationWithStatus } from "../../markdown/types.js";
+
+// Citation key generation — import from react/utils
+import { generateCitationKey } from "../../react/utils.js";
+```
+
+**No wrapper files.** No `rendering/core/status.ts` that re-exports. No `rendering/core/indicators.ts`.
+Each renderer file has its own direct imports from the canonical source.
 
 ---
 
@@ -553,13 +586,16 @@ Each target extends these with target-specific options (e.g., `maxMessageLength`
     ".": "./dist/index.js",           // existing
     "./react": "./dist/react/index.js", // existing
     "./markdown": "./dist/markdown/index.js", // existing
-    "./slack": "./dist/rendering/targets/slack/index.js",     // NEW
-    "./github": "./dist/rendering/targets/github/index.js",   // NEW
-    "./html": "./dist/rendering/targets/html/index.js",       // NEW
-    "./terminal": "./dist/rendering/targets/terminal/index.js" // NEW
+    "./slack": "./dist/rendering/slack/slackRenderer.js",       // NEW
+    "./github": "./dist/rendering/github/githubRenderer.js",    // NEW
+    "./html": "./dist/rendering/html/htmlRenderer.js",          // NEW
+    "./terminal": "./dist/rendering/terminal/terminalRenderer.js" // NEW
   }
 }
 ```
+
+**Note:** Each target exports directly from its renderer file — no barrel `index.ts` files
+that re-export. This avoids variable re-export chains.
 
 ### Import examples
 
@@ -580,29 +616,34 @@ import { renderCitationsForTerminal } from "@deepcitation/deepcitation-js/termin
 
 ## 7. Migration & Backwards Compatibility
 
-### No breaking changes
+### No breaking changes — nothing moves
 
 - `markdown/` module stays at its current path and API
 - `react/` module stays at its current path and API
+- `parsing/` module stays at its current path and API
 - Main exports (`index.ts`) unchanged
-- `getCitationStatus` remains exported from main entry point
-- `generateCitationKey` remains exported from main entry point
+- No functions or constants are moved between modules
+- No re-export wrappers are created
 
-### Internal refactoring (non-breaking)
+### What's new (additive only)
 
-- `generateCitationKey` moves from `react/utils.ts` to `rendering/core/citationKey.ts`, with re-export from `react/utils.ts` for backwards compat
-- `getCitationStatus` stays in `parsing/parseCitation.ts`, re-exported by `rendering/core/status.ts`
-- `getIndicator` and `INDICATOR_SETS` move from `markdown/types.ts` to `rendering/core/indicators.ts`, with re-export from `markdown/` for backwards compat
+- `rendering/proofUrl.ts` — new file, new functions
+- `rendering/types.ts` — new file, new interfaces
+- `rendering/slack/` — new renderer
+- `rendering/github/` — new renderer
+- `rendering/html/` — new renderer
+- `rendering/terminal/` — new renderer
+- New package.json export paths (`/slack`, `/github`, `/html`, `/terminal`)
 
 ---
 
 ## 8. Implementation Phases
 
-### Phase 1: Core + Slack + GitHub (Week 1)
+### Phase 1: Shared + Slack + GitHub (Week 1)
 
-1. Create `rendering/core/` with proofUrl, indicators, displayText, types
-2. Build Slack renderer with brackets variant and sources appendix
-3. Build GitHub renderer with brackets variant, `<details>` sources, and image support
+1. Create `rendering/proofUrl.ts` and `rendering/types.ts` (new code only)
+2. Build Slack renderer (imports shared utils directly from canonical locations)
+3. Build GitHub renderer with `<details>` sources and image support
 4. Add package.json exports for `/slack` and `/github`
 5. Tests for all renderers
 6. Documentation
@@ -636,10 +677,7 @@ import { renderCitationsForTerminal } from "@deepcitation/deepcitation-js/termin
 ```
 src/__tests__/
 ├── rendering/
-│   ├── core/
-│   │   ├── proofUrl.test.ts
-│   │   ├── indicators.test.ts
-│   │   └── displayText.test.ts
+│   ├── proofUrl.test.ts
 │   ├── slack/
 │   │   ├── slackRenderer.test.ts
 │   │   └── slackVariants.test.ts
@@ -687,38 +725,34 @@ Extend the existing markdown showcase to include all targets:
 
 ## Appendix A: Full File Inventory (New Files)
 
+No barrel `index.ts` files, no re-export wrappers. Each file is either new canonical
+code or a renderer that imports directly from existing canonical locations.
+
 ```
 src/rendering/
-├── core/
-│   ├── index.ts              (~20 LOC, re-exports)
-│   ├── types.ts              (~80 LOC, interfaces)
-│   ├── proofUrl.ts           (~60 LOC, URL builders)
-│   ├── indicators.ts         (~50 LOC, moved from markdown)
-│   ├── displayText.ts        (~40 LOC, extracted from markdown)
-│   └── status.ts             (~10 LOC, re-export from parsing)
-├── targets/
-│   ├── slack/
-│   │   ├── index.ts          (~15 LOC)
-│   │   ├── slackRenderer.ts  (~150 LOC)
-│   │   ├── slackVariants.ts  (~80 LOC)
-│   │   └── types.ts          (~50 LOC)
-│   ├── github/
-│   │   ├── index.ts          (~15 LOC)
-│   │   ├── githubRenderer.ts (~200 LOC)
-│   │   ├── githubVariants.ts (~100 LOC)
-│   │   └── types.ts          (~60 LOC)
-│   ├── html/
-│   │   ├── index.ts          (~15 LOC)
-│   │   ├── htmlRenderer.ts   (~250 LOC)
-│   │   ├── htmlVariants.ts   (~120 LOC)
-│   │   ├── styles.ts         (~150 LOC)
-│   │   └── types.ts          (~60 LOC)
-│   └── terminal/
-│       ├── index.ts          (~15 LOC)
-│       ├── terminalRenderer.ts (~150 LOC)
-│       ├── ansiColors.ts     (~60 LOC)
-│       └── types.ts          (~40 LOC)
-└── index.ts                  (~30 LOC, factory + re-exports)
+├── proofUrl.ts               (~60 LOC, URL builders — canonical location)
+├── types.ts                  (~80 LOC, shared interfaces — canonical location)
+│
+├── slack/
+│   ├── slackRenderer.ts      (~150 LOC, imports from parsing/, markdown/, react/utils)
+│   ├── slackVariants.ts      (~80 LOC)
+│   └── types.ts              (~50 LOC)
+│
+├── github/
+│   ├── githubRenderer.ts     (~200 LOC, imports from parsing/, markdown/, react/utils)
+│   ├── githubVariants.ts     (~100 LOC)
+│   └── types.ts              (~60 LOC)
+│
+├── html/
+│   ├── htmlRenderer.ts       (~250 LOC, imports from parsing/, markdown/, react/utils)
+│   ├── htmlVariants.ts       (~120 LOC)
+│   ├── styles.ts             (~150 LOC)
+│   └── types.ts              (~60 LOC)
+│
+└── terminal/
+    ├── terminalRenderer.ts   (~150 LOC, imports from parsing/, markdown/, react/utils)
+    ├── ansiColors.ts         (~60 LOC)
+    └── types.ts              (~40 LOC)
 
-Total new code: ~1,850 LOC (estimated)
+Total new code: ~1,630 LOC (estimated)
 ```
