@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/experimental-ct-react";
-import { CitationDrawerTrigger } from "../react/CitationDrawerTrigger";
 import type { SourceCitationGroup } from "../react/CitationDrawer.types";
+import { CitationDrawerTrigger } from "../react/CitationDrawerTrigger";
 
 // =========
 // Test Fixtures
@@ -275,7 +275,7 @@ test.describe("CitationDrawerTrigger", () => {
     await button.focus();
 
     // Should be visible
-    let visibleContent = component.locator("span").filter({ hasText: "React" });
+    const visibleContent = component.locator("span").filter({ hasText: "React" });
     await expect(visibleContent).toBeVisible();
 
     // Blur
