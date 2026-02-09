@@ -4,7 +4,8 @@ import type React from "react";
 import { CitationComponent } from "../react/CitationComponent";
 import { CitationDrawer, CitationDrawerItemComponent } from "../react/CitationDrawer";
 import type { CitationDrawerItem, SourceCitationGroup } from "../react/CitationDrawer.types";
-import { groupCitationsBySource, useCitationDrawer } from "../react/CitationDrawer.utils";
+import { getStatusPriority, groupCitationsBySource, useCitationDrawer } from "../react/CitationDrawer.utils";
+import { CitationDrawerTrigger } from "../react/CitationDrawerTrigger";
 import type { Citation } from "../types/citation";
 import type { Verification } from "../types/verification";
 
@@ -743,5 +744,136 @@ describe("useCitationDrawer", () => {
     expect(result.current.citationGroups).toHaveLength(2);
     expect(result.current.citationGroups[0].citations).toHaveLength(2);
     expect(result.current.citationGroups[1].citations).toHaveLength(1);
+  });
+});
+
+describe("getStatusPriority", () => {
+  it("returns 1 for verified statuses", () => {
+    expect(getStatusPriority({ status: "found" })).toBe(1);
+    expect(getStatusPriority({ status: "found_anchor_text_only" })).toBe(1);
+    expect(getStatusPriority({ status: "found_phrase_missed_anchor_text" })).toBe(1);
+  });
+
+  it("returns 2 for pending/null statuses", () => {
+    expect(getStatusPriority(null)).toBe(2);
+    expect(getStatusPriority({ status: "pending" })).toBe(2);
+    expect(getStatusPriority({ status: "loading" })).toBe(2);
+  });
+
+  it("returns 3 for partial match statuses", () => {
+    expect(getStatusPriority({ status: "partial_text_found" })).toBe(3);
+    expect(getStatusPriority({ status: "found_on_other_page" })).toBe(3);
+    expect(getStatusPriority({ status: "found_on_other_line" })).toBe(3);
+    expect(getStatusPriority({ status: "first_word_found" })).toBe(3);
+  });
+
+  it("returns 4 for not_found status", () => {
+    expect(getStatusPriority({ status: "not_found" })).toBe(4);
+  });
+});
+
+describe("CitationDrawerTrigger", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const createGroup = (
+    name: string,
+    count: number,
+    status: Verification["status"] = "found",
+  ): SourceCitationGroup => ({
+    sourceName: name,
+    sourceDomain: `${name.toLowerCase()}.com`,
+    sourceFavicon: `https://${name.toLowerCase()}.com/favicon.ico`,
+    citations: Array.from({ length: count }, (_, i) => ({
+      citationKey: `${name}-${i}`,
+      citation: {
+        siteName: name,
+        title: `Article ${i + 1}`,
+      },
+      verification: { status },
+    })),
+    additionalCount: count - 1,
+  });
+
+  it("renders the trigger with data-testid", () => {
+    const groups = [createGroup("Test", 1)];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    expect(getByTestId("citation-drawer-trigger")).toBeInTheDocument();
+  });
+
+  it("returns null when no citations", () => {
+    const { container } = render(<CitationDrawerTrigger citationGroups={[]} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("displays the label with source counts", () => {
+    const groups = [createGroup("Source A", 2), createGroup("Source B", 1)];
+    const { getByText } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    expect(getByText("3 sources · 3 verified")).toBeInTheDocument();
+  });
+
+  it("uses custom label when provided", () => {
+    const groups = [createGroup("Test", 1)];
+    const { getByText } = render(<CitationDrawerTrigger citationGroups={groups} label="Custom Label" />);
+
+    expect(getByText("Custom Label")).toBeInTheDocument();
+  });
+
+  it("calls onClick when clicked", () => {
+    const onClick = jest.fn();
+    const groups = [createGroup("Test", 1)];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} onClick={onClick} />);
+
+    fireEvent.click(getByTestId("citation-drawer-trigger"));
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it("renders status icon chips for each source group", () => {
+    const groups = [
+      createGroup("Verified", 1, "found"),
+      createGroup("Pending", 1, "pending"),
+      createGroup("NotFound", 1, "not_found"),
+    ];
+    const { container } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    // Should have green, gray, and amber status icons
+    expect(container.querySelector(".text-green-500")).toBeInTheDocument();
+    expect(container.querySelector(".text-gray-400")).toBeInTheDocument();
+    expect(container.querySelector(".text-amber-500")).toBeInTheDocument();
+  });
+
+  it("renders spinner for pending status icons", () => {
+    const groups = [createGroup("Pending", 1, "pending")];
+    const { container } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+  });
+
+  it("respects maxIcons prop", () => {
+    const groups = Array.from({ length: 8 }, (_, i) => createGroup(`Source${i}`, 1));
+    const { container } = render(<CitationDrawerTrigger citationGroups={groups} maxIcons={3} />);
+
+    // Should show +5 overflow badge
+    const overflowBadge = container.querySelector("span");
+    // The component should have a +5 text node somewhere
+    expect(container.textContent).toContain("+5");
+  });
+
+  it("sets aria-expanded based on isOpen prop", () => {
+    const groups = [createGroup("Test", 1)];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} isOpen={true} />);
+
+    expect(getByTestId("citation-drawer-trigger")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("renders stacked favicons", () => {
+    const groups = [createGroup("Test", 1)];
+    const { container } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const favicon = container.querySelector('img[src="https://test.com/favicon.ico"]');
+    expect(favicon).toBeInTheDocument();
   });
 });
