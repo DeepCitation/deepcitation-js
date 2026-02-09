@@ -5,6 +5,7 @@ import {
   CitationComponent,
   CitationDrawer,
   CitationDrawerTrigger,
+  generateCitationKey,
   groupCitationsBySource,
   type CitationDrawerItem,
 } from "@deepcitation/deepcitation-js/react";
@@ -150,11 +151,6 @@ function processContentWithCitations(
     parts.push({ type: "text", content: content.slice(lastIndex) });
   }
 
-  // Get citations and verifications as arrays (preserving order)
-  const citationEntries = Object.entries(citations);
-  const verificationEntries = Object.entries(verifications);
-  let citationIndex = 0;
-
   // Build the rendered content
   const elements: React.ReactNode[] = [];
 
@@ -174,26 +170,21 @@ function processContentWithCitations(
         </ReactMarkdown>,
       );
     } else if (part.type === "citation") {
-      // Match by index - citations and verifications should be in same order
-      const citationEntry = citationEntries[citationIndex];
-      const verificationEntry = verificationEntries[citationIndex];
-      citationIndex++;
+      // Parse the <cite> tag to get a Citation object, then look up by key
+      const { citation: parsedCitation } = parseCitation(part.content);
+      const citationKey = generateCitationKey(parsedCitation);
 
-      if (citationEntry && verificationEntry) {
-        const [, citation] = citationEntry;
-        const [, verificationData] = verificationEntry;
-        elements.push(
-          <CitationComponent key={`citation-${index}`} citation={citation} verification={verificationData} />,
-        );
-      } else if (citationEntry) {
-        // Have citation but no verification yet
-        const [, citation] = citationEntry;
-        elements.push(<CitationComponent key={`citation-${index}`} citation={citation} verification={undefined} />);
-      } else {
-        // Fallback: parse the citation without verification
-        const { citation } = parseCitation(part.content);
-        elements.push(<CitationComponent key={`citation-${index}`} citation={citation} verification={undefined} />);
+      // Look up the server-verified citation and verification by key
+      const citation = citations[citationKey] ?? parsedCitation;
+      const verification = verifications[citationKey];
+
+      if (!citations[citationKey]) {
+        console.warn("[ChatMessage] Citation key not found in verification data, using parsed fallback:", citationKey);
       }
+
+      elements.push(
+        <CitationComponent key={`citation-${index}`} citation={citation} verification={verification} />,
+      );
     }
   });
 

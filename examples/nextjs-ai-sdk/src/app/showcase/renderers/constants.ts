@@ -1,4 +1,5 @@
-import type { Verification } from "@deepcitation/deepcitation-js";
+import type { Citation, Verification } from "@deepcitation/deepcitation-js";
+import { generateCitationKey } from "@deepcitation/deepcitation-js/react";
 
 /**
  * Sample LLM output with <cite> tags for rendering demos.
@@ -10,10 +11,62 @@ The report also notes that <cite attachment_id="abc123" start_page_key="page_num
 However, analysts note that <cite attachment_id="abc123" start_page_key="page_number_12_index_0" full_phrase="Market share expected to grow." anchor_text="market share is expected to grow" line_ids="5" /> in the coming fiscal year.`;
 
 /**
- * Sample verifications matching the citations in SAMPLE_LLM_OUTPUT.
- * These are keyed by the citationKey hash that each renderer will generate internally.
+ * Sample citations matching the <cite> tags above.
+ * Used to generate citationKeys for the sample verifications.
  */
-export const SAMPLE_VERIFICATIONS: Record<string, Verification> = {};
+const CITATION_1: Citation = {
+  type: "document",
+  attachmentId: "abc123",
+  pageNumber: 5,
+  lineIds: [12, 13],
+  fullPhrase: "Revenue increased by 15% in Q4 2024.",
+  anchorText: "revenue increased by 15%",
+  citationNumber: 1,
+};
+
+const CITATION_2: Citation = {
+  type: "document",
+  attachmentId: "abc123",
+  pageNumber: 7,
+  lineIds: [25],
+  fullPhrase: "Operating costs decreased by 8%.",
+  anchorText: "operating costs decreased by 8%",
+  citationNumber: 2,
+};
+
+const CITATION_3: Citation = {
+  type: "document",
+  attachmentId: "abc123",
+  pageNumber: 12,
+  lineIds: [5],
+  fullPhrase: "Market share expected to grow.",
+  anchorText: "market share is expected to grow",
+  citationNumber: 3,
+};
+
+/**
+ * Sample verifications keyed by citationKey hash.
+ * Demonstrates verified, partial, and not-found statuses.
+ */
+export const SAMPLE_VERIFICATIONS: Record<string, Verification> = {
+  [generateCitationKey(CITATION_1)]: {
+    status: "found",
+    verifiedPageNumber: 5,
+    verifiedLineIds: [12, 13],
+    verifiedMatchSnippet: "Revenue increased by 15% in Q4 2024.",
+    label: "Q4 Financial Report",
+  },
+  [generateCitationKey(CITATION_2)]: {
+    status: "found_on_other_page",
+    verifiedPageNumber: 9,
+    verifiedLineIds: [30],
+    label: "Q4 Financial Report",
+  },
+  [generateCitationKey(CITATION_3)]: {
+    status: "not_found",
+    verifiedPageNumber: -1,
+  },
+};
 
 export const PROOF_BASE_URL = "https://proof.deepcitation.com";
 

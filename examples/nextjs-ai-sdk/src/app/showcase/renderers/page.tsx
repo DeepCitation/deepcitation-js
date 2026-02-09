@@ -19,10 +19,10 @@ type ActiveRenderer = "slack" | "github" | "html" | "terminal";
 
 export default function RenderersShowcasePage() {
   const [includeSources, setIncludeSources] = useState(true);
-  const [slackVariant, setSlackVariant] = useState<string>(SLACK_VARIANTS[0]);
-  const [githubVariant, setGithubVariant] = useState<string>(GITHUB_VARIANTS[0]);
-  const [htmlVariant, setHtmlVariant] = useState<string>(HTML_VARIANTS[0]);
-  const [terminalVariant, setTerminalVariant] = useState<string>(TERMINAL_VARIANTS[0]);
+  const [slackVariant, setSlackVariant] = useState<(typeof SLACK_VARIANTS)[number]>(SLACK_VARIANTS[0]);
+  const [githubVariant, setGithubVariant] = useState<(typeof GITHUB_VARIANTS)[number]>(GITHUB_VARIANTS[0]);
+  const [htmlVariant, setHtmlVariant] = useState<(typeof HTML_VARIANTS)[number]>(HTML_VARIANTS[0]);
+  const [terminalVariant, setTerminalVariant] = useState<(typeof TERMINAL_VARIANTS)[number]>(TERMINAL_VARIANTS[0]);
   const [activeTab, setActiveTab] = useState<ActiveRenderer>("slack");
 
   const commonOptions = {
@@ -32,22 +32,22 @@ export default function RenderersShowcasePage() {
   };
 
   const slackOutput = useMemo(
-    () => renderCitationsForSlack(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: slackVariant as any }),
+    () => renderCitationsForSlack(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: slackVariant }),
     [includeSources, slackVariant],
   );
 
   const githubOutput = useMemo(
-    () => renderCitationsForGitHub(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: githubVariant as any }),
+    () => renderCitationsForGitHub(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: githubVariant }),
     [includeSources, githubVariant],
   );
 
   const htmlOutput = useMemo(
-    () => renderCitationsAsHtml(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: htmlVariant as any }),
+    () => renderCitationsAsHtml(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: htmlVariant }),
     [includeSources, htmlVariant],
   );
 
   const terminalOutput = useMemo(
-    () => renderCitationsForTerminal(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: terminalVariant as any, color: false }),
+    () => renderCitationsForTerminal(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: terminalVariant, color: false }),
     [includeSources, terminalVariant],
   );
 
@@ -91,10 +91,12 @@ export default function RenderersShowcasePage() {
         </details>
 
         {/* Tab navigation */}
-        <div className="flex border-b border-gray-200 mb-0">
+        <div className="flex border-b border-gray-200 mb-0" role="tablist" aria-label="Renderer format">
           {tabs.map(tab => (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
@@ -109,7 +111,7 @@ export default function RenderersShowcasePage() {
         </div>
 
         {/* Renderer panels */}
-        <div className="bg-white border border-t-0 rounded-b-lg">
+        <div className="bg-white border border-t-0 rounded-b-lg" role="tabpanel">
           {/* Slack */}
           {activeTab === "slack" && (
             <RendererPanel
@@ -146,6 +148,7 @@ export default function RenderersShowcasePage() {
                   variants={HTML_VARIANTS}
                   selected={htmlVariant}
                   onChange={setHtmlVariant}
+                  label="HTML variant"
                 />
               </div>
 
@@ -185,6 +188,7 @@ export default function RenderersShowcasePage() {
                   variants={TERMINAL_VARIANTS}
                   selected={terminalVariant}
                   onChange={setTerminalVariant}
+                  label="Terminal variant"
                 />
               </div>
               <pre className="p-4 bg-gray-900 text-green-400 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap">
@@ -208,20 +212,23 @@ export default function RenderersShowcasePage() {
   );
 }
 
-function VariantSelector({
+function VariantSelector<T extends string>({
   variants,
   selected,
   onChange,
+  label,
 }: {
-  variants: readonly string[];
-  selected: string;
-  onChange: (v: string) => void;
+  variants: readonly T[];
+  selected: T;
+  onChange: (v: T) => void;
+  label?: string;
 }) {
   return (
     <select
       value={selected}
-      onChange={e => onChange(e.target.value)}
+      onChange={e => onChange(e.target.value as T)}
       className="text-sm border rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      aria-label={label ?? "Variant"}
     >
       {variants.map(v => (
         <option key={v} value={v}>
@@ -232,7 +239,7 @@ function VariantSelector({
   );
 }
 
-function RendererPanel({
+function RendererPanel<T extends string>({
   title,
   description,
   variants,
@@ -242,9 +249,9 @@ function RendererPanel({
 }: {
   title: string;
   description: string;
-  variants: readonly string[];
-  selectedVariant: string;
-  onVariantChange: (v: string) => void;
+  variants: readonly T[];
+  selectedVariant: T;
+  onVariantChange: (v: T) => void;
   output: string;
 }) {
   return (
@@ -254,7 +261,7 @@ function RendererPanel({
           <h3 className="font-medium text-gray-900">{title}</h3>
           <p className="text-xs text-gray-500">{description}</p>
         </div>
-        <VariantSelector variants={variants} selected={selectedVariant} onChange={onVariantChange} />
+        <VariantSelector variants={variants} selected={selectedVariant} onChange={onVariantChange} label={`${title} variant`} />
       </div>
       <pre className="p-4 bg-gray-50 rounded-lg text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap">
         {output}
