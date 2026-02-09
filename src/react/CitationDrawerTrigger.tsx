@@ -125,13 +125,7 @@ function getStatusBgColor(label: string): string {
 // StatusIconChip — individual status icon in the stacked row
 // =========
 
-function StatusIconChip({
-  group,
-  size = 20,
-}: {
-  group: SourceCitationGroup;
-  size?: number;
-}) {
+function StatusIconChip({ group, size = 20 }: { group: SourceCitationGroup; size?: number }) {
   const aggregateVerification = getGroupAggregateVerification(group);
   const statusInfo = getStatusInfo(aggregateVerification);
   const isPending =
@@ -149,9 +143,7 @@ function StatusIconChip({
       style={{ width: size, height: size }}
       title={`${group.sourceName}: ${statusInfo.label}`}
     >
-      <span className={cn("w-3 h-3", isPending && "animate-spin")}>
-        {statusInfo.icon}
-      </span>
+      <span className={cn("w-3 h-3", isPending && "animate-spin")}>{statusInfo.icon}</span>
     </span>
   );
 }
@@ -208,9 +200,7 @@ function SourceTooltip({
             {group.sourceName.charAt(0).toUpperCase()}
           </span>
         )}
-        <span className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-200 truncate">
-          {group.sourceName}
-        </span>
+        <span className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-200 truncate">{group.sourceName}</span>
         <span className={cn("inline-flex w-3.5 h-3.5 flex-shrink-0", statusInfo.color)} title={statusInfo.label}>
           {statusInfo.icon}
         </span>
@@ -289,11 +279,7 @@ function StackedStatusIcons({
           <StatusIconChip group={group} />
           {/* Tooltip when this specific icon is hovered and bar is expanded */}
           {isHovered && hoveredGroupIndex === i && (
-            <SourceTooltip
-              group={group}
-              showProofThumbnail={showProofThumbnails}
-              onSourceClick={onSourceClick}
-            />
+            <SourceTooltip group={group} showProofThumbnail={showProofThumbnails} onSourceClick={onSourceClick} />
           )}
         </div>
       ))}
@@ -339,7 +325,10 @@ function StackedStatusIcons({
  * ```
  */
 export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawerTriggerProps>(
-  ({ citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 5, showProofThumbnails = true }, ref) => {
+  (
+    { citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 5, showProofThumbnails = true },
+    ref,
+  ) => {
     const [isHovered, setIsHovered] = useState(false);
     const [hoveredGroupIndex, setHoveredGroupIndex] = useState<number | null>(null);
     const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);

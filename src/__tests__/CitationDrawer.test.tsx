@@ -777,11 +777,7 @@ describe("CitationDrawerTrigger", () => {
     cleanup();
   });
 
-  const createGroup = (
-    name: string,
-    count: number,
-    status: Verification["status"] = "found",
-  ): SourceCitationGroup => ({
+  const createGroup = (name: string, count: number, status: Verification["status"] = "found"): SourceCitationGroup => ({
     sourceName: name,
     sourceDomain: `${name.toLowerCase()}.com`,
     sourceFavicon: `https://${name.toLowerCase()}.com/favicon.ico`,
@@ -856,9 +852,7 @@ describe("CitationDrawerTrigger", () => {
     const groups = Array.from({ length: 8 }, (_, i) => createGroup(`Source${i}`, 1));
     const { container } = render(<CitationDrawerTrigger citationGroups={groups} maxIcons={3} />);
 
-    // Should show +5 overflow badge
-    const overflowBadge = container.querySelector("span");
-    // The component should have a +5 text node somewhere
+    // The component should have a +5 overflow text somewhere
     expect(container.textContent).toContain("+5");
   });
 
