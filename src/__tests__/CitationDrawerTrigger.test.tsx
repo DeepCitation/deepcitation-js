@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/experimental-ct-react";
+import { describe, expect, test } from "@playwright/experimental-ct-react";
 import type { SourceCitationGroup } from "../react/CitationDrawer.types";
 import { CitationDrawerTrigger } from "../react/CitationDrawerTrigger";
 
@@ -399,7 +399,7 @@ test.describe("CitationDrawerTrigger", () => {
     expect(classes).toContain(customClass);
   });
 
-  test.describe("edge cases", () => {
+  describe("edge cases", () => {
     test("handles citation group with empty citations array", async ({ mount }) => {
       const emptyGroup: SourceCitationGroup = {
         sourceName: "Empty Source",
@@ -491,7 +491,7 @@ test.describe("CitationDrawerTrigger", () => {
     });
   });
 
-  test.describe("visual snapshots", () => {
+  describe("visual snapshots", () => {
     test("collapsed state matches snapshot", async ({ mount }) => {
       const groups = createAllVerifiedGroups();
       const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
@@ -525,7 +525,7 @@ test.describe("CitationDrawerTrigger", () => {
     });
   });
 
-  test.describe("mobile viewport", () => {
+  describe("mobile viewport", () => {
     test.use({ viewport: { width: 375, height: 667 } });
 
     test("renders properly on mobile", async ({ mount }) => {
