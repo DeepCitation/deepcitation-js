@@ -1,8 +1,15 @@
 "use client";
 
 import { type Citation, parseCitation, type Verification } from "@deepcitation/deepcitation-js";
-import { CitationComponent } from "@deepcitation/deepcitation-js/react";
-import { useMemo } from "react";
+import {
+  CitationComponent,
+  CitationDrawer,
+  CitationDrawerTrigger,
+  generateCitationKey,
+  groupCitationsBySource,
+  type CitationDrawerItem,
+} from "@deepcitation/deepcitation-js/react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -21,6 +28,7 @@ interface ChatMessageProps {
     missed: number;
     pending: number;
   };
+  drawerItems?: CitationDrawerItem[];
 }
 
 /**
@@ -28,9 +36,12 @@ interface ChatMessageProps {
  *
  * Displays chat messages with inline citation verification.
  * Replaces <cite> tags with CitationComponent using verification data.
+ * Shows a CitationDrawerTrigger at the bottom of assistant messages
+ * that opens a full CitationDrawer on click.
  */
-export function ChatMessage({ message, citations, verifications }: ChatMessageProps) {
+export function ChatMessage({ message, citations, verifications, drawerItems }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // AI SDK v6 uses parts array, fall back to content for compatibility
   const messageContent =
@@ -44,6 +55,11 @@ export function ChatMessage({ message, citations, verifications }: ChatMessagePr
   const processedContent = useMemo(() => {
     return processContentWithCitations(messageContent, citations ?? {}, verifications ?? {});
   }, [messageContent, citations, verifications]);
+
+  const citationGroups = useMemo(() => {
+    if (!drawerItems || drawerItems.length === 0) return [];
+    return groupCitationsBySource(drawerItems);
+  }, [drawerItems]);
 
   return (
     <div className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -61,7 +77,20 @@ export function ChatMessage({ message, citations, verifications }: ChatMessagePr
         {isUser ? (
           <p className="whitespace-pre-wrap">{messageContent}</p>
         ) : (
-          <div className="prose prose-sm max-w-none">{processedContent}</div>
+          <>
+            <div className="prose prose-sm max-w-none">{processedContent}</div>
+
+            {/* Citation Drawer Trigger — sits at bottom of assistant message */}
+            {citationGroups.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-gray-100">
+                <CitationDrawerTrigger
+                  citationGroups={citationGroups}
+                  onClick={() => setDrawerOpen(true)}
+                  isOpen={drawerOpen}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -70,36 +99,20 @@ export function ChatMessage({ message, citations, verifications }: ChatMessagePr
           U
         </div>
       )}
+
+      {/* CitationDrawer rendered via portal */}
+      {drawerOpen && (
+        <CitationDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          citationGroups={citationGroups}
+        />
+      )}
     </div>
   );
 }
 
-/**
- * Verification summary badge component
- */
-function _VerificationSummaryBadge({
-  summary,
-}: {
-  summary: { total: number; verified: number; missed: number; pending: number };
-}) {
-  const allVerified = summary.verified === summary.total;
-  const someVerified = summary.verified > 0;
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${
-        allVerified
-          ? "bg-green-100 text-green-700"
-          : someVerified
-            ? "bg-yellow-100 text-yellow-700"
-            : "bg-red-100 text-red-700"
-      }`}
-    >
-      {allVerified ? "✓" : someVerified ? "◐" : "✗"}
-      {summary.verified}/{summary.total} citations verified
-    </span>
-  );
-}
+const CITE_TAG_REGEX = /<cite\s+[^>]*\/>/g;
 
 /**
  * Process content and replace <cite> tags with CitationComponent inline.
@@ -111,19 +124,19 @@ function processContentWithCitations(
   citations: Record<string, Citation>,
   verifications: Record<string, Verification>,
 ): React.ReactNode {
-  // Match <cite ... /> tags
-  const citationRegex = /<cite\s+[^>]*\/>/g;
+  const matches = Array.from(content.matchAll(CITE_TAG_REGEX));
   const parts: Array<{ type: "text" | "citation"; content: string }> = [];
 
   let lastIndex = 0;
-  let match;
 
-  while ((match = citationRegex.exec(content)) !== null) {
+  for (const match of matches) {
+    const matchIndex = match.index;
+
     // Add text before this citation
-    if (match.index > lastIndex) {
+    if (matchIndex > lastIndex) {
       parts.push({
         type: "text",
-        content: content.slice(lastIndex, match.index),
+        content: content.slice(lastIndex, matchIndex),
       });
     }
 
@@ -132,18 +145,13 @@ function processContentWithCitations(
       content: match[0], // The full <cite ... /> tag
     });
 
-    lastIndex = match.index + match[0].length;
+    lastIndex = matchIndex + match[0].length;
   }
 
   // Add remaining text
   if (lastIndex < content.length) {
     parts.push({ type: "text", content: content.slice(lastIndex) });
   }
-
-  // Get citations and verifications as arrays (preserving order)
-  const citationEntries = Object.entries(citations);
-  const verificationEntries = Object.entries(verifications);
-  let citationIndex = 0;
 
   // Build the rendered content
   const elements: React.ReactNode[] = [];
@@ -164,25 +172,25 @@ function processContentWithCitations(
         </ReactMarkdown>,
       );
     } else if (part.type === "citation") {
-      // Match by index - citations and verifications should be in same order
-      const citationEntry = citationEntries[citationIndex];
-      const verificationEntry = verificationEntries[citationIndex];
-      citationIndex++;
+      try {
+        // Parse the <cite> tag to get a Citation object, then look up by key
+        const { citation: parsedCitation } = parseCitation(part.content);
+        const citationKey = generateCitationKey(parsedCitation);
 
-      if (citationEntry && verificationEntry) {
-        const [, citation] = citationEntry;
-        const [, verificationData] = verificationEntry;
+        // Look up the server-verified citation and verification by key
+        const citation = citations[citationKey] ?? parsedCitation;
+        const verification = verifications[citationKey];
+
+        if (!citations[citationKey]) {
+          console.warn("[ChatMessage] Citation key not found in verification data, using parsed fallback:", citationKey);
+        }
+
         elements.push(
-          <CitationComponent key={`citation-${index}`} citation={citation} verification={verificationData} />,
+          <CitationComponent key={`citation-${index}`} citation={citation} verification={verification} />,
         );
-      } else if (citationEntry) {
-        // Have citation but no verification yet
-        const [, citation] = citationEntry;
-        elements.push(<CitationComponent key={`citation-${index}`} citation={citation} verification={undefined} />);
-      } else {
-        // Fallback: parse the citation without verification
-        const { citation } = parseCitation(part.content);
-        elements.push(<CitationComponent key={`citation-${index}`} citation={citation} verification={undefined} />);
+      } catch (err) {
+        console.warn("[ChatMessage] Failed to parse citation tag:", part.content, err);
+        elements.push(<span key={`citation-${index}`}>{part.content}</span>);
       }
     }
   });
