@@ -103,6 +103,29 @@ export function getStatusInfo(verification: Verification | null): {
 }
 
 /**
+ * Get numeric priority for a verification status.
+ * Higher number = worse status. Used to pick the "worst" status in a group.
+ *
+ * Priority: not_found (4) > partial (3) > pending (2) > verified (1)
+ */
+export function getStatusPriority(verification: Verification | null): number {
+  const status = verification?.status;
+
+  if (!status || status === "pending" || status === "loading") return 2;
+  if (status === "not_found") return 4;
+
+  const isPartial =
+    status === "partial_text_found" ||
+    status === "found_on_other_page" ||
+    status === "found_on_other_line" ||
+    status === "first_word_found";
+
+  if (isPartial) return 3;
+
+  return 1; // verified
+}
+
+/**
  * Hook for managing citation drawer state.
  *
  * @example
