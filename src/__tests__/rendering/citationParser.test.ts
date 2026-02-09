@@ -19,8 +19,6 @@ const compactPageIdCiteTag = `<cite attachment_id="compact456" start_page_id="2_
 
 const minimalCiteTag = `<cite attachment_id="min789" />`;
 
-const noLineIdsCiteTag = `<cite attachment_id="test123" page_number="1" full_phrase="No line IDs." />`;
-
 const invalidLineIdsCiteTag = `<cite attachment_id="test456" page_number="1" line_ids="12,abc,13,xyz" full_phrase="Invalid line IDs." />`;
 
 // =============================================================================
@@ -301,7 +299,7 @@ describe("parseCiteAttributes - malformed input", () => {
 
     // Malformed quote structure causes unexpected parsing behavior
     // The regex matches up to the next quote, capturing malformed content
-    expect(attrs.attachment_id).toBe('unclosed full_phrase=');
+    expect(attrs.attachment_id).toBe("unclosed full_phrase=");
     expect(attrs.full_phrase).toBeUndefined();
   });
 
