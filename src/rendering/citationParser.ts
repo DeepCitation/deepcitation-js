@@ -17,9 +17,7 @@ export function parseCiteAttributes(citeTag: string): Record<string, string | un
   const attrs: Record<string, string | undefined> = {};
   const attrRegex = new RegExp(ATTR_REGEX_PATTERN.source, ATTR_REGEX_PATTERN.flags);
   let match: RegExpExecArray | null;
-  for (;;) {
-    match = attrRegex.exec(citeTag);
-    if (!match) break;
+  while ((match = attrRegex.exec(citeTag)) !== null) {
     const key = match[1].replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
     attrs[key] = match[3];
   }
