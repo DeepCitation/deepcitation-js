@@ -34,6 +34,7 @@ const CITATION_2: Citation = {
   citationNumber: 2,
 };
 
+// anchorText intentionally mismatches fullPhrase ("is" inserted) to demonstrate not-found verification status
 const CITATION_3: Citation = {
   type: "document",
   attachmentId: "abc123",

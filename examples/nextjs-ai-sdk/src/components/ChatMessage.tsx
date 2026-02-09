@@ -112,6 +112,8 @@ export function ChatMessage({ message, citations, verifications, drawerItems }: 
   );
 }
 
+const CITE_TAG_REGEX = /<cite\s+[^>]*\/>/g;
+
 /**
  * Process content and replace <cite> tags with CitationComponent inline.
  * Uses the pre-extracted citations from the verification response to ensure
@@ -122,19 +124,19 @@ function processContentWithCitations(
   citations: Record<string, Citation>,
   verifications: Record<string, Verification>,
 ): React.ReactNode {
-  // Match <cite ... /> tags
-  const citationRegex = /<cite\s+[^>]*\/>/g;
+  const matches = Array.from(content.matchAll(CITE_TAG_REGEX));
   const parts: Array<{ type: "text" | "citation"; content: string }> = [];
 
   let lastIndex = 0;
-  let match;
 
-  while ((match = citationRegex.exec(content)) !== null) {
+  for (const match of matches) {
+    const matchIndex = match.index;
+
     // Add text before this citation
-    if (match.index > lastIndex) {
+    if (matchIndex > lastIndex) {
       parts.push({
         type: "text",
-        content: content.slice(lastIndex, match.index),
+        content: content.slice(lastIndex, matchIndex),
       });
     }
 
@@ -143,7 +145,7 @@ function processContentWithCitations(
       content: match[0], // The full <cite ... /> tag
     });
 
-    lastIndex = match.index + match[0].length;
+    lastIndex = matchIndex + match[0].length;
   }
 
   // Add remaining text
@@ -170,21 +172,26 @@ function processContentWithCitations(
         </ReactMarkdown>,
       );
     } else if (part.type === "citation") {
-      // Parse the <cite> tag to get a Citation object, then look up by key
-      const { citation: parsedCitation } = parseCitation(part.content);
-      const citationKey = generateCitationKey(parsedCitation);
+      try {
+        // Parse the <cite> tag to get a Citation object, then look up by key
+        const { citation: parsedCitation } = parseCitation(part.content);
+        const citationKey = generateCitationKey(parsedCitation);
 
-      // Look up the server-verified citation and verification by key
-      const citation = citations[citationKey] ?? parsedCitation;
-      const verification = verifications[citationKey];
+        // Look up the server-verified citation and verification by key
+        const citation = citations[citationKey] ?? parsedCitation;
+        const verification = verifications[citationKey];
 
-      if (!citations[citationKey]) {
-        console.warn("[ChatMessage] Citation key not found in verification data, using parsed fallback:", citationKey);
+        if (!citations[citationKey]) {
+          console.warn("[ChatMessage] Citation key not found in verification data, using parsed fallback:", citationKey);
+        }
+
+        elements.push(
+          <CitationComponent key={`citation-${index}`} citation={citation} verification={verification} />,
+        );
+      } catch (err) {
+        console.warn("[ChatMessage] Failed to parse citation tag:", part.content, err);
+        elements.push(<span key={`citation-${index}`}>{part.content}</span>);
       }
-
-      elements.push(
-        <CitationComponent key={`citation-${index}`} citation={citation} verification={verification} />,
-      );
     }
   });
 

@@ -25,30 +25,30 @@ export default function RenderersShowcasePage() {
   const [terminalVariant, setTerminalVariant] = useState<(typeof TERMINAL_VARIANTS)[number]>(TERMINAL_VARIANTS[0]);
   const [activeTab, setActiveTab] = useState<ActiveRenderer>("slack");
 
-  const commonOptions = {
+  const commonOptions = useMemo(() => ({
     verifications: SAMPLE_VERIFICATIONS,
     proofBaseUrl: PROOF_BASE_URL,
     includeSources,
-  };
+  }), [includeSources]);
 
   const slackOutput = useMemo(
     () => renderCitationsForSlack(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: slackVariant }),
-    [includeSources, slackVariant],
+    [commonOptions, slackVariant],
   );
 
   const githubOutput = useMemo(
     () => renderCitationsForGitHub(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: githubVariant }),
-    [includeSources, githubVariant],
+    [commonOptions, githubVariant],
   );
 
   const htmlOutput = useMemo(
     () => renderCitationsAsHtml(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: htmlVariant }),
-    [includeSources, htmlVariant],
+    [commonOptions, htmlVariant],
   );
 
   const terminalOutput = useMemo(
     () => renderCitationsForTerminal(SAMPLE_LLM_OUTPUT, { ...commonOptions, variant: terminalVariant, color: false }),
-    [includeSources, terminalVariant],
+    [commonOptions, terminalVariant],
   );
 
   const tabs: { key: ActiveRenderer; label: string; icon: string }[] = [
