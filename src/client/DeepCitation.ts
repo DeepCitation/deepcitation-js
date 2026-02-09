@@ -571,6 +571,10 @@ export class DeepCitation {
       return cached.promise;
     }
 
+    if (options?.proofConfig && !options?.generateProofUrls) {
+      console.warn("DeepCitation: proofConfig is ignored when generateProofUrls is not true");
+    }
+
     const requestUrl = `${this.apiUrl}/verifyCitations`;
     const requestBody = {
       data: {
@@ -578,7 +582,7 @@ export class DeepCitation {
         citations: citationMap,
         outputImageFormat: options?.outputImageFormat || "avif",
         generateProofUrls: options?.generateProofUrls,
-        proofConfig: options?.proofConfig,
+        proofConfig: options?.generateProofUrls ? options?.proofConfig : undefined,
       },
     };
 

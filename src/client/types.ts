@@ -146,12 +146,29 @@ export interface VerifyCitationsOptions {
   generateProofUrls?: boolean;
 
   /**
-   * Proof URL configuration. Only used when generateProofUrls is true.
+   * Proof URL configuration. Only used when `generateProofUrls` is `true`.
+   * Ignored when `generateProofUrls` is `false` or omitted.
+   *
+   * @example
+   * ```typescript
+   * // Signed URLs with 7-day expiry and PNG images
+   * proofConfig: {
+   *   access: "signed",
+   *   signedUrlExpiry: "7d",
+   *   imageFormat: "png",
+   * }
+   *
+   * // Public proof URLs with AVIF images
+   * proofConfig: {
+   *   access: "public",
+   *   imageFormat: "avif",
+   * }
+   * ```
    */
   proofConfig?: {
     /** Access control for proof URLs */
     access?: "signed" | "workspace" | "public";
-    /** Expiry duration for signed URLs */
+    /** Expiry duration for signed URLs. Only used when `access` is `"signed"`. */
     signedUrlExpiry?: "1h" | "24h" | "7d" | "30d" | "90d" | "1y";
     /** Image format for proof images */
     imageFormat?: "png" | "jpeg" | "avif" | "webp";
