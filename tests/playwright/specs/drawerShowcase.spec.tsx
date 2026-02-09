@@ -199,12 +199,9 @@ test.describe("Drawer Showcase - Interactive", () => {
     // Click to open
     await trigger.click();
 
-    // Wait for drawer to appear
-    await page.waitForTimeout(300);
-
     // Drawer dialog should be visible
     const dialog = page.locator("[role='dialog']");
-    await expect(dialog).toBeVisible();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
   });
 
   test("drawer closes on escape key", async ({ mount, page }) => {
@@ -213,17 +210,15 @@ test.describe("Drawer Showcase - Interactive", () => {
     // Open drawer
     const trigger = page.locator('[data-interactive-drawer="trigger"] [data-testid="citation-drawer-trigger"]');
     await trigger.click();
-    await page.waitForTimeout(300);
 
     const dialog = page.locator("[role='dialog']");
-    await expect(dialog).toBeVisible();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
 
     // Press escape
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(200);
 
     // Dialog should be gone
-    await expect(dialog).not.toBeVisible();
+    await expect(dialog).not.toBeVisible({ timeout: 5000 });
   });
 
   test("hover spreads status icons", async ({ mount, page }) => {
@@ -237,9 +232,10 @@ test.describe("Drawer Showcase - Interactive", () => {
     const iconGroup = trigger.locator("[role='group']");
     await expect(iconGroup).toBeVisible();
 
-    // Hover the trigger
+    // Hover the trigger and wait for spread animation to complete
     await trigger.hover();
-    await page.waitForTimeout(400);
+    // Icons transition from marginLeft:-8 to marginLeft:6 over 300ms
+    await page.waitForTimeout(350);
 
     // Icons should now be spread (margin-left changes from -8 to 6)
     // Verify visually via snapshot

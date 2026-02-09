@@ -171,13 +171,25 @@ function SourceTooltip({
   const rawProofImage = showProofThumbnail
     ? group.citations.find(c => c.verification?.verificationImageBase64)?.verification?.verificationImageBase64
     : null;
-  const proofImage =
-    typeof rawProofImage === "string" &&
-    (rawProofImage.startsWith("data:image/") ||
-      rawProofImage.startsWith("https://api.deepcitation.com/") ||
-      rawProofImage.startsWith("https://cdn.deepcitation.com/"))
-      ? rawProofImage
-      : null;
+  const proofImage = (() => {
+    if (typeof rawProofImage !== "string") return null;
+    const trimmed = rawProofImage.trim();
+    if (trimmed.length === 0) return null;
+    const lower = trimmed.toLowerCase();
+    // Data URI: allow safe raster formats only (no SVG — can contain scripts)
+    if (lower.startsWith("data:")) {
+      const safePrefixes = ["data:image/png", "data:image/jpeg", "data:image/jpg", "data:image/webp", "data:image/avif", "data:image/gif"];
+      return safePrefixes.some(p => lower.startsWith(p)) ? trimmed : null;
+    }
+    // HTTPS URL: validate via URL constructor against trusted hosts
+    try {
+      const url = new URL(trimmed);
+      const trustedHosts = ["api.deepcitation.com", "cdn.deepcitation.com"];
+      return url.protocol === "https:" && trustedHosts.includes(url.hostname) ? trimmed : null;
+    } catch {
+      return null;
+    }
+  })();
 
   const handleProofClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -185,17 +197,28 @@ function SourceTooltip({
     onSourceClick?.(group);
   };
 
-  // Clamp tooltip to viewport edges
+  // Clamp tooltip to viewport edges on mount and when layout changes
   useLayoutEffect(() => {
     const el = tooltipRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const margin = 8;
-    if (rect.left < margin) {
-      setAdjustedLeft(-rect.left + margin);
-    } else if (rect.right > window.innerWidth - margin) {
-      setAdjustedLeft(window.innerWidth - margin - rect.right);
-    }
+
+    const clamp = () => {
+      const rect = el.getBoundingClientRect();
+      const margin = 8;
+      if (rect.left < margin) {
+        setAdjustedLeft(-rect.left + margin);
+      } else if (rect.right > window.innerWidth - margin) {
+        setAdjustedLeft(window.innerWidth - margin - rect.right);
+      } else {
+        setAdjustedLeft(null);
+      }
+    };
+
+    clamp();
+
+    // Recalculate if viewport resizes while tooltip is visible
+    window.addEventListener("resize", clamp);
+    return () => window.removeEventListener("resize", clamp);
   }, []);
 
   return (
@@ -460,7 +483,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
                   key={`${group.sourceDomain ?? group.sourceName}-${index}`}
                   className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 ring-1 ring-white dark:ring-gray-800 flex items-center justify-center text-[8px] font-medium text-gray-600 dark:text-gray-300"
                 >
-                  {group.sourceName.charAt(0).toUpperCase()}
+                  {(group.sourceName || "S").charAt(0).toUpperCase()}
                 </span>
               );
             })}

@@ -12,16 +12,34 @@ const handleFaviconError = (e: React.SyntheticEvent<HTMLImageElement>): void => 
   (e.target as HTMLImageElement).style.display = "none";
 };
 
+/** Safe raster image data URI prefixes (no SVG — can contain scripts). */
+const SAFE_DATA_IMAGE_PREFIXES = ["data:image/png", "data:image/jpeg", "data:image/jpg", "data:image/webp", "data:image/avif", "data:image/gif"] as const;
+
+/** Trusted CDN hostnames for proof images. */
+const TRUSTED_IMAGE_HOSTS = ["api.deepcitation.com", "cdn.deepcitation.com"] as const;
+
 /**
- * Validate that a proof image source is a trusted URL or data URI.
+ * Validate that a proof image source is a trusted URL or safe data URI.
+ * Blocks SVG data URIs (can contain script), case-insensitive, trims whitespace.
  */
 function isValidProofImageSrc(src: unknown): src is string {
   if (typeof src !== "string") return false;
-  return (
-    src.startsWith("data:image/") ||
-    src.startsWith("https://api.deepcitation.com/") ||
-    src.startsWith("https://cdn.deepcitation.com/")
-  );
+  const trimmed = src.trim();
+  if (trimmed.length === 0) return false;
+
+  // Data URI: allow only safe raster formats (no SVG)
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith("data:")) {
+    return SAFE_DATA_IMAGE_PREFIXES.some(prefix => lower.startsWith(prefix));
+  }
+
+  // HTTPS URL: validate via URL constructor, check against trusted hosts
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "https:" && (TRUSTED_IMAGE_HOSTS as readonly string[]).includes(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -97,7 +115,7 @@ function SourceGroupHeader({
  * Individual citation item displayed in the drawer.
  * Shows source name, status, article title, snippet, page number, proof image, and click affordance.
  */
-export function CitationDrawerItemComponent({
+export const CitationDrawerItemComponent = React.memo(function CitationDrawerItemComponent({
   item,
   isLast = false,
   onClick,
@@ -241,7 +259,7 @@ export function CitationDrawerItemComponent({
       </div>
     </div>
   );
-}
+});
 
 /**
  * CitationDrawer displays a collection of citations in a drawer/bottom sheet.
@@ -324,7 +342,7 @@ export function CitationDrawer({
         result.push({
           ...group,
           citations: group.citations.slice(0, remaining),
-          additionalCount: Math.max(0, group.citations.length - 1),
+          additionalCount: Math.max(0, remaining - 1),
         });
         remaining = 0;
       }
