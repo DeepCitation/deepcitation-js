@@ -870,4 +870,137 @@ describe("CitationDrawerTrigger", () => {
     const favicon = container.querySelector('img[src="https://test.com/favicon.ico"]');
     expect(favicon).toBeInTheDocument();
   });
+
+  /** Helper: hover the trigger, then hover the first icon in the status group */
+  const hoverFirstIcon = (trigger: HTMLElement) => {
+    fireEvent.mouseEnter(trigger);
+    const iconGroup = trigger.querySelector("[role='group']");
+    expect(iconGroup).toBeInTheDocument();
+    const firstIcon = iconGroup?.firstElementChild;
+    expect(firstIcon).toBeInTheDocument();
+    if (firstIcon) fireEvent.mouseEnter(firstIcon);
+  };
+
+  it("shows tooltip on icon hover", () => {
+    const groups = [createGroup("TestSource", 2)];
+    const { getByTestId, queryByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // Tooltip should appear
+    expect(queryByTestId("source-tooltip")).toBeInTheDocument();
+  });
+
+  it("calls onSourceClick when proof thumbnail is clicked in tooltip", () => {
+    const onSourceClick = jest.fn();
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "TestSource",
+        sourceDomain: "testsource.com",
+        sourceFavicon: "https://testsource.com/favicon.ico",
+        citations: [
+          {
+            citationKey: "ts-0",
+            citation: { siteName: "TestSource", title: "Article 1" },
+            verification: {
+              status: "found",
+              verificationImageBase64: "data:image/png;base64,abc123",
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} onSourceClick={onSourceClick} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // Click the proof thumbnail button
+    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(proofButton).toBeInTheDocument();
+    if (proofButton) fireEvent.click(proofButton);
+
+    expect(onSourceClick).toHaveBeenCalledWith(groups[0]);
+  });
+
+  it("handles empty sourceName by falling back to 'Source'", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "",
+        sourceDomain: "test.com",
+        citations: [
+          {
+            citationKey: "t-0",
+            citation: { siteName: "" },
+            verification: { status: "found" },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // The tooltip should show "Source" fallback, not empty string
+    const tooltip = trigger.querySelector("[data-testid='source-tooltip']");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip?.textContent).toContain("Source");
+  });
+
+  it("handles whitespace-only sourceName by falling back to 'Source'", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "   ",
+        sourceDomain: "test.com",
+        citations: [
+          {
+            citationKey: "t-0",
+            citation: { siteName: "   " },
+            verification: { status: "found" },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    const tooltip = trigger.querySelector("[data-testid='source-tooltip']");
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip?.textContent).toContain("Source");
+  });
+
+  it("rejects invalid proof image URLs", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "TestSource",
+        sourceDomain: "testsource.com",
+        citations: [
+          {
+            citationKey: "ts-0",
+            citation: { siteName: "TestSource", title: "Article 1" },
+            verification: {
+              status: "found",
+              verificationImageBase64: "javascript:alert('xss')",
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // Should not render proof image for invalid URL
+    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(proofButton).not.toBeInTheDocument();
+  });
 });
