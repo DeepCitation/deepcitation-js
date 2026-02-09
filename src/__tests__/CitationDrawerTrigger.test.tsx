@@ -257,6 +257,52 @@ test.describe("CitationDrawerTrigger", () => {
     expect(clicked).toBe(true);
   });
 
+  test("expands on keyboard focus", async ({ mount }) => {
+    const groups = createMixedStatusGroups();
+    const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const button = component.locator("button");
+    await button.focus();
+
+    // Hover content should be visible when focused
+    const visibleContent = component.locator("span").filter({ hasText: "React" });
+    await expect(visibleContent).toBeVisible();
+  });
+
+  test("collapses on keyboard blur", async ({ mount }) => {
+    const groups = createMixedStatusGroups();
+    const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const button = component.locator("button");
+    await button.focus();
+
+    // Should be visible
+    let visibleContent = component.locator("span").filter({ hasText: "React" });
+    await expect(visibleContent).toBeVisible();
+
+    // Blur
+    await button.blur();
+
+    // Should be hidden (max-h-0 opacity-0)
+    await expect(visibleContent).toHaveCSS("opacity", "0");
+  });
+
+  test("handles rapid focus/blur cycles", async ({ mount }) => {
+    const groups = createAllVerifiedGroups();
+    const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const button = component.locator("button");
+
+    // Rapid focus/blur cycles
+    for (let i = 0; i < 3; i++) {
+      await button.focus();
+      await button.blur();
+    }
+
+    // Should remain stable
+    await expect(component).toBeVisible();
+  });
+
   test("displays custom label when provided", async ({ mount }) => {
     const groups = createAllVerifiedGroups();
     const customLabel = "Custom Citations Label";
@@ -357,6 +403,102 @@ test.describe("CitationDrawerTrigger", () => {
     const button = component.locator("button");
     const classes = await button.getAttribute("class");
     expect(classes).toContain(customClass);
+  });
+
+  test.describe("edge cases", () => {
+    test("handles citation group with empty citations array", async ({ mount }) => {
+      const emptyGroup: SourceCitationGroup = {
+        sourceName: "Empty Source",
+        sourceDomain: "empty.com",
+        citations: [],
+        additionalCount: 0,
+      };
+
+      const component = await mount(<CitationDrawerTrigger citationGroups={[emptyGroup]} />);
+
+      // Should still render the trigger
+      await expect(component).toBeVisible();
+
+      // Hover should not crash
+      await component.hover();
+      await expect(component).toBeVisible();
+    });
+
+    test("handles broken favicon URLs gracefully", async ({ mount }) => {
+      const groupWithBrokenFavicon = createMockCitationGroup({
+        sourceFavicon: "https://invalid-domain-that-does-not-exist.example.com/broken.ico",
+      });
+
+      const component = await mount(
+        <CitationDrawerTrigger citationGroups={[groupWithBrokenFavicon]} />,
+      );
+
+      // Image load failure should not crash component
+      const img = component.locator("img");
+      if (await img.count() > 0) {
+        // Simulate image load error
+        await img.dispatchEvent("error");
+      }
+
+      await expect(component).toBeVisible();
+    });
+
+    test("handles extremely long source names without breaking layout", async ({ mount }) => {
+      const groupWithLongName = createMockCitationGroup({
+        sourceName: "A very long source name that could potentially break the layout if not handled correctly",
+      });
+
+      const component = await mount(
+        <CitationDrawerTrigger citationGroups={[groupWithLongName]} />,
+      );
+
+      // Should truncate gracefully with CSS truncation
+      await expect(component).toBeVisible();
+
+      const label = component.locator("span").filter({ hasText: "sources" });
+      // Check that truncation class is applied
+      const classes = await label.getAttribute("class");
+      expect(classes).toContain("truncate");
+    });
+
+    test("handles click during hover animation", async ({ mount }) => {
+      const groups = createAllVerifiedGroups();
+      let clicked = false;
+
+      const component = await mount(
+        <CitationDrawerTrigger
+          citationGroups={groups}
+          onClick={() => {
+            clicked = true;
+          }}
+        />,
+      );
+
+      // Hover to trigger animation
+      await component.hover();
+
+      // Click while animation is happening
+      await component.click();
+
+      expect(clicked).toBe(true);
+    });
+
+    test("forwards ref correctly", async ({ mount }) => {
+      const groups = createAllVerifiedGroups();
+      let buttonRef: HTMLButtonElement | null = null;
+
+      await mount(
+        <CitationDrawerTrigger
+          ref={(el) => {
+            buttonRef = el;
+          }}
+          citationGroups={groups}
+        />,
+      );
+
+      expect(buttonRef).toBeTruthy();
+      expect(buttonRef?.tagName).toBe("BUTTON");
+    });
   });
 
   test.describe("visual snapshots", () => {

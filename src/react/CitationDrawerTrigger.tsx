@@ -114,9 +114,11 @@ function StatusDots({ summary }: { summary: CitationStatusSummary }) {
 
 function HoverSourceRow({ group }: { group: SourceCitationGroup }) {
   const firstItem = group.citations[0];
-  const statusInfo = getStatusInfo(firstItem?.verification ?? null);
+  if (!firstItem) return null;
+
+  const statusInfo = getStatusInfo(firstItem.verification ?? null);
   const isPending =
-    !firstItem?.verification?.status ||
+    !firstItem.verification?.status ||
     firstItem.verification.status === "pending" ||
     firstItem.verification.status === "loading";
 
@@ -185,6 +187,8 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
 
     const handleMouseEnter = useCallback(() => setIsHovered(true), []);
     const handleMouseLeave = useCallback(() => setIsHovered(false), []);
+    const handleFocus = useCallback(() => setIsHovered(true), []);
+    const handleBlur = useCallback(() => setIsHovered(false), []);
 
     if (summary.total === 0) return null;
 
@@ -195,6 +199,8 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
         onClick={onClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         className={cn(
           "w-full text-left rounded-lg border transition-all duration-200",
           "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50",
@@ -217,11 +223,11 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
 
           {/* Stacked favicons */}
           <div className="flex items-center -space-x-1 flex-shrink-0">
-            {displayGroups.map((group) => {
+            {displayGroups.map((group, index) => {
               if (group.sourceFavicon) {
                 return (
                   <img
-                    key={group.sourceDomain ?? group.sourceName}
+                    key={`${group.sourceDomain ?? group.sourceName}-${index}`}
                     src={group.sourceFavicon}
                     alt=""
                     className="w-4 h-4 rounded-full ring-1 ring-white dark:ring-gray-800 object-contain"
@@ -234,7 +240,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
               }
               return (
                 <span
-                  key={group.sourceDomain ?? group.sourceName}
+                  key={`${group.sourceDomain ?? group.sourceName}-${index}`}
                   className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 ring-1 ring-white dark:ring-gray-800 flex items-center justify-center text-[8px] font-medium text-gray-600 dark:text-gray-300"
                 >
                   {group.sourceName.charAt(0).toUpperCase()}
@@ -271,8 +277,8 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
           )}
         >
           <div className="px-3 pb-2 pt-1 border-t border-gray-200 dark:border-gray-700 space-y-0.5">
-            {citationGroups.slice(0, 5).map((group) => (
-              <HoverSourceRow key={group.sourceDomain ?? group.sourceName} group={group} />
+            {citationGroups.slice(0, 5).map((group, index) => (
+              <HoverSourceRow key={`${group.sourceDomain ?? group.sourceName}-${index}`} group={group} />
             ))}
             {citationGroups.length > 5 && (
               <span className="text-[10px] text-gray-400 dark:text-gray-500">
