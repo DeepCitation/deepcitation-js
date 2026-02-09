@@ -912,9 +912,7 @@ describe("CitationDrawerTrigger", () => {
         additionalCount: 0,
       },
     ];
-    const { getByTestId } = render(
-      <CitationDrawerTrigger citationGroups={groups} onSourceClick={onSourceClick} />,
-    );
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} onSourceClick={onSourceClick} />);
 
     const trigger = getByTestId("citation-drawer-trigger");
     hoverFirstIcon(trigger);
