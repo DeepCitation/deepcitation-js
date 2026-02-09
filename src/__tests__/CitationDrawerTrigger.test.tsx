@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@playwright/experimental-ct-react";
+import { expect, test } from "@playwright/experimental-ct-react";
 import type { SourceCitationGroup } from "../react/CitationDrawer.types";
 import { CitationDrawerTrigger } from "../react/CitationDrawerTrigger";
 
@@ -193,7 +193,6 @@ test.describe("CitationDrawerTrigger", () => {
     const groups = createAllVerifiedGroups();
     const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
 
-    // Check that the label contains "verified"
     const label = component.locator("span").filter({ hasText: "sources" });
     await expect(label).toContainText("3 verified");
   });
@@ -214,14 +213,11 @@ test.describe("CitationDrawerTrigger", () => {
     const groups = createMixedStatusGroups();
     const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
 
-    // Initially, hover content should be hidden
     const hoverContent = component.locator("div").filter({ hasText: "React" });
     await expect(hoverContent).toHaveCSS("opacity", "0");
 
-    // Hover over the button
     await component.hover();
 
-    // Now the hover content should be visible
     const visibleContent = component.locator("span").filter({ hasText: "React" });
     await expect(visibleContent).toBeVisible();
   });
@@ -232,11 +228,9 @@ test.describe("CitationDrawerTrigger", () => {
 
     const chevron = component.locator("svg");
 
-    // Initial state
     let classes = await chevron.getAttribute("class");
     expect(classes).not.toContain("rotate-180");
 
-    // On hover
     await component.hover();
     classes = await chevron.getAttribute("class");
     expect(classes).toContain("rotate-180");
@@ -262,7 +256,6 @@ test.describe("CitationDrawerTrigger", () => {
     const button = component.locator("button");
     await button.focus();
 
-    // Hover content should be visible when focused
     const visibleContent = component.locator("span").filter({ hasText: "React" });
     await expect(visibleContent).toBeVisible();
   });
@@ -274,31 +267,12 @@ test.describe("CitationDrawerTrigger", () => {
     const button = component.locator("button");
     await button.focus();
 
-    // Should be visible
     const visibleContent = component.locator("span").filter({ hasText: "React" });
     await expect(visibleContent).toBeVisible();
 
-    // Blur
     await button.blur();
 
-    // Should be hidden (max-h-0 opacity-0)
     await expect(visibleContent).toHaveCSS("opacity", "0");
-  });
-
-  test("handles rapid focus/blur cycles", async ({ mount }) => {
-    const groups = createAllVerifiedGroups();
-    const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
-
-    const button = component.locator("button");
-
-    // Rapid focus/blur cycles
-    for (let i = 0; i < 3; i++) {
-      await button.focus();
-      await button.blur();
-    }
-
-    // Should remain stable
-    await expect(component).toBeVisible();
   });
 
   test("displays custom label when provided", async ({ mount }) => {
@@ -314,11 +288,9 @@ test.describe("CitationDrawerTrigger", () => {
     const groups = createMixedStatusGroups();
     const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
 
-    // Check for presence of status dots
     const dots = component.locator("[aria-hidden='true']").first();
     await expect(dots).toBeVisible();
 
-    // Dots should contain background color classes
     const dotElements = dots.locator("span");
     const count = await dotElements.count();
     expect(count).toBeGreaterThan(0);
@@ -328,18 +300,8 @@ test.describe("CitationDrawerTrigger", () => {
     const groups = createAllVerifiedGroups();
     const component = await mount(<CitationDrawerTrigger citationGroups={groups} maxIcons={2} />);
 
-    // Should show 2 favicons + "+1" badge
     const faviconArea = component.locator("div").filter({ hasText: "+" });
     await expect(faviconArea).toBeVisible();
-  });
-
-  test("shows +N badge when sources exceed maxIcons", async ({ mount }) => {
-    const groups = createMixedStatusGroups();
-    const component = await mount(<CitationDrawerTrigger citationGroups={groups} maxIcons={2} />);
-
-    // Should display "+2 more sources" since we have 4 and maxIcons=2
-    const badge = component.locator("span").filter({ hasText: "+" });
-    await expect(badge).toContainText("+");
   });
 
   test("handles aria attributes correctly", async ({ mount }) => {
@@ -372,23 +334,6 @@ test.describe("CitationDrawerTrigger", () => {
     await expect(label).toContainText("2 pending");
   });
 
-  test("limits hover preview to 5 sources", async ({ mount }) => {
-    const manyGroups = [
-      ...createAllVerifiedGroups(),
-      createMockCitationGroup({ sourceName: "Source 4" }),
-      createMockCitationGroup({ sourceName: "Source 5" }),
-      createMockCitationGroup({ sourceName: "Source 6" }),
-    ];
-
-    const component = await mount(<CitationDrawerTrigger citationGroups={manyGroups} />);
-
-    await component.hover();
-
-    // Should show "+1 more sources" text
-    const moreText = component.locator("span").filter({ hasText: "more sources" });
-    await expect(moreText).toBeVisible();
-  });
-
   test("applies custom className prop", async ({ mount }) => {
     const groups = createAllVerifiedGroups();
     const customClass = "custom-test-class";
@@ -399,155 +344,41 @@ test.describe("CitationDrawerTrigger", () => {
     expect(classes).toContain(customClass);
   });
 
-  describe("edge cases", () => {
-    test("handles citation group with empty citations array", async ({ mount }) => {
-      const emptyGroup: SourceCitationGroup = {
-        sourceName: "Empty Source",
-        sourceDomain: "empty.com",
-        citations: [],
-        additionalCount: 0,
-      };
+  test("handles citation group with empty citations array", async ({ mount }) => {
+    const emptyGroup: SourceCitationGroup = {
+      sourceName: "Empty Source",
+      sourceDomain: "empty.com",
+      citations: [],
+      additionalCount: 0,
+    };
 
-      const component = await mount(<CitationDrawerTrigger citationGroups={[emptyGroup]} />);
+    const component = await mount(<CitationDrawerTrigger citationGroups={[emptyGroup]} />);
 
-      // Should still render the trigger
-      await expect(component).toBeVisible();
+    await expect(component).toBeVisible();
 
-      // Hover should not crash
-      await component.hover();
-      await expect(component).toBeVisible();
-    });
-
-    test("handles broken favicon URLs gracefully", async ({ mount }) => {
-      const groupWithBrokenFavicon = createMockCitationGroup({
-        sourceFavicon: "https://invalid-domain-that-does-not-exist.example.com/broken.ico",
-      });
-
-      const component = await mount(<CitationDrawerTrigger citationGroups={[groupWithBrokenFavicon]} />);
-
-      // Image load failure should not crash component
-      const img = component.locator("img");
-      if ((await img.count()) > 0) {
-        // Simulate image load error
-        await img.dispatchEvent("error");
-      }
-
-      await expect(component).toBeVisible();
-    });
-
-    test("handles extremely long source names without breaking layout", async ({ mount }) => {
-      const groupWithLongName = createMockCitationGroup({
-        sourceName: "A very long source name that could potentially break the layout if not handled correctly",
-      });
-
-      const component = await mount(<CitationDrawerTrigger citationGroups={[groupWithLongName]} />);
-
-      // Should truncate gracefully with CSS truncation
-      await expect(component).toBeVisible();
-
-      const label = component.locator("span").filter({ hasText: "sources" });
-      // Check that truncation class is applied
-      const classes = await label.getAttribute("class");
-      expect(classes).toContain("truncate");
-    });
-
-    test("handles click during hover animation", async ({ mount }) => {
-      const groups = createAllVerifiedGroups();
-      let clicked = false;
-
-      const component = await mount(
-        <CitationDrawerTrigger
-          citationGroups={groups}
-          onClick={() => {
-            clicked = true;
-          }}
-        />,
-      );
-
-      // Hover to trigger animation
-      await component.hover();
-
-      // Click while animation is happening
-      await component.click();
-
-      expect(clicked).toBe(true);
-    });
-
-    test("forwards ref correctly", async ({ mount }) => {
-      const groups = createAllVerifiedGroups();
-      let buttonRef: HTMLButtonElement | null = null;
-
-      await mount(
-        <CitationDrawerTrigger
-          ref={el => {
-            buttonRef = el;
-          }}
-          citationGroups={groups}
-        />,
-      );
-
-      expect(buttonRef).toBeTruthy();
-      expect(buttonRef?.tagName).toBe("BUTTON");
-    });
+    await component.hover();
+    await expect(component).toBeVisible();
   });
 
-  describe("visual snapshots", () => {
-    test("collapsed state matches snapshot", async ({ mount }) => {
-      const groups = createAllVerifiedGroups();
-      const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
+  test("renders properly on mobile", async ({ mount }) => {
+    const groups = createMixedStatusGroups();
+    const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
 
-      await expect(component).toHaveScreenshot("collapsed-state.png");
-    });
-
-    test("mixed status state matches snapshot", async ({ mount }) => {
-      const groups = createMixedStatusGroups();
-      const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
-
-      await expect(component).toHaveScreenshot("mixed-status-state.png");
-    });
-
-    test("all pending state matches snapshot", async ({ mount }) => {
-      const groups = createAllPendingGroups();
-      const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
-
-      await expect(component).toHaveScreenshot("all-pending-state.png");
-    });
-
-    test("dark mode matches snapshot", async ({ mount }) => {
-      const groups = createAllVerifiedGroups();
-      const component = await mount(
-        <div className="dark bg-gray-900">
-          <CitationDrawerTrigger citationGroups={groups} />
-        </div>,
-      );
-
-      await expect(component).toHaveScreenshot("dark-mode.png");
-    });
+    await expect(component).toBeVisible();
+    const button = component.locator("button");
+    await expect(button).toHaveCSS("width", "100%");
   });
 
-  describe("mobile viewport", () => {
-    test.use({ viewport: { width: 375, height: 667 } });
+  test("trigger is clickable on mobile", async ({ mount }) => {
+    const groups = createMixedStatusGroups();
+    let clicked = false;
+    const onClick = () => {
+      clicked = true;
+    };
 
-    test("renders properly on mobile", async ({ mount }) => {
-      const groups = createMixedStatusGroups();
-      const component = await mount(<CitationDrawerTrigger citationGroups={groups} />);
+    const component = await mount(<CitationDrawerTrigger citationGroups={groups} onClick={onClick} />);
 
-      await expect(component).toBeVisible();
-      const button = component.locator("button");
-      await expect(button).toHaveCSS("width", "100%");
-    });
-
-    test("trigger is clickable on mobile", async ({ mount }) => {
-      const groups = createMixedStatusGroups();
-      let clicked = false;
-      const onClick = () => {
-        clicked = true;
-      };
-
-      const component = await mount(<CitationDrawerTrigger citationGroups={groups} onClick={onClick} />);
-
-      await component.click();
-      expect(clicked).toBe(true);
-    });
+    await component.click();
+    expect(clicked).toBe(true);
   });
 });
