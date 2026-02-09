@@ -1,8 +1,13 @@
 import type React from "react";
+import { useState } from "react";
 import type { Citation } from "../../types/citation";
 import type { SearchAttempt } from "../../types/search";
 import type { Verification } from "../../types/verification";
 import { CitationComponent } from "../CitationComponent";
+import { CitationDrawer, CitationDrawerItemComponent } from "../CitationDrawer";
+import type { CitationDrawerItem } from "../CitationDrawer.types";
+import { groupCitationsBySource } from "../CitationDrawer.utils";
+import { CitationDrawerTrigger } from "../CitationDrawerTrigger";
 import { SpinnerIcon } from "../icons";
 import type { UrlCitationMeta } from "../types";
 import { UrlCitationComponent } from "../UrlCitationComponent";
@@ -1677,6 +1682,489 @@ export function PopoverShowcase() {
           </div>
         </ShowcaseCard>
       </ShowcaseSection>
+    </div>
+  );
+}
+
+// =========
+// CITATION DRAWER SHOWCASE - Fixtures
+// =========
+
+const drawerAllVerified: CitationDrawerItem[] = [
+  {
+    citationKey: "dv-1",
+    citation: {
+      type: "url",
+      url: "https://stripe.com/docs/api",
+      domain: "stripe.com",
+      siteName: "Stripe",
+      title: "Stripe API Documentation",
+      fullPhrase: "Payment intents confirm the payment.",
+      anchorText: "confirm the payment",
+      citationNumber: 1,
+    },
+    verification: { status: "found", verifiedMatchSnippet: "Payment intents confirm the payment." },
+  },
+  {
+    citationKey: "dv-2",
+    citation: {
+      type: "url",
+      url: "https://docs.github.com/en/rest",
+      domain: "github.com",
+      siteName: "GitHub",
+      title: "GitHub REST API",
+      fullPhrase: "Authentication is required for most endpoints.",
+      anchorText: "Authentication is required",
+      citationNumber: 2,
+    },
+    verification: { status: "found", verifiedMatchSnippet: "Authentication is required for most endpoints." },
+  },
+  {
+    citationKey: "dv-3",
+    citation: {
+      type: "url",
+      url: "https://developer.mozilla.org/en-US/docs/Web",
+      domain: "developer.mozilla.org",
+      siteName: "MDN",
+      title: "Web APIs",
+      fullPhrase: "The Fetch API provides a modern interface for making HTTP requests.",
+      anchorText: "modern interface for making HTTP requests",
+      citationNumber: 3,
+    },
+    verification: {
+      status: "found",
+      verifiedMatchSnippet: "The Fetch API provides a modern interface for making HTTP requests.",
+    },
+  },
+];
+
+const drawerMixed: CitationDrawerItem[] = [
+  {
+    citationKey: "dm-1",
+    citation: {
+      type: "url",
+      url: "https://react.dev/learn",
+      domain: "react.dev",
+      siteName: "React",
+      title: "React Learn",
+      fullPhrase: "Components let you split the UI into independent pieces.",
+      anchorText: "split the UI into independent pieces",
+      citationNumber: 1,
+    },
+    verification: { status: "found", verifiedMatchSnippet: "Components let you split the UI into independent pieces." },
+  },
+  {
+    citationKey: "dm-2",
+    citation: {
+      type: "url",
+      url: "https://tailwindcss.com/docs",
+      domain: "tailwindcss.com",
+      siteName: "Tailwind CSS",
+      title: "Tailwind Documentation",
+      fullPhrase: "Utility-first CSS framework for rapid UI development.",
+      anchorText: "Utility-first CSS framework",
+      citationNumber: 2,
+    },
+    verification: {
+      status: "found_on_other_page",
+      verifiedPageNumber: 3,
+      verifiedMatchSnippet: "Utility-first CSS framework",
+    },
+  },
+  {
+    citationKey: "dm-3",
+    citation: {
+      type: "url",
+      url: "https://nextjs.org/docs",
+      domain: "nextjs.org",
+      siteName: "Next.js",
+      title: "Next.js Documentation",
+      fullPhrase: "Server components render on the server.",
+      anchorText: "Server components",
+      citationNumber: 3,
+    },
+    verification: { status: "not_found", verifiedPageNumber: -1 },
+  },
+  {
+    citationKey: "dm-4",
+    citation: {
+      type: "url",
+      url: "https://www.typescriptlang.org/docs",
+      domain: "typescriptlang.org",
+      siteName: "TypeScript",
+      title: "TypeScript Handbook",
+      fullPhrase: "TypeScript adds optional static typing to JavaScript.",
+      anchorText: "optional static typing",
+      citationNumber: 4,
+    },
+    verification: { status: "pending" },
+  },
+  {
+    citationKey: "dm-5",
+    citation: {
+      type: "url",
+      url: "https://vitejs.dev/guide",
+      domain: "vitejs.dev",
+      siteName: "Vite",
+      title: "Vite Guide",
+      fullPhrase: "Vite provides a faster dev experience.",
+      anchorText: "faster dev experience",
+      citationNumber: 5,
+    },
+    verification: { status: "found_anchor_text_only", verifiedMatchSnippet: "faster dev experience" },
+  },
+];
+
+const drawerAllPending: CitationDrawerItem[] = [
+  {
+    citationKey: "dp-1",
+    citation: {
+      type: "url",
+      url: "https://openai.com/api",
+      domain: "openai.com",
+      siteName: "OpenAI",
+      title: "API Reference",
+      fullPhrase: "GPT models generate human-like text.",
+      anchorText: "human-like text",
+      citationNumber: 1,
+    },
+    verification: { status: "pending" },
+  },
+  {
+    citationKey: "dp-2",
+    citation: {
+      type: "url",
+      url: "https://anthropic.com/claude",
+      domain: "anthropic.com",
+      siteName: "Anthropic",
+      title: "Claude",
+      fullPhrase: "Claude is designed to be helpful and harmless.",
+      anchorText: "helpful and harmless",
+      citationNumber: 2,
+    },
+    verification: { status: "loading" },
+  },
+  {
+    citationKey: "dp-3",
+    citation: {
+      type: "url",
+      url: "https://huggingface.co/docs",
+      domain: "huggingface.co",
+      siteName: "Hugging Face",
+      title: "Documentation",
+      fullPhrase: "Transformers library supports thousands of models.",
+      anchorText: "thousands of models",
+      citationNumber: 3,
+    },
+    verification: { status: "pending" },
+  },
+  {
+    citationKey: "dp-4",
+    citation: {
+      type: "url",
+      url: "https://cohere.com/docs",
+      domain: "cohere.com",
+      siteName: "Cohere",
+      title: "API Docs",
+      fullPhrase: "Embed models convert text to vectors.",
+      anchorText: "text to vectors",
+      citationNumber: 4,
+    },
+    verification: null,
+  },
+];
+
+const drawerSingleSource: CitationDrawerItem[] = [
+  {
+    citationKey: "ds-1",
+    citation: {
+      type: "url",
+      url: "https://en.wikipedia.org/wiki/TypeScript",
+      domain: "en.wikipedia.org",
+      siteName: "Wikipedia",
+      title: "TypeScript - Wikipedia",
+      fullPhrase: "TypeScript is a programming language developed by Microsoft.",
+      anchorText: "programming language developed by Microsoft",
+      citationNumber: 1,
+    },
+    verification: {
+      status: "found",
+      verifiedMatchSnippet: "TypeScript is a programming language developed by Microsoft.",
+    },
+  },
+];
+
+const drawerManySources: CitationDrawerItem[] = [
+  ...drawerAllVerified,
+  ...drawerMixed,
+  {
+    citationKey: "dms-1",
+    citation: {
+      type: "url",
+      url: "https://nodejs.org/docs",
+      domain: "nodejs.org",
+      siteName: "Node.js",
+      title: "Node.js Docs",
+      fullPhrase: "Node.js runs JavaScript outside the browser.",
+      anchorText: "outside the browser",
+      citationNumber: 9,
+    },
+    verification: { status: "found", verifiedMatchSnippet: "Node.js runs JavaScript outside the browser." },
+  },
+  {
+    citationKey: "dms-2",
+    citation: {
+      type: "url",
+      url: "https://www.rust-lang.org/learn",
+      domain: "rust-lang.org",
+      siteName: "Rust",
+      title: "Learn Rust",
+      fullPhrase: "Rust guarantees memory safety without garbage collection.",
+      anchorText: "memory safety without garbage collection",
+      citationNumber: 10,
+    },
+    verification: { status: "partial_text_found", verifiedMatchSnippet: "memory safety" },
+  },
+];
+
+// =========
+// CITATION DRAWER SHOWCASE
+// =========
+
+export function CitationDrawerShowcase() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [interactiveItems] = useState<CitationDrawerItem[]>(drawerMixed);
+  const interactiveGroups = groupCitationsBySource(interactiveItems);
+
+  const allVerifiedGroups = groupCitationsBySource(drawerAllVerified);
+  const mixedGroups = groupCitationsBySource(drawerMixed);
+  const allPendingGroups = groupCitationsBySource(drawerAllPending);
+  const singleGroups = groupCitationsBySource(drawerSingleSource);
+  const manyGroups = groupCitationsBySource(drawerManySources);
+
+  return (
+    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="drawer-showcase">
+      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Citation Drawer Trigger Showcase</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        Compact summary bar for citation verification status with progressive disclosure
+      </p>
+
+      {/* ========
+          SECTION 1: Trigger States
+          ======== */}
+      <ShowcaseSection
+        title="1. Trigger States"
+        description="The trigger bar in its collapsed state across different verification scenarios"
+        data-testid="drawer-trigger-states-section"
+      >
+        <div className="grid gap-4">
+          <ShowcaseCard data-drawer-trigger-state="all-verified">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="all-verified"
+              uxIntent="All citations verified — green dots signal confidence"
+            />
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={allVerifiedGroups} />
+            </div>
+          </ShowcaseCard>
+
+          <ShowcaseCard data-drawer-trigger-state="mixed">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="mixed"
+              uxIntent="Mixed statuses — dots show at-a-glance verification breakdown"
+            />
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={mixedGroups} />
+            </div>
+          </ShowcaseCard>
+
+          <ShowcaseCard data-drawer-trigger-state="all-pending">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="all-pending"
+              uxIntent="All citations pending — gray dots indicate in-progress verification"
+            />
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={allPendingGroups} />
+            </div>
+          </ShowcaseCard>
+
+          <ShowcaseCard data-drawer-trigger-state="single-source">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="single-source"
+              uxIntent="Single source — minimal trigger for simple citations"
+            />
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={singleGroups} />
+            </div>
+          </ShowcaseCard>
+
+          <ShowcaseCard data-drawer-trigger-state="many-sources">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="many-sources"
+              uxIntent="Many sources — overflow favicons with +N badge"
+            />
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={manyGroups} />
+            </div>
+          </ShowcaseCard>
+        </div>
+      </ShowcaseSection>
+
+      {/* ========
+          SECTION 2: Hover Progressive Disclosure
+          ======== */}
+      <ShowcaseSection
+        title="2. Hover Progressive Disclosure"
+        description="On hover, the trigger expands to show individual source rows with their statuses"
+        data-testid="drawer-trigger-hover-section"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <ShowcaseCard data-drawer-hover-state="collapsed">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="collapsed"
+              uxIntent="Default collapsed state — compact summary bar"
+            />
+            <div className="mt-3">
+              <CitationDrawerTrigger citationGroups={mixedGroups} />
+            </div>
+            <InteractionLabel
+              hover="Expands to show individual source rows"
+              click="Opens full citation drawer"
+              escapeKey="N/A (not a modal)"
+            />
+          </ShowcaseCard>
+
+          <ShowcaseCard data-drawer-hover-state="expanded-preview">
+            <ShowcaseLabel
+              component="CitationDrawerTrigger"
+              state="expanded (hover preview)"
+              uxIntent="Hover state — progressively disclosed source details"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-3 italic">
+              Preview of the expanded hover content (normally triggered on mouse hover):
+            </p>
+            {/* Static render of what hover content looks like */}
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              {/* Collapsed bar */}
+              <div className="flex items-center gap-3 px-3 py-2">
+                <div className="flex items-center -space-x-1" aria-hidden="true">
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-green-500" />
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-amber-500" />
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-red-500" />
+                  <span className="w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-gray-800 bg-gray-400" />
+                </div>
+                <span className="flex-1 text-sm text-gray-600 dark:text-gray-300 truncate">
+                  5 sources · 2 verified, 1 partial, 1 not found, 1 pending
+                </span>
+                <svg
+                  className="w-4 h-4 text-gray-400 dark:text-gray-500 rotate-180"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {/* Expanded source rows */}
+              <div className="px-3 pb-2 pt-1 border-t border-gray-200 dark:border-gray-700 space-y-0.5">
+                {mixedGroups.map((group) => (
+                  <div
+                    key={group.sourceDomain ?? group.sourceName}
+                    className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 py-0.5"
+                  >
+                    <span className="w-3.5 h-3.5 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[8px] font-medium flex-shrink-0">
+                      {group.sourceName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="truncate">{group.sourceName}</span>
+                    {group.citations.length > 1 && (
+                      <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">×{group.citations.length}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ShowcaseCard>
+        </div>
+      </ShowcaseSection>
+
+      {/* ========
+          SECTION 3: Full Drawer Static Preview
+          ======== */}
+      <ShowcaseSection
+        title="3. Full Drawer Content (Static Preview)"
+        description="The citation drawer content rendered inline — shows what opens on click"
+        data-testid="drawer-trigger-full-drawer-section"
+      >
+        <ShowcaseCard>
+          <ShowcaseLabel
+            component="CitationDrawer"
+            uxIntent="Full drawer content — individual citations with favicon, title, snippet, and status"
+          />
+          <div className="mt-3 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Citations</h2>
+              <div className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <svg
+                  className="w-5 h-5 text-gray-500 dark:text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </div>
+            {/* Citation items */}
+            {drawerMixed.map((item, index) => (
+              <CitationDrawerItemComponent
+                key={item.citationKey}
+                item={item}
+                isLast={index === drawerMixed.length - 1}
+              />
+            ))}
+          </div>
+        </ShowcaseCard>
+      </ShowcaseSection>
+
+      {/* ========
+          SECTION 4: Interactive Example
+          ======== */}
+      <ShowcaseSection
+        title="4. Interactive Example"
+        description="Click the trigger bar below to open the full citation drawer"
+        data-testid="drawer-trigger-interactive-section"
+      >
+        <ShowcaseCard>
+          <ShowcaseLabel
+            component="CitationDrawerTrigger + CitationDrawer"
+            uxIntent="Complete integration — trigger bar opens drawer on click"
+          />
+          <div className="mt-3" data-interactive-drawer="trigger">
+            <CitationDrawerTrigger
+              citationGroups={interactiveGroups}
+              onClick={() => setDrawerOpen(true)}
+              isOpen={drawerOpen}
+            />
+          </div>
+          <InteractionLabel
+            hover="Shows individual source rows"
+            click="Opens full citation drawer"
+            escapeKey="Closes drawer"
+          />
+        </ShowcaseCard>
+      </ShowcaseSection>
+
+      {/* Portal-rendered drawer for interactive example */}
+      <CitationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} citationGroups={interactiveGroups} />
     </div>
   );
 }

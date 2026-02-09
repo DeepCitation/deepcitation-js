@@ -29,6 +29,12 @@ export {
   groupCitationsBySource,
   useCitationDrawer,
 } from "./CitationDrawer.utils.js";
+// Citation Drawer Trigger (compact summary bar)
+export {
+  CitationDrawerTrigger,
+  type CitationDrawerTriggerProps,
+  type CitationStatusSummary,
+} from "./CitationDrawerTrigger.js";
 // Citation Overlay Context (for blocking hover when image is expanded)
 export {
   CitationOverlayProvider,
