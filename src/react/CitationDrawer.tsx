@@ -316,8 +316,9 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   }, [copyState]);
 
   // Get display values with fallbacks
-  const articleTitle = citation.anchorText || citation.title;
-  const snippet = citation.fullPhrase || citation.description || verification?.actualContentSnippet || verification?.verifiedMatchSnippet;
+  const sourceName = citation.siteName;
+  const articleTitle = citation.title || citation.anchorText;
+  const snippet = citation.description || citation.fullPhrase || verification?.actualContentSnippet || verification?.verifiedMatchSnippet;
 
   // Page number for document citations
   const pageNumber = citation.pageNumber ?? verification?.verifiedPageNumber;
@@ -411,6 +412,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
           {/* Content */}
           <div className="flex-1 min-w-0">
+            {/* Source name (for URL citations) */}
+            {sourceName && (
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">{sourceName}</div>
+            )}
             {/* Anchor text with page number, copy button, and timestamp */}
             <div className="flex items-center gap-1.5">
               {articleTitle && (
@@ -444,6 +449,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                 </span>
               )}
             </div>
+            {/* Snippet/description */}
+            {snippet && snippet !== articleTitle && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{snippet}</div>
+            )}
           </div>
 
           {/* Expand/collapse chevron */}

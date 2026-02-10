@@ -4,7 +4,6 @@ import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
 import { extractDomain, getStatusInfo } from "./CitationDrawer.utils.js";
 import { cn } from "./utils.js";
-import { FaviconImage } from "./VerificationLog.js";
 
 // =========
 // Types
@@ -282,10 +281,17 @@ function CitationTooltip({
       {/* Proof image thumbnail */}
       {proofImage && (
         <div className="px-2 pb-2">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             className="block w-full rounded overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer"
             onClick={handleProofClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleProofClick(e as unknown as React.MouseEvent);
+              }
+            }}
             aria-label={`View proof for ${sourceName}`}
           >
             <img
@@ -294,7 +300,7 @@ function CitationTooltip({
               className="w-full h-auto max-h-16 object-cover"
               loading="lazy"
             />
-          </button>
+          </div>
           <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">
             Click to view details
           </span>
@@ -481,15 +487,6 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
           showProofThumbnails={showProofThumbnails}
           onSourceClick={onSourceClick}
         />
-
-        {/* Favicon (only for URL citations that have a favicon or domain) */}
-        {citationGroups[0]?.sourceDomain && (
-          <FaviconImage
-            faviconUrl={citationGroups[0].sourceFavicon || null}
-            domain={citationGroups[0].sourceDomain || null}
-            alt={citationGroups[0].sourceName || "Source"}
-          />
-        )}
 
         {/* Label */}
         <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{displayLabel}</span>
