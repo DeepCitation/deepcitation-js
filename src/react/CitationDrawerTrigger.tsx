@@ -1,5 +1,5 @@
 import type React from "react";
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Verification } from "../types/verification.js";
 import type { SourceCitationGroup } from "./CitationDrawer.types.js";
 import { getStatusInfo, getStatusPriority } from "./CitationDrawer.utils.js";
@@ -161,6 +161,8 @@ function SourceTooltip({
   showProofThumbnail: boolean;
   onSourceClick?: (group: SourceCitationGroup) => void;
 }) {
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [adjustedLeft, setAdjustedLeft] = useState<number | null>(null);
   const aggregateVerification = getGroupAggregateVerification(group);
   const statusInfo = getStatusInfo(aggregateVerification);
   const sourceName = group.sourceName?.trim() || "Source";
@@ -169,13 +171,25 @@ function SourceTooltip({
   const rawProofImage = showProofThumbnail
     ? group.citations.find(c => c.verification?.verificationImageBase64)?.verification?.verificationImageBase64
     : null;
-  const proofImage =
-    typeof rawProofImage === "string" &&
-    (rawProofImage.startsWith("data:image/") ||
-      rawProofImage.startsWith("https://api.deepcitation.com/") ||
-      rawProofImage.startsWith("https://cdn.deepcitation.com/"))
-      ? rawProofImage
-      : null;
+  const proofImage = (() => {
+    if (typeof rawProofImage !== "string") return null;
+    const trimmed = rawProofImage.trim();
+    if (trimmed.length === 0) return null;
+    const lower = trimmed.toLowerCase();
+    // Data URI: allow safe raster formats only (no SVG — can contain scripts)
+    if (lower.startsWith("data:")) {
+      const safePrefixes = ["data:image/png", "data:image/jpeg", "data:image/jpg", "data:image/webp", "data:image/avif", "data:image/gif"];
+      return safePrefixes.some(p => lower.startsWith(p)) ? trimmed : null;
+    }
+    // HTTPS URL: validate via URL constructor against trusted hosts
+    try {
+      const url = new URL(trimmed);
+      const trustedHosts = ["api.deepcitation.com", "cdn.deepcitation.com"];
+      return url.protocol === "https:" && trustedHosts.includes(url.hostname) ? trimmed : null;
+    } catch {
+      return null;
+    }
+  })();
 
   const handleProofClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -183,14 +197,42 @@ function SourceTooltip({
     onSourceClick?.(group);
   };
 
+  // Clamp tooltip to viewport edges on mount and when layout changes
+  useLayoutEffect(() => {
+    const el = tooltipRef.current;
+    if (!el) return;
+
+    const clamp = () => {
+      const rect = el.getBoundingClientRect();
+      const margin = 8;
+      if (rect.left < margin) {
+        setAdjustedLeft(-rect.left + margin);
+      } else if (rect.right > window.innerWidth - margin) {
+        setAdjustedLeft(window.innerWidth - margin - rect.right);
+      } else {
+        setAdjustedLeft(null);
+      }
+    };
+
+    clamp();
+
+    // Recalculate if viewport resizes while tooltip is visible
+    window.addEventListener("resize", clamp);
+    return () => window.removeEventListener("resize", clamp);
+  }, []);
+
   return (
     <div
+      ref={tooltipRef}
       className={cn(
-        "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50",
+        "absolute bottom-full left-1/2 mb-2 z-50",
         "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700",
         "rounded-lg shadow-lg min-w-[180px] max-w-[260px]",
         "pointer-events-auto",
       )}
+      style={{
+        transform: `translateX(calc(-50% + ${adjustedLeft ?? 0}px))`,
+      }}
       data-testid="source-tooltip"
     >
       {/* Source header: favicon + name + status */}
@@ -391,7 +433,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={cn(
-          "w-full text-left rounded-lg border transition-all duration-200",
+          "w-full max-w-full text-left rounded-lg border transition-all duration-200 overflow-hidden",
           "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50",
           "hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600",
           "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900",
@@ -403,7 +445,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
         data-testid="citation-drawer-trigger"
       >
         {/* Single-line bar — always one line */}
-        <div className="flex items-center gap-3 px-3 py-2">
+        <div className="flex items-center gap-3 px-3 py-2 min-w-0">
           {/* Stacked/spread verification icons */}
           <StackedStatusIcons
             citationGroups={citationGroups}
@@ -417,7 +459,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
           />
 
           {/* Label */}
-          <span className="flex-1 text-sm text-gray-600 dark:text-gray-300 truncate">{displayLabel}</span>
+          <span className="flex-1 min-w-0 text-sm text-gray-600 dark:text-gray-300 truncate">{displayLabel}</span>
 
           {/* Stacked favicons */}
           <div className="flex items-center -space-x-1 flex-shrink-0">
@@ -441,7 +483,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
                   key={`${group.sourceDomain ?? group.sourceName}-${index}`}
                   className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 ring-1 ring-white dark:ring-gray-800 flex items-center justify-center text-[8px] font-medium text-gray-600 dark:text-gray-300"
                 >
-                  {group.sourceName.charAt(0).toUpperCase()}
+                  {(group.sourceName || "S").charAt(0).toUpperCase()}
                 </span>
               );
             })}

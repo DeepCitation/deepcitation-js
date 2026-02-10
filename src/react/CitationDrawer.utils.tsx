@@ -18,8 +18,11 @@ export function groupCitationsBySource(citations: CitationDrawerItem[]): SourceC
   const groups = new Map<string, CitationDrawerItem[]>();
 
   for (const item of citations) {
-    // Use domain or siteName as the grouping key (using main's field names)
-    const groupKey = item.citation.domain || item.citation.siteName || item.citation.url || "unknown";
+    // Group by attachmentId for document citations, domain/siteName/url for URL citations
+    const isDocument = item.citation.type === "document" || (!item.citation.type && item.citation.attachmentId);
+    const groupKey = isDocument
+      ? (item.citation.attachmentId || item.verification?.label || "unknown-doc")
+      : (item.citation.domain || item.citation.siteName || item.citation.url || "unknown");
 
     if (!groups.has(groupKey)) {
       groups.set(groupKey, []);
@@ -30,10 +33,13 @@ export function groupCitationsBySource(citations: CitationDrawerItem[]): SourceC
   // Convert map to array of SourceCitationGroup
   return Array.from(groups.entries()).map(([_key, items]) => {
     const firstCitation = items[0].citation;
+    const firstVerification = items[0].verification;
+    const isDocType = firstCitation.type === "document" || (!firstCitation.type && firstCitation.attachmentId);
     return {
-      sourceName:
-        firstCitation.siteName || firstCitation.domain || extractDomain(firstCitation.url) || "Unknown Source",
-      sourceDomain: firstCitation.domain || extractDomain(firstCitation.url),
+      sourceName: isDocType
+        ? (firstVerification?.label || firstCitation.attachmentId || "Document")
+        : (firstCitation.siteName || firstCitation.domain || extractDomain(firstCitation.url) || "Unknown Source"),
+      sourceDomain: isDocType ? undefined : (firstCitation.domain || extractDomain(firstCitation.url)),
       sourceFavicon: firstCitation.faviconUrl || undefined,
       citations: items,
       additionalCount: items.length - 1,

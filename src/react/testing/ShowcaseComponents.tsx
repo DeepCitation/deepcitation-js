@@ -136,10 +136,10 @@ function ShowcaseCard({
 // =============================================================================
 
 /** All citation variant types */
-const CITATION_VARIANTS = ["brackets", "chip", "text", "superscript", "linter"] as const;
+const CITATION_VARIANTS = ["brackets", "chip", "text", "superscript", "linter", "badge"] as const;
 
 /** Mobile-friendly citation variants */
-const MOBILE_CITATION_VARIANTS = ["brackets", "chip", "superscript", "linter"] as const;
+const MOBILE_CITATION_VARIANTS = ["brackets", "chip", "text", "superscript", "linter"] as const;
 
 /** Content type options */
 const CONTENT_TYPES = ["number", "anchorText", "indicator"] as const;
@@ -555,7 +555,7 @@ export function VisualShowcase() {
             uxIntent="Display inline citations with verification status - visual variants for different contexts"
           />
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full min-w-[600px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left p-2 text-gray-600 dark:text-gray-400">Variant</th>
@@ -1943,7 +1943,7 @@ export function CitationDrawerShowcase() {
   const manyGroups = groupCitationsBySource(drawerManySources);
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="drawer-showcase">
+    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen overflow-hidden" data-testid="drawer-showcase">
       <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Citation Drawer Trigger Showcase</h1>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Compact summary bar for citation verification status with progressive disclosure
@@ -1957,7 +1957,7 @@ export function CitationDrawerShowcase() {
         description="The trigger bar in its collapsed state across different verification scenarios"
         data-testid="drawer-trigger-states-section"
       >
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <ShowcaseCard data-drawer-trigger-state="all-verified">
             <ShowcaseLabel
               component="CitationDrawerTrigger"
@@ -2061,13 +2061,13 @@ export function CitationDrawerShowcase() {
           ======== */}
       <ShowcaseSection
         title="3. Full Drawer Content (Static Preview)"
-        description="The citation drawer content rendered inline — shows what opens on click"
+        description="The citation drawer content rendered inline — shows grouped citations by source"
         data-testid="drawer-trigger-full-drawer-section"
       >
         <ShowcaseCard>
           <ShowcaseLabel
             component="CitationDrawer"
-            uxIntent="Full drawer content — individual citations with favicon, title, snippet, and status"
+            uxIntent="Grouped drawer content — citations organized by source with collapsible headers, page numbers, and proof images"
           />
           <div className="mt-3 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
             {/* Header */}
@@ -2085,13 +2085,45 @@ export function CitationDrawerShowcase() {
                 </svg>
               </div>
             </div>
-            {/* Citation items */}
-            {drawerMixed.map((item, index) => (
-              <CitationDrawerItemComponent
-                key={item.citationKey}
-                item={item}
-                isLast={index === drawerMixed.length - 1}
-              />
+            {/* Grouped citation items */}
+            {mixedGroups.map((group, groupIndex) => (
+              <div key={`${group.sourceDomain ?? group.sourceName}-${groupIndex}`}>
+                {/* Source group header */}
+                <div className="px-4 py-2.5 flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                  <svg
+                    className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0 rotate-90"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  {group.sourceFavicon ? (
+                    <img src={group.sourceFavicon} alt="" className="w-4 h-4 rounded-sm object-contain" loading="lazy" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
+                        {group.sourceName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-200 text-left truncate">
+                    {group.sourceName}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                    {group.citations.length} citation{group.citations.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                {/* Citations in this group */}
+                {group.citations.map((item, index) => (
+                  <CitationDrawerItemComponent
+                    key={item.citationKey}
+                    item={item}
+                    isLast={groupIndex === mixedGroups.length - 1 && index === group.citations.length - 1}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         </ShowcaseCard>
