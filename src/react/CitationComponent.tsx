@@ -1333,7 +1333,12 @@ function DefaultPopoverContent({
 
           {/* Verification image */}
           <div className="p-2">
-            <AnchorTextFocusedImage verification={verification} onImageClick={onImageClick} page={page} onViewPageClick={onViewPageClick} />
+            <AnchorTextFocusedImage
+              verification={verification}
+              onImageClick={onImageClick}
+              page={page}
+              onViewPageClick={onViewPageClick}
+            />
           </div>
 
           {/* Expandable search details for verified matches */}
@@ -1391,7 +1396,12 @@ function DefaultPopoverContent({
                 </div>
               )}
               <div className="p-2">
-                <AnchorTextFocusedImage verification={verification} onImageClick={onImageClick} page={page} onViewPageClick={onViewPageClick} />
+                <AnchorTextFocusedImage
+                  verification={verification}
+                  onImageClick={onImageClick}
+                  page={page}
+                  onViewPageClick={onViewPageClick}
+                />
               </div>
             </>
           ) : (
@@ -1748,7 +1758,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     // Derive "View page" props: when proofUrl is available and no explicit
     // page/onViewPageClick provided, create a synthetic page that opens the proof page
-    const effectivePage = useMemo((): Page | null | undefined => {
+    const effectivePage = useMemo((): Page | null => {
       if (pageProp !== undefined) return pageProp;
       if (verification?.proofUrl) {
         return {
@@ -1757,7 +1767,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           source: verification.proofUrl,
         };
       }
-      return undefined;
+      return null;
     }, [pageProp, verification?.proofUrl, verification?.verifiedPageNumber, citation.pageNumber]);
 
     const effectiveOnViewPageClick = useCallback(
