@@ -1003,4 +1003,482 @@ describe("CitationDrawerTrigger", () => {
     const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
     expect(proofButton).not.toBeInTheDocument();
   });
+
+  it("rejects SVG data URI proof images (XSS vector) in tooltip", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "TestSource",
+        sourceDomain: "testsource.com",
+        citations: [
+          {
+            citationKey: "ts-0",
+            citation: { siteName: "TestSource", title: "Article 1" },
+            verification: {
+              status: "found",
+              verificationImageBase64:
+                "data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KCdYU1MnKSI+PC9zdmc+",
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // SVG data URIs can embed scripts — must not render
+    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(proofButton).not.toBeInTheDocument();
+  });
+
+  it("rejects SVG data URI with inline XML in tooltip", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "TestSource",
+        sourceDomain: "testsource.com",
+        citations: [
+          {
+            citationKey: "ts-0",
+            citation: { siteName: "TestSource", title: "Article 1" },
+            verification: {
+              status: "found",
+              verificationImageBase64:
+                "data:image/svg+xml,<svg onload=\"alert('XSS')\"></svg>",
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(proofButton).not.toBeInTheDocument();
+  });
+
+  it("rejects untrusted HTTPS URLs for proof images in tooltip", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "TestSource",
+        sourceDomain: "testsource.com",
+        citations: [
+          {
+            citationKey: "ts-0",
+            citation: { siteName: "TestSource", title: "Article 1" },
+            verification: {
+              status: "found",
+              verificationImageBase64: "https://evil.com/proof.png",
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(proofButton).not.toBeInTheDocument();
+  });
+
+  it("allows valid raster data URI proof images in tooltip", () => {
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "TestSource",
+        sourceDomain: "testsource.com",
+        sourceFavicon: "https://testsource.com/favicon.ico",
+        citations: [
+          {
+            citationKey: "ts-0",
+            citation: { siteName: "TestSource", title: "Article 1" },
+            verification: {
+              status: "found",
+              verificationImageBase64: "data:image/png;base64,iVBORw0KGgo=",
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // Valid raster data URI should render the proof button
+    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(proofButton).toBeInTheDocument();
+  });
+});
+
+describe("CitationDrawerItemComponent proof image security", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const createItemWithProof = (proofImageSrc: string): CitationDrawerItem => ({
+    citationKey: "1",
+    citation: {
+      siteName: "Test Source",
+      domain: "test.com",
+      title: "Test Article",
+      description: "A test snippet",
+    },
+    verification: {
+      status: "found",
+      verificationImageBase64: proofImageSrc,
+    },
+  });
+
+  it("blocks SVG data URI proof images (XSS vector)", () => {
+    const item = createItemWithProof(
+      "data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KCdYU1MnKSI+PC9zdmc+",
+    );
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    // No proof image should render
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+
+  it("blocks SVG data URI with inline XML", () => {
+    const item = createItemWithProof(
+      "data:image/svg+xml,<svg onload=\"alert('XSS')\"></svg>",
+    );
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+
+  it("blocks javascript: protocol proof images", () => {
+    const item = createItemWithProof("javascript:alert('xss')");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+
+  it("blocks untrusted HTTPS URLs", () => {
+    const item = createItemWithProof("https://evil.com/proof.png");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+
+  it("blocks HTTP URLs (non-HTTPS)", () => {
+    const item = createItemWithProof("http://api.deepcitation.com/proof.png");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+
+  it("allows valid raster data URI (PNG)", () => {
+    const item = createItemWithProof("data:image/png;base64,iVBORw0KGgo=");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).toBeInTheDocument();
+    expect(proofImg).toHaveAttribute("src", "data:image/png;base64,iVBORw0KGgo=");
+  });
+
+  it("allows trusted HTTPS URLs", () => {
+    const item = createItemWithProof("https://api.deepcitation.com/proof/abc123.png");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).toBeInTheDocument();
+  });
+
+  it("blocks empty string proof images", () => {
+    const item = createItemWithProof("");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+
+  it("blocks whitespace-only proof images", () => {
+    const item = createItemWithProof("   ");
+    const { container } = render(<CitationDrawerItemComponent item={item} />);
+
+    const proofImg = container.querySelector('img[alt="Verification proof"]');
+    expect(proofImg).not.toBeInTheDocument();
+  });
+});
+
+describe("CitationDrawer group collapse/expand state", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const createGroup = (name: string, count: number): SourceCitationGroup => ({
+    sourceName: name,
+    sourceDomain: `${name.toLowerCase()}.com`,
+    citations: Array.from({ length: count }, (_, i) => ({
+      citationKey: `${name}-${i}`,
+      citation: {
+        siteName: name,
+        title: `${name} Article ${i + 1}`,
+        description: `Snippet for ${name} article ${i + 1}`,
+      },
+      verification: { status: "found" as const },
+    })),
+    additionalCount: count - 1,
+  });
+
+  /** Find the group header button by aria-expanded attribute containing the source name */
+  const findGroupHeader = (container: HTMLElement, name: string): HTMLElement | null => {
+    const buttons = container.querySelectorAll("button[aria-expanded]");
+    for (const btn of buttons) {
+      if (btn.textContent?.includes(name)) return btn as HTMLElement;
+    }
+    return null;
+  };
+
+  it("shows group headers when multiple groups exist", () => {
+    const { container } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 1), createGroup("Beta", 1)]} showMoreSection={false} />,
+    );
+
+    expect(findGroupHeader(container, "Alpha")).toBeInTheDocument();
+    expect(findGroupHeader(container, "Beta")).toBeInTheDocument();
+  });
+
+  it("collapses a group when its header is clicked", () => {
+    const { container, queryByText } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 2), createGroup("Beta", 1)]} showMoreSection={false} />,
+    );
+
+    // All articles visible initially
+    expect(queryByText("Alpha Article 1")).toBeInTheDocument();
+    expect(queryByText("Alpha Article 2")).toBeInTheDocument();
+
+    // Click the Alpha group header to collapse it
+    const alphaHeader = findGroupHeader(container, "Alpha")!;
+    fireEvent.click(alphaHeader);
+
+    // Alpha articles should be hidden
+    expect(queryByText("Alpha Article 1")).not.toBeInTheDocument();
+    expect(queryByText("Alpha Article 2")).not.toBeInTheDocument();
+
+    // Beta articles should still be visible
+    expect(queryByText("Beta Article 1")).toBeInTheDocument();
+  });
+
+  it("expands a collapsed group when its header is clicked again", () => {
+    const { container, queryByText } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 2), createGroup("Beta", 1)]} showMoreSection={false} />,
+    );
+
+    const alphaHeader = findGroupHeader(container, "Alpha")!;
+
+    // Collapse Alpha
+    fireEvent.click(alphaHeader);
+    expect(queryByText("Alpha Article 1")).not.toBeInTheDocument();
+
+    // Expand Alpha again
+    fireEvent.click(alphaHeader);
+    expect(queryByText("Alpha Article 1")).toBeInTheDocument();
+    expect(queryByText("Alpha Article 2")).toBeInTheDocument();
+  });
+
+  it("maintains independent collapse state per group", () => {
+    const { container, queryByText } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 1), createGroup("Beta", 1), createGroup("Gamma", 1)]} showMoreSection={false} />,
+    );
+
+    // Collapse Alpha and Gamma, leave Beta open
+    fireEvent.click(findGroupHeader(container, "Alpha")!);
+    fireEvent.click(findGroupHeader(container, "Gamma")!);
+
+    expect(queryByText("Alpha Article 1")).not.toBeInTheDocument();
+    expect(queryByText("Beta Article 1")).toBeInTheDocument();
+    expect(queryByText("Gamma Article 1")).not.toBeInTheDocument();
+
+    // Expand Alpha back — Gamma should remain collapsed
+    fireEvent.click(findGroupHeader(container, "Alpha")!);
+    expect(queryByText("Alpha Article 1")).toBeInTheDocument();
+    expect(queryByText("Gamma Article 1")).not.toBeInTheDocument();
+  });
+
+  it("sets aria-expanded on group headers", () => {
+    const { container } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 1), createGroup("Beta", 1)]} showMoreSection={false} />,
+    );
+
+    const alphaHeader = findGroupHeader(container, "Alpha")!;
+    expect(alphaHeader).toHaveAttribute("aria-expanded", "true");
+
+    // Collapse Alpha
+    fireEvent.click(alphaHeader);
+    expect(alphaHeader).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows chevron rotation class for expanded groups", () => {
+    const { container } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 1), createGroup("Beta", 1)]} showMoreSection={false} />,
+    );
+
+    const alphaHeader = findGroupHeader(container, "Alpha")!;
+    const chevron = alphaHeader.querySelector("svg");
+
+    // Expanded: should have rotate-90
+    expect(chevron).toHaveClass("rotate-90");
+
+    // Collapse
+    fireEvent.click(alphaHeader);
+
+    // Collapsed: should not have rotate-90
+    expect(chevron).not.toHaveClass("rotate-90");
+  });
+
+  it("does not show group headers when only one group exists", () => {
+    const { container, getByText } = render(
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={[createGroup("Alpha", 3)]} showMoreSection={false} />,
+    );
+
+    // All citations should be visible with no collapsible header
+    expect(getByText("Alpha Article 1")).toBeInTheDocument();
+    expect(getByText("Alpha Article 2")).toBeInTheDocument();
+    expect(getByText("Alpha Article 3")).toBeInTheDocument();
+
+    // No group header button should exist (aria-expanded is only on group headers)
+    const groupHeaderButton = findGroupHeader(container, "Alpha");
+    expect(groupHeaderButton).not.toBeInTheDocument();
+  });
+});
+
+describe("SourceTooltip viewport clamping", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const createGroup = (name: string): SourceCitationGroup => ({
+    sourceName: name,
+    sourceDomain: `${name.toLowerCase()}.com`,
+    sourceFavicon: `https://${name.toLowerCase()}.com/favicon.ico`,
+    citations: [
+      {
+        citationKey: `${name}-0`,
+        citation: { siteName: name, title: "Article 1" },
+        verification: { status: "found" },
+      },
+    ],
+    additionalCount: 0,
+  });
+
+  /** Helper: hover the trigger, then hover the first icon in the status group */
+  const hoverFirstIcon = (trigger: HTMLElement) => {
+    fireEvent.mouseEnter(trigger);
+    const iconGroup = trigger.querySelector("[role='group']");
+    expect(iconGroup).toBeInTheDocument();
+    const firstIcon = iconGroup?.firstElementChild;
+    expect(firstIcon).toBeInTheDocument();
+    if (firstIcon) fireEvent.mouseEnter(firstIcon);
+  };
+
+  it("renders tooltip with transform including translateX(-50%)", () => {
+    const groups = [createGroup("TestSource")];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    const tooltip = trigger.querySelector("[data-testid='source-tooltip']") as HTMLElement;
+    expect(tooltip).toBeInTheDocument();
+
+    // Default: centered with translateX(calc(-50% + 0px))
+    expect(tooltip.style.transform).toContain("translateX");
+    expect(tooltip.style.transform).toContain("-50%");
+  });
+
+  it("adjusts tooltip position when overflowing left edge", () => {
+    // Mock getBoundingClientRect to simulate left overflow
+    const originalGetBCR = Element.prototype.getBoundingClientRect;
+
+    const groups = [createGroup("TestSource")];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+
+    // Override getBoundingClientRect to simulate tooltip at left edge
+    Element.prototype.getBoundingClientRect = function () {
+      if (this.getAttribute?.("data-testid") === "source-tooltip") {
+        return { left: -20, right: 160, top: 0, bottom: 50, width: 180, height: 50, x: -20, y: 0, toJSON: () => ({}) } as DOMRect;
+      }
+      return originalGetBCR.call(this);
+    };
+
+    hoverFirstIcon(trigger);
+
+    const tooltip = trigger.querySelector("[data-testid='source-tooltip']") as HTMLElement;
+    expect(tooltip).toBeInTheDocument();
+    // The clamping should apply a positive offset to push tooltip right
+    // Due to useLayoutEffect running synchronously, the transform should include an adjustment
+    expect(tooltip.style.transform).toContain("translateX");
+
+    // Restore
+    Element.prototype.getBoundingClientRect = originalGetBCR;
+  });
+
+  it("adjusts tooltip position when overflowing right edge", () => {
+    const originalGetBCR = Element.prototype.getBoundingClientRect;
+    // Set a known viewport width
+    Object.defineProperty(window, "innerWidth", { value: 400, writable: true });
+
+    const groups = [createGroup("TestSource")];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+
+    // Override getBoundingClientRect to simulate tooltip overflowing right
+    Element.prototype.getBoundingClientRect = function () {
+      if (this.getAttribute?.("data-testid") === "source-tooltip") {
+        return { left: 250, right: 430, top: 0, bottom: 50, width: 180, height: 50, x: 250, y: 0, toJSON: () => ({}) } as DOMRect;
+      }
+      return originalGetBCR.call(this);
+    };
+
+    hoverFirstIcon(trigger);
+
+    const tooltip = trigger.querySelector("[data-testid='source-tooltip']") as HTMLElement;
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip.style.transform).toContain("translateX");
+
+    // Restore
+    Element.prototype.getBoundingClientRect = originalGetBCR;
+  });
+
+  it("cleans up resize listener on tooltip unmount", () => {
+    const addSpy = jest.spyOn(window, "addEventListener");
+    const removeSpy = jest.spyOn(window, "removeEventListener");
+
+    const groups = [createGroup("TestSource")];
+    const { getByTestId } = render(<CitationDrawerTrigger citationGroups={groups} />);
+
+    const trigger = getByTestId("citation-drawer-trigger");
+    hoverFirstIcon(trigger);
+
+    // Tooltip mounts — should add resize listener
+    expect(addSpy).toHaveBeenCalledWith("resize", expect.any(Function));
+
+    // Mouse leave to unmount tooltip
+    fireEvent.mouseLeave(trigger);
+
+    // Should clean up resize listener
+    expect(removeSpy).toHaveBeenCalledWith("resize", expect.any(Function));
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
 });
