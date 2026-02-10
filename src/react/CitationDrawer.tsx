@@ -116,7 +116,7 @@ function formatCheckedDate(date: Date | string | null | undefined): string | nul
   const diffDays = Math.floor(diffHr / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
 
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 /**
@@ -208,7 +208,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Source name with page number */}
+            {/* Source name with page number and timestamp */}
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{sourceName}</span>
               {pageNumber != null && pageNumber > 0 && (
@@ -245,8 +245,9 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             )}
           </div>
 
-          {/* Expand/collapse chevron */}
+          {/* Expand/collapse chevron (decorative — parent has aria-expanded) */}
           <svg
+            aria-hidden="true"
             className={cn(
               "w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0 mt-1 transition-transform duration-200",
               isExpanded && "rotate-90",
