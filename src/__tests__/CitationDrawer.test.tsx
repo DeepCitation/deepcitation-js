@@ -278,15 +278,15 @@ describe("CitationDrawerItemComponent", () => {
   });
 
   it("renders status indicator instead of favicon", () => {
-    const { container } = render(<CitationDrawerItemComponent item={createItem()} />);
+    const { container, getByTestId } = render(<CitationDrawerItemComponent item={createItem()} />);
 
     // Status indicator should be present (verified = green check)
     const statusIcon = container.querySelector("[title='Verified']");
     expect(statusIcon).toBeInTheDocument();
 
-    // No favicon image should be rendered in the left column
-    const leftColumn = container.querySelector(".flex-shrink-0.mt-0\\.5");
-    const faviconImg = leftColumn?.querySelector("img");
+    // No favicon image should be rendered in the status indicator column
+    const leftColumn = getByTestId("status-indicator");
+    const faviconImg = leftColumn.querySelector("img");
     expect(faviconImg).toBeNull();
   });
 

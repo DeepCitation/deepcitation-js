@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import type { SearchStatus } from "../types/search.js";
 import type { CitationDrawerItemProps, CitationDrawerProps, SourceCitationGroup } from "./CitationDrawer.types.js";
 import { extractDomain, getStatusInfo } from "./CitationDrawer.utils.js";
 import { SourceContextHeader } from "./VerificationLog.js";
@@ -132,7 +131,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   className,
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
-  const statusInfo = getStatusInfo(verification);
+  const statusInfo = useMemo(() => getStatusInfo(verification), [verification]);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get display values with fallbacks
@@ -184,6 +183,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
         onClick={handleClick}
         role="button"
         tabIndex={0}
+        aria-expanded={isExpanded}
         onKeyDown={e => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -193,7 +193,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
       >
         <div className="flex items-start gap-3">
           {/* Status indicator */}
-          <div className="flex-shrink-0 mt-0.5">
+          <div className="flex-shrink-0 mt-0.5" data-testid="status-indicator">
             <span
               className={cn(
                 "inline-flex w-5 h-5 items-center justify-center",
@@ -268,7 +268,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
           <SourceContextHeader
             citation={citation}
             verification={verification}
-            status={verification?.status as SearchStatus | null | undefined}
+            status={verification?.status}
             sourceLabel={isDocument ? (verification?.label || undefined) : undefined}
           />
 
