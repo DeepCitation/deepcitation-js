@@ -58,6 +58,8 @@ function SourceGroupHeader({
   return (
     <div
       className="w-full px-4 py-2.5 flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700"
+      role="heading"
+      aria-level={3}
     >
       {/* Favicon */}
       <div className="flex-shrink-0">

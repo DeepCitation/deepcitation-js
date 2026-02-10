@@ -69,31 +69,6 @@ interface FlatCitationItem {
 // Internal utilities
 // =========
 
-function computeStatusSummary(citationGroups: SourceCitationGroup[]): CitationStatusSummary {
-  const summary: CitationStatusSummary = { verified: 0, partial: 0, notFound: 0, pending: 0, total: 0 };
-  for (const group of citationGroups) {
-    for (const item of group.citations) {
-      summary.total++;
-      const status = item.verification?.status;
-      if (!status || status === "pending" || status === "loading") {
-        summary.pending++;
-      } else if (status === "not_found") {
-        summary.notFound++;
-      } else if (
-        status === "found_on_other_page" ||
-        status === "found_on_other_line" ||
-        status === "partial_text_found" ||
-        status === "first_word_found"
-      ) {
-        summary.partial++;
-      } else {
-        summary.verified++;
-      }
-    }
-  }
-  return summary;
-}
-
 /**
  * Generate simplified default label — just "N sources".
  * The per-citation icons already communicate the status breakdown visually.
@@ -419,15 +394,15 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-    const summary = useMemo(() => computeStatusSummary(citationGroups), [citationGroups]);
     const displayLabel = label ?? generateDefaultLabel(citationGroups.length);
 
     // Flatten citation groups into individual items for per-citation icons
     const flatCitations = useMemo(() => flattenCitations(citationGroups), [citationGroups]);
 
-    // Source groups are still used for favicons display
-    const displayGroups = useMemo(() => citationGroups.slice(0, 5), [citationGroups]);
-    const hasMoreFavicons = citationGroups.length > 5;
+    // Source groups are still used for favicons display (max 5)
+    const MAX_FAVICONS = 5;
+    const displayGroups = useMemo(() => citationGroups.slice(0, MAX_FAVICONS), [citationGroups]);
+    const hasMoreFavicons = citationGroups.length > MAX_FAVICONS;
 
     const handleMouseEnter = useCallback(() => setIsHovered(true), []);
     const handleMouseLeave = useCallback(() => {
@@ -461,7 +436,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
       return () => clearTimeout(leaveTimeoutRef.current);
     }, []);
 
-    if (summary.total === 0) return null;
+    if (flatCitations.length === 0) return null;
 
     return (
       <button
@@ -529,7 +504,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
             })}
             {hasMoreFavicons && (
               <span className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 ring-1 ring-white dark:ring-gray-800 flex items-center justify-center text-[8px] font-medium text-gray-600 dark:text-gray-300">
-                +{citationGroups.length - 5}
+                +{citationGroups.length - MAX_FAVICONS}
               </span>
             )}
           </div>
