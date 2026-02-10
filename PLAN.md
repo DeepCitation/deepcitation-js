@@ -1,116 +1,130 @@
-# Plan: Citation Drawer & Popover UX Improvements
+# Plan: Citation Drawer & Popover UX — Design from User Intent
 
-## Issues Identified (from screenshots + code review)
+## Why Do Users Open Citations?
 
-### CitationDrawerTrigger (collapsed bar)
-1. **"J" letter confusion**: When no favicon is available, the trigger shows the first letter of the source name (e.g., "J" for "Junior to payment") as a circle — looks like a meaningless icon
-2. **Single warning icon dominates**: When there's 1 miss among 4 verified, the collapsed bar shows a single amber warning triangle per-group, which overpowers. Should show per-citation status indicators (checkmarks and X's)
-3. **Redundant text summary**: Bar says "5 sources . 4 verified, 1 not found" but the icons should already convey this — text restates what icons show
-4. **"Not found" uses amber warning instead of red X**: In `getStatusInfo()`, `not_found` maps to amber `WarningIcon` — should be red `XCircleIcon` for unmistakable miss clarity
+Users interact with citations through a **trust-building funnel**. Each layer answers a progressively deeper question. The UI should match the cognitive load at each stage — not force users to decode ambiguous icons or wade through padding to get the answer they need.
 
-### CitationDrawer (expanded)
-5. **Expand/collapse toggle adds friction**: Drawer has show/hide, plus within it a further expand/collapse for snippets. Should be always expanded and scrollable
-6. **Icons in drawer items are ambiguous for misses**: Each citation shows a small icon but miss entries don't stand out enough — should be clearer visual treatment
-7. **Too much top padding/margin**: Handle bar + header area takes up too much vertical space
-8. **No way to navigate from drawer back to visual evidence**: Clicking a citation in the drawer should surface the proof image
+### The Trust Funnel (progressive disclosure)
 
-### CitationPopover
-9. **Page badge format inconsistency**: Drawer uses compact "p.4" format, popover uses uppercase "PAGE 5". Should use consistent "p.N" format everywhere
-10. **Top margin/padding is excessive**: SourceContextHeader + StatusHeader creates a double-header look
+| Layer | User Question | What They Need | Current Problem |
+|-------|--------------|----------------|-----------------|
+| **L0: Glance** | "Can I trust this output?" | Instant pass/fail signal across ALL citations | The collapsed trigger shows a single amber ⚠️ that dominates — user can't distinguish "1 miss in 5" from "all bad". The "J" favicon-fallback circle is noise. Text restates what icons should already show. |
+| **L1: Scan** | "Which specific claims failed?" | Scan the list, immediately spot the red ones | Drawer items look identical regardless of status. Misses have the same visual weight as verified items. The expand/collapse toggle is a speed bump before you can even scan. |
+| **L2: Inspect** | "What exactly failed and why?" | See the claim text, the proof image, which page | Popover has too much header chrome (double-header), inconsistent page format ("PAGE 5" vs "p.4"), and the miss popover shows a wall of text instead of leading with the key info. |
+| **L3: Audit** | "How thorough was the search?" | Search attempts, methods tried, pages scanned | This layer works fine today. The VerificationLog is well-designed. |
 
-## Implementation Plan
+**Key insight**: Most users only need L0-L1. Power users occasionally need L2. Almost nobody needs L3 unless they're debugging. The current UI front-loads L3-level complexity into L0-L1, increasing cognitive load for everyone.
 
-### Step 1: Fix "not_found" status indicator color and icon
-**File**: `src/react/CitationDrawer.utils.tsx` (lines 81-87)
+---
 
-Change `getStatusInfo()` for `not_found`:
-- Icon: `WarningIcon` -> `XCircleIcon` (imported from icons.js)
-- Color: `text-amber-500` -> `text-red-500`
+## Design Principles (derived from the funnel)
 
-This single change fixes the miss icon in drawer items, trigger status chips, and trigger tooltips.
+1. **Status should be self-evident from color alone** — green = good, red = bad, amber = partial, gray = pending. No icon decoding needed. No text needed at L0.
+2. **Misses must visually "pop" without reading** — a miss in a list of verified items should be findable in under 1 second by visual scanning, not by reading status labels.
+3. **Remove anything that doesn't answer the user's current question** — if you're at L1 (scanning the list), you shouldn't need to click "expand" before you can see the list.
+4. **Each layer should have one obvious "go deeper" action** — trigger click → drawer, drawer item click → popover/evidence, popover click → full-size image + audit log.
+5. **Consistent vocabulary** — same format for page references everywhere. No uppercase "PAGE 5" in one place and "p.5" in another.
 
-### Step 2: CitationDrawerTrigger — per-citation icons, not per-group
-**File**: `src/react/CitationDrawerTrigger.tsx`
+---
 
-**StatusIconChip changes**:
-- Currently renders one icon per SOURCE GROUP using the group's "worst" status
-- Change to render one icon per CITATION, showing each citation's actual verification status
-- Flatten `citationGroups` into individual citation items, each getting its own chip
-- Remove the letter-circle fallback from status chips — chips only show status icons (check/X/spinner), never source initials
+## Specific Changes
 
-**StackedStatusIcons changes**:
-- Accept flattened citation items instead of groups
-- Each icon represents one citation's verification status
-- On hover, spread icons and show tooltip for the hovered citation (source name, status, proof thumbnail)
+### A. Trigger Bar (L0: "Can I trust this output?")
 
-**Label simplification**:
-- `generateDefaultLabel()`: When icons clearly convey status, simplify to just "N sources" — drop the verbose "N verified, N not found" breakdown since the icons already communicate that
-- Keep the detailed breakdown only in the tooltip on hover
+**Current**: `⚠️ 5 sources · 4 verified, 1 not found  [J]  >`
 
-### Step 3: Simplify CitationDrawer — remove expand/collapse, always scrollable
-**File**: `src/react/CitationDrawer.tsx`
+The user's L0 question is: "Is everything green?" The current UI fails this because:
+- One amber ⚠️ icon is shown (per-group "worst status"), not per-citation — so 1 miss in 5 looks identical to 5 misses in 5
+- The text "4 verified, 1 not found" is the *only* way to understand the breakdown — the icons don't communicate it
+- The "J" circle (first-letter fallback when no favicon) adds visual noise with zero information
 
-- Remove `showMore`/`setShowMore` state
-- Remove the `visibleGroups`/`hasMore`/`moreCount` memo — always show all groups
-- Remove the "More (N)" button
-- Keep `showMoreSection` and `maxVisibleItems` props in types for backwards compat but ignore them
-- Remove `collapsedGroups` state and `toggleGroup` — groups are always expanded (remove `SourceGroupHeader` toggle behavior, keep it as a static label)
+**Target**: `✅✅✅✅❌  5 sources  [favicons]  >`
 
-**Reduce top padding**:
-- Handle bar: `pt-3 pb-1` -> `pt-2 pb-0.5`
-- Header: `py-3` -> `py-2`
+Changes in `CitationDrawerTrigger.tsx`:
+1. **Flatten to per-citation icons**: Instead of one `StatusIconChip` per `SourceCitationGroup` (using worst-status aggregation), render one chip per citation item. Each chip shows that individual citation's verification status icon (check/X/spinner) with status-colored background.
+2. **Remove letter-circle fallback from status icons**: Status chips are purely status indicators — they should NEVER show source initials. The "J" problem disappears entirely. (Favicons are already shown separately on the right side of the trigger bar.)
+3. **Simplify label**: Change `generateDefaultLabel()` from `"5 sources · 4 verified, 1 not found"` to just `"5 sources"`. The per-citation icons already communicate the breakdown — the text is redundant. The detailed breakdown is available on hover (existing tooltip) and in the drawer (L1).
+4. **Fix not_found color/icon**: In `getStatusInfo()` (CitationDrawer.utils.tsx), change not_found from amber `WarningIcon` to red `XCircleIcon`. This is the single highest-impact change — it cascades to every place status is displayed (trigger chips, drawer items, trigger tooltips).
 
-**File**: `src/react/CitationDrawer.types.ts`
-- Mark `showMoreSection` and `maxVisibleItems` as `@deprecated` in JSDoc
+**Files**: `src/react/CitationDrawerTrigger.tsx`, `src/react/CitationDrawer.utils.tsx`
 
-### Step 4: Improve drawer item miss clarity
-**File**: `src/react/CitationDrawer.tsx` (CitationDrawerItemComponent)
+### B. Drawer Content (L1: "Which specific claims failed?")
 
-- For `not_found` citations: add a subtle left border accent (`border-l-2 border-red-400`) and a light red background on hover (`hover:bg-red-50 dark:hover:bg-red-900/10`)
-- The status icon change from Step 1 already gives us the red XCircleIcon — combine with the visual accent for unmistakable miss indication
+**Current**: User opens drawer → sees grouped citations with collapse toggles → each item has a small 12px status icon that's hard to distinguish → misses look the same as verified items at a glance → there's a "Show more" button hiding some items.
 
-### Step 5: Add "View evidence" navigation from drawer
-**File**: `src/react/CitationDrawer.tsx` (CitationDrawerItemComponent)
+The user's L1 question is: "Let me scan for red." The current UI fails this because:
+- The expand/collapse per-group and "Show more" buttons are speed bumps before the user can even scan
+- Miss items have identical visual weight to verified items — same background, same padding, same favicon circle
+- The only distinguishing feature is a tiny 12px icon that requires focused reading
 
-- When `verification.verificationImageBase64` exists AND `onClick` is provided, make the proof image thumbnail more prominent
-- Add a small "View proof" text link or icon button below the proof thumbnail
-- Ensure clicking the proof thumbnail (which already exists) invokes `onClick(item)` — this already works, but make it more discoverable with a hover state and cursor change
+**Target**: Flat scrollable list, misses instantly pop with red accent.
 
-### Step 6: Unify page badge format — use "p.N" everywhere
-**File**: `src/react/VerificationLog.tsx`
+Changes in `CitationDrawer.tsx`:
+1. **Remove all expand/collapse**: Delete `collapsedGroups` state and `toggleGroup`. Groups are always expanded. Delete `showMore`/`maxVisibleItems` logic — always show all items. The drawer's `overflow-y-auto` already handles scrolling. Keep the `showMoreSection`/`maxVisibleItems` props as accepted-but-ignored for backwards compat.
+2. **Red accent for misses**: When `verification?.status === "not_found"`, add `border-l-2 border-red-400 dark:border-red-500` and change hover to `hover:bg-red-50 dark:hover:bg-red-900/10`. This gives misses an instantly-scannable red "gutter" stripe — the user can spot them by color alone without reading any text.
+3. **Reduce top padding**: Handle bar `pt-3 pb-1` → `pt-2 pb-0.5`. Header `py-3` → `py-2`. This saves ~16px of dead space that pushes actual content down.
+4. **Proof image as "go deeper" affordance**: The proof thumbnail already exists and already calls `onClick`. Make it more discoverable: add a hover overlay with a small zoom icon (like the popover's `AnchorTextFocusedImage` does). This creates the L1→L2 bridge: "I see this claim is verified, let me see the proof."
 
-- `formatPageLineText()` (line 380-388): Change `Page ${pageNumber}` -> `p.${pageNumber}`
-- `PageBadge` component (lines 623-647): Change `Page ${expectedPage}` -> `p.${expectedPage}`, `Page ${pageToShow}` -> `p.${pageToShow}`
-- `SourceContextHeader` document header (line 364): The right-aligned text uses `formatPageLineText` — will auto-update
-- URL citation header: Leave as-is (URLs don't have page numbers in the same way)
+**Files**: `src/react/CitationDrawer.tsx`, `src/react/CitationDrawer.types.ts`
 
-### Step 7: Reduce popover top padding
+### C. Citation Popover (L2: "What exactly failed and why?")
+
+**Current**: User clicks an inline citation → popover shows `SourceContextHeader` (document icon + filename + "PAGE 5") → `StatusHeader` (status icon + anchor text + copy button + page badge) → image → verification log. Two headers that both show page number. Tall header area.
+
+The user's L2 question is: "Show me the evidence and tell me what happened."
+
+**Target**: Single compact header, evidence front and center.
+
+Changes in `VerificationLog.tsx` and `CitationComponent.tsx`:
+1. **Unify page format to "p.N"**: Change `formatPageLineText()` from `"Page ${pageNumber}"` to `"p.${pageNumber}"`. Change `PageBadge` similarly. The drawer already uses "p.4" — the popover should match. This also saves horizontal space in the header.
+2. **Reduce header padding**: `SourceContextHeader` py-2 → py-1.5. `StatusHeader` py-2.5 → py-2. These two components stack vertically — together they currently consume ~36px of header. Reducing saves ~8px, which on a 384px-wide popover is meaningful.
+3. **Tighten loading state**: `DefaultPopoverContent` loading state padding p-3 → p-2. The loading spinner + "Searching..." text doesn't need generous whitespace.
+
 **Files**: `src/react/VerificationLog.tsx`, `src/react/CitationComponent.tsx`
 
-- `SourceContextHeader` document layout: `py-2` -> `py-1.5`
-- `StatusHeader`: `py-2.5` -> `py-2` (compact already uses `py-2`)
-- In `DefaultPopoverContent`: The loading state `p-3` gap could be tightened to `p-2`
+### D. Snapshot Updates
 
-### Step 8: Update snapshot tests
+All playwright visual snapshots will break since we're changing:
+- Trigger bar layout (per-citation icons instead of per-group)
+- Drawer item styling (red accents on misses)
+- Popover header formatting ("p.N" instead of "PAGE N")
+- Padding throughout
+
+Run tests, update baselines, verify the new renders look correct.
+
 **Files**: `tests/playwright/specs/__snapshots__/**`
 
-- Run playwright tests — all visual snapshots will fail due to the UI changes
-- Update baselines with `--update-snapshots`
-- Verify the new snapshots look correct
+---
 
-## Files Changed Summary
+## Implementation Order
+
+| Step | What | Why this order |
+|------|------|----------------|
+| 1 | Fix `getStatusInfo()` not_found → red XCircleIcon | Foundational — cascades everywhere. Zero risk of breaking anything since it's purely visual. |
+| 2 | Trigger: per-citation icons + simplified label | The L0 fix. Highest user impact — every user sees the trigger. |
+| 3 | Drawer: remove expand/collapse + red miss accents | The L1 fix. Second-highest impact — users who open the drawer need to scan fast. |
+| 4 | Drawer: proof image hover affordance | The L1→L2 bridge. Makes the "go deeper" path discoverable. |
+| 5 | Popover: "p.N" format + padding reduction | The L2 fix. Lower impact since fewer users reach this layer, but consistency matters. |
+| 6 | Update snapshots | Must be last since every prior step changes visuals. |
+
+---
+
+## Files Changed
+
 | File | Changes |
 |------|---------|
-| `src/react/CitationDrawer.utils.tsx` | Fix not_found icon/color |
-| `src/react/CitationDrawerTrigger.tsx` | Per-citation icons, simplified label |
-| `src/react/CitationDrawer.tsx` | Remove expand/collapse, reduce padding, miss accents |
-| `src/react/CitationDrawer.types.ts` | Deprecate showMoreSection/maxVisibleItems |
-| `src/react/VerificationLog.tsx` | Consistent "p.N" format, reduced padding |
-| `src/react/CitationComponent.tsx` | Reduced popover top padding |
+| `src/react/CitationDrawer.utils.tsx` | `getStatusInfo()`: not_found icon amber→red, WarningIcon→XCircleIcon |
+| `src/react/CitationDrawerTrigger.tsx` | Flatten to per-citation icons, remove letter fallback, simplify label |
+| `src/react/CitationDrawer.tsx` | Remove expand/collapse, red miss accents, reduce padding, proof hover |
+| `src/react/CitationDrawer.types.ts` | Deprecate `showMoreSection`/`maxVisibleItems` |
+| `src/react/VerificationLog.tsx` | `formatPageLineText` → "p.N", `PageBadge` → "p.N", reduce header padding |
+| `src/react/CitationComponent.tsx` | Reduce popover padding |
 | `tests/playwright/specs/__snapshots__/**` | Updated baselines |
 
-## Backwards Compatibility
-- `showMoreSection` and `maxVisibleItems` props accepted but ignored (no-ops)
-- `CitationDrawerItemComponent` click handler unchanged
-- Status indicator mapping changes are visual only — API/data shapes unchanged
-- `StatusIconChip` internal component, not exported — safe to refactor
+## What We're NOT Changing
+
+- The L3 audit layer (VerificationLog/SearchAttemptRow) — it already works well
+- The Radix Popover positioning/portal logic — solid
+- The `AnchorTextFocusedImage` component layout — the zoom UX is good
+- The `behaviorConfig`/`eventHandlers` API — no behavioral changes
+- Any data types or API shapes — purely visual/layout changes
