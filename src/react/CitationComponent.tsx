@@ -37,6 +37,7 @@ import type {
 import { useSmartDiff } from "./useSmartDiff.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
+import { formatCaptureDate } from "./dateUtils.js";
 
 // Re-export types for convenience
 export type {
@@ -814,6 +815,38 @@ const MissIndicator = () => (
 // =============================================================================
 
 /**
+ * Displays a capture/verification timestamp in the popover.
+ * URL citations show "Retrieved [date+time]"; document citations show "Verified [date]".
+ * Renders nothing when no date is available.
+ */
+function CaptureTimestamp({
+  verification,
+  citation,
+}: {
+  verification: Verification | null;
+  citation: BaseCitationProps["citation"];
+}) {
+  const isUrl = isUrlCitation(citation);
+  const rawDate = isUrl
+    ? (verification?.crawledAt ?? verification?.verifiedAt)
+    : verification?.verifiedAt;
+
+  const formatted = formatCaptureDate(rawDate, { showTime: isUrl });
+  if (!formatted) return null;
+
+  const label = isUrl && verification?.crawledAt ? "Retrieved" : "Verified";
+
+  return (
+    <div
+      className="px-3 py-1.5 text-[11px] text-gray-400 dark:text-gray-500"
+      title={formatted.tooltip}
+    >
+      {label} {formatted.display}
+    </div>
+  );
+}
+
+/**
  * Displays a verification image that fits within the container dimensions.
  * The image is scaled to fit (without distortion) and can be clicked to expand.
  * Includes an action bar with zoom button and optional "View page" button.
@@ -1303,6 +1336,9 @@ function DefaultPopoverContent({
             <AnchorTextFocusedImage verification={verification} onImageClick={onImageClick} />
           </div>
 
+          {/* Capture/verification timestamp */}
+          <CaptureTimestamp verification={verification} citation={citation} />
+
           {/* Expandable search details for verified matches */}
           {verification.searchAttempts && verification.searchAttempts.length > 0 && (
             <VerificationLog
@@ -1381,6 +1417,9 @@ function DefaultPopoverContent({
             </>
           )}
 
+          {/* Capture/verification timestamp */}
+          <CaptureTimestamp verification={verification} citation={citation} />
+
           {/* Verification log (collapsible) */}
           {showVerificationLog && verification?.searchAttempts && (
             <VerificationLog
@@ -1442,6 +1481,8 @@ function DefaultPopoverContent({
           <span className="text-xs text-gray-500 dark:text-gray-400">Page {pageNumber}</span>
         )}
       </div>
+      {/* Capture/verification timestamp */}
+      <CaptureTimestamp verification={verification} citation={citation} />
     </div>
   );
 }

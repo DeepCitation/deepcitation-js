@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CitationDrawerItemProps, CitationDrawerProps, SourceCitationGroup } from "./CitationDrawer.types.js";
 import { extractDomain, getStatusInfo } from "./CitationDrawer.utils.js";
+import { formatCaptureDate } from "./dateUtils.js";
 import { cn } from "./utils.js";
 
 /**
@@ -230,6 +231,16 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
               )}
             </p>
           )}
+
+          {/* Capture date for URL citations */}
+          {!isDocument && verification?.crawledAt && (() => {
+            const formatted = formatCaptureDate(verification.crawledAt);
+            return formatted ? (
+              <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500" title={formatted.tooltip}>
+                Retrieved {formatted.display}
+              </p>
+            ) : null;
+          })()}
 
           {/* Proof image thumbnail */}
           {proofImage && (
