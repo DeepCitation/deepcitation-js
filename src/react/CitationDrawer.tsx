@@ -121,9 +121,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   onClick,
   onReadMore,
   className,
+  indicatorVariant = "icon",
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
-  const statusInfo = getStatusInfo(verification);
+  const statusInfo = getStatusInfo(verification, indicatorVariant);
 
   // Get display values with fallbacks
   const isDocument = citation.type === "document" || (!citation.type && citation.attachmentId);
@@ -300,6 +301,7 @@ export function CitationDrawer({
   className,
   position = "bottom",
   renderCitationItem,
+  indicatorVariant = "icon",
 }: CitationDrawerProps) {
   const [showMore, setShowMore] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
@@ -404,6 +406,7 @@ export function CitationDrawer({
                   isLast={isLastGroup && index === group.citations.length - 1}
                   onClick={onCitationClick}
                   onReadMore={onReadMore}
+                  indicatorVariant={indicatorVariant}
                 />
               ),
             )}

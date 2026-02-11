@@ -60,16 +60,60 @@ export function extractDomain(url?: string | null): string | undefined {
   }
 }
 
+/** Inline style for dot indicators used in drawer/trigger (fixed 8px size) */
+const DOT_SIZE = { width: 8, height: 8, minWidth: 6, minHeight: 6 } as const;
+
 /**
- * Get verification status indicator info
+ * Get verification status indicator info.
+ * @param verification - The verification result
+ * @param indicatorVariant - "icon" for SVG icons (default), "dot" for subtle colored dots
  */
-export function getStatusInfo(verification: Verification | null): {
+export function getStatusInfo(
+  verification: Verification | null,
+  indicatorVariant: "icon" | "dot" = "icon",
+): {
   color: string;
   icon: React.ReactNode;
   label: string;
 } {
   const status = verification?.status;
 
+  const isPartial =
+    status === "partial_text_found" ||
+    status === "found_on_other_page" ||
+    status === "found_on_other_line" ||
+    status === "first_word_found";
+
+  if (indicatorVariant === "dot") {
+    if (!status || status === "pending" || status === "loading") {
+      return {
+        color: "text-gray-400",
+        icon: <span className="inline-block rounded-full bg-gray-400 animate-pulse" style={DOT_SIZE} />,
+        label: "Verifying",
+      };
+    }
+    if (status === "not_found") {
+      return {
+        color: "text-red-500",
+        icon: <span className="inline-block rounded-full bg-red-500" style={DOT_SIZE} />,
+        label: "Not found",
+      };
+    }
+    if (isPartial) {
+      return {
+        color: "text-amber-500",
+        icon: <span className="inline-block rounded-full bg-amber-500" style={DOT_SIZE} />,
+        label: "Partial match",
+      };
+    }
+    return {
+      color: "text-green-500",
+      icon: <span className="inline-block rounded-full bg-green-500" style={DOT_SIZE} />,
+      label: "Verified",
+    };
+  }
+
+  // Default: icon variant
   if (!status || status === "pending" || status === "loading") {
     return {
       color: "text-gray-400",
@@ -85,12 +129,6 @@ export function getStatusInfo(verification: Verification | null): {
       label: "Not found",
     };
   }
-
-  const isPartial =
-    status === "partial_text_found" ||
-    status === "found_on_other_page" ||
-    status === "found_on_other_line" ||
-    status === "first_word_found";
 
   if (isPartial) {
     return {

@@ -40,6 +40,13 @@ export interface CitationDrawerTriggerProps {
   maxIcons?: number;
   /** Whether to show proof image thumbnails in hover tooltips (default: true) */
   showProofThumbnails?: boolean;
+  /**
+   * Visual style for status indicators.
+   * - `"icon"`: Checkmarks, spinner, X icons (default)
+   * - `"dot"`: Subtle colored dots (like GitHub status dots)
+   * @default "icon"
+   */
+  indicatorVariant?: "icon" | "dot";
 }
 
 // =========
@@ -125,9 +132,9 @@ function getStatusBgColor(label: string): string {
 // StatusIconChip — individual status icon in the stacked row
 // =========
 
-function StatusIconChip({ group, size = 20 }: { group: SourceCitationGroup; size?: number }) {
+function StatusIconChip({ group, size = 20, indicatorVariant = "icon" }: { group: SourceCitationGroup; size?: number; indicatorVariant?: "icon" | "dot" }) {
   const aggregateVerification = getGroupAggregateVerification(group);
-  const statusInfo = getStatusInfo(aggregateVerification);
+  const statusInfo = getStatusInfo(aggregateVerification, indicatorVariant);
   const isPending =
     !aggregateVerification?.status ||
     aggregateVerification.status === "pending" ||
@@ -156,15 +163,17 @@ function SourceTooltip({
   group,
   showProofThumbnail,
   onSourceClick,
+  indicatorVariant = "icon",
 }: {
   group: SourceCitationGroup;
   showProofThumbnail: boolean;
   onSourceClick?: (group: SourceCitationGroup) => void;
+  indicatorVariant?: "icon" | "dot";
 }) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [adjustedLeft, setAdjustedLeft] = useState<number | null>(null);
   const aggregateVerification = getGroupAggregateVerification(group);
-  const statusInfo = getStatusInfo(aggregateVerification);
+  const statusInfo = getStatusInfo(aggregateVerification, indicatorVariant);
   const sourceName = group.sourceName?.trim() || "Source";
 
   // Find the first verification with a proof image, validating the data URL
@@ -299,6 +308,7 @@ function StackedStatusIcons({
   onIconLeave,
   showProofThumbnails,
   onSourceClick,
+  indicatorVariant = "icon",
 }: {
   citationGroups: SourceCitationGroup[];
   isHovered: boolean;
@@ -308,6 +318,7 @@ function StackedStatusIcons({
   onIconLeave: () => void;
   showProofThumbnails: boolean;
   onSourceClick?: (group: SourceCitationGroup) => void;
+  indicatorVariant?: "icon" | "dot";
 }) {
   const displayGroups = citationGroups.slice(0, maxIcons);
   const hasOverflow = citationGroups.length > maxIcons;
@@ -326,10 +337,10 @@ function StackedStatusIcons({
           onMouseEnter={() => onIconHover(i)}
           onMouseLeave={onIconLeave}
         >
-          <StatusIconChip group={group} />
+          <StatusIconChip group={group} indicatorVariant={indicatorVariant} />
           {/* Tooltip when this specific icon is hovered/focused and bar is expanded */}
           {isHovered && hoveredGroupIndex === i && (
-            <SourceTooltip group={group} showProofThumbnail={showProofThumbnails} onSourceClick={onSourceClick} />
+            <SourceTooltip group={group} showProofThumbnail={showProofThumbnails} onSourceClick={onSourceClick} indicatorVariant={indicatorVariant} />
           )}
         </div>
       ))}
@@ -376,7 +387,7 @@ function StackedStatusIcons({
  */
 export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawerTriggerProps>(
   (
-    { citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 5, showProofThumbnails = true },
+    { citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 5, showProofThumbnails = true, indicatorVariant = "icon" },
     ref,
   ) => {
     const [isHovered, setIsHovered] = useState(false);
@@ -456,6 +467,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
             onIconLeave={handleIconLeave}
             showProofThumbnails={showProofThumbnails}
             onSourceClick={onSourceClick}
+            indicatorVariant={indicatorVariant}
           />
 
           {/* Label */}

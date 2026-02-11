@@ -106,6 +106,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
       eventHandlers,
       preventTooltips = false,
       showStatusIndicator = true,
+      indicatorVariant = "icon",
       showExternalLinkOnHover = true, // Show external link icon on hover by default
     },
     ref,
@@ -237,6 +238,29 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     };
 
     const renderStatusIndicator = () => {
+      // Dot variant: simple colored dots for all statuses
+      if (indicatorVariant === "dot") {
+        if (isVerified) {
+          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-500" aria-hidden="true" /></StatusIconWrapper>;
+        }
+        if (isPartial) {
+          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true" /></StatusIconWrapper>;
+        }
+        if (isBlocked) {
+          if (renderBlockedIndicator) return renderBlockedIndicator(fetchStatus, errorMessage);
+          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true" /></StatusIconWrapper>;
+        }
+        if (isError) {
+          if (renderBlockedIndicator) return renderBlockedIndicator(fetchStatus, errorMessage);
+          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400" aria-hidden="true" /></StatusIconWrapper>;
+        }
+        if (isPending) {
+          return <StatusIconWrapper><PendingDot /></StatusIconWrapper>;
+        }
+        return null;
+      }
+
+      // Default: icon variant
       // Verified: Green checkmark
       if (isVerified) {
         return (

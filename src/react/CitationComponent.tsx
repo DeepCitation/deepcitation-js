@@ -17,7 +17,7 @@ import type { CitationStatus } from "../types/citation.js";
 import type { MatchedVariation, SearchAttempt, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
-import { INDICATOR_SIZE_STYLE, MISS_WAVY_UNDERLINE_STYLE, POPOVER_CONTAINER_BASE_CLASSES } from "./constants.js";
+import { DOT_INDICATOR_SIZE_STYLE, INDICATOR_SIZE_STYLE, MISS_WAVY_UNDERLINE_STYLE, POPOVER_CONTAINER_BASE_CLASSES } from "./constants.js";
 import { CheckIcon, CloseIcon, SpinnerIcon, WarningIcon, XIcon, ZoomInIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
@@ -33,6 +33,7 @@ import type {
   CitationInteractionMode,
   CitationRenderProps,
   CitationVariant,
+  IndicatorVariant,
 } from "./types.js";
 import { useSmartDiff } from "./useSmartDiff.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
@@ -43,6 +44,7 @@ export type {
   CitationContent,
   CitationInteractionMode,
   CitationVariant,
+  IndicatorVariant,
 } from "./types.js";
 
 /**
@@ -390,6 +392,13 @@ export interface CitationComponentProps extends BaseCitationProps {
    * Defaults to true. Set to false to hide the indicator.
    */
   showIndicator?: boolean;
+  /**
+   * Visual style for status indicators.
+   * - `"icon"`: Checkmarks, spinner, X icons (default)
+   * - `"dot"`: Subtle colored dots (like GitHub status dots / shadcn badge dots)
+   * @default "icon"
+   */
+  indicatorVariant?: IndicatorVariant;
 }
 
 function getStatusLabel(status: CitationStatus): string {
@@ -807,6 +816,46 @@ const MissIndicator = () => (
   >
     <XIcon />
   </span>
+);
+
+// =============================================================================
+// DOT INDICATOR COMPONENTS (subtle colored dots, like GitHub status dots)
+// =============================================================================
+
+/** Verified dot - green filled circle for exact matches */
+const VerifiedDot = () => (
+  <span
+    className="inline-block relative ml-0.5 top-[0.05em] rounded-full bg-green-600 dark:bg-green-500 [text-decoration:none]"
+    style={DOT_INDICATOR_SIZE_STYLE}
+    aria-hidden="true"
+  />
+);
+
+/** Partial dot - amber filled circle for partial/relocated matches */
+const PartialDot = () => (
+  <span
+    className="inline-block relative ml-0.5 top-[0.05em] rounded-full bg-amber-500 dark:bg-amber-400 [text-decoration:none]"
+    style={DOT_INDICATOR_SIZE_STYLE}
+    aria-hidden="true"
+  />
+);
+
+/** Pending dot - gray pulsing circle (like shadcn badge dot) */
+const PendingDot = () => (
+  <span
+    className="inline-block relative ml-1 top-[0.05em] rounded-full bg-gray-400 dark:bg-gray-500 animate-pulse [text-decoration:none]"
+    style={DOT_INDICATOR_SIZE_STYLE}
+    aria-hidden="true"
+  />
+);
+
+/** Miss dot - red filled circle for not found */
+const MissDot = () => (
+  <span
+    className="inline-block ml-0.5 rounded-full bg-red-500 dark:bg-red-400 [text-decoration:none]"
+    style={DOT_INDICATOR_SIZE_STYLE}
+    aria-hidden="true"
+  />
 );
 
 // =============================================================================
@@ -1623,6 +1672,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       additionalCount,
       faviconUrl,
       showIndicator = true,
+      indicatorVariant = "icon",
       sourceLabel,
     },
     ref,
@@ -2156,6 +2206,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const renderStatusIndicator = () => {
       if (renderIndicator) return renderIndicator(status);
       if (!showIndicator) return null;
+
+      if (indicatorVariant === "dot") {
+        if (shouldShowSpinner) return <PendingDot />;
+        if (isVerified && !isPartialMatch) return <VerifiedDot />;
+        if (isPartialMatch) return <PartialDot />;
+        if (isMiss) return <MissDot />;
+        return null;
+      }
+
+      // Default: icon variant
       if (shouldShowSpinner) return <PendingIndicator />;
       if (isVerified && !isPartialMatch) return <VerifiedIndicator />;
       if (isPartialMatch) return <PartialIndicator />;

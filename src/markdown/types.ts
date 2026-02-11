@@ -28,6 +28,7 @@ export type IndicatorStyle =
   | "square" // ■ ▪ □ ▫  (squares for monospace alignment)
   | "letter" // V P X ?  (single letters, ASCII-safe)
   | "word" // ✓verified ⚠partial ✗missed ◌pending
+  | "dot" // ● ◐ ○ ◦  (filled/half/empty/small dots - subtle)
   | "none"; // No indicator
 
 /**
@@ -140,6 +141,7 @@ export const INDICATOR_SETS: Record<IndicatorStyle, IndicatorSet> = {
     notFound: "✗missed",
     pending: "◌pending",
   },
+  dot: { verified: "●", partial: "◐", notFound: "○", pending: "◦" },
   none: { verified: "", partial: "", notFound: "", pending: "" },
 };
 
