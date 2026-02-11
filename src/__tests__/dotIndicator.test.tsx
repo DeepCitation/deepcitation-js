@@ -215,18 +215,18 @@ describe("Dot Indicator Variant", () => {
   // MARKDOWN INDICATOR SETS
   // ==========================================================================
 
-  describe("INDICATOR_SETS dot style", () => {
-    it("has correct dot indicator characters", () => {
-      expect(INDICATOR_SETS.dot).toEqual({
+  describe("INDICATOR_SETS circle style (used for dot-like markdown output)", () => {
+    it("has correct circle indicator characters", () => {
+      expect(INDICATOR_SETS.circle).toEqual({
         verified: "●",
         partial: "◐",
         notFound: "○",
-        pending: "◦",
+        pending: "◌",
       });
     });
 
-    it("dot style exists as a valid IndicatorStyle key", () => {
-      expect("dot" in INDICATOR_SETS).toBe(true);
+    it("circle style exists as a valid IndicatorStyle key", () => {
+      expect("circle" in INDICATOR_SETS).toBe(true);
     });
   });
 });

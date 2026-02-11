@@ -44,6 +44,7 @@ export {
 // Constants - Shared styling and configuration
 export {
   COPY_FEEDBACK_DURATION_MS,
+  DOT_INDICATOR_FIXED_SIZE_STYLE,
   DOT_INDICATOR_SIZE_STYLE,
   INDICATOR_SIZE_STYLE,
   MISS_WAVY_UNDERLINE_STYLE,

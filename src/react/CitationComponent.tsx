@@ -843,7 +843,7 @@ const PartialDot = () => (
 /** Pending dot - gray pulsing circle (like shadcn badge dot) */
 const PendingDot = () => (
   <span
-    className="inline-block relative ml-1 top-[0.05em] rounded-full bg-gray-400 dark:bg-gray-500 animate-pulse [text-decoration:none]"
+    className="inline-block relative ml-0.5 top-[0.05em] rounded-full bg-gray-400 dark:bg-gray-500 animate-pulse [text-decoration:none]"
     style={DOT_INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   />
@@ -852,7 +852,7 @@ const PendingDot = () => (
 /** Miss dot - red filled circle for not found */
 const MissDot = () => (
   <span
-    className="inline-block ml-0.5 rounded-full bg-red-500 dark:bg-red-400 [text-decoration:none]"
+    className="inline-block relative ml-0.5 top-[0.05em] rounded-full bg-red-500 dark:bg-red-400 [text-decoration:none]"
     style={DOT_INDICATOR_SIZE_STYLE}
     aria-hidden="true"
   />

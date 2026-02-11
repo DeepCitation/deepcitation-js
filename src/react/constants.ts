@@ -83,3 +83,13 @@ export const DOT_INDICATOR_SIZE_STYLE: React.CSSProperties = {
   minWidth: "6px",
   minHeight: "6px",
 };
+
+/**
+ * Fixed-size dot indicator for non-inline contexts (drawers, wrappers, badges).
+ * Uses fixed 6px instead of em units because these contexts have their own
+ * fixed-size containers that handle proportional sizing.
+ */
+export const DOT_INDICATOR_FIXED_SIZE_STYLE: React.CSSProperties = {
+  width: "6px",
+  height: "6px",
+};

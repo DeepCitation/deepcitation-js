@@ -60,8 +60,7 @@ export function extractDomain(url?: string | null): string | undefined {
   }
 }
 
-/** Inline style for dot indicators used in drawer/trigger (fixed 8px size) */
-const DOT_SIZE = { width: 8, height: 8, minWidth: 6, minHeight: 6 } as const;
+import { DOT_INDICATOR_FIXED_SIZE_STYLE } from "./constants.js";
 
 /**
  * Get verification status indicator info.
@@ -88,27 +87,27 @@ export function getStatusInfo(
     if (!status || status === "pending" || status === "loading") {
       return {
         color: "text-gray-400",
-        icon: <span className="inline-block rounded-full bg-gray-400 animate-pulse" style={DOT_SIZE} />,
+        icon: <span className="inline-block rounded-full bg-gray-400 animate-pulse" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
         label: "Verifying",
       };
     }
     if (status === "not_found") {
       return {
         color: "text-red-500",
-        icon: <span className="inline-block rounded-full bg-red-500" style={DOT_SIZE} />,
+        icon: <span className="inline-block rounded-full bg-red-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
         label: "Not found",
       };
     }
     if (isPartial) {
       return {
         color: "text-amber-500",
-        icon: <span className="inline-block rounded-full bg-amber-500" style={DOT_SIZE} />,
+        icon: <span className="inline-block rounded-full bg-amber-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
         label: "Partial match",
       };
     }
     return {
       color: "text-green-500",
-      icon: <span className="inline-block rounded-full bg-green-500" style={DOT_SIZE} />,
+      icon: <span className="inline-block rounded-full bg-green-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
       label: "Verified",
     };
   }
@@ -124,7 +123,7 @@ export function getStatusInfo(
 
   if (status === "not_found") {
     return {
-      color: "text-amber-500",
+      color: "text-red-500",
       icon: <WarningIconComponent />,
       label: "Not found",
     };

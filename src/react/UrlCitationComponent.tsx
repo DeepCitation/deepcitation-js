@@ -1,7 +1,7 @@
 import type React from "react";
 import { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
-import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
+import { DOT_INDICATOR_FIXED_SIZE_STYLE, MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
 import { CheckIcon, ExternalLinkIcon, LockIcon, XCircleIcon } from "./icons.js";
 import type { UrlCitationProps } from "./types.js";
 import { isBlockedStatus, isErrorStatus } from "./urlStatus.js";
@@ -241,18 +241,18 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
       // Dot variant: simple colored dots for all statuses
       if (indicatorVariant === "dot") {
         if (isVerified) {
-          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-500" aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper><span className="rounded-full bg-green-600 dark:bg-green-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isPartial) {
-          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper><span className="rounded-full bg-amber-500 dark:bg-amber-400" style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isBlocked) {
           if (renderBlockedIndicator) return renderBlockedIndicator(fetchStatus, errorMessage);
-          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper><span className="rounded-full bg-amber-500 dark:bg-amber-400" style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isError) {
           if (renderBlockedIndicator) return renderBlockedIndicator(fetchStatus, errorMessage);
-          return <StatusIconWrapper><span className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400" aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper><span className="rounded-full bg-red-500 dark:bg-red-400" style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isPending) {
           return <StatusIconWrapper><PendingDot /></StatusIconWrapper>;
