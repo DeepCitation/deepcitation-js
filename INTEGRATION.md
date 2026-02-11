@@ -133,6 +133,7 @@ async function analyzeDocument(filePath: string, question: string) {
 ### React Client Side
 
 ```tsx
+import { useState } from "react";
 import { parseCitation } from "@deepcitation/deepcitation-js";
 import type { Citation, Verification } from "@deepcitation/deepcitation-js";
 import {
@@ -773,6 +774,7 @@ Complete these tasks in order:
 3. Render `CitationDrawerTrigger` and `CitationDrawer`
 
 ```tsx
+import { useState } from "react";
 import { replaceCitations } from "@deepcitation/deepcitation-js";
 import type { Citation, Verification } from "@deepcitation/deepcitation-js";
 import {
