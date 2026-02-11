@@ -13,6 +13,7 @@ import {
   Z_INDEX_DRAWER_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
+import { formatCaptureDate } from "./dateUtils.js";
 import { CheckIcon, CopyIcon, ExternalLinkIcon, MissIcon, ZoomInIcon } from "./icons.js";
 import { FaviconImage } from "./VerificationLog.js";
 import { cn } from "./utils.js";
@@ -311,6 +312,12 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   // Verification date
   const checkedDate = formatCheckedDate(verification?.verifiedAt ?? verification?.crawledAt);
 
+  // Crawl date for URL citations (absolute format for audit precision)
+  const isDocument = citation.type === "document" || (!citation.type && citation.attachmentId);
+  const formattedCrawlDate = !isDocument && verification?.crawledAt
+    ? formatCaptureDate(verification.crawledAt)
+    : null;
+
   // Search attempts for verification summary
   const searchAttempts = verification?.searchAttempts ?? [];
 
@@ -430,6 +437,12 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             {/* Snippet/description */}
             {snippet && snippet !== articleTitle && (
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{snippet}</div>
+            )}
+            {/* Capture date for URL citations (absolute timestamp for audit precision) */}
+            {formattedCrawlDate && (
+              <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500" title={formattedCrawlDate.tooltip}>
+                Retrieved {formattedCrawlDate.display}
+              </p>
             )}
           </div>
 
