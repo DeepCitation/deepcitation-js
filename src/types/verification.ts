@@ -49,15 +49,15 @@ export type UrlAccessStatus =
 
 /**
  * Document-specific verification results.
+ * Contains page-level match data and proof images for PDF/document citations.
  *
  * @example
  * ```typescript
- * // Preferred: access via sub-object
- * const pageNumber = verification.document?.verifiedPageNumber;
- * const image = verification.document?.verificationImageBase64;
- *
- * // Deprecated but still supported:
- * const pageNumber = verification.verifiedPageNumber;
+ * if (verification.document) {
+ *   const pageNumber = verification.document.verifiedPageNumber;
+ *   const image = verification.document.verificationImageBase64;
+ *   console.log(`Verified on page ${pageNumber}`);
+ * }
  * ```
  */
 export interface DocumentVerificationResult {
@@ -73,15 +73,16 @@ export interface DocumentVerificationResult {
 
 /**
  * URL-specific verification results.
+ * Contains web crawl data, content matching, and metadata for URL citations.
  *
  * @example
  * ```typescript
- * // Preferred: access via sub-object
- * const title = verification.url?.verifiedTitle;
- * const status = verification.url?.urlAccessStatus;
- *
- * // Deprecated but still supported:
- * const title = verification.verifiedTitle;
+ * if (verification.url) {
+ *   const title = verification.url.verifiedTitle;
+ *   const status = verification.url.urlAccessStatus;
+ *   const crawled = verification.url.crawledAt;
+ *   console.log(`URL verified: ${title} (${status})`);
+ * }
  * ```
  */
 export interface UrlVerificationResult {
@@ -108,15 +109,15 @@ export interface UrlVerificationResult {
 
 /**
  * Proof hosting fields (populated when generateProofUrls is true).
+ * Contains URLs/IDs for externally hosted verification proof artifacts.
  *
  * @example
  * ```typescript
- * // Preferred: access via sub-object
- * const proofLink = verification.proof?.proofUrl;
- * const image = verification.proof?.proofImageUrl;
- *
- * // Deprecated but still supported:
- * const proofLink = verification.proofUrl;
+ * if (verification.proof) {
+ *   const proofLink = verification.proof.proofUrl;
+ *   const image = verification.proof.proofImageUrl;
+ *   console.log(`Proof available at: ${proofLink}`);
+ * }
  * ```
  */
 export interface VerificationProof {

@@ -1,5 +1,5 @@
 import { getCitationPageNumber } from "../parsing/normalizeCitation.js";
-import type { Citation, UrlCitation } from "../types/citation.js";
+import type { Citation, DocumentCitation, UrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { sha1Hash } from "../utils/sha.js";
 
@@ -17,6 +17,14 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
  */
 export function isUrlCitation(citation: Citation): citation is UrlCitation {
   return citation.type === "url";
+}
+
+/**
+ * Type guard to check if a citation is a document citation.
+ * Narrows the Citation union to DocumentCitation when true.
+ */
+export function isDocumentCitation(citation: Citation): citation is DocumentCitation {
+  return citation.type !== "url";
 }
 
 /**
