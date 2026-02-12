@@ -1,14 +1,39 @@
 /**
- * Format a date as "MMM D" (e.g., "Feb 12") or "MMM D, YYYY" if not current year.
- * Returns empty string for invalid dates or null/undefined input.
+ * Formats a capture/verification date for display in citation popovers and drawers.
+ *
+ * - `display` uses the user's local timezone for readability
+ * - `tooltip` always returns a full ISO 8601 timestamp (UTC) for audit precision
+ *
+ * @param date - Date object, ISO string, or null/undefined
+ * @param options - Optional config: `showTime` adds time component (for URL citations)
+ * @returns `{ display, tooltip }` or null if input is falsy/unparseable
  */
-export function formatShortDate(date: Date | string | null | undefined): string {
-  if (!date) return "";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return "";
+export function formatCaptureDate(
+  date: Date | string | null | undefined,
+  options?: { showTime?: boolean },
+): { display: string; tooltip: string } | null {
+  if (!date) return null;
+
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+
   const now = new Date();
-  const sameYear = d.getFullYear() === now.getFullYear();
-  const month = d.toLocaleDateString("en-US", { month: "short" });
-  const day = d.getDate();
-  return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`;
+  const sameYear = parsed.getFullYear() === now.getFullYear();
+
+  const dateFormatOptions: Intl.DateTimeFormatOptions = sameYear
+    ? { month: "short", day: "numeric" }
+    : { month: "short", day: "numeric", year: "numeric" };
+
+  let display = new Intl.DateTimeFormat("en-US", dateFormatOptions).format(parsed);
+
+  if (options?.showTime) {
+    const timeStr = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(parsed);
+    display += ` at ${timeStr}`;
+  }
+
+  return { display, tooltip: parsed.toISOString() };
 }
