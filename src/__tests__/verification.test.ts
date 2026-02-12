@@ -12,7 +12,7 @@ describe("verification helpers", () => {
     expect(NOT_FOUND_VERIFICATION_INDEX).toBe(-1);
     expect(PENDING_VERIFICATION_INDEX).toBe(-2);
     expect(BLANK_VERIFICATION.verifiedPageNumber).toBe(NOT_FOUND_VERIFICATION_INDEX);
-    expect(BLANK_VERIFICATION.citation?.pageNumber).toBe(NOT_FOUND_VERIFICATION_INDEX);
+    expect(BLANK_VERIFICATION.citation).toBeUndefined();
   });
 
   it("builds deterministic ids from verification attributes", () => {

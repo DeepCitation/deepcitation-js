@@ -9,9 +9,7 @@ export const BLANK_VERIFICATION: Verification = {
   attachmentId: null,
   verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
   verifiedMatchSnippet: null,
-  citation: {
-    pageNumber: NOT_FOUND_VERIFICATION_INDEX,
-  },
+  citation: undefined,
   status: "not_found",
 };
 
@@ -47,7 +45,19 @@ export type UrlAccessStatus =
 // Sub-interfaces for type-specific verification results
 // ==========================================================================
 
-/** Document-specific verification results */
+/**
+ * Document-specific verification results.
+ *
+ * @example
+ * ```typescript
+ * // Preferred: access via sub-object
+ * const pageNumber = verification.document?.verifiedPageNumber;
+ * const image = verification.document?.verificationImageBase64;
+ *
+ * // Deprecated but still supported:
+ * const pageNumber = verification.verifiedPageNumber;
+ * ```
+ */
 export interface DocumentVerificationResult {
   verifiedPageNumber?: number | null;
   verifiedLineIds?: number[] | null;
@@ -59,7 +69,19 @@ export interface DocumentVerificationResult {
   verificationImageDimensions?: { width: number; height: number } | null;
 }
 
-/** URL-specific verification results */
+/**
+ * URL-specific verification results.
+ *
+ * @example
+ * ```typescript
+ * // Preferred: access via sub-object
+ * const title = verification.url?.verifiedTitle;
+ * const status = verification.url?.urlAccessStatus;
+ *
+ * // Deprecated but still supported:
+ * const title = verification.verifiedTitle;
+ * ```
+ */
 export interface UrlVerificationResult {
   verifiedUrl?: string | null;
   resolvedUrl?: string | null;
@@ -82,7 +104,19 @@ export interface UrlVerificationResult {
   contentType?: string | null;
 }
 
-/** Proof hosting fields (populated when generateProofUrls is true) */
+/**
+ * Proof hosting fields (populated when generateProofUrls is true).
+ *
+ * @example
+ * ```typescript
+ * // Preferred: access via sub-object
+ * const proofLink = verification.proof?.proofUrl;
+ * const image = verification.proof?.proofImageUrl;
+ *
+ * // Deprecated but still supported:
+ * const proofLink = verification.proofUrl;
+ * ```
+ */
 export interface VerificationProof {
   proofId?: string;
   proofUrl?: string;

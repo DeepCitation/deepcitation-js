@@ -82,6 +82,7 @@ export {
   getCitationStatus,
   groupCitationsByAttachmentId,
   groupCitationsByAttachmentIdObject,
+  normalizeCitationType,
   parseCitation,
 } from "./parsing/parseCitation.js";
 export {

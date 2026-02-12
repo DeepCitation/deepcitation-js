@@ -1,5 +1,5 @@
 import { generateCitationKey } from "../react/utils.js";
-import type { Citation, CitationRecord, CitationStatus } from "../types/citation.js";
+import type { Citation, CitationRecord, CitationStatus, DocumentCitation, UrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { getAllCitationsFromDeferredResponse, hasDeferredCitations } from "./citationParser.js";
 import { normalizeCitations } from "./normalizeCitation.js";
@@ -639,4 +639,26 @@ export function groupCitationsByAttachmentIdObject(
   }
 
   return grouped;
+}
+
+/**
+ * Normalizes a citation object from external sources (APIs, databases) to ensure
+ * the `type` discriminator is set correctly.
+ *
+ * If the citation has a `url` field but no `type: "url"`, it is corrected to a `UrlCitation`.
+ * This is useful when consuming data that predates the discriminated union refactor.
+ *
+ * @example
+ * ```typescript
+ * // External data missing the discriminator
+ * const raw = { url: "https://example.com", fullPhrase: "..." };
+ * const citation = normalizeCitationType(raw); // { type: "url", url: "...", fullPhrase: "..." }
+ * ```
+ */
+export function normalizeCitationType(citation: Record<string, unknown>): Citation {
+  if (citation.type === "url") return citation as unknown as UrlCitation;
+  if (typeof citation.url === "string" && citation.url.length > 0) {
+    return { ...citation, type: "url" as const } as unknown as UrlCitation;
+  }
+  return citation as unknown as DocumentCitation;
 }
