@@ -48,7 +48,6 @@ import type {
 } from "./types.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
-import { formatCaptureDate } from "./dateUtils.js";
 
 // Re-export types for convenience
 export type {
@@ -75,27 +74,11 @@ const SPINNER_TIMEOUT_MS = 5000;
 /** Delay in ms before closing popover on mouse leave (allows moving to popover content). */
 const HOVER_CLOSE_DELAY_MS = 150;
 
-// Constants
-/** Default number of search attempt groups to show before expanding */
-const DEFAULT_VISIBLE_GROUP_COUNT = 2;
-
-/** Maximum characters to show for truncated phrases in search attempts */
-const MAX_PHRASE_LENGTH = 50;
-
 /** Popover container width. Customizable via CSS custom property `--dc-popover-width`. */
 const POPOVER_WIDTH = "var(--dc-popover-width, 384px)";
 
 /** Popover container max width (viewport-relative, with safe margin to prevent scrollbar) */
 const POPOVER_MAX_WIDTH = "calc(100vw - 32px)";
-
-/** Maximum characters to show for matched text display in search results */
-const MAX_MATCHED_TEXT_LENGTH = 40;
-
-/** Maximum number of search variations to show before collapsing */
-const MAX_VISIBLE_VARIATIONS = 3;
-
-/** Maximum characters to show for variation strings */
-const MAX_VARIATION_LENGTH = 30;
 
 /** Debounce threshold for ignoring click events after touch (ms) */
 const TOUCH_CLICK_DEBOUNCE_MS = 100;
@@ -540,7 +523,7 @@ function _getMethodLabel(method: string): string {
  * formatPageList([2]) // "page 2"
  * formatPageList([]) // ""
  */
-function formatPageList(pages: number[]): string {
+function _formatPageList(pages: number[]): string {
   if (pages.length === 0) return "";
   const sorted = [...new Set(pages)].sort((a, b) => a - b);
   if (sorted.length === 1) return `page ${sorted[0]}`;
@@ -577,7 +560,7 @@ function formatPageList(pages: number[]): string {
  *   console.log(`"${group.phrase}" - searched ${group.pagesSearched.length} pages`);
  * });
  */
-function groupSearchAttempts(attempts: SearchAttempt[]): GroupedSearchAttempt[] {
+function _groupSearchAttempts(attempts: SearchAttempt[]): GroupedSearchAttempt[] {
   const groups = new Map<string, GroupedSearchAttempt>();
 
   for (const attempt of attempts) {
@@ -865,7 +848,15 @@ const MissIndicator = () => (
 // DOT_COLORS is imported from ./constants.js for consistency across components.
 
 /** Unified dot indicator — color + optional pulse animation. */
-const DotIndicator = ({ color, pulse = false, label }: { color: keyof typeof DOT_COLORS; pulse?: boolean; label: string }) => (
+const DotIndicator = ({
+  color,
+  pulse = false,
+  label,
+}: {
+  color: keyof typeof DOT_COLORS;
+  pulse?: boolean;
+  label: string;
+}) => (
   <span
     className={cn(
       "inline-block relative ml-0.5 top-[0.05em] rounded-full [text-decoration:none]",
@@ -873,7 +864,9 @@ const DotIndicator = ({ color, pulse = false, label }: { color: keyof typeof DOT
       pulse && "animate-pulse",
     )}
     style={DOT_INDICATOR_SIZE_STYLE}
-    data-dc-indicator={color === "red" ? "error" : color === "gray" ? "pending" : color === "amber" ? "partial" : "verified"}
+    data-dc-indicator={
+      color === "red" ? "error" : color === "gray" ? "pending" : color === "amber" ? "partial" : "verified"
+    }
     role="img"
     aria-label={label}
   />
@@ -887,38 +880,6 @@ const MissDot = () => <DotIndicator color="red" label="Not found" />;
 // =============================================================================
 // VERIFICATION IMAGE COMPONENT
 // =============================================================================
-
-/**
- * Displays a capture/verification timestamp in the popover.
- * URL citations show "Retrieved [date+time]"; document citations show "Verified [date]".
- * Renders nothing when no date is available.
- */
-function CaptureTimestamp({
-  verification,
-  citation,
-}: {
-  verification: Verification | null;
-  citation: BaseCitationProps["citation"];
-}) {
-  const isUrl = isUrlCitation(citation);
-  const rawDate = isUrl
-    ? (verification?.url?.crawledAt ?? verification?.verifiedAt)
-    : verification?.verifiedAt;
-
-  const formatted = formatCaptureDate(rawDate, { showTime: isUrl });
-  if (!formatted) return null;
-
-  const label = isUrl && verification?.url?.crawledAt ? "Retrieved" : "Verified";
-
-  return (
-    <div
-      className="px-3 py-1.5 text-[11px] text-gray-400 dark:text-gray-500"
-      title={formatted.tooltip}
-    >
-      {label} {formatted.display}
-    </div>
-  );
-}
 
 /**
  * Displays a verification image that fits within the container dimensions.
@@ -1186,9 +1147,6 @@ function DefaultPopoverContent({
             <AnchorTextFocusedImage verification={verification} onImageClick={onImageClick} />
           </div>
 
-          {/* Capture/verification timestamp */}
-          <CaptureTimestamp verification={verification} citation={citation} />
-
           {/* Expandable search details for verified matches */}
           {verification.searchAttempts && verification.searchAttempts.length > 0 && (
             <VerificationLog
@@ -1268,9 +1226,6 @@ function DefaultPopoverContent({
             </>
           )}
 
-          {/* Capture/verification timestamp */}
-          <CaptureTimestamp verification={verification} citation={citation} />
-
           {/* Verification log (collapsible) */}
           {showVerificationLog && verification?.searchAttempts && (
             <VerificationLog
@@ -1333,8 +1288,6 @@ function DefaultPopoverContent({
           <span className="text-xs text-gray-500 dark:text-gray-400">Page {pageNumber}</span>
         )}
       </div>
-      {/* Capture/verification timestamp */}
-      <CaptureTimestamp verification={verification} citation={citation} />
     </div>
   );
 }
@@ -2211,9 +2164,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Generate unique IDs for ARIA attributes
     const popoverId = `citation-popover-${citationInstanceId}`;
     const statusDescId = `citation-status-${citationInstanceId}`;
-    const statusDescription = shouldShowSpinner
-      ? "Verifying..."
-      : getStatusLabel(status);
+    const statusDescription = shouldShowSpinner ? "Verifying..." : getStatusLabel(status);
 
     // Variants with their own hover styles don't need parent hover (would extend beyond bounds)
     const variantHasOwnHover = VARIANTS_WITH_OWN_HOVER.has(variant);
