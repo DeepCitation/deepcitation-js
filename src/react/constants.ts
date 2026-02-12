@@ -168,6 +168,30 @@ export const INDICATOR_SIZE_STYLE: React.CSSProperties = {
   minHeight: "10px",
 };
 
+/**
+ * Dynamic dot indicator size styles.
+ * Much smaller than icon indicators — a subtle filled circle (like GitHub status dots).
+ * Uses em units so the dot scales with parent font size.
+ * 0.45em produces a dot roughly half the size of the icon indicators.
+ * minWidth/minHeight ensure a minimum of 6px for visibility at very small font sizes.
+ */
+export const DOT_INDICATOR_SIZE_STYLE: React.CSSProperties = {
+  width: "0.45em",
+  height: "0.45em",
+  minWidth: "6px",
+  minHeight: "6px",
+};
+
+/**
+ * Fixed-size dot indicator for non-inline contexts (drawers, wrappers, badges).
+ * Uses fixed 6px instead of em units because these contexts have their own
+ * fixed-size containers that handle proportional sizing.
+ */
+export const DOT_INDICATOR_FIXED_SIZE_STYLE: React.CSSProperties = {
+  width: "6px",
+  height: "6px",
+};
+
 // =============================================================================
 // Z-INDEX LAYERING
 // =============================================================================

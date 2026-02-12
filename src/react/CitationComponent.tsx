@@ -18,6 +18,7 @@ import type { MatchedVariation, SearchAttempt, SearchStatus } from "../types/sea
 import type { Verification } from "../types/verification.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
 import {
+  DOT_INDICATOR_SIZE_STYLE,
   ERROR_COLOR_STYLE,
   getPortalContainer,
   INDICATOR_SIZE_STYLE,
@@ -42,6 +43,7 @@ import type {
   CitationInteractionMode,
   CitationRenderProps,
   CitationVariant,
+  IndicatorVariant,
 } from "./types.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
@@ -51,7 +53,8 @@ import { formatCaptureDate } from "./dateUtils.js";
 export type {
   CitationContent,
   CitationInteractionMode,
-  CitationVariant
+  CitationVariant,
+  IndicatorVariant,
 } from "./types.js";
 
 /**
@@ -408,6 +411,13 @@ export interface CitationComponentProps extends BaseCitationProps {
    * Defaults to true. Set to false to hide the indicator.
    */
   showIndicator?: boolean;
+  /**
+   * Visual style for status indicators.
+   * - `"icon"`: Checkmarks, spinner, X icons (default)
+   * - `"dot"`: Subtle colored dots (like GitHub status dots / shadcn badge dots)
+   * @default "icon"
+   */
+  indicatorVariant?: IndicatorVariant;
 }
 
 function getStatusLabel(status: CitationStatus): string {
@@ -842,6 +852,39 @@ const MissIndicator = () => (
     <XIcon />
   </span>
 );
+
+// =============================================================================
+// DOT INDICATOR COMPONENT (subtle colored dot, like GitHub/shadcn status dots)
+// =============================================================================
+// Smaller than icon indicators (ml-0.5 vs ml-1) because the dots are roughly
+// half the size and need less visual separation from adjacent text.
+
+const DOT_COLORS = {
+  green: "bg-green-600 dark:bg-green-500",
+  amber: "bg-amber-500 dark:bg-amber-400",
+  red: "bg-red-500 dark:bg-red-400",
+  gray: "bg-gray-400 dark:bg-gray-500",
+} as const;
+
+/** Unified dot indicator — color + optional pulse animation. */
+const DotIndicator = ({ color, pulse = false, label }: { color: keyof typeof DOT_COLORS; pulse?: boolean; label: string }) => (
+  <span
+    className={cn(
+      "inline-block relative ml-0.5 top-[0.05em] rounded-full [text-decoration:none]",
+      DOT_COLORS[color],
+      pulse && "animate-pulse",
+    )}
+    style={DOT_INDICATOR_SIZE_STYLE}
+    data-dc-indicator={color === "red" ? "error" : color === "gray" ? "pending" : color === "amber" ? "partial" : "verified"}
+    role="img"
+    aria-label={label}
+  />
+);
+
+const VerifiedDot = () => <DotIndicator color="green" label="Verified" />;
+const PartialDot = () => <DotIndicator color="amber" label="Partial match" />;
+const PendingDot = () => <DotIndicator color="gray" pulse label="Verifying" />;
+const MissDot = () => <DotIndicator color="red" label="Not found" />;
 
 // =============================================================================
 // VERIFICATION IMAGE COMPONENT
@@ -1338,6 +1381,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       additionalCount,
       faviconUrl,
       showIndicator = true,
+      indicatorVariant = "icon",
       sourceLabel,
     },
     ref,
@@ -1879,6 +1923,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const renderStatusIndicator = () => {
       if (renderIndicator) return renderIndicator(status);
       if (!showIndicator) return null;
+
+      if (indicatorVariant === "dot") {
+        if (shouldShowSpinner) return <PendingDot />;
+        if (isVerified && !isPartialMatch) return <VerifiedDot />;
+        if (isPartialMatch) return <PartialDot />;
+        if (isMiss) return <MissDot />;
+        return null;
+      }
+
+      // Default: icon variant
       if (shouldShowSpinner) return <PendingIndicator />;
       if (isVerified && !isPartialMatch) return <VerifiedIndicator />;
       if (isPartialMatch) return <PartialIndicator />;

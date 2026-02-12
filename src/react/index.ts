@@ -44,6 +44,8 @@ export {
 // Constants - Shared styling and configuration
 export {
   COPY_FEEDBACK_DURATION_MS,
+  DOT_INDICATOR_FIXED_SIZE_STYLE,
+  DOT_INDICATOR_SIZE_STYLE,
   ERROR_COLOR_DEFAULT,
   ERROR_COLOR_STYLE,
   ERROR_COLOR_VAR,
@@ -142,6 +144,8 @@ export type {
   CitationHoverBehavior,
   CitationInteractionMode,
   CitationRenderProps,
+  // Indicator variant type
+  IndicatorVariant,
   CitationStateClasses,
   CitationStyles,
   CitationTooltipProps,

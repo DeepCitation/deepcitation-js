@@ -49,6 +49,14 @@ const ICON_COLOR_CLASSES = {
   gray: "text-gray-400 dark:text-gray-500",
 } as const;
 
+/** Dot background color classes by status for the dot indicator variant */
+const DOT_BG_CLASSES = {
+  green: "bg-green-600 dark:bg-green-500",
+  amber: "bg-amber-500 dark:bg-amber-400",
+  red: "bg-red-500 dark:bg-red-400",
+  gray: "bg-gray-400 dark:bg-gray-500 animate-pulse",
+} as const;
+
 /** User-friendly method names for display (Issue #10: simplified from technical jargon) */
 const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   exact_line_match: "Exact location",
@@ -443,6 +451,13 @@ export interface StatusHeaderProps {
   hidePageBadge?: boolean;
   /** Whether to show copy button next to anchor text */
   showCopyButton?: boolean;
+  /**
+   * Visual style for status indicators.
+   * - `"icon"`: Icon-based indicators (default)
+   * - `"dot"`: Subtle colored dots
+   * @default "icon"
+   */
+  indicatorVariant?: "icon" | "dot";
 }
 
 export interface QuoteBoxProps {
@@ -723,6 +738,7 @@ export function StatusHeader({
   anchorText,
   hidePageBadge = false,
   showCopyButton = true,
+  indicatorVariant = "icon",
 }: StatusHeaderProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const colorScheme = getStatusColorScheme(status);
@@ -781,9 +797,13 @@ export function StatusHeader({
       )}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className={cn("size-4 max-w-4 max-h-4 shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
-          <IconComponent />
-        </span>
+        {indicatorVariant === "dot" ? (
+          <span className={cn("size-2.5 rounded-full shrink-0", DOT_BG_CLASSES[colorScheme])} aria-hidden="true" />
+        ) : (
+          <span className={cn("size-4 max-w-4 max-h-4 shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
+            <IconComponent />
+          </span>
+        )}
         {displayText &&
           (shouldShowAsQuoted ? (
             <QuotedText className={cn("font-medium truncate text-gray-600 dark:text-gray-300")}>

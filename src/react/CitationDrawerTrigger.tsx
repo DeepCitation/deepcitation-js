@@ -41,6 +41,13 @@ export interface CitationDrawerTriggerProps {
   maxIcons?: number;
   /** Whether to show proof image thumbnails in hover tooltips (default: true) */
   showProofThumbnails?: boolean;
+  /**
+   * Visual style for status indicators.
+   * - `"icon"`: Checkmarks, spinner, X icons (default)
+   * - `"dot"`: Subtle colored dots (like GitHub status dots)
+   * @default "icon"
+   */
+  indicatorVariant?: "icon" | "dot";
 }
 
 // =========
@@ -134,12 +141,14 @@ function StatusIconChip({
   verification,
   title,
   size = 20,
+  indicatorVariant = "icon",
 }: {
   verification: Verification | null;
   title: string;
   size?: number;
+  indicatorVariant?: "icon" | "dot";
 }) {
-  const statusInfo = getStatusInfo(verification);
+  const statusInfo = getStatusInfo(verification, indicatorVariant);
   const isPending =
     !verification?.status ||
     verification.status === "pending" ||
@@ -167,15 +176,17 @@ function CitationTooltip({
   flatItem,
   showProofThumbnail,
   onSourceClick,
+  indicatorVariant = "icon",
 }: {
   flatItem: FlatCitationItem;
   showProofThumbnail: boolean;
   onSourceClick?: (group: SourceCitationGroup) => void;
+  indicatorVariant?: "icon" | "dot";
 }) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [adjustedLeft, setAdjustedLeft] = useState<number | null>(null);
   const { item, sourceName, sourceFavicon, group } = flatItem;
-  const statusInfo = getStatusInfo(item.verification);
+  const statusInfo = getStatusInfo(item.verification, indicatorVariant);
 
   // Get anchor text for display
   const anchorText = item.citation.anchorText?.toString() || item.citation.fullPhrase || null;
@@ -306,6 +317,7 @@ function StackedStatusIcons({
   onIconLeave,
   showProofThumbnails,
   onSourceClick,
+  indicatorVariant = "icon",
 }: {
   flatCitations: FlatCitationItem[];
   isHovered: boolean;
@@ -315,6 +327,7 @@ function StackedStatusIcons({
   onIconLeave: () => void;
   showProofThumbnails: boolean;
   onSourceClick?: (group: SourceCitationGroup) => void;
+  indicatorVariant?: "icon" | "dot";
 }) {
   const displayItems = flatCitations.slice(0, maxIcons);
   const hasOverflow = flatCitations.length > maxIcons;
@@ -336,6 +349,7 @@ function StackedStatusIcons({
           <StatusIconChip
             verification={flatItem.item.verification}
             title={getTitleForCitation(flatItem)}
+            indicatorVariant={indicatorVariant}
           />
           {/* Tooltip when this specific icon is hovered and bar is expanded */}
           {isHovered && hoveredIndex === i && (
@@ -343,6 +357,7 @@ function StackedStatusIcons({
               flatItem={flatItem}
               showProofThumbnail={showProofThumbnails}
               onSourceClick={onSourceClick}
+              indicatorVariant={indicatorVariant}
             />
           )}
         </div>
@@ -390,7 +405,7 @@ function StackedStatusIcons({
  */
 export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawerTriggerProps>(
   (
-    { citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 10, showProofThumbnails = true },
+    { citationGroups, onClick, onSourceClick, isOpen, className, label, maxIcons = 10, showProofThumbnails = true, indicatorVariant = "icon" },
     ref,
   ) => {
     const [isHovered, setIsHovered] = useState(false);
@@ -469,6 +484,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
           onIconLeave={handleIconLeave}
           showProofThumbnails={showProofThumbnails}
           onSourceClick={onSourceClick}
+          indicatorVariant={indicatorVariant}
         />
 
         {/* Label */}

@@ -280,9 +280,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   onClick,
   onReadMore,
   className,
+  indicatorVariant = "icon",
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
-  const statusInfo = useMemo(() => getStatusInfo(verification), [verification]);
+  const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [imageExpanded, setImageExpanded] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
@@ -568,6 +569,7 @@ export function CitationDrawer({
   className,
   position = "bottom",
   renderCitationItem,
+  indicatorVariant = "icon",
 }: CitationDrawerProps) {
   // Flatten all citations for total count
   const totalCitations = useMemo(() => {
@@ -607,6 +609,7 @@ export function CitationDrawer({
                 isLast={isLastGroup && index === group.citations.length - 1}
                 onClick={onCitationClick}
                 onReadMore={onReadMore}
+                indicatorVariant={indicatorVariant}
               />
             ),
           )}
