@@ -1,5 +1,7 @@
 # Plan: Create skill.md for DeepCitation
 
+> **Status: IMPLEMENTED** — See `docs/skill.md`
+
 ## Overview
 
 Create a `docs/skill.md` file to be served at `deepcitation.com/skill.md` that enables AI agents to use DeepCitation as a fact-checking tool. This follows the skill.md format pioneered by Moltbook but adapted for DeepCitation's **zero-friction fact-checking** use case.

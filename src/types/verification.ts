@@ -1,4 +1,4 @@
-import type { DeepTextItem, Page, ScreenBox } from "./boxes.js";
+import type { CitationPage, DeepTextItem, ScreenBox } from "./boxes.js";
 import type { Citation } from "./citation.js";
 import type { SearchAttempt, SearchStatus } from "./search.js";
 
@@ -91,9 +91,9 @@ export interface VerificationProof {
 
 /**
  * A page returned from verification for user inspection.
- * Extends the existing Page type with verification-specific metadata.
+ * Extends CitationPage from boxes.ts with verification-specific metadata.
  */
-export interface CitationPage extends Page {
+export interface VerificationPage extends CitationPage {
   /** Whether this page contains the verified citation match */
   isMatchPage?: boolean;
   /** Highlighted region on this page (if match found) */
@@ -138,7 +138,7 @@ export interface Verification {
 
   // ========== Pages for user inspection ==========
   /** Pages returned from verification for user inspection */
-  pages?: CitationPage[];
+  pages?: VerificationPage[];
 
   // ========== Ambiguity Detection ==========
   /** Ambiguity information when multiple occurrences of the text exist */
