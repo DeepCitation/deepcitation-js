@@ -3,6 +3,7 @@ import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { COPY_FEEDBACK_DURATION_MS, DOT_COLORS } from "./constants.js";
+import { formatCaptureDate } from "./dateUtils.js";
 import {
   CheckIcon,
   CopyIcon,
@@ -426,6 +427,8 @@ export interface VerificationLogProps {
   anchorText?: string;
   /** Ambiguity information when multiple occurrences exist */
   ambiguity?: AmbiguityInfo | null;
+  /** When the verification was performed */
+  verifiedAt?: Date | string | null;
 }
 
 export interface StatusHeaderProps {
@@ -790,7 +793,14 @@ export function StatusHeader({
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
         {indicatorVariant === "dot" ? (
-          <span className={cn("size-2.5 rounded-full shrink-0", DOT_COLORS[colorScheme], colorScheme === "gray" && "animate-pulse")} aria-hidden="true" />
+          <span
+            className={cn(
+              "size-2.5 rounded-full shrink-0",
+              DOT_COLORS[colorScheme],
+              colorScheme === "gray" && "animate-pulse",
+            )}
+            aria-hidden="true"
+          />
         ) : (
           <span className={cn("size-4 max-w-4 max-h-4 shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
             <IconComponent />
@@ -898,6 +908,7 @@ interface VerificationLogSummaryProps {
   foundLine?: number;
   isExpanded: boolean;
   onToggle: () => void;
+  verifiedAt?: Date | string | null;
 }
 
 /**
@@ -958,12 +969,22 @@ function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttemp
  * - For found/partial: "How we verified this · Exact match"
  * - For not_found: "Search attempts · 0/8 searches tried"
  */
-function VerificationLogSummary({ status, searchAttempts, isExpanded, onToggle }: VerificationLogSummaryProps) {
+function VerificationLogSummary({
+  status,
+  searchAttempts,
+  isExpanded,
+  onToggle,
+  verifiedAt,
+}: VerificationLogSummaryProps) {
   const isMiss = status === "not_found";
   const outcomeSummary = getOutcomeSummary(status, searchAttempts);
 
   // Use different headers based on verification outcome
   const headerText = isMiss ? "Search attempts" : "How we verified this";
+
+  // Format the verified date for display
+  const formatted = formatCaptureDate(verifiedAt);
+  const dateStr = formatted?.display ?? "";
 
   return (
     <button
@@ -987,6 +1008,14 @@ function VerificationLogSummary({ status, searchAttempts, isExpanded, onToggle }
         <span>{headerText}</span>
         <span className="text-gray-400 dark:text-gray-500">· {outcomeSummary}</span>
       </div>
+      {dateStr && (
+        <span
+          className="text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2"
+          title={isMiss ? `Checked ${formatted?.tooltip ?? dateStr}` : `Verified ${formatted?.tooltip ?? dateStr}`}
+        >
+          {dateStr}
+        </span>
+      )}
     </button>
   );
 }
@@ -1315,6 +1344,7 @@ export function VerificationLog({
   fullPhrase,
   anchorText,
   ambiguity,
+  verifiedAt,
 }: VerificationLogProps) {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
 
@@ -1353,6 +1383,7 @@ export function VerificationLog({
         foundLine={derivedFoundLine}
         isExpanded={isExpanded}
         onToggle={() => setIsExpanded(!isExpanded)}
+        verifiedAt={verifiedAt}
       />
       {isExpanded && (
         <VerificationLogTimeline
