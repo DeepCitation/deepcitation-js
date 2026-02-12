@@ -12,7 +12,9 @@ describe("getCitationStatus", () => {
         fullPhrase: "term",
         attachmentId: "file",
       },
-      verifiedPageNumber: 2,
+      document: {
+        verifiedPageNumber: 2,
+      },
       status: "found",
       verifiedMatchSnippet: "snippet",
     };
@@ -28,7 +30,9 @@ describe("getCitationStatus", () => {
         fullPhrase: "term",
         attachmentId: "file",
       },
-      verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+      document: {
+        verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+      },
       status: "not_found",
       verifiedMatchSnippet: "snippet",
     };
@@ -49,7 +53,9 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
           pageNumber: 4,
         },
-        verifiedPageNumber: 5,
+        document: {
+          verifiedPageNumber: 5,
+        },
         status: "found_on_other_page",
         verifiedMatchSnippet: "snippet",
       };
@@ -69,9 +75,11 @@ describe("getCitationStatus", () => {
           pageNumber: 3,
           lineIds: [1, 2, 3],
         },
-        verifiedPageNumber: 3,
+        document: {
+          verifiedPageNumber: 3,
+          verifiedLineIds: [2, 3],
+        },
         status: "found_on_other_line",
-        verifiedLineIds: [2, 3],
         verifiedMatchSnippet: "snippet",
       };
       const status = getCitationStatus(verification);
@@ -87,7 +95,9 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
           pageNumber: 1,
         },
-        verifiedPageNumber: 1,
+        document: {
+          verifiedPageNumber: 1,
+        },
         status: "first_word_found",
         verifiedMatchSnippet: "snippet",
       };
@@ -103,7 +113,9 @@ describe("getCitationStatus", () => {
           fullPhrase: "term",
           attachmentId: "file",
         },
-        verifiedPageNumber: 2,
+        document: {
+          verifiedPageNumber: 2,
+        },
         status: "partial_text_found",
         verifiedMatchSnippet: "snippet",
       };
@@ -119,7 +131,9 @@ describe("getCitationStatus", () => {
           fullPhrase: "term",
           attachmentId: "file",
         },
-        verifiedPageNumber: 2,
+        document: {
+          verifiedPageNumber: 2,
+        },
         status: "found_phrase_missed_anchor_text",
         verifiedMatchSnippet: "snippet",
       };
@@ -135,7 +149,9 @@ describe("getCitationStatus", () => {
           fullPhrase: "full phrase",
           attachmentId: "file",
         },
-        verifiedPageNumber: 2,
+        document: {
+          verifiedPageNumber: 2,
+        },
         status: "found_anchor_text_only",
         verifiedMatchSnippet: "term",
       };
@@ -151,7 +167,9 @@ describe("getCitationStatus", () => {
           fullPhrase: "term",
           attachmentId: "file",
         },
-        verifiedPageNumber: 2,
+        document: {
+          verifiedPageNumber: 2,
+        },
         status: "loading",
         verifiedMatchSnippet: "snippet",
       };
@@ -168,7 +186,9 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
           pageNumber: 2,
         },
-        verifiedPageNumber: 2,
+        document: {
+          verifiedPageNumber: 2,
+        },
         status: "pending",
         verifiedMatchSnippet: "snippet",
       };
@@ -184,7 +204,9 @@ describe("getCitationStatus", () => {
           fullPhrase: "term",
           attachmentId: "file",
         },
-        verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+        document: {
+          verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+        },
         status: "not_found",
         verifiedMatchSnippet: "snippet",
       };
@@ -202,7 +224,9 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
           pageNumber: 2,
         },
-        verifiedPageNumber: 2,
+        document: {
+          verifiedPageNumber: 2,
+        },
         status: null,
         verifiedMatchSnippet: "snippet",
       };

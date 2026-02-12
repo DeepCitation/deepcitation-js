@@ -40,7 +40,7 @@ export function groupCitationsBySource(citations: CitationDrawerItem[]): SourceC
         ? (firstCitation.siteName || firstCitation.domain || extractDomain(firstCitation.url) || "Unknown Source")
         : (firstVerification?.label || firstCitation.attachmentId || "Document"),
       sourceDomain: firstCitation.type === "url" ? (firstCitation.domain || extractDomain(firstCitation.url)) : undefined,
-      sourceFavicon: firstVerification?.verifiedFaviconUrl || (firstCitation.type === "url" ? firstCitation.faviconUrl : undefined) || undefined,
+      sourceFavicon: firstVerification?.url?.verifiedFaviconUrl || (firstCitation.type === "url" ? firstCitation.faviconUrl : undefined) || undefined,
       citations: items,
       additionalCount: items.length - 1,
     };

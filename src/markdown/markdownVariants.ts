@@ -122,7 +122,7 @@ export function formatPageLocation(
   // URL citations don't have page numbers or line IDs
   if (citation.type === "url") return "";
 
-  const pageNumber = verification?.verifiedPageNumber ?? citation.pageNumber;
+  const pageNumber = verification?.document?.verifiedPageNumber ?? citation.pageNumber;
   if (!pageNumber || pageNumber < 0) return "";
 
   let location = `p.${pageNumber}`;
@@ -132,11 +132,11 @@ export function formatPageLocation(
     showLinePosition &&
     verification?.status === "found_on_other_line" &&
     citation.lineIds?.length &&
-    verification.verifiedLineIds?.length
+    verification.document?.verifiedLineIds?.length
   ) {
     const expectedLineId = citation.lineIds[0];
-    const foundLineId = verification.verifiedLineIds[0];
-    const totalLines = verification.totalLinesOnPage;
+    const foundLineId = verification.document?.verifiedLineIds[0];
+    const totalLines = verification.document?.totalLinesOnPage;
 
     const expectedPos = humanizeLinePosition(expectedLineId, totalLines);
     const foundPos = humanizeLinePosition(foundLineId, totalLines);

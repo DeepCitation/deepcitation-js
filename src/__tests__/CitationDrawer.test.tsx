@@ -904,7 +904,9 @@ describe("CitationDrawerTrigger", () => {
             citation: { type: "url", siteName: "TestSource", title: "Article 1" },
             verification: {
               status: "found",
-              verificationImageBase64: "data:image/png;base64,abc123",
+              document: {
+                verificationImageBase64: "data:image/png;base64,abc123",
+              },
             },
           },
         ],
@@ -986,7 +988,9 @@ describe("CitationDrawerTrigger", () => {
             citation: { type: "url", siteName: "TestSource", title: "Article 1" },
             verification: {
               status: "found",
-              verificationImageBase64: "javascript:alert('xss')",
+              document: {
+                verificationImageBase64: "javascript:alert('xss')",
+              },
             },
           },
         ],

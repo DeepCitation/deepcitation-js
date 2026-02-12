@@ -64,14 +64,14 @@ export function generateVerificationKey(verification: Verification): string {
     verification.label || "",
     verification.verifiedFullPhrase || "",
     verification.verifiedAnchorText || "",
-    verification.verifiedLineIds?.join(",") || "",
-    verification.verifiedPageNumber?.toString() || "",
+    verification.document?.verifiedLineIds?.join(",") || "",
+    verification.document?.verifiedPageNumber?.toString() || "",
 
     verification.verifiedTimestamps?.startTime || "",
     verification.verifiedTimestamps?.endTime || "",
 
     verification.verifiedMatchSnippet || "",
-    verification.hitIndexWithinPage?.toString() || "",
+    verification.document?.hitIndexWithinPage?.toString() || "",
   ];
 
   return sha1Hash(keyParts.join("|")).slice(0, 16);

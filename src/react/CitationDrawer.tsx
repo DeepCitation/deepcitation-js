@@ -301,26 +301,26 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     ? (citation.siteName || citation.domain || extractDomain(citation.url) || "Source")
     : (verification?.label || "Document");
   const articleTitle = (citation.type === "url" ? citation.title : undefined) || citation.anchorText || citation.fullPhrase;
-  const snippet = (citation.type === "url" ? citation.description : undefined) || citation.fullPhrase || verification?.actualContentSnippet || verification?.verifiedMatchSnippet;
+  const snippet = (citation.type === "url" ? citation.description : undefined) || citation.fullPhrase || verification?.url?.actualContentSnippet || verification?.verifiedMatchSnippet;
   const faviconUrl = citation.type === "url" ? citation.faviconUrl : undefined;
 
   // Page number for document citations
-  const pageNumber = (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.verifiedPageNumber;
+  const pageNumber = (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
 
   // Proof image (only shown in expanded view)
-  const rawProofImage = verification?.verificationImageBase64;
+  const rawProofImage = verification?.document?.verificationImageBase64;
   const proofImage = isValidProofImageSrc(rawProofImage) ? rawProofImage : null;
 
   // Pending state
   const isPending = !verification?.status || verification.status === "pending" || verification.status === "loading";
 
   // Verification date
-  const checkedDate = formatCheckedDate(verification?.verifiedAt ?? verification?.crawledAt);
+  const checkedDate = formatCheckedDate(verification?.verifiedAt ?? verification?.url?.crawledAt);
 
   // Crawl date for URL citations (absolute format for audit precision)
   const isDocument = citation.type === "document" || (!citation.type && citation.attachmentId);
-  const formattedCrawlDate = !isDocument && verification?.crawledAt
-    ? formatCaptureDate(verification.crawledAt)
+  const formattedCrawlDate = !isDocument && verification?.url?.crawledAt
+    ? formatCaptureDate(verification.url.crawledAt)
     : null;
 
   // Search attempts for verification summary

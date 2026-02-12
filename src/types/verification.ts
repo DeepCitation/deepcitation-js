@@ -7,10 +7,12 @@ export const PENDING_VERIFICATION_INDEX = -2;
 
 export const BLANK_VERIFICATION: Verification = {
   attachmentId: null,
-  verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
   verifiedMatchSnippet: null,
   citation: undefined,
   status: "not_found",
+  document: {
+    verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+  },
 };
 
 /**
@@ -187,97 +189,4 @@ export interface Verification {
     note: string;
   } | null;
 
-  // ==========================================================================
-  // DEPRECATED flat fields (kept for backward compat)
-  // ==========================================================================
-
-  /** @deprecated Use document?.verifiedPageNumber */
-  verifiedPageNumber?: number | null;
-
-  /** @deprecated Use document?.verifiedLineIds */
-  verifiedLineIds?: number[] | null;
-
-  /** @deprecated Use document?.totalLinesOnPage */
-  totalLinesOnPage?: number | null;
-
-  /** @deprecated Use document?.hitIndexWithinPage */
-  hitIndexWithinPage?: number | null;
-
-  /** @deprecated Use document?.phraseMatchDeepItem */
-  phraseMatchDeepItem?: DeepTextItem;
-
-  /** @deprecated Use document?.anchorTextMatchDeepItems */
-  anchorTextMatchDeepItems?: DeepTextItem[];
-
-  /** @deprecated Use document?.verificationImageBase64 */
-  verificationImageBase64?: string | null;
-
-  /** @deprecated Use document?.verificationImageDimensions */
-  verificationImageDimensions?: { width: number; height: number } | null;
-
-  /** @deprecated Use url?.verifiedUrl */
-  verifiedUrl?: string | null;
-
-  /** @deprecated Use url?.resolvedUrl */
-  resolvedUrl?: string | null;
-
-  /** @deprecated Use url?.httpStatus */
-  httpStatus?: number | null;
-
-  /** @deprecated Use url?.urlAccessStatus */
-  urlAccessStatus?: UrlAccessStatus | null;
-
-  /** @deprecated Use url?.contentMatchStatus */
-  contentMatchStatus?: ContentMatchStatus | null;
-
-  /** @deprecated Use url?.contentSimilarity */
-  contentSimilarity?: number | null;
-
-  /** @deprecated Use url?.verifiedTitle */
-  verifiedTitle?: string | null;
-
-  /** @deprecated Use url?.actualContentSnippet */
-  actualContentSnippet?: string | null;
-
-  /** @deprecated Use url?.webPageScreenshotBase64 */
-  webPageScreenshotBase64?: string | null;
-
-  /** @deprecated Use url?.crawledAt */
-  crawledAt?: Date | string | null;
-
-  /** @deprecated Use url?.urlVerificationError */
-  urlVerificationError?: string | null;
-
-  /** @deprecated Use url?.verifiedDomain */
-  verifiedDomain?: string | null;
-
-  /** @deprecated Use url?.verifiedDescription */
-  verifiedDescription?: string | null;
-
-  /** @deprecated Use url?.verifiedFaviconUrl */
-  verifiedFaviconUrl?: string | null;
-
-  /** @deprecated Use url?.verifiedSiteName */
-  verifiedSiteName?: string | null;
-
-  /** @deprecated Use url?.verifiedAuthor */
-  verifiedAuthor?: string | null;
-
-  /** @deprecated Use url?.verifiedPublishedAt */
-  verifiedPublishedAt?: Date | string | null;
-
-  /** @deprecated Use url?.verifiedImageUrl */
-  verifiedImageUrl?: string | null;
-
-  /** @deprecated Use url?.contentType */
-  contentType?: string | null;
-
-  /** @deprecated Use proof?.proofId */
-  proofId?: string;
-
-  /** @deprecated Use proof?.proofUrl */
-  proofUrl?: string;
-
-  /** @deprecated Use proof?.proofImageUrl */
-  proofImageUrl?: string;
 }
