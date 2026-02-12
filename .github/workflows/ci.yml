@@ -55,10 +55,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Format check
-        run: npx biome format ./src --check
-
-      - name: Lint and check
+      - name: Lint, format, and check
         run: npx biome ci ./src
 
   build:

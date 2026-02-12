@@ -37,11 +37,11 @@ git push origin feature-branch
 
 Refactored from single monolithic job to three parallel jobs:
 
-| Job | Responsibility | Runtime |
-|-----|-----------------|---------|
-| **lint-and-validate** | Format + lint checks | ~2 min |
-| **build** | Compile TypeScript & CSS | ~3 min |
-| **test** | Run test suite | ~2 min |
+| Job | Responsibility | Command | Runtime |
+|-----|-----------------|---------|---------|
+| **lint-and-validate** | Lint, format, import checks | `biome ci ./src` | ~2 min |
+| **build** | Compile TypeScript & CSS | `npm run build` | ~3 min |
+| **test** | Run test suite | `bun run test` | ~2 min |
 
 All three run in parallel, reducing total time from ~7 minutes (sequential) to ~3 minutes (parallel).
 
