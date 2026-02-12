@@ -30,7 +30,7 @@ const PendingDot = () => (
 
 /**
  * Green verified checkmark indicator.
- * Uses DOT_COLORS.green for consistency across components.
+ * Uses green-600 color to match DOT_COLORS.green for visual consistency.
  */
 const VerifiedCheck = () => (
   <span role="img" aria-label="Verified">
@@ -266,21 +266,21 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
       // Dot variant: simple colored dots for all statuses
       if (indicatorVariant === "dot") {
         if (isVerified) {
-          return <StatusIconWrapper><span className={classNames("rounded-full", DOT_COLORS.green)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper ariaLabel="Verified"><span className={classNames("rounded-full", DOT_COLORS.green)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isPartial) {
-          return <StatusIconWrapper><span className={classNames("rounded-full", DOT_COLORS.amber)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper ariaLabel="Partial match"><span className={classNames("rounded-full", DOT_COLORS.amber)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isBlocked) {
           if (renderBlockedIndicator) return renderBlockedIndicator(fetchStatus, errorMessage);
-          return <StatusIconWrapper><span className={classNames("rounded-full", DOT_COLORS.amber)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper ariaLabel={statusInfo.label}><span className={classNames("rounded-full", DOT_COLORS.amber)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isError) {
           if (renderBlockedIndicator) return renderBlockedIndicator(fetchStatus, errorMessage);
-          return <StatusIconWrapper><span className={classNames("rounded-full", DOT_COLORS.red)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
+          return <StatusIconWrapper ariaLabel={statusInfo.label}><span className={classNames("rounded-full", DOT_COLORS.red)} style={DOT_INDICATOR_FIXED_SIZE_STYLE} aria-hidden="true" /></StatusIconWrapper>;
         }
         if (isPending) {
-          return <StatusIconWrapper><PendingDot /></StatusIconWrapper>;
+          return <StatusIconWrapper ariaLabel="Verification in progress"><PendingDot /></StatusIconWrapper>;
         }
         return null;
       }
