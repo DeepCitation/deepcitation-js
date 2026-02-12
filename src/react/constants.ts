@@ -69,3 +69,21 @@ export const INDICATOR_SIZE_STYLE: React.CSSProperties = {
   minWidth: "10px",
   minHeight: "10px",
 };
+
+/**
+ * Dot indicator color classes for status states.
+ * Extracted for consistency across components.
+ * Used by UrlCitationComponent and other components for colored dot indicators.
+ *
+ * Provides both light and dark mode variants aligned with Tailwind color palette:
+ * - green: Verified/success state
+ * - amber: Partial/warning state
+ * - red: Error/not found state
+ * - gray: Pending/loading state
+ */
+export const DOT_COLORS = {
+  green: "bg-green-600 dark:bg-green-500",
+  amber: "bg-amber-500 dark:bg-amber-400",
+  red: "bg-red-500 dark:bg-red-400",
+  gray: "bg-gray-400 dark:bg-gray-500",
+} as const;
