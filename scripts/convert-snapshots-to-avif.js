@@ -26,6 +26,12 @@ async function convertSnapshotsToAvif() {
       process.exit(1);
     }
 
+    // Check if snapshots directory exists
+    if (!fs.existsSync(SNAPSHOTS_DIR)) {
+      console.log('ℹ️  Snapshots directory not found');
+      return;
+    }
+
     // Find all PNG snapshot files
     const pngFiles = [];
     const walkDir = (dir) => {

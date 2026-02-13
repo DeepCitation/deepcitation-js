@@ -43,9 +43,6 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
-      - name: Install sharp for snapshot optimization
-        run: npm install --save-dev sharp
-
       - name: Build
         run: npm run build
 
