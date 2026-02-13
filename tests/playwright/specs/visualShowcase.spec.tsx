@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/experimental-ct-react";
-import type { Page } from "@playwright/test";
 // Import showcase components separately to avoid Playwright CT bundling conflict
 import {
   MobileShowcase,
@@ -10,13 +9,7 @@ import {
   allUrlStatuses,
   allVerificationStatuses,
 } from "../../../src/react/testing/ShowcaseFixtures";
-
-/** Scale down showcase elements before snapshot to reduce pixel count */
-async function scaleDownForSnapshot(page: Page, testId: string) {
-  await page.addStyleTag({
-    content: `[data-testid="${testId}"] { transform: scale(0.5); transform-origin: top left; }`,
-  });
-}
+import { scaleDownForSnapshot } from "../snapshotHelpers";
 
 // =============================================================================
 // TESTS - Desktop Visual Showcase
