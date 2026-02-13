@@ -444,11 +444,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
       className={cn(
         "cursor-pointer transition-colors",
         !isLast && "border-b border-gray-200 dark:border-gray-700",
-        // Expanded: stronger left accent border for visual distinction
-        // Using 3px border (not 2px or 4px) for optimal balance:
-        // - 2px is too subtle and doesn't provide enough visual weight
-        // - 4px is too heavy and creates excessive spacing/visual noise
-        // - 3px (arbitrary value in Tailwind) provides clear distinction without overwhelming
+        // 3px border for visual distinction (2px too subtle, 4px too heavy)
         isExpanded
           ? "border-l-[3px] border-l-blue-400 dark:border-l-blue-500"
           : "border-l-[3px] border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
@@ -497,12 +493,17 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             {/* Title/phrase row with page number, copy button, and timestamp */}
             <div className="flex items-center gap-1.5">
               {shouldMergePhrase ? (
-                <div className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                <div className="text-sm text-gray-900 dark:text-gray-100 truncate" title={fullPhrase}>
                   {renderPhraseWithHighlight(fullPhrase, anchorText)}
                 </div>
               ) : (
                 articleTitle && (
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">{articleTitle}</h4>
+                  <h4
+                    className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2"
+                    title={articleTitle}
+                  >
+                    {articleTitle}
+                  </h4>
                 )
               )}
               {/* Copy button — always in DOM, opacity on hover (no layout shift) */}
@@ -698,7 +699,12 @@ function CompactSingleCitationRow({
       </div>
 
       {/* Source name */}
-      <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0 truncate max-w-[200px]">{sourceName}</span>
+      <span
+        className="text-sm text-gray-600 dark:text-gray-400 shrink-0 truncate max-w-[120px] sm:max-w-[160px] md:max-w-[200px]"
+        title={sourceName}
+      >
+        {sourceName}
+      </span>
 
       {/* Status indicator */}
       <span
