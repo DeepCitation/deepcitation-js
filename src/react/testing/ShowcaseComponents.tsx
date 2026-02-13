@@ -99,9 +99,9 @@ interface ShowcaseSectionProps {
 
 function ShowcaseSection({ title, description, children, "data-testid": testId }: ShowcaseSectionProps) {
   return (
-    <section className="mb-4" data-testid={testId}>
-      <h2 className="text-xl font-semibold mb-1 text-gray-800 dark:text-gray-200">{title}</h2>
-      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{description}</p>}
+    <section className="mb-10" data-testid={testId}>
+      <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">{title}</h2>
+      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>}
       {children}
     </section>
   );
@@ -122,7 +122,7 @@ function ShowcaseCard({
 }: ShowcaseCardProps & Record<`data-${string}`, string | undefined>) {
   return (
     <div
-      className={`p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
+      className={`p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
       data-testid={testId}
       {...dataProps}
     >
@@ -537,9 +537,9 @@ const notFoundManyPages: Verification = {
 
 export function VisualShowcase() {
   return (
-    <div className="p-3 bg-white dark:bg-gray-900" data-testid="visual-showcase">
-      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Citation Component Visual Showcase</h1>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="visual-showcase">
+      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Citation Component Visual Showcase</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Visual reference for all citation component variants, states, and configurations
       </p>
 
@@ -633,7 +633,7 @@ export function VisualShowcase() {
         description="What text/content is displayed inside the citation component"
         data-testid="content-section"
       >
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {CONTENT_TYPES.map(content => (
             <ShowcaseCard key={content} data-content-type={content}>
               <ShowcaseLabel
@@ -667,7 +667,7 @@ export function VisualShowcase() {
         description="Control whether the status indicator (checkmark, warning, spinner) is shown"
         data-testid="show-indicator-section"
       >
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <ShowcaseCard data-show-indicator="default">
             <ShowcaseLabel
               component="CitationComponent"
@@ -757,7 +757,7 @@ export function VisualShowcase() {
         description="Citations with different search attempt histories - helps auditors understand why verification failed"
         data-testid="audit-log-section"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-4">
           <ShowcaseCard
             className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"
             data-audit="not-found"
@@ -893,7 +893,7 @@ export function VisualShowcase() {
             component="UrlCitationComponent"
             uxIntent="Display URL source references with fetch status indicators"
           />
-          <div className="grid grid-cols-4 gap-2 mt-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
             {allUrlStatuses.map(({ status, description }) => {
               const meta: UrlCitationMeta = {
                 url: `https://example.com/${status}`,
@@ -919,7 +919,7 @@ export function VisualShowcase() {
         description="Different visual styles for URL citations"
         data-testid="url-variants-section"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {URL_VARIANTS.map(variant => {
             const meta: UrlCitationMeta = {
               url: "https://docs.example.com/api/v2/citations",
@@ -998,7 +998,7 @@ export function VisualShowcase() {
 
 export function MobileShowcase() {
   return (
-    <div className="p-3 bg-white dark:bg-gray-900" data-testid="mobile-showcase">
+    <div className="p-4 bg-white dark:bg-gray-900 min-h-screen" data-testid="mobile-showcase">
       <h1 className="text-lg font-bold mb-1 text-gray-900 dark:text-white">Mobile View (375px)</h1>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
         Testing overflow handling and touch interactions on mobile viewports
@@ -1095,11 +1095,11 @@ const sampleLargeImage =
  */
 export function PopoverShowcase() {
   return (
-    <div className="p-3 bg-white dark:bg-gray-900" data-testid="popover-showcase">
-      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">
+    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="popover-showcase">
+      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
         Popover & Sub-Components Visual Showcase
       </h1>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Visual reference for all popover states, sub-components, and interactive behaviors
       </p>
 
@@ -1111,7 +1111,7 @@ export function PopoverShowcase() {
         description="Popover content shown while verification is in progress"
         data-testid="popover-pending-section"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ShowcaseCard data-popover-state="pending">
             <ShowcaseLabel
               component="PopoverContent"
@@ -1177,7 +1177,7 @@ export function PopoverShowcase() {
           </InteractionLabel>
         </ShowcaseCard>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {allVerificationStatuses.map(({ status, description, color }) => {
             const isUnexpectedLocation = status === "found_on_other_page" || status === "found_on_other_line";
             const foundPage =
@@ -1214,7 +1214,7 @@ export function PopoverShowcase() {
         description="Displays the cited phrase in a styled quote box"
         data-testid="popover-quotebox-section"
       >
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ShowcaseCard data-quotebox="short">
             <ShowcaseLabel
               component="QuoteBox"
@@ -1271,7 +1271,7 @@ export function PopoverShowcase() {
           </InteractionLabel>
         </ShowcaseCard>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ShowcaseCard className="border-red-200 dark:border-red-800" data-verification-log="not-found">
             <ShowcaseLabel
               component="VerificationLog"
@@ -1395,7 +1395,7 @@ export function PopoverShowcase() {
         description="Full popover compositions showing all sub-components together"
         data-testid="popover-complete-layouts-section"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Verified with image */}
           <ShowcaseCard data-complete-popover="verified-with-image">
             <ShowcaseLabel
@@ -1943,9 +1943,9 @@ export function CitationDrawerShowcase() {
   const manyGroups = groupCitationsBySource(drawerManySources);
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-900 overflow-hidden" data-testid="drawer-showcase">
-      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Citation Drawer Trigger Showcase</h1>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen overflow-hidden" data-testid="drawer-showcase">
+      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Citation Drawer Trigger Showcase</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Compact summary bar for citation verification status with progressive disclosure
       </p>
 
@@ -1957,7 +1957,7 @@ export function CitationDrawerShowcase() {
         description="The trigger bar in its collapsed state across different verification scenarios"
         data-testid="drawer-trigger-states-section"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4">
           <ShowcaseCard data-drawer-trigger-state="all-verified">
             <ShowcaseLabel
               component="CitationDrawerTrigger"
@@ -2023,7 +2023,7 @@ export function CitationDrawerShowcase() {
         description="On hover, stacked verification icons spread horizontally. Hovering individual icons shows source tooltips with proof thumbnails."
         data-testid="drawer-trigger-hover-section"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <ShowcaseCard data-drawer-hover-state="collapsed">
             <ShowcaseLabel
               component="CitationDrawerTrigger"
