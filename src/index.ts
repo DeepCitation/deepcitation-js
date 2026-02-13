@@ -151,11 +151,11 @@ export type {
 export type {
   ContentMatchStatus,
   DocumentVerificationResult,
+  ProofUrl,
   UrlAccessStatus,
   UrlVerificationResult,
   Verification,
   VerificationPage,
-  ProofUrl,
 } from "./types/verification.js";
 export {
   BLANK_VERIFICATION,

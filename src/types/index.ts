@@ -28,10 +28,10 @@ export type {
 // Found highlight types
 export type {
   DocumentVerificationResult,
+  ProofUrl,
   UrlVerificationResult,
   Verification,
   VerificationPage,
-  ProofUrl,
 } from "./verification.js";
 export {
   BLANK_VERIFICATION,
