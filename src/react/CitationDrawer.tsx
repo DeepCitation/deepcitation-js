@@ -290,10 +290,12 @@ function SourceGroupHeader({
         </a>
       )}
 
-      {/* Citation count badge */}
-      <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
-        {citationCount} citation{citationCount !== 1 ? "s" : ""}
-      </span>
+      {/* Citation count badge — only shown when > 1 (single item is self-evident) */}
+      {citationCount > 1 && (
+        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+          {citationCount} citations
+        </span>
+      )}
     </div>
   );
 }

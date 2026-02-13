@@ -1015,7 +1015,7 @@ function getHumanizingMessage(
 
   switch (status) {
     case "not_found":
-      return `We couldn't find ${displayText} in this document.`;
+      return "We couldn't find this phrase in the document.";
     case "found_on_other_page":
       if (expectedPage && foundPage) {
         return `Found ${displayText} on page ${foundPage} instead of page ${expectedPage}.`;
@@ -1032,6 +1032,33 @@ function getHumanizingMessage(
     default:
       return null;
   }
+}
+
+// =============================================================================
+// HIGHLIGHTED PHRASE DISPLAY
+// =============================================================================
+
+/**
+ * Renders fullPhrase with the anchorText substring highlighted using the same
+ * amber highlight style used in the API-side proof images.
+ * Only highlights when fullPhrase has enough additional context beyond anchorText.
+ */
+function HighlightedPhrase({ fullPhrase, anchorText }: { fullPhrase: string; anchorText?: string }) {
+  if (!anchorText || !fullPhrase.includes(anchorText)) {
+    return <span className="italic text-gray-600 dark:text-gray-300">&ldquo;{fullPhrase}&rdquo;</span>;
+  }
+  const wc = (s: string) => s.trim().split(/\s+/).length;
+  if (wc(fullPhrase) - wc(anchorText) < MIN_WORD_DIFFERENCE) {
+    return <span className="italic text-gray-600 dark:text-gray-300">&ldquo;{fullPhrase}&rdquo;</span>;
+  }
+  const idx = fullPhrase.indexOf(anchorText);
+  return (
+    <span className="italic text-gray-600 dark:text-gray-300">
+      &ldquo;{fullPhrase.slice(0, idx)}
+      <span style={ANCHOR_HIGHLIGHT_STYLE}>{anchorText}</span>
+      {fullPhrase.slice(idx + anchorText.length)}&rdquo;
+    </span>
+  );
 }
 
 // =============================================================================
@@ -1142,7 +1169,7 @@ function DefaultPopoverContent({
             status={searchStatus}
             sourceLabel={sourceLabel}
           />
-          {/* Status header with anchorText - skip for URL citations since SourceContextHeader already shows status icon + URL */}
+          {/* Status header - skip for URL citations since SourceContextHeader already shows status icon + URL */}
           {!isUrlCitation(citation) && (
             <StatusHeader
               status={searchStatus}
@@ -1152,6 +1179,13 @@ function DefaultPopoverContent({
               anchorText={anchorText}
               indicatorVariant={indicatorVariant}
             />
+          )}
+
+          {/* Full phrase with highlighted anchor text */}
+          {fullPhrase && (
+            <div className="px-3 py-2 text-sm leading-relaxed border-b border-gray-100 dark:border-gray-800">
+              <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} />
+            </div>
           )}
 
           {/* Verification image */}
@@ -1215,6 +1249,12 @@ function DefaultPopoverContent({
                   {humanizingMessage}
                 </div>
               )}
+              {/* Full phrase with highlighted anchor text */}
+              {fullPhrase && (
+                <div className="px-3 py-2 text-sm leading-relaxed border-b border-gray-100 dark:border-gray-800">
+                  <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} />
+                </div>
+              )}
               <div className="p-2">
                 <AnchorTextFocusedImage verification={verification} onImageClick={onImageClick} />
               </div>
@@ -1236,6 +1276,12 @@ function DefaultPopoverContent({
               {/* Humanizing message provides additional context below the header */}
               {humanizingMessage && (
                 <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{humanizingMessage}</div>
+              )}
+              {/* Full phrase with highlighted anchor text */}
+              {fullPhrase && (
+                <div className="px-3 py-2 text-sm leading-relaxed border-b border-gray-100 dark:border-gray-800">
+                  <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} />
+                </div>
               )}
             </>
           )}
