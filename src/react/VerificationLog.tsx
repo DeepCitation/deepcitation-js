@@ -999,6 +999,10 @@ interface SearchSummary {
 /**
  * Build a human-readable summary of search attempts for not-found states.
  * Computes page range, full doc scan presence, and closest match if any.
+ *
+ * NOTE: Utility function prepared for future task #4 (enhance not-found display).
+ * Currently unused but ready for integration into AuditSearchDisplay component.
+ * See plans/drawer-trigger-copy-polish.md for remaining tasks.
  */
 function _buildSearchSummary(searchAttempts: SearchAttempt[], verification?: Verification | null): SearchSummary {
   const totalAttempts = searchAttempts.length;

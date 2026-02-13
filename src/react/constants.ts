@@ -228,6 +228,13 @@ export const DOT_INDICATOR_FIXED_SIZE_STYLE: React.CSSProperties = {
 //
 // Drawer stacked icons use inline z-index 1–10 for local stacking order.
 
+/**
+ * Z-Index Layering Hierarchy:
+ * - 9998 (backdrop): Popover backdrop, drawer backdrop (behind content)
+ * - 9999 (overlay): Drawer container, image overlay (in front of page content)
+ * All use CSS custom properties for consumer override capability.
+ */
+
 /** CSS custom property for the popover z-index. Default: 9998. */
 export const Z_INDEX_POPOVER_VAR = "--dc-z-popover";
 /** CSS custom property for the drawer backdrop z-index. Default: 9998. */

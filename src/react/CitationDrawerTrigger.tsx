@@ -68,7 +68,15 @@ const TOOLTIP_HIDE_DELAY_MS = 80;
 
 /**
  * Detect if the primary pointing device is coarse (touch).
- * Windows laptops with touchscreens report (pointer: fine) because the mouse/trackpad is primary.
+ * Uses media query (pointer: coarse) which identifies touch as primary input method.
+ *
+ * NOTE: Not 100% reliable for hybrid devices:
+ * - iPads with keyboard/mouse can switch between coarse/fine
+ * - Some Windows touchscreens report (pointer: fine) when mouse is primary
+ *
+ * Trade-off: Fails safely — if detected as non-touch when it's hybrid, hover
+ * spread animation shows but doesn't break functionality. Direct drawer open
+ * on touch devices (optimal UX) is the goal, but graceful degradation is fine.
  */
 function getIsTouchDevice(): boolean {
   if (typeof window === "undefined") return false;
