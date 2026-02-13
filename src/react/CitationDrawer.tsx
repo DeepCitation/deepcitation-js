@@ -445,6 +445,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
         "cursor-pointer transition-colors",
         !isLast && "border-b border-gray-200 dark:border-gray-700",
         // Expanded: stronger left accent border for visual distinction
+        // Using 3px border (not 2px or 4px) for optimal balance:
+        // - 2px is too subtle and doesn't provide enough visual weight
+        // - 4px is too heavy and creates excessive spacing/visual noise
+        // - 3px (arbitrary value in Tailwind) provides clear distinction without overwhelming
         isExpanded
           ? "border-l-[3px] border-l-blue-400 dark:border-l-blue-500"
           : "border-l-[3px] border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
