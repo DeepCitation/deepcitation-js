@@ -20,9 +20,9 @@ interface ShowcaseSectionProps {
 
 function ShowcaseSection({ title, description, children, "data-testid": testId }: ShowcaseSectionProps) {
   return (
-    <section className="mb-10" data-testid={testId}>
-      <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">{title}</h2>
-      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>}
+    <section className="mb-4" data-testid={testId}>
+      <h2 className="text-xl font-semibold mb-1 text-gray-800 dark:text-gray-200">{title}</h2>
+      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{description}</p>}
       {children}
     </section>
   );
@@ -42,7 +42,7 @@ function ShowcaseCard({
 }: ShowcaseCardProps & Record<`data-${string}`, string | undefined>) {
   return (
     <div
-      className={`p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
+      className={`p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
       data-testid={testId}
       {...dataProps}
     >
@@ -96,9 +96,9 @@ const _linePositionVerification: Verification = {
 
 export function MarkdownShowcase() {
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="markdown-showcase">
-      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Markdown Output Visual Showcase</h1>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+    <div className="p-3 bg-white dark:bg-gray-900" data-testid="markdown-showcase">
+      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Markdown Output Visual Showcase</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
         Visual reference for all markdown rendering variants, indicator styles, and output formats
       </p>
 
@@ -171,7 +171,7 @@ export function MarkdownShowcase() {
         description="Different output formats for citations"
         data-testid="markdown-variants-section"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {MARKDOWN_VARIANTS.map(variant => {
             const simpleInput = `Revenue grew 45%<cite attachment_id='abc123' page_number='3' full_phrase='Revenue grew 45% in Q4.' anchor_text='grew 45%' citation_number='1' /> according to reports.`;
             const output = toMarkdown(simpleInput, {
@@ -199,7 +199,7 @@ export function MarkdownShowcase() {
         description="Generated reference sections with different groupings"
         data-testid="reference-section"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <ShowcaseCard data-reference-type="standard">
             <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Standard References</h3>
             <ReferencePreview variant="brackets" />
@@ -219,7 +219,7 @@ export function MarkdownShowcase() {
         data-testid="line-position-section"
       >
         <ShowcaseCard>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-3">
             {[10, 25, 50, 75, 95].map(lineId => {
               const position = humanizeLinePosition(lineId, 100);
               return (

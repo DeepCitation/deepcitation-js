@@ -120,7 +120,7 @@ export function HtmlPreview() {
   usePreviewStyles();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Variants x Statuses Matrix */}
       <div data-testid="html-variants-section">
         <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">Variants x Statuses</h3>

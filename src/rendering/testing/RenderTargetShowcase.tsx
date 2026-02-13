@@ -17,9 +17,9 @@ interface ShowcaseSectionProps {
 
 function ShowcaseSection({ title, description, children, "data-testid": testId }: ShowcaseSectionProps) {
   return (
-    <section className="mb-10" data-testid={testId}>
-      <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">{title}</h2>
-      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{description}</p>}
+    <section className="mb-4" data-testid={testId}>
+      <h2 className="text-xl font-semibold mb-1 text-gray-800 dark:text-gray-200">{title}</h2>
+      {description && <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{description}</p>}
       {children}
     </section>
   );
@@ -31,9 +31,9 @@ function ShowcaseSection({ title, description, children, "data-testid": testId }
 
 export function RenderTargetShowcase() {
   return (
-    <div className="p-6 bg-white dark:bg-gray-900 min-h-screen" data-testid="render-target-showcase">
-      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Render Target Visual Showcase</h1>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+    <div className="p-3 bg-white dark:bg-gray-900" data-testid="render-target-showcase">
+      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Render Target Visual Showcase</h1>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
         Visual reference for Slack, GitHub, HTML, and Terminal render targets
       </p>
 
