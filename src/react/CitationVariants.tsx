@@ -220,6 +220,16 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
             ? "bg-gray-100 dark:bg-gray-800"
             : "bg-blue-100 dark:bg-blue-900/30";
 
+    const borderClass = isPartialMatch
+      ? "border-amber-200 dark:border-amber-700"
+      : isMiss
+        ? "border-red-200 dark:border-red-700"
+        : isVerified
+          ? "border-green-200 dark:border-green-700"
+          : isPending
+            ? "border-gray-200 dark:border-gray-700"
+            : "border-blue-200 dark:border-blue-700";
+
     const textColorClass = isPartialMatch
       ? "text-amber-500 dark:text-amber-400"
       : isMiss
@@ -242,8 +252,9 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
           data-variant="chip"
           className={classNames(
             "inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full font-normal cursor-pointer transition-colors text-[0.9em]",
-            "hover:brightness-95",
+            "border hover:brightness-95",
             statusClass,
+            borderClass,
             className,
           )}
           {...events}
@@ -329,7 +340,7 @@ export const SuperscriptCitation = forwardRef<HTMLSpanElement, SuperscriptCitati
           data-citation-instance={citationInstanceId}
           data-variant="superscript"
           className={classNames(
-            "text-xs cursor-pointer font-medium transition-colors hover:underline inline-flex items-baseline",
+            "text-xs cursor-pointer font-medium transition-colors hover:underline inline-flex items-center",
             statusClass,
             className,
           )}
@@ -430,7 +441,7 @@ export const FootnoteCitation = forwardRef<HTMLSpanElement, FootnoteCitationProp
           data-citation-instance={citationInstanceId}
           data-variant="footnote"
           className={classNames(
-            "text-xs cursor-pointer font-normal transition-colors inline-flex items-baseline",
+            "text-xs cursor-pointer font-normal transition-colors inline-flex items-center",
             statusClass,
             className,
           )}

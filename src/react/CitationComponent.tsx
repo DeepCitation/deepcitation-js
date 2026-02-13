@@ -705,7 +705,11 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
   // Register this overlay as open globally (blocks hover on other citations)
   useEffect(() => {
     registerOverlay();
-    return () => unregisterOverlay();
+    return () => {
+      // Delay unregister so click-outside handlers still see overlay as open
+      // during the current event loop tick
+      setTimeout(() => unregisterOverlay(), 0);
+    };
   }, [registerOverlay, unregisterOverlay]);
 
   // Auto-focus the backdrop when the overlay opens for keyboard accessibility.
@@ -719,7 +723,10 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -735,9 +742,16 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
       tabIndex={-1}
       className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in-0 duration-[50ms] outline-none"
       style={{ zIndex: `var(${Z_INDEX_IMAGE_OVERLAY_VAR}, ${Z_INDEX_OVERLAY_DEFAULT})` } as React.CSSProperties}
-      onClick={onClose}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClose();
+      }}
       onKeyDown={e => {
-        if (e.key === "Escape") onClose();
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
       }}
       role="dialog"
       aria-modal="true"
@@ -749,6 +763,9 @@ function ImageOverlay({ src, alt, onClose }: ImageOverlayProps) {
           alt={alt}
           className="max-w-full max-h-[95vh] object-contain rounded-lg shadow-2xl"
           draggable={false}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
         />
       </div>
     </div>,
