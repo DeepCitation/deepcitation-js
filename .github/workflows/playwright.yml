@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           # For PRs, checkout the head ref to allow pushing snapshot updates
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: useblacksmith/setup-node@v5
+        uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
         with:
           node-version: '22'
 
@@ -85,7 +85,7 @@ jobs:
           fi
 
       - name: Upload Playwright report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
@@ -93,7 +93,7 @@ jobs:
           retention-days: 14
 
       - name: Upload visual snapshots artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ !cancelled() }}
         with:
           name: visual-snapshots
@@ -106,7 +106,7 @@ jobs:
 
       # Comment on PR with report link
       - name: Comment PR with report link
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         if: github.event_name == 'pull_request' && !cancelled()
         with:
           script: |

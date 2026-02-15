@@ -1,0 +1,15 @@
+# Default owners for everything
+* @DeepCitation/maintainers
+
+# CI/CD and workflow files require maintainer review
+.github/workflows/ @DeepCitation/maintainers
+.github/dependabot.yml @DeepCitation/maintainers
+.github/CODEOWNERS @DeepCitation/maintainers
+
+# Publishing and build configuration
+package.json @DeepCitation/maintainers
+tsup.config.ts @DeepCitation/maintainers
+.npmignore @DeepCitation/maintainers
+
+# Security policy
+SECURITY.md @DeepCitation/maintainers
