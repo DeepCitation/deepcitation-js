@@ -223,7 +223,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
     const borderClass = isPartialMatch
       ? "border-amber-300 dark:border-amber-600 hover:border-amber-500 dark:hover:border-amber-500"
       : isMiss
-        ? "border-dashed border-red-300 dark:border-red-600 hover:border-red-500 dark:hover:border-red-500"
+        ? "border-dashed border-red-300 dark:border-red-500 hover:border-red-500 dark:hover:border-red-400"
         : isVerified
           ? "border-green-300 dark:border-green-600 hover:border-green-600 dark:hover:border-green-500"
           : isPending
@@ -250,6 +250,11 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
             ? "text-gray-500 dark:text-gray-400"
             : "text-blue-600 dark:text-blue-400";
 
+    // Build accessible label that includes status for screen readers
+    const ariaLabel = displayText
+      ? `Citation: ${displayText}${isMiss ? " (not found)" : isPartialMatch ? " (partial match)" : isVerified ? " (verified)" : ""}`
+      : undefined;
+
     return (
       <>
         {children}
@@ -269,7 +274,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
             className,
           )}
           {...events}
-          aria-label={displayText ? `Citation: ${displayText}` : undefined}
+          aria-label={ariaLabel}
         >
           {showIcon && (icon || <span className="text-[0.9em]">📄</span>)}
           <span className={classNames(textColorClass, isMiss && "opacity-70")}>{displayText}</span>

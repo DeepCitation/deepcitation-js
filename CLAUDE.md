@@ -274,6 +274,30 @@ The `linter` variant displays citations as inline text with semantic underlines,
 }
 ```
 
+#### Chip Variant
+
+The `chip` variant displays citations as rounded pill badges with status-specific styling. For **not found** citations, the chip uses a **dashed border** to provide a subtle visual distinction even when status indicators are hidden.
+
+**Visual Design Rationale:**
+- **Dashed border** = "broken" or "incomplete" — a familiar UI pattern for missing/unavailable content
+- Works with or without the status indicator icon
+- Maintains accessibility through color coding (red) while adding a shape-based visual cue
+- More suitable than wavy underline for pill/badge components where borders are the primary visual element
+
+```tsx
+// Chip variant with not_found status displays dashed red border
+<CitationComponent citation={citation} verification={{ status: "not_found" }} variant="chip" />
+// Renders: pill badge with dashed red border (vs solid border for verified)
+```
+
+**Border Styles by Status:**
+| Status      | Border Style | Border Color (Light/Dark)              |
+|-------------|--------------|----------------------------------------|
+| **Verified**| Solid        | Green (green-300 / green-600)          |
+| **Partial** | Solid        | Amber (amber-300 / amber-600)          |
+| **Not Found** | **Dashed** | Red (red-300 / red-500)                |
+| **Pending** | Solid        | Gray (gray-300 / gray-600)             |
+
 #### Variant (Visual Style)
 
 | Variant       | Output Example          | Description                                    |
