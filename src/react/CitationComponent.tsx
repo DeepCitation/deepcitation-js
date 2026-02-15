@@ -1766,6 +1766,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       isAnyOverlayOpen,
     ]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: repositionGraceRef is a stable ref from hook
     const handleMouseLeave = useCallback(() => {
       // Don't close the popover if an image overlay is open - user expects to return to popover
       // after closing the zoomed image
@@ -1803,6 +1804,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       clearGracePeriod();
     }, [cancelHoverCloseTimeout, clearGracePeriod]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: repositionGraceRef is a stable ref from hook
     const handlePopoverMouseLeave = useCallback(() => {
       isOverPopoverRef.current = false;
       // Don't close the popover if an image overlay is open - user expects to return to popover
@@ -1844,14 +1846,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     }, []);
 
     // Handle Escape key to close popover
+    // Only handles Escape when no overlay is open - image overlay has its own Escape handler
     useEffect(() => {
       if (!isHovering) return;
 
       const handleEscapeKey = (e: KeyboardEvent) => {
+        // Don't handle if overlay is open - let the overlay's Escape handler run instead
         if (e.key === "Escape" && !isAnyOverlayOpenRef.current) {
+          setIsHovering(false);
           e.preventDefault();
           e.stopPropagation();
-          setIsHovering(false);
         }
       };
 

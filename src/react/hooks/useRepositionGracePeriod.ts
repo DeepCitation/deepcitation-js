@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * Manages a grace period to prevent popover dismissal during content resize/reposition.
@@ -53,13 +53,13 @@ export function useRepositionGracePeriod(
    * Clear the grace period and any pending timer.
    * Called when cursor re-enters popover or when popover closes.
    */
-  const clearGracePeriod = () => {
+  const clearGracePeriod = useCallback(() => {
     isInGracePeriod.current = false;
     if (graceTimerRef.current) {
       clearTimeout(graceTimerRef.current);
       graceTimerRef.current = null;
     }
-  };
+  }, []);
 
   // When popover content resizes (details expand/collapse), the popover repositions
   // and the cursor may land outside the new bounds, firing a spurious mouseleave.
@@ -88,7 +88,7 @@ export function useRepositionGracePeriod(
     return () => {
       clearGracePeriod();
     };
-  }, [isOpen]);
+  }, [isOpen, clearGracePeriod]);
 
   return { isInGracePeriod, clearGracePeriod };
 }
