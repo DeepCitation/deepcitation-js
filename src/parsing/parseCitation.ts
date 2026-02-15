@@ -697,6 +697,8 @@ export function groupCitationsByAttachmentIdObject(
       continue;
     }
 
+    // attachmentId and key are guaranteed safe by isSafeKey checks above (line 696)
+    // lgtm[js/prototype-polluting-assignment]
     if (!grouped[attachmentId]) {
       grouped[attachmentId] = createSafeObject<Citation>();
     }

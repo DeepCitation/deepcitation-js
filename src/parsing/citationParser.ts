@@ -90,7 +90,8 @@ function expandCompactKeys(
       continue;
     }
 
-    // fullKey is guaranteed safe by isSafeKey check above
+    // fullKey is guaranteed safe by isSafeKey check above (line 79)
+    // lgtm[js/remote-property-injection]
     result[fullKey] = value;
   }
 
