@@ -31,7 +31,6 @@ import {
 import {
   sanitizeForLog,
   createLogEntry,
-  safeLog,
   sanitizeJsonForLog,
 } from '../utils/logSafety';
 
