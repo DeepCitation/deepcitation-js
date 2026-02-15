@@ -316,7 +316,7 @@ export const SuperscriptCitation = forwardRef<HTMLSpanElement, SuperscriptCitati
       pendingContent = TWO_DOTS_THINKING_CONTENT,
       renderVerifiedIndicator = () => <DefaultVerifiedIndicator />,
       renderPartialIndicator = () => <DefaultPartialIndicator />,
-      hideBrackets = false,
+      hideBrackets = true,
     },
     ref,
   ) => {

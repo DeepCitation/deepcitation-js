@@ -1946,6 +1946,65 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       };
     }, [isMobile, isHovering]);
 
+    // Desktop click-outside dismiss handler
+    //
+    // On desktop, clicking outside the citation trigger or popover should dismiss the popover.
+    // This handler bypasses the repositionGraceRef check to ensure clicks are always respected,
+    // even during the grace period after content expansion. The grace period is meant to prevent
+    // spurious mouseleave events from repositioning, not to block intentional clicks.
+    //
+    // Why separate from mobile handler:
+    // - Desktop uses mousedown (not touchstart) for better UX consistency with other web apps
+    // - Mobile has its own touch handler above with different timing characteristics
+    //
+    // Note: We still check isAnyOverlayOpenRef to keep the popover open when image overlay is shown.
+    useEffect(() => {
+      if (isMobile || !isHovering) return;
+
+      const handleOutsideClick = (e: MouseEvent) => {
+        // Don't dismiss popover while an image overlay is open - user expects to return
+        // to the popover after closing the zoomed image. Uses ref to avoid stale closure.
+        if (isAnyOverlayOpenRef.current) {
+          return;
+        }
+
+        // Type guard for mouse event target
+        const target = e.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+
+        // Check if click is inside the trigger element
+        if (triggerRef.current?.contains(target)) {
+          return;
+        }
+
+        // Check if click is inside the popover content (works with portaled content)
+        if (popoverContentRef.current?.contains(target)) {
+          return;
+        }
+
+        // Click is outside both - dismiss the popover immediately (bypass grace period)
+        setIsHovering(false);
+        // Clear any pending hover close timeout since we're closing immediately
+        if (hoverCloseTimeoutRef.current) {
+          clearTimeout(hoverCloseTimeoutRef.current);
+          hoverCloseTimeoutRef.current = null;
+        }
+      };
+
+      // Use mousedown with capture phase to detect clicks before they bubble
+      document.addEventListener("mousedown", handleOutsideClick, {
+        capture: true,
+      });
+
+      return () => {
+        document.removeEventListener("mousedown", handleOutsideClick, {
+          capture: true,
+        });
+      };
+    }, [isMobile, isHovering]);
+
     // Touch start handler for mobile - captures popover state before touch ends.
     // Reads isHoveringRef.current (which is kept in sync with isHovering state above)
     // to avoid stale closure issues without recreating the callback on every hover change.
