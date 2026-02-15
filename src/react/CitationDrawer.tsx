@@ -766,7 +766,7 @@ export function CitationDrawer({
   renderCitationItem,
   indicatorVariant = "icon",
   sourceLabelMap,
-}: CitationDrawerProps) {
+}: CitationDrawerProps): React.ReactNode {
   // Flatten all citations for total count
   const totalCitations = useMemo(() => {
     return citationGroups.reduce((sum, g) => sum + g.citations.length, 0);

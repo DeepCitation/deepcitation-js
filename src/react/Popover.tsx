@@ -15,7 +15,7 @@ function cn(...classes: (string | undefined | null | false)[]): string {
 }
 
 const PopoverContent = React.forwardRef<
-  React.ComponentRef<typeof PopoverPrimitive.Content>,
+  React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = "center", sideOffset = 8, sticky = "always", style, ...props }, ref) => (
   <PopoverPrimitive.Portal>
@@ -49,7 +49,9 @@ const PopoverContent = React.forwardRef<
       {...props}
     />
   </PopoverPrimitive.Portal>
-));
+)) as React.ForwardRefExoticComponent<
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & React.RefAttributes<React.ElementRef<typeof PopoverPrimitive.Content>>
+>;
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
 export { PopoverContent };
