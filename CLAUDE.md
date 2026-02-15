@@ -298,6 +298,17 @@ The `chip` variant displays citations as rounded pill badges with status-specifi
 | **Not Found** | **Dashed** | Red (red-300 / red-500)                |
 | **Pending** | Solid        | Gray (gray-300 / gray-600)             |
 
+**Testing Considerations:**
+
+The dashed border pattern is a key visual cue for the not_found state. When making changes to chip variant styling, consider:
+
+- **Visual regression tests**: Use Playwright component tests to capture snapshots of all status states
+- **Cross-browser testing**: Dashed border rendering can vary across browsers (Firefox, Safari, Chrome)
+- **Accessibility validation**: Verify screen readers announce the complete citation state including verification status
+- **Dark mode verification**: Test contrast ratios for border visibility against background colors
+
+See the existing Playwright test suite in `src/__tests__/` for examples of visual regression testing patterns.
+
 #### Variant (Visual Style)
 
 | Variant       | Output Example          | Description                                    |
