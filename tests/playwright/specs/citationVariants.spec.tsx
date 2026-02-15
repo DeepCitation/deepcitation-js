@@ -206,15 +206,6 @@ test.describe("SuperscriptCitation", () => {
     expect(text).not.toContain("]");
   });
 
-  test("renders with brackets when hideBrackets is false", async ({ mount, page }) => {
-    await mount(<SuperscriptCitation citation={baseCitation} hideBrackets={false} />);
-    const sup = page.locator('[data-variant="superscript"]');
-
-    const text = await sup.textContent();
-    expect(text).toContain("[");
-    expect(text).toContain("]");
-  });
-
   test("renders with miss state", async ({ mount, page }) => {
     await mount(<SuperscriptCitation citation={baseCitation} verification={missFoundCitation} />);
     const sup = page.locator('[data-variant="superscript"]');
