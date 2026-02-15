@@ -12,7 +12,15 @@
  * Set of dangerous property names that can cause prototype pollution.
  * These keys should never be allowed in user-controlled object assignments.
  */
-const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const DANGEROUS_KEYS = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+  "toString", // Can break string coercion
+  "valueOf", // Can break primitive coercion
+  "hasOwnProperty", // Used in many property checks
+  "isPrototypeOf", // Prototype chain manipulation
+]);
 
 /**
  * Optional warning function for logging rejected keys.

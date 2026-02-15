@@ -406,7 +406,9 @@ describe("Security Tests", () => {
       it("should truncate long strings", () => {
         const input = "a".repeat(2000);
         const result = sanitizeForLog(input, 100);
-        expect(result.length).toBe(100);
+        // Result should be 100 chars + "... [TRUNCATED]" suffix (15 chars) = 115
+        expect(result.length).toBe(115);
+        expect(result.endsWith("... [TRUNCATED]")).toBe(true);
       });
 
       it("should stringify objects", () => {

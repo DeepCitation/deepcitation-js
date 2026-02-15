@@ -42,7 +42,7 @@ export const MAX_REGEX_INPUT_LENGTH = 100_000; // ~100KB in UTF-16 code units
 export function validateRegexInput(input: string, maxLength = MAX_REGEX_INPUT_LENGTH): void {
   if (input.length > maxLength) {
     throw new Error(
-      `Input too large for regex operation: ${input.length} bytes (max: ${maxLength}). ` +
+      `Input too large for regex operation: ${input.length} characters (max: ${maxLength}). ` +
         `This may indicate a ReDoS attack or malformed input.`,
     );
   }
@@ -89,6 +89,8 @@ export function safeMatch(input: string, regex: RegExp): RegExpMatchArray | null
  */
 export function safeExec(regex: RegExp, input: string): RegExpExecArray | null {
   validateRegexInput(input);
+  // Reset lastIndex to ensure consistent behavior with global regexes
+  regex.lastIndex = 0;
   return regex.exec(input);
 }
 

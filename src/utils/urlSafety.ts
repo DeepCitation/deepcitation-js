@@ -46,17 +46,23 @@ const MULTI_PART_TLDS = new Set([
   "co.id",
   "co.th",
   "co.za",
+  "co.kr", // South Korea
   "com.au",
   "com.br",
   "com.mx",
   "com.ar",
+  "com.cn", // China
+  "com.sg", // Singapore
   "gov.uk",
   "gov.au",
   "ac.uk",
   "ac.nz",
+  "ac.jp", // Japan academic
   "org.uk",
   "org.au",
   "com.hk",
+  "net.au", // Australia network
+  "edu.au", // Australia education
 ]);
 
 /**
@@ -111,6 +117,11 @@ function extractRootDomain(hostname: string): string {
  * ```
  */
 export function isDomainMatch(url: string, domain: string): boolean {
+  // Validate domain parameter
+  if (!domain) {
+    return false;
+  }
+
   const extracted = extractDomain(url);
 
   // Check for exact match
@@ -209,9 +220,8 @@ export function isApprovedDomain(url: string, approvedDomains: Set<string>): boo
   }
 
   // Check if it's a subdomain of an approved domain
-  const parts = domain.split(".");
-  if (parts.length >= 2) {
-    const rootDomain = parts.slice(-2).join(".");
+  const rootDomain = extractRootDomain(domain);
+  if (rootDomain && rootDomain !== domain) {
     return approvedDomains.has(rootDomain);
   }
 
@@ -247,9 +257,8 @@ export function isSafeDomain(url: string, blockedDomains: Set<string>): boolean 
   }
 
   // Check if parent domain is blocked
-  const parts = domain.split(".");
-  if (parts.length >= 2) {
-    const rootDomain = parts.slice(-2).join(".");
+  const rootDomain = extractRootDomain(domain);
+  if (rootDomain && rootDomain !== domain) {
     if (blockedDomains.has(rootDomain)) {
       return false;
     }

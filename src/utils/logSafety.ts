@@ -26,24 +26,37 @@
  * ```
  */
 export function sanitizeForLog(value: unknown, maxLength = 1000): string {
-  // Convert value to string
-  const str = typeof value === "string" ? value : JSON.stringify(value);
+  // Convert value to string safely (handles circular references)
+  let str: string;
+  if (typeof value === "string") {
+    str = value;
+  } else {
+    try {
+      str = JSON.stringify(value);
+    } catch {
+      // JSON.stringify throws on circular references
+      str = String(value);
+    }
+  }
 
   // Sanitize dangerous characters
-  return (
-    str
-      // Replace actual newlines with literal \n
-      .replace(/\r?\n/g, "\\n")
-      // Replace tabs with literal \t
-      .replace(/\t/g, "\\t")
-      // Remove all ANSI escape sequences (comprehensive pattern)
-      // Matches: ESC [ ... (any letter), ESC ] ... BEL/ST, ESC ( ... ), etc.
-      // See: https://en.wikipedia.org/wiki/ANSI_escape_code
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally matching ANSI control codes
-      .replace(/\x1b(?:\[[0-9;]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A-Za-z]|\[[0-9;?]*[hl])/g, "")
-      // Truncate to prevent log spam
-      .slice(0, maxLength)
-  );
+  const sanitized = str
+    // Replace actual newlines with literal \n
+    .replace(/\r?\n/g, "\\n")
+    // Replace tabs with literal \t
+    .replace(/\t/g, "\\t")
+    // Remove all ANSI escape sequences (comprehensive pattern)
+    // Matches: ESC [ ... (any letter), ESC ] ... BEL/ST, ESC ( ... ), etc.
+    // See: https://en.wikipedia.org/wiki/ANSI_escape_code
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally matching ANSI control codes
+    .replace(/\x1b(?:\[[0-9;]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A-Za-z]|\[[0-9;?]*[hl])/g, "");
+
+  // Truncate with indicator if needed
+  if (sanitized.length > maxLength) {
+    return sanitized.slice(0, maxLength) + "... [TRUNCATED]";
+  }
+
+  return sanitized;
 }
 
 /**
