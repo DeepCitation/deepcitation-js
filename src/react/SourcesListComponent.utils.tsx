@@ -56,15 +56,18 @@ export function detectSourceType(url: string): SourceType {
 
     // Reference
     if (isDomainMatch(url, "wikipedia.org") || isDomainMatch(url, "britannica.com")) return "reference";
-    if (url.includes("merriam-webster") || url.includes("dictionary.com")) return "reference";
+    if (isDomainMatch(url, "merriam-webster.com") || isDomainMatch(url, "dictionary.com")) return "reference";
 
     // Forums
     if (isDomainMatch(url, "reddit.com") || isDomainMatch(url, "quora.com")) return "forum";
     if (url.includes("discourse") || url.includes("forum")) return "forum";
 
     // Commerce
-    if (url.includes("amazon.") || url.includes("ebay.")) return "commerce";
-    if (url.includes("shopify") || isDomainMatch(url, "etsy.com")) return "commerce";
+    // Note: amazon and ebay have many regional TLDs (amazon.com, amazon.co.uk, etc.)
+    // so we check if domain starts with these prefixes
+    const domain = extractDomain(url);
+    if (domain.startsWith("amazon.") || domain.startsWith("ebay.")) return "commerce";
+    if (domain.includes("shopify") || isDomainMatch(url, "etsy.com")) return "commerce";
 
     // PDF check (by extension in URL)
     if (url.toLowerCase().endsWith(".pdf")) return "pdf";
