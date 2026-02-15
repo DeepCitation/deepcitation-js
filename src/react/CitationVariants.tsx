@@ -223,7 +223,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
     const borderClass = isPartialMatch
       ? "border-amber-300 dark:border-amber-600 hover:border-amber-500 dark:hover:border-amber-500"
       : isMiss
-        ? "border-red-300 dark:border-red-600 hover:border-red-500 dark:hover:border-red-500"
+        ? "border-dashed border-red-300 dark:border-red-600 hover:border-red-500 dark:hover:border-red-500"
         : isVerified
           ? "border-green-300 dark:border-green-600 hover:border-green-600 dark:hover:border-green-500"
           : isPending
