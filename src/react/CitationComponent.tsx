@@ -1504,7 +1504,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     isAnyOverlayOpenRef.current = isAnyOverlayOpen;
 
     // Ref for the popover content element (for mobile click-outside dismiss detection)
-    const popoverContentRef = useRef<HTMLDivElement>(null);
+    const popoverContentRef = useRef<HTMLElement | null>(null);
+
+    // Callback ref for setting the popover content element
+    const setPopoverContentRef = useCallback((element: HTMLElement | null) => {
+      popoverContentRef.current = element;
+    }, []);
 
     // Ref for the trigger element (for mobile click-outside dismiss detection)
     // We need our own ref in addition to the forwarded ref to reliably check click targets
@@ -2412,7 +2417,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               </span>
             </PopoverTrigger>
             <PopoverContent
-              ref={popoverContentRef}
+              ref={setPopoverContentRef}
               id={popoverId}
               side={popoverPosition === "bottom" ? "bottom" : "top"}
               onPointerDownOutside={(e: Event) => e.preventDefault()}

@@ -9,10 +9,10 @@
 
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
-export const Popover = PopoverPrimitive.Root;
+export const Popover: typeof PopoverPrimitive.Root = PopoverPrimitive.Root;
 
-export const PopoverTrigger = PopoverPrimitive.Trigger;
+export const PopoverTrigger: typeof PopoverPrimitive.Trigger = PopoverPrimitive.Trigger;
 
-export const PopoverAnchor = PopoverPrimitive.Anchor;
+export const PopoverAnchor: typeof PopoverPrimitive.Anchor = PopoverPrimitive.Anchor;
 
-export const PopoverPortal = PopoverPrimitive.Portal;
+export const PopoverPortal: typeof PopoverPrimitive.Portal = PopoverPrimitive.Portal;
