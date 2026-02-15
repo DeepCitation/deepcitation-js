@@ -661,7 +661,7 @@ function CompactSingleCitationRow({
   const isUrlSource = !!group.sourceDomain;
 
   const anchorText = citation.anchorText?.toString() || citation.fullPhrase;
-  const displayText = anchorText ? (anchorText.length > 50 ? `${anchorText.slice(0, 50)}...` : anchorText) : null;
+  const displayText = anchorText || null;
 
   const pageNumber =
     (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
@@ -699,10 +699,7 @@ function CompactSingleCitationRow({
       </div>
 
       {/* Source name */}
-      <span
-        className="text-sm text-gray-600 dark:text-gray-400 shrink-0 truncate max-w-[120px] sm:max-w-[160px] md:max-w-[200px]"
-        title={sourceName}
-      >
+      <span className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0" title={sourceName}>
         {sourceName}
       </span>
 
@@ -720,7 +717,9 @@ function CompactSingleCitationRow({
 
       {/* Anchor text */}
       {displayText && (
-        <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1 min-w-0">{displayText}</span>
+        <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1 min-w-0" title={displayText}>
+          {displayText}
+        </span>
       )}
 
       {/* Page number */}

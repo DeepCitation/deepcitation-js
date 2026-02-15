@@ -76,6 +76,10 @@ const SPINNER_TIMEOUT_MS = 5000;
 /** Delay in ms before closing popover on mouse leave (allows moving to popover content). */
 const HOVER_CLOSE_DELAY_MS = 150;
 
+/** Grace period in ms after content resize to prevent spurious mouseleave-triggered closes.
+ * Set to 2x HOVER_CLOSE_DELAY_MS to cover popover reposition animation + user reaction time. */
+const REPOSITION_GRACE_PERIOD_MS = 300;
+
 /** Popover container width. Customizable via CSS custom property `--dc-popover-width`. */
 const POPOVER_WIDTH = "var(--dc-popover-width, 384px)";
 
@@ -1457,6 +1461,17 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const [expandedImageSrc, setExpandedImageSrc] = useState<string | null>(null);
     const [isPhrasesExpanded, setIsPhrasesExpanded] = useState(false);
 
+    /**
+     * Grace period flag to prevent popover from closing during content resize/reposition.
+     * When popover content changes size (e.g., expanding search details), the popover
+     * repositions and the cursor may end up outside the popover, triggering a mouseleave.
+     * This ref suppresses the close during the repositioning window (REPOSITION_GRACE_PERIOD_MS).
+     * Cleared after timeout expires or when cursor re-enters popover.
+     */
+    const repositionGraceRef = useRef(false);
+    /** Timer handle for clearing the reposition grace period. */
+    const repositionGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Track if popover was already open before current interaction (for mobile/lazy mode).
     // Lifecycle:
     // 1. Set in handleTouchStart to capture isHovering state BEFORE the touch triggers any changes
@@ -1563,6 +1578,42 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         }
       };
     }, [isLoading, isPending, hasDefinitiveResult]);
+
+    // When popover content resizes (details expand/collapse), the popover repositions
+    // and the cursor may land outside the new bounds, firing a spurious mouseleave.
+    // Set a grace period to suppress the close during repositioning.
+    const prevIsPhrasesExpandedRef = useRef(isPhrasesExpanded);
+    useEffect(() => {
+      if (prevIsPhrasesExpandedRef.current !== isPhrasesExpanded && isHovering) {
+        repositionGraceRef.current = true;
+        if (repositionGraceTimerRef.current) {
+          clearTimeout(repositionGraceTimerRef.current); // Clear any existing grace period
+        }
+        repositionGraceTimerRef.current = setTimeout(() => {
+          repositionGraceRef.current = false;
+          repositionGraceTimerRef.current = null;
+        }, REPOSITION_GRACE_PERIOD_MS);
+      }
+      prevIsPhrasesExpandedRef.current = isPhrasesExpanded;
+    }, [isPhrasesExpanded, isHovering]);
+
+    // Cleanup grace timer on unmount and when popover closes
+    useEffect(() => {
+      // Clear grace period when popover closes (prevents stale state on next open)
+      if (!isHovering) {
+        repositionGraceRef.current = false;
+        if (repositionGraceTimerRef.current) {
+          clearTimeout(repositionGraceTimerRef.current);
+          repositionGraceTimerRef.current = null;
+        }
+      }
+      return () => {
+        if (repositionGraceTimerRef.current) {
+          clearTimeout(repositionGraceTimerRef.current);
+          repositionGraceTimerRef.current = null;
+        }
+      };
+    }, [isHovering]);
 
     const displayText = useMemo(() => {
       return getDisplayText(citation, resolvedContent, fallbackDisplay);
@@ -1754,12 +1805,14 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       // Don't close the popover if an image overlay is open - user expects to return to popover
       // after closing the zoomed image
       if (isAnyOverlayOpen) return;
+      // Don't close during repositioning grace period (content just expanded/collapsed)
+      if (repositionGraceRef.current) return;
       // Delay closing to allow mouse to move to popover
       cancelHoverCloseTimeout();
       hoverCloseTimeoutRef.current = setTimeout(() => {
-        // Re-check overlay state at timeout execution time (via ref) to handle edge case where
-        // user opens overlay during the delay period
-        if (!isOverPopoverRef.current && !isAnyOverlayOpenRef.current) {
+        // Re-check overlay and grace state at timeout execution time (via refs) to handle
+        // edge cases where state changes during the delay period
+        if (!isOverPopoverRef.current && !isAnyOverlayOpenRef.current && !repositionGraceRef.current) {
           setIsHovering(false);
           if (behaviorConfig?.onHover?.onLeave) {
             behaviorConfig.onHover.onLeave(getBehaviorContext());
@@ -1781,6 +1834,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const handlePopoverMouseEnter = useCallback(() => {
       cancelHoverCloseTimeout();
       isOverPopoverRef.current = true;
+      // Clear reposition grace period since cursor is back inside the popover
+      repositionGraceRef.current = false;
     }, [cancelHoverCloseTimeout]);
 
     const handlePopoverMouseLeave = useCallback(() => {
@@ -1788,12 +1843,15 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       // Don't close the popover if an image overlay is open - user expects to return to popover
       // after closing the zoomed image
       if (isAnyOverlayOpen) return;
+      // Don't close during repositioning grace period (content just expanded/collapsed,
+      // popover is shifting position and cursor may be temporarily outside)
+      if (repositionGraceRef.current) return;
       // Delay closing to allow mouse to move back to trigger
       cancelHoverCloseTimeout();
       hoverCloseTimeoutRef.current = setTimeout(() => {
-        // Re-check overlay state at timeout execution time (via ref) to handle edge case where
-        // user opens overlay during the delay period
-        if (!isAnyOverlayOpenRef.current) {
+        // Re-check overlay and grace state at timeout execution time (via refs) to handle
+        // edge cases where state changes during the delay period
+        if (!isAnyOverlayOpenRef.current && !repositionGraceRef.current) {
           setIsHovering(false);
           if (behaviorConfig?.onHover?.onLeave) {
             behaviorConfig.onHover.onLeave(getBehaviorContext());
