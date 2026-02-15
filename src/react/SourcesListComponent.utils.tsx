@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import type { SourceType } from "../types/citation.js";
+import { isDomainMatch } from "../utils/urlSafety.js";
 import type { SourcesListItemProps } from "./types.js";
 import { extractDomain } from "./urlUtils.js";
-import { isDomainMatch } from "../utils/urlSafety.js";
 
 // ============================================================================
 // Utility Functions

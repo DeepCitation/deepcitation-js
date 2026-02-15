@@ -1,8 +1,8 @@
 import { generateCitationKey } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { getCitationStatus } from "./parseCitation.js";
 import { createSafeObject, isSafeKey } from "../utils/objectSafety.js";
+import { getCitationStatus } from "./parseCitation.js";
 
 /**
  * Module-level compiled regexes for hot-path operations.

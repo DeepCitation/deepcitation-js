@@ -109,9 +109,11 @@ export function safeExec(regex: RegExp, input: string): RegExpExecArray | null {
 export function safeReplace(
   input: string,
   regex: RegExp,
+  // biome-ignore lint/suspicious/noExplicitAny: Replacer function signature matches String.replace() built-in type
   replacement: string | ((substring: string, ...args: any[]) => string),
 ): string {
   validateRegexInput(input);
+  // biome-ignore lint/suspicious/noExplicitAny: Type cast needed to match String.replace() overload
   return input.replace(regex, replacement as any);
 }
 
@@ -132,12 +134,14 @@ export function safeReplace(
 export function safeReplaceAll(
   input: string,
   regex: RegExp,
+  // biome-ignore lint/suspicious/noExplicitAny: Replacer function signature matches String.replaceAll() built-in type
   replacement: string | ((substring: string, ...args: any[]) => string),
 ): string {
   validateRegexInput(input);
   if (!regex.global) {
     throw new Error("safeReplaceAll requires a regex with the g flag");
   }
+  // biome-ignore lint/suspicious/noExplicitAny: Type cast needed to match String.replaceAll() overload
   return input.replaceAll(regex, replacement as any);
 }
 

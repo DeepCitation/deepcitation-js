@@ -39,10 +39,8 @@ export function sanitizeForLog(value: unknown, maxLength = 1000): string {
       // Remove all ANSI escape sequences (comprehensive pattern)
       // Matches: ESC [ ... (any letter), ESC ] ... BEL/ST, ESC ( ... ), etc.
       // See: https://en.wikipedia.org/wiki/ANSI_escape_code
-      .replace(
-        /\x1b(?:\[[0-9;]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A-Za-z]|\[[0-9;?]*[hl])/g,
-        "",
-      )
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Intentionally matching ANSI control codes
+      .replace(/\x1b(?:\[[0-9;]*[a-zA-Z]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A-Za-z]|\[[0-9;?]*[hl])/g, "")
       // Truncate to prevent log spam
       .slice(0, maxLength)
   );
