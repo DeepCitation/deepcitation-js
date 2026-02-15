@@ -2528,8 +2528,8 @@ describe("CitationComponent interactionMode", () => {
   // ==========================================================================
 
   describe("desktop click-outside dismiss", () => {
-    it("dismisses popover when clicking outside on desktop", async () => {
-      // Mock matchMedia to simulate desktop (pointer: fine)
+    // Mock desktop environment for all tests in this suite
+    beforeEach(() => {
       Object.defineProperty(window, "matchMedia", {
         writable: true,
         value: jest.fn().mockImplementation(query => ({
@@ -2541,7 +2541,9 @@ describe("CitationComponent interactionMode", () => {
           dispatchEvent: jest.fn(),
         })),
       });
+    });
 
+    it("dismisses popover when clicking outside on desktop", async () => {
       const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const trigger = container.querySelector("[data-citation-id]") as HTMLElement;
@@ -2563,18 +2565,6 @@ describe("CitationComponent interactionMode", () => {
     });
 
     it("does not dismiss when clicking inside trigger", async () => {
-      Object.defineProperty(window, "matchMedia", {
-        writable: true,
-        value: jest.fn().mockImplementation(query => ({
-          matches: query === "(pointer: fine)",
-          media: query,
-          onchange: null,
-          addEventListener: jest.fn(),
-          removeEventListener: jest.fn(),
-          dispatchEvent: jest.fn(),
-        })),
-      });
-
       const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const trigger = container.querySelector("[data-citation-id]") as HTMLElement;
@@ -2596,18 +2586,6 @@ describe("CitationComponent interactionMode", () => {
     });
 
     it("does not dismiss when clicking inside popover content", async () => {
-      Object.defineProperty(window, "matchMedia", {
-        writable: true,
-        value: jest.fn().mockImplementation(query => ({
-          matches: query === "(pointer: fine)",
-          media: query,
-          onchange: null,
-          addEventListener: jest.fn(),
-          removeEventListener: jest.fn(),
-          dispatchEvent: jest.fn(),
-        })),
-      });
-
       const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const trigger = container.querySelector("[data-citation-id]") as HTMLElement;
@@ -2631,18 +2609,6 @@ describe("CitationComponent interactionMode", () => {
     });
 
     it("dismisses even during grace period after content expansion", async () => {
-      Object.defineProperty(window, "matchMedia", {
-        writable: true,
-        value: jest.fn().mockImplementation(query => ({
-          matches: query === "(pointer: fine)",
-          media: query,
-          onchange: null,
-          addEventListener: jest.fn(),
-          removeEventListener: jest.fn(),
-          dispatchEvent: jest.fn(),
-        })),
-      });
-
       const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const trigger = container.querySelector("[data-citation-id]") as HTMLElement;
