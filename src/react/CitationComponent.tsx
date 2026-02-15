@@ -81,7 +81,7 @@ const HOVER_CLOSE_DELAY_MS = 150;
 const REPOSITION_GRACE_PERIOD_MS = 300;
 
 /** Popover container width. Customizable via CSS custom property `--dc-popover-width`. */
-const POPOVER_WIDTH = "var(--dc-popover-width, 384px)";
+const POPOVER_WIDTH = "var(--dc-popover-width, 480px)";
 
 /** Popover container max width (viewport-relative, with safe margin to prevent scrollbar) */
 const POPOVER_MAX_WIDTH = "calc(100vw - 32px)";
@@ -924,8 +924,8 @@ function AnchorTextFocusedImage({
   onImageClick,
   page,
   onViewPageClick,
-  maxWidth = "min(70vw, 384px)",
-  maxHeight = "min(50vh, 300px)",
+  maxWidth = "min(70vw, 480px)",
+  maxHeight = "min(50vh, 360px)",
 }: {
   verification: Verification;
   onImageClick?: () => void;
@@ -1150,7 +1150,7 @@ function DefaultPopoverContent({
   if (isLoading || isPending) {
     const searchingPhrase = fullPhrase || anchorText;
     return (
-      <div className={`${POPOVER_CONTAINER_BASE_CLASSES} min-w-[200px] max-w-[400px]`}>
+      <div className={`${POPOVER_CONTAINER_BASE_CLASSES} min-w-[200px] max-w-[480px]`}>
         {/* Source context header */}
         <SourceContextHeader
           citation={citation}
