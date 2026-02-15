@@ -26,12 +26,14 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      lychee-exit-code: ${{ steps.lychee.outputs.exit_code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@09a7688d3b55cf0e976497ff046b70949eeaccfd # v1.288.0
         with:
           ruby-version: '3.2'
           bundler-cache: true
@@ -39,7 +41,7 @@ jobs:
 
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@1f0c5cde4bc74cd7e1254d0cb4de8d49e9068c7d # v4.0.0
 
       - name: Build with Jekyll
         working-directory: docs
@@ -48,13 +50,24 @@ jobs:
           JEKYLL_ENV: production
 
       - name: Check links
-        uses: lycheeverse/lychee-action@v1
+        id: lychee
+        uses: lycheeverse/lychee-action@c053181aa0c3d17606addfe97a9075a32723548a # v1.9.3
         with:
           args: --verbose --no-progress './docs/_site/**/*.html' --exclude 'localhost' --exclude '127.0.0.1' --accept 200,204,206,301,302,307,308
+          output: lychee-report.md
           fail: false
 
+      - name: Upload lychee report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lychee-report
+          path: lychee-report.md
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: docs/_site
 
@@ -69,7 +82,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
 
   # Comment on PR with preview info
   preview-comment:
@@ -77,27 +90,63 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Download lychee report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: lychee-report
+        continue-on-error: true
+
       - name: Comment on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
+            const fs = require('fs');
             const runId = '${{ github.run_id }}';
             const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${runId}`;
+            const lycheeExitCode = '${{ needs.build.outputs.lychee-exit-code }}';
+
+            // Read lychee report if it exists
+            let lycheeReport = '';
+            try {
+              if (fs.existsSync('lychee-report.md')) {
+                lycheeReport = fs.readFileSync('lychee-report.md', 'utf8');
+              }
+            } catch (error) {
+              console.log('Could not read lychee report:', error);
+            }
+
+            // Build link check section
+            let linkCheckSection = '';
+            if (lycheeReport) {
+              const hasErrors = lycheeExitCode !== '0';
+              const statusEmoji = hasErrors ? '⚠️' : '✅';
+              linkCheckSection = `
+
+## ${statusEmoji} Link Check Results
+
+<details>
+<summary>Click to expand link check report</summary>
+
+${lycheeReport}
+
+</details>
+`;
+            }
 
             const body = `## 📚 Documentation Preview
 
-            The documentation has been built successfully.
+The documentation has been built successfully.
 
-            **To preview locally:**
-            1. Download the \`github-pages\` artifact from [this workflow run](${artifactUrl})
-            2. Extract and serve with any static file server:
-               \`\`\`bash
-               cd artifact && python -m http.server 8000
-               \`\`\`
-            3. Open http://localhost:8000/deepcitation-js/
-
-            ---
-            *Workflow run: ${runId}*`;
+**To preview locally:**
+1. Download the \`github-pages\` artifact from [this workflow run](${artifactUrl})
+2. Extract and serve with any static file server:
+   \`\`\`bash
+   cd artifact && python -m http.server 8000
+   \`\`\`
+3. Open http://localhost:8000/deepcitation-js/
+${linkCheckSection}
+---
+*Workflow run: ${runId}*`;
 
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
