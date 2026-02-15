@@ -36,6 +36,7 @@ import {
   Z_INDEX_IMAGE_OVERLAY_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
+import { useRepositionGracePeriod } from "./hooks/useRepositionGracePeriod.js";
 import { CheckIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
@@ -54,7 +55,6 @@ import type {
 } from "./types.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
-import { useRepositionGracePeriod } from "./hooks/useRepositionGracePeriod.js";
 
 // Re-export types for convenience
 export type {
@@ -1845,25 +1845,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       };
     }, []);
 
-    // Handle Escape key to close popover
-    // Only handles Escape when no overlay is open - image overlay has its own Escape handler
-    useEffect(() => {
-      if (!isHovering) return;
-
-      const handleEscapeKey = (e: KeyboardEvent) => {
-        // Don't handle if overlay is open - let the overlay's Escape handler run instead
-        if (e.key === "Escape" && !isAnyOverlayOpenRef.current) {
-          setIsHovering(false);
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-
-      document.addEventListener("keydown", handleEscapeKey);
-      return () => {
-        document.removeEventListener("keydown", handleEscapeKey);
-      };
-    }, [isHovering]);
+    // Escape key handling is managed by Radix Popover (via PopoverContent)
+    // and ImageOverlay - no custom handler needed here
 
     // Mobile click-outside dismiss handler
     //
@@ -2451,7 +2434,15 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           )}
           {/* Hidden prefetch layer - pre-renders image content using Activity */}
           {prefetchElement}
-          <Popover open={isHovering}>
+          <Popover
+            open={isHovering}
+            onOpenChange={(open) => {
+              // Only handle close (Escape key) - don't interfere with our custom hover logic
+              if (!open && !isAnyOverlayOpenRef.current) {
+                setIsHovering(false);
+              }
+            }}
+          >
             <PopoverTrigger asChild>
               <span ref={setTriggerRef} {...triggerProps}>
                 {renderCitationContent()}
