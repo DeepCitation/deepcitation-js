@@ -304,7 +304,7 @@ test.describe("Citation Popover - Mobile/Touch Behavior", () => {
   });
 
   test("tap outside closes popover", async ({ mount, page }) => {
-    const component = await mount(
+    await mount(
       <div style={{ width: "375px", height: "667px", position: "relative" }}>
         <div style={{ padding: "20px" }}>
           <CitationComponent citation={baseCitation} verification={verifiedVerification} />
