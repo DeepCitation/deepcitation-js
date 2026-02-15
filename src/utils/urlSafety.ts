@@ -26,31 +26,88 @@ export function extractDomain(url: string): string {
   try {
     const urlObj = new URL(url);
     // Normalize to lowercase and remove www prefix for comparison
-    return urlObj.hostname.toLowerCase().replace(/^www\./, '');
+    return urlObj.hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     // Return empty string if URL is invalid
-    return '';
+    return "";
   }
+}
+
+/**
+ * Common multi-part TLDs (country code + second-level domain).
+ * Used to correctly extract root domains from URLs like bbc.co.uk.
+ * @private
+ */
+const MULTI_PART_TLDS = new Set([
+  "co.uk",
+  "co.nz",
+  "co.jp",
+  "co.in",
+  "co.id",
+  "co.th",
+  "co.za",
+  "com.au",
+  "com.br",
+  "com.mx",
+  "com.ar",
+  "gov.uk",
+  "gov.au",
+  "ac.uk",
+  "ac.nz",
+  "org.uk",
+  "org.au",
+  "com.hk",
+]);
+
+/**
+ * Extract root domain, accounting for multi-part TLDs.
+ * For example:
+ * - example.com → example.com
+ * - www.example.com → example.com
+ * - mobile.example.co.uk → example.co.uk
+ * @private
+ */
+function extractRootDomain(hostname: string): string {
+  const parts = hostname.split(".");
+
+  if (parts.length < 2) {
+    return hostname;
+  }
+
+  // Check if last 3 parts form a known multi-part TLD (e.g., co.uk)
+  if (parts.length >= 3) {
+    const lastThreeParts = parts.slice(-3).join(".");
+    if (MULTI_PART_TLDS.has(lastThreeParts.slice(lastThreeParts.indexOf(".") + 1))) {
+      // Found multi-part TLD, include it with one more part for the domain name
+      return parts.slice(-3).join(".");
+    }
+  }
+
+  // Default: last two parts (domain + TLD)
+  return parts.slice(-2).join(".");
 }
 
 /**
  * Check if a URL matches a specific domain exactly.
  * Supports main domain and direct subdomains (e.g., mobile.twitter.com matches twitter.com).
+ * Handles multi-part TLDs like co.uk correctly.
  *
  * Does NOT match:
  * - Subdomain spoofing: twitter.com.evil.com
  * - Homograph attacks: twіtter.com (with Unicode characters)
  *
  * @param url - The URL to check
- * @param domain - The domain to match against (e.g., 'twitter.com')
+ * @param domain - The domain to match against (e.g., 'twitter.com' or 'bbc.co.uk')
  * @returns True if URL matches the domain exactly or is a direct subdomain
  *
  * @example
  * ```typescript
  * isDomainMatch('https://twitter.com/user', 'twitter.com');        // true
  * isDomainMatch('https://mobile.twitter.com', 'twitter.com');      // true
+ * isDomainMatch('https://bbc.co.uk', 'bbc.co.uk');                 // true
+ * isDomainMatch('https://mobile.bbc.co.uk', 'bbc.co.uk');          // true
  * isDomainMatch('https://twitter.com.evil.com', 'twitter.com');    // false
- * isDomainMatch('https://evil.twitter.com.phishing.net', 'twitter.com'); // false
+ * isDomainMatch('https://bbc.co.uk.evil.com', 'bbc.co.uk');        // false
  * ```
  */
 export function isDomainMatch(url: string, domain: string): boolean {
@@ -61,17 +118,9 @@ export function isDomainMatch(url: string, domain: string): boolean {
     return true;
   }
 
-  // Check if it's a direct subdomain (e.g., mobile.twitter.com)
-  // Split by . and ensure we have at least the TLD and domain
-  const parts = extracted.split('.');
-
-  if (parts.length >= 2) {
-    // Get the last two parts (domain + TLD)
-    const rootDomain = parts.slice(-2).join('.');
-    return rootDomain === domain;
-  }
-
-  return false;
+  // Extract the root domain from the extracted hostname, accounting for multi-part TLDs
+  const rootDomain = extractRootDomain(extracted);
+  return rootDomain === domain;
 }
 
 /**
@@ -90,83 +139,83 @@ export function isDomainMatch(url: string, domain: string): boolean {
  * detectSourceType('https://twitter.com.evil.com');       // 'web' (not 'social')
  * ```
  */
-export function detectSourceType(url: string): 'social' | 'video' | 'code' | 'news' | 'web' {
+export function detectSourceType(url: string): "social" | "video" | "code" | "news" | "web" {
   // Social media platforms
-  if (isDomainMatch(url, 'twitter.com') || isDomainMatch(url, 'x.com')) {
-    return 'social';
+  if (isDomainMatch(url, "twitter.com") || isDomainMatch(url, "x.com")) {
+    return "social";
   }
-  if (isDomainMatch(url, 'facebook.com') || isDomainMatch(url, 'fb.com')) {
-    return 'social';
+  if (isDomainMatch(url, "facebook.com") || isDomainMatch(url, "fb.com")) {
+    return "social";
   }
-  if (isDomainMatch(url, 'instagram.com')) {
-    return 'social';
+  if (isDomainMatch(url, "instagram.com")) {
+    return "social";
   }
-  if (isDomainMatch(url, 'linkedin.com')) {
-    return 'social';
+  if (isDomainMatch(url, "linkedin.com")) {
+    return "social";
   }
-  if (isDomainMatch(url, 'tiktok.com')) {
-    return 'social';
+  if (isDomainMatch(url, "tiktok.com")) {
+    return "social";
   }
-  if (isDomainMatch(url, 'reddit.com')) {
-    return 'social';
+  if (isDomainMatch(url, "reddit.com")) {
+    return "social";
   }
-  if (isDomainMatch(url, 'mastodon.social') || isDomainMatch(url, 'threads.net')) {
-    return 'social';
+  if (isDomainMatch(url, "mastodon.social") || isDomainMatch(url, "threads.net")) {
+    return "social";
   }
 
   // Video platforms
-  if (isDomainMatch(url, 'youtube.com') || isDomainMatch(url, 'youtu.be')) {
-    return 'video';
+  if (isDomainMatch(url, "youtube.com") || isDomainMatch(url, "youtu.be")) {
+    return "video";
   }
-  if (isDomainMatch(url, 'twitch.tv')) {
-    return 'video';
+  if (isDomainMatch(url, "twitch.tv")) {
+    return "video";
   }
-  if (isDomainMatch(url, 'vimeo.com')) {
-    return 'video';
+  if (isDomainMatch(url, "vimeo.com")) {
+    return "video";
   }
-  if (isDomainMatch(url, 'dailymotion.com')) {
-    return 'video';
+  if (isDomainMatch(url, "dailymotion.com")) {
+    return "video";
   }
 
   // Code/Developer platforms
-  if (isDomainMatch(url, 'github.com')) {
-    return 'code';
+  if (isDomainMatch(url, "github.com")) {
+    return "code";
   }
-  if (isDomainMatch(url, 'gitlab.com')) {
-    return 'code';
+  if (isDomainMatch(url, "gitlab.com")) {
+    return "code";
   }
-  if (isDomainMatch(url, 'bitbucket.org')) {
-    return 'code';
+  if (isDomainMatch(url, "bitbucket.org")) {
+    return "code";
   }
-  if (isDomainMatch(url, 'stackoverflow.com')) {
-    return 'code';
+  if (isDomainMatch(url, "stackoverflow.com")) {
+    return "code";
   }
 
   // News platforms
-  if (isDomainMatch(url, 'bbc.com') || isDomainMatch(url, 'bbc.co.uk')) {
-    return 'news';
+  if (isDomainMatch(url, "bbc.com") || isDomainMatch(url, "bbc.co.uk")) {
+    return "news";
   }
-  if (isDomainMatch(url, 'cnn.com')) {
-    return 'news';
+  if (isDomainMatch(url, "cnn.com")) {
+    return "news";
   }
-  if (isDomainMatch(url, 'reuters.com')) {
-    return 'news';
+  if (isDomainMatch(url, "reuters.com")) {
+    return "news";
   }
-  if (isDomainMatch(url, 'apnews.com')) {
-    return 'news';
+  if (isDomainMatch(url, "apnews.com")) {
+    return "news";
   }
-  if (isDomainMatch(url, 'theguardian.com')) {
-    return 'news';
+  if (isDomainMatch(url, "theguardian.com")) {
+    return "news";
   }
-  if (isDomainMatch(url, 'nytimes.com')) {
-    return 'news';
+  if (isDomainMatch(url, "nytimes.com")) {
+    return "news";
   }
-  if (isDomainMatch(url, 'wsj.com')) {
-    return 'news';
+  if (isDomainMatch(url, "wsj.com")) {
+    return "news";
   }
 
   // Default to generic web source
-  return 'web';
+  return "web";
 }
 
 /**
@@ -197,9 +246,9 @@ export function isApprovedDomain(url: string, approvedDomains: Set<string>): boo
   }
 
   // Check if it's a subdomain of an approved domain
-  const parts = domain.split('.');
+  const parts = domain.split(".");
   if (parts.length >= 2) {
-    const rootDomain = parts.slice(-2).join('.');
+    const rootDomain = parts.slice(-2).join(".");
     return approvedDomains.has(rootDomain);
   }
 
@@ -235,9 +284,9 @@ export function isSafeDomain(url: string, blockedDomains: Set<string>): boolean 
   }
 
   // Check if parent domain is blocked
-  const parts = domain.split('.');
+  const parts = domain.split(".");
   if (parts.length >= 2) {
-    const rootDomain = parts.slice(-2).join('.');
+    const rootDomain = parts.slice(-2).join(".");
     if (blockedDomains.has(rootDomain)) {
       return false;
     }

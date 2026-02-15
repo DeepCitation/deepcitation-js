@@ -12,11 +12,32 @@
  * Set of dangerous property names that can cause prototype pollution.
  * These keys should never be allowed in user-controlled object assignments.
  */
-const DANGEROUS_KEYS = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-]);
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+/**
+ * Optional warning function for logging rejected keys.
+ * Set to null to disable warnings entirely.
+ * @internal
+ */
+let warningFn: ((message: string) => void) | null = console.warn;
+
+/**
+ * Set a custom warning function for rejected keys, or disable warnings.
+ *
+ * @param fn - The warning function to use, or null to disable warnings
+ *
+ * @example
+ * ```typescript
+ * // Use a custom logger
+ * setObjectSafetyWarning((msg) => logger.warn(msg));
+ *
+ * // Disable all warnings
+ * setObjectSafetyWarning(null);
+ * ```
+ */
+export function setObjectSafetyWarning(fn: ((message: string) => void) | null): void {
+  warningFn = fn;
+}
 
 /**
  * Check if a key is safe for object property assignment.
@@ -51,7 +72,7 @@ export function isSafeKey(key: string): boolean {
  * attrs[key] = value; // Won't pollute global prototypes
  * ```
  */
-export function createSafeObject<T = any>(): Record<string, T> {
+export function createSafeObject<T = unknown>(): Record<string, T> {
   return Object.create(null);
 }
 
@@ -77,21 +98,16 @@ export function createSafeObject<T = any>(): Record<string, T> {
  * }
  * ```
  */
-export function safeAssign<T>(
-  obj: Record<string, T>,
-  key: string,
-  value: T,
-  allowedKeys?: Set<string>
-): boolean {
+export function safeAssign<T>(obj: Record<string, T>, key: string, value: T, allowedKeys?: Set<string>): boolean {
   // Always reject dangerous keys
   if (!isSafeKey(key)) {
-    console.warn(`[Security] Rejected dangerous key: ${key}`);
+    warningFn?.(`[Security] Rejected dangerous key: ${key}`);
     return false;
   }
 
   // If an allowlist is provided, reject unlisted keys
   if (allowedKeys && !allowedKeys.has(key)) {
-    console.warn(`[Security] Rejected unknown key: ${key}`);
+    warningFn?.(`[Security] Rejected unknown key: ${key}`);
     return false;
   }
 
@@ -120,7 +136,7 @@ export function safeAssign<T>(
 export function safeAssignBulk<T>(
   obj: Record<string, T>,
   entries: Array<[string, T]>,
-  allowedKeys?: Set<string>
+  allowedKeys?: Set<string>,
 ): number {
   let assigned = 0;
   for (const [key, value] of entries) {
@@ -152,7 +168,7 @@ export function safeAssignBulk<T>(
 export function safeMerge<T>(
   target: Record<string, T>,
   source: Record<string, T>,
-  allowedKeys?: Set<string>
+  allowedKeys?: Set<string>,
 ): Record<string, T> {
   safeAssignBulk(target, Object.entries(source), allowedKeys);
   return target;

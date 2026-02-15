@@ -13,7 +13,7 @@
  * Prevents catastrophic backtracking attacks on polynomial regex patterns.
  * 100KB is a reasonable limit for citation processing without impact on legitimate use.
  */
-const MAX_REGEX_INPUT_LENGTH = 100_000; // 100KB
+export const MAX_REGEX_INPUT_LENGTH = 100_000; // 100KB
 
 /**
  * Validates that input is safe for regex operations.
@@ -33,7 +33,7 @@ export function validateRegexInput(input: string, maxLength = MAX_REGEX_INPUT_LE
   if (input.length > maxLength) {
     throw new Error(
       `Input too large for regex operation: ${input.length} bytes (max: ${maxLength}). ` +
-      `This may indicate a ReDoS attack or malformed input.`
+        `This may indicate a ReDoS attack or malformed input.`,
     );
   }
 }
@@ -99,10 +99,11 @@ export function safeExec(regex: RegExp, input: string): RegExpExecArray | null {
 export function safeReplace(
   input: string,
   regex: RegExp,
-  replacement: string | ((substring: string, ...args: any[]) => string)
+  replacement: string | ((substring: string, ...args: string[]) => string),
 ): string {
   validateRegexInput(input);
-  return input.replace(regex, replacement as any);
+  // TypeScript requires explicit handling for overloaded replace signatures
+  return input.replace(regex, replacement as string | ((substring: string, ...args: string[]) => string));
 }
 
 /**
@@ -122,13 +123,14 @@ export function safeReplace(
 export function safeReplaceAll(
   input: string,
   regex: RegExp,
-  replacement: string | ((substring: string, ...args: any[]) => string)
+  replacement: string | ((substring: string, ...args: string[]) => string),
 ): string {
   validateRegexInput(input);
   if (!regex.global) {
-    throw new Error('safeReplaceAll requires a regex with the g flag');
+    throw new Error("safeReplaceAll requires a regex with the g flag");
   }
-  return input.replaceAll(regex, replacement as any);
+  // TypeScript requires explicit handling for overloaded replaceAll signatures
+  return input.replaceAll(regex, replacement as string | ((substring: string, ...args: string[]) => string));
 }
 
 /**

@@ -27,20 +27,22 @@
  */
 export function sanitizeForLog(value: unknown, maxLength = 1000): string {
   // Convert value to string
-  const str = typeof value === 'string' ? value : JSON.stringify(value);
+  const str = typeof value === "string" ? value : JSON.stringify(value);
 
   // Sanitize dangerous characters
-  return str
-    // Replace actual newlines with literal \n
-    .replace(/\r?\n/g, '\\n')
-    // Replace tabs with literal \t
-    .replace(/\t/g, '\\t')
-    // Remove ANSI color codes (ESC [ ... m)
-    .replace(/\x1b\[[0-9;]*m/g, '')
-    // Remove other ANSI control codes
-    .replace(/\x1b[^\w]/g, '')
-    // Truncate to prevent log spam
-    .slice(0, maxLength);
+  return (
+    str
+      // Replace actual newlines with literal \n
+      .replace(/\r?\n/g, "\\n")
+      // Replace tabs with literal \t
+      .replace(/\t/g, "\\t")
+      // Remove ANSI color codes (ESC [ ... m)
+      .replace(/\x1b\[[0-9;]*m/g, "")
+      // Remove other ANSI control codes
+      .replace(/\x1b[^\w]/g, "")
+      // Truncate to prevent log spam
+      .slice(0, maxLength)
+  );
 }
 
 /**
@@ -64,13 +66,13 @@ export function sanitizeForLog(value: unknown, maxLength = 1000): string {
  */
 export function createLogEntry(...parts: unknown[]): string {
   return parts
-    .map((part) => {
-      if (typeof part === 'string') {
+    .map(part => {
+      if (typeof part === "string") {
         return part; // Keep strings as-is (assume they're trusted)
       }
       return sanitizeForLog(part);
     })
-    .join(' ');
+    .join(" ");
 }
 
 /**
@@ -89,12 +91,12 @@ export function createLogEntry(...parts: unknown[]): string {
  * ```
  */
 export function safeLog(
-  level: 'debug' | 'info' | 'warn' | 'error',
+  level: "debug" | "info" | "warn" | "error",
   prefix: string,
   message: string,
-  data?: unknown
+  data?: unknown,
 ): void {
-  const sanitized = data ? sanitizeForLog(data) : '';
+  const sanitized = data ? sanitizeForLog(data) : "";
   const logFn = console[level] ?? console.log;
 
   if (data) {
@@ -119,26 +121,54 @@ export function safeLog(
  * console.log('[Data]', sanitizeJsonForLog(data, 500, 2));
  * ```
  */
-export function sanitizeJsonForLog(
-  value: unknown,
-  maxLength = 1000,
-  maxDepth = 3
-): string {
-  try {
-    let depth = 0;
+/**
+ * Helper to stringify a value with depth limiting.
+ * @private
+ */
+function stringifyWithDepthLimit(value: unknown, maxDepth: number): string {
+  const seen = new WeakSet<object>();
 
-    const json = JSON.stringify(value, (key, val) => {
-      if (typeof val === 'object' && val !== null) {
-        depth++;
-        if (depth > maxDepth) {
-          return '[Omitted - too deep]';
-        }
+  function stringify(obj: unknown, depth: number): string | undefined {
+    if (depth > maxDepth) {
+      return '"[Omitted - too deep]"';
+    }
+
+    if (obj === null) return "null";
+    if (obj === undefined) return undefined;
+
+    const type = typeof obj;
+    if (type === "string") return JSON.stringify(obj);
+    if (type === "number" || type === "boolean") return String(obj);
+
+    if (type === "object") {
+      if (seen.has(obj as object)) {
+        return '"[Circular]"';
       }
-      return val;
-    });
+      seen.add(obj as object);
 
+      if (Array.isArray(obj)) {
+        const items = obj.map(item => stringify(item, depth + 1));
+        return `[${items.join(",")}]`;
+      }
+
+      const entries = Object.entries(obj)
+        .map(([key, val]) => `${JSON.stringify(key)}:${stringify(val, depth + 1)}`)
+        .join(",");
+      return `{${entries}}`;
+    }
+
+    return JSON.stringify(obj);
+  }
+
+  return stringify(value, 0);
+}
+
+export function sanitizeJsonForLog(value: unknown, maxLength = 1000, maxDepth = 3): string {
+  try {
+    const json = stringifyWithDepthLimit(value, maxDepth);
     return sanitizeForLog(json, maxLength);
   } catch (e) {
+    // If stringification fails, fall back to string representation
     return sanitizeForLog(String(e), maxLength);
   }
 }
