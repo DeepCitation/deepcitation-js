@@ -87,9 +87,11 @@ function expandCompactKeys(
         start_time: ts.s ?? ts.start_time,
         end_time: ts.e ?? ts.end_time,
       };
-    } else {
-      result[fullKey] = value;
+      continue;
     }
+
+    // fullKey is guaranteed safe by isSafeKey check above
+    result[fullKey] = value;
   }
 
   // Inject attachment_id if provided (from grouped format)

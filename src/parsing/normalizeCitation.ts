@@ -418,9 +418,14 @@ const normalizeCitationContent = (input: string): string => {
 
     content = decodeHtmlEntities(content);
 
-    // Normalize quotes
-    content = content.replace(/\\\\'/g, "'").replace(/\\'/g, "'").replace(/'/g, "\\'");
-    content = content.replace(/\\\\"/g, '"').replace(/\\"/g, '"').replace(/"/g, '\\"');
+    // Normalize quotes - escape backslashes first to prevent double-escaping issues
+    // 1. Unescape any already-escaped quotes: \\" -> " and \\' -> '
+    content = content.replace(/\\\\'/g, "'").replace(/\\'/g, "'");
+    content = content.replace(/\\\\"/g, '"').replace(/\\"/g, '"');
+    // 2. Escape backslashes to prevent injection: \ -> \\
+    content = content.replace(/\\/g, "\\\\");
+    // 3. Escape quotes: ' -> \' and " -> \"
+    content = content.replace(/'/g, "\\'").replace(/"/g, '\\"');
 
     return `${canonicalizeCiteAttributeKey(key)}='${content}'`;
   });
