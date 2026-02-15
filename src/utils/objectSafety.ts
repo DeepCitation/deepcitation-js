@@ -21,11 +21,7 @@
  * However, we focus on the main prototype pollution vectors to avoid
  * over-blocking legitimate use cases.
  */
-const DANGEROUS_KEYS = new Set([
-  "__proto__",
-  "constructor",
-  "prototype",
-]);
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
  * Optional warning function for logging rejected keys.
