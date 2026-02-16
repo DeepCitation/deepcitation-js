@@ -14,6 +14,8 @@ DeepCitation is a citation verification library for AI-generated content. Provid
 
 ```bash
 npm install        # Install dependencies
+npm run check:fix  # Auto-fix lint + formatting (Biome) — RUN BEFORE COMMITTING
+npm run lint       # Verify lint/format passes (same as CI: biome ci ./src)
 npm run build      # Build library (tsup + CSS)
 npm test           # Run tests (bun test)
 npm run test:ct    # Playwright component tests
@@ -24,12 +26,16 @@ npm run size       # Check bundle size
 
 Before opening a PR, run and confirm these pass:
 
-1. `npm run build` — TypeScript + CSS compilation
-2. `bun run test` — all unit tests pass
-3. `npm run size` — bundle stays within limits (react module ≤ 15KB)
-4. Verify all new public functions/types are exported from `src/index.ts` or `src/react/index.ts`
-5. If you extracted a constant or utility to a shared location, grep for and remove ALL remaining duplicates
-6. PR description must match the actual diff — run `git diff main...HEAD --stat` to verify
+1. `npm run check:fix` — auto-fix lint and formatting issues (Biome). **Run this first — it's the most common CI failure.**
+2. `npm run lint` — verify lint/format passes cleanly (`biome ci ./src`, same check CI runs)
+3. `npm run build` — TypeScript + CSS compilation
+4. `bun run test` — all unit tests pass
+5. `npm run size` — bundle stays within limits (react module ≤ 15KB)
+6. Verify all new public functions/types are exported from `src/index.ts` or `src/react/index.ts`
+7. If you extracted a constant or utility to a shared location, grep for and remove ALL remaining duplicates
+8. PR description must match the actual diff — run `git diff main...HEAD --stat` to verify
+
+**Lint/format failures are the most common CI failure.** Always run `npm run check:fix` after writing code and before committing. The CI runs `npx biome ci ./src` which does NOT auto-fix — it only checks. If you skip the fix step locally, the PR will fail.
 
 ## Project Structure
 
