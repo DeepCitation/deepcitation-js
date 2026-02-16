@@ -239,7 +239,7 @@ describe("LookingForSection", () => {
 
     it("renders with both anchorText and fullPhrase", () => {
       const { container } = render(
-        <LookingForSection anchorText="anchor text" fullPhrase="The anchor text is important." />,
+        <LookingForSection anchorText="anchor text" fullPhrase="The anchor text is important." />
       );
       expect(container.textContent).toContain("Looking for");
       expect(container.textContent).toContain("anchor text");
@@ -641,7 +641,7 @@ describe("FaviconImage", () => {
   describe("rendering", () => {
     it("renders img when faviconUrl is provided", () => {
       const { container } = render(
-        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="Example" />,
+        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="Example" />
       );
 
       const img = container.querySelector("img");
@@ -671,7 +671,7 @@ describe("FaviconImage", () => {
 
     it("falls back to GlobeIcon when image fails to load", async () => {
       const { container } = render(
-        <FaviconImage faviconUrl="https://invalid-url.com/broken.ico" domain="example.com" alt="Example" />,
+        <FaviconImage faviconUrl="https://invalid-url.com/broken.ico" domain="example.com" alt="Example" />
       );
 
       // Initially should show img
@@ -698,7 +698,7 @@ describe("FaviconImage", () => {
   describe("accessibility", () => {
     it("uses provided alt text", () => {
       const { container } = render(
-        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="Example Site" />,
+        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="Example Site" />
       );
 
       const img = container.querySelector("img");
@@ -707,7 +707,7 @@ describe("FaviconImage", () => {
 
     it("falls back to 'Source' for empty alt text", () => {
       const { container } = render(
-        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="" />,
+        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="" />
       );
 
       const img = container.querySelector("img");
@@ -716,7 +716,7 @@ describe("FaviconImage", () => {
 
     it("falls back to 'Source' for whitespace-only alt text", () => {
       const { container } = render(
-        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="   " />,
+        <FaviconImage faviconUrl="https://example.com/favicon.ico" domain="example.com" alt="   " />
       );
 
       const img = container.querySelector("img");
