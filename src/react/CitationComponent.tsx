@@ -1066,8 +1066,11 @@ interface UrlAccessExplanation {
 /**
  * Maps UrlAccessStatus (from verification API response) to UrlFetchStatus (UI layer).
  * Used when the verification object has url-specific access data.
+ *
+ * For the generic "blocked" status, uses the error message to infer the specific
+ * block type (paywall, login, rate limit, geo-restriction, or anti-bot fallback).
  */
-function mapUrlAccessStatusToFetchStatus(status: UrlAccessStatus): UrlFetchStatus {
+function mapUrlAccessStatusToFetchStatus(status: UrlAccessStatus, errorMessage?: string | null): UrlFetchStatus {
   switch (status) {
     case "accessible":
       return "verified";
@@ -1084,7 +1087,7 @@ function mapUrlAccessStatusToFetchStatus(status: UrlAccessStatus): UrlFetchStatu
     case "timeout":
       return "error_timeout";
     case "blocked":
-      return "blocked_antibot";
+      return inferBlockedType(errorMessage);
     case "network_error":
       return "error_network";
     case "pending":
@@ -1092,6 +1095,29 @@ function mapUrlAccessStatusToFetchStatus(status: UrlAccessStatus): UrlFetchStatu
     case "unknown":
       return "unknown";
   }
+}
+
+/**
+ * Infer specific blocked type from the error message when the API returns
+ * the generic "blocked" status. Falls back to "blocked_antibot" (site protection)
+ * as the most common cause.
+ */
+function inferBlockedType(errorMessage?: string | null): UrlFetchStatus {
+  if (!errorMessage) return "blocked_antibot";
+  const msg = errorMessage.toLowerCase();
+  if (msg.includes("paywall") || msg.includes("subscribe") || msg.includes("subscription")) {
+    return "blocked_paywall";
+  }
+  if (msg.includes("login") || msg.includes("sign in") || msg.includes("sign-in") || msg.includes("authenticate")) {
+    return "blocked_login";
+  }
+  if (msg.includes("rate limit") || msg.includes("429") || msg.includes("too many")) {
+    return "blocked_rate_limit";
+  }
+  if (msg.includes("geo") || msg.includes("region") || msg.includes("country") || msg.includes("available in")) {
+    return "blocked_geo";
+  }
+  return "blocked_antibot";
 }
 
 /**
@@ -1209,6 +1235,8 @@ function getUrlAccessExplanation(
 /**
  * Renders a colored banner explaining why a URL could not be accessed.
  * Amber background for blocked states (potentially resolvable), red for errors.
+ * Includes ARIA role="status" and a leading icon so screen readers and
+ * color-blind users can distinguish severity without relying on color alone.
  */
 function UrlAccessExplanationSection({ explanation }: { explanation: UrlAccessExplanation }) {
   const isAmber = explanation.colorScheme === "amber";
@@ -1220,13 +1248,18 @@ function UrlAccessExplanationSection({ explanation }: { explanation: UrlAccessEx
           ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
           : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
       )}
+      role="status"
+      aria-label={`${isAmber ? "Warning" : "Error"}: ${explanation.title}`}
     >
       <div
         className={cn(
-          "text-sm font-medium mb-1",
+          "text-sm font-medium mb-1 flex items-center gap-1.5",
           isAmber ? "text-amber-800 dark:text-amber-200" : "text-red-800 dark:text-red-200",
         )}
       >
+        <span className="shrink-0 text-xs" aria-hidden="true">
+          {isAmber ? "\u26A0" : "\u2718"}
+        </span>
         {explanation.title}
       </div>
       <p className={cn("text-xs", isAmber ? "text-amber-700 dark:text-amber-300" : "text-red-700 dark:text-red-300")}>
@@ -1352,8 +1385,9 @@ function DefaultPopoverContent({
   const urlAccessExplanation = useMemo(() => {
     if (!isUrlCitation(citation)) return null;
     const urlAccessStatus = verification?.url?.urlAccessStatus;
+    const errorMsg = verification?.url?.urlVerificationError;
     const fetchStatus = urlAccessStatus
-      ? mapUrlAccessStatusToFetchStatus(urlAccessStatus)
+      ? mapUrlAccessStatusToFetchStatus(urlAccessStatus, errorMsg)
       : mapSearchStatusToFetchStatus(searchStatus);
     return getUrlAccessExplanation(fetchStatus, verification?.url?.urlVerificationError);
   }, [citation, verification, searchStatus]);
