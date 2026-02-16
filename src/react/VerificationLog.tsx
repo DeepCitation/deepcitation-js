@@ -16,7 +16,7 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
-import { isValidProofUrl } from "./urlUtils.js";
+import { isValidProofUrl, sanitizeUrl } from "./urlUtils.js";
 import { cn, isUrlCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
 
