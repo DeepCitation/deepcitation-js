@@ -79,16 +79,17 @@ export function useRepositionGracePeriod(
   }, [contentExpanded, isOpen, gracePeriodMs]);
 
   // Cleanup grace timer on unmount and when popover closes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clearGracePeriod is stable via useCallback with empty deps
   useEffect(() => {
     // Clear grace period when popover closes (prevents stale state on next open)
     if (!isOpen) {
       clearGracePeriod();
     }
-    // Cleanup on unmount
+    // Cleanup on unmount or when isOpen changes
     return () => {
       clearGracePeriod();
     };
-  }, [isOpen, clearGracePeriod]);
+  }, [isOpen]);
 
   return { isInGracePeriod, clearGracePeriod };
 }
