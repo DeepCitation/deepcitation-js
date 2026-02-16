@@ -118,7 +118,7 @@ describe("useRepositionGracePeriod", () => {
     expect(result.current.isInGracePeriod.current).toBe(true);
 
     // Wait partway through grace period
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    await new Promise(resolve => setTimeout(resolve, 60));
     expect(result.current.isInGracePeriod.current).toBe(true);
 
     // Collapse (triggers new grace period, which should reset the timer)
@@ -127,7 +127,7 @@ describe("useRepositionGracePeriod", () => {
 
     // Wait another 60ms (total 120ms from first expansion)
     // Grace period should STILL be active because timer was reset on collapse
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    await new Promise(resolve => setTimeout(resolve, 60));
     expect(result.current.isInGracePeriod.current).toBe(true);
 
     // Wait for the reset timer to complete (from collapse)
