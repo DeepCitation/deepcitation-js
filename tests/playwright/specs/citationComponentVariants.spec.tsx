@@ -683,4 +683,23 @@ test.describe("CitationComponent - Text Color Inheritance", () => {
     const color = await linterSpan.evaluate(el => getComputedStyle(el).color);
     expect(color).not.toBe("rgb(22, 163, 74)");
   });
+
+  test("superscript anchor text inherits parent color, sup element does not", async ({ mount, page }) => {
+    await mount(
+      <div style={{ color: "rgb(22, 163, 74)" }}>
+        <CitationComponent citation={baseCitation} variant="superscript" verification={verifiedVerification} />
+      </div>,
+    );
+    const citation = page.locator("[data-citation-id]");
+
+    // Anchor text (first span child) inherits parent green
+    const anchorSpan = citation.locator("span").first();
+    const anchorColor = await anchorSpan.evaluate(el => getComputedStyle(el).color);
+    expect(anchorColor).toBe("rgb(22, 163, 74)");
+
+    // <sup> element has its own explicit color (not inherited green)
+    const supElement = citation.locator("sup");
+    const supColor = await supElement.evaluate(el => getComputedStyle(el).color);
+    expect(supColor).not.toBe("rgb(22, 163, 74)");
+  });
 });

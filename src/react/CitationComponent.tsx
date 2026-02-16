@@ -2263,20 +2263,19 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       [isMobile, eventHandlers, citation, citationKey, handleTapAction],
     );
 
-    // Early return for miss with fallback display (only when showing anchorText)
-    // Inline variants inherit color (dimmed via opacity), others use explicit gray.
-    if (fallbackDisplay !== null && fallbackDisplay !== undefined && resolvedContent === "anchorText" && isMiss) {
-      const isInlineFallback = variant === "text" || variant === "linter";
-      const fallbackClasses = isInlineFallback ? "opacity-50" : "text-gray-400 dark:text-gray-500";
-      return <span className={cn(fallbackClasses, className)}>{fallbackDisplay}</span>;
-    }
-
     // Inline variants (text, linter) inherit text color from their parent element.
     // This allows citations to blend seamlessly into styled text (e.g., colored headers).
     // Self-contained variants (chip, badge, brackets) set their own text color.
     // Superscript is excluded: its anchor text inherits naturally, and its <sup> element
     // is a distinct UI element (footnote reference) that keeps its own styling.
     const isInlineVariant = variant === "text" || variant === "linter";
+
+    // Early return for miss with fallback display (only when showing anchorText)
+    // Inline variants inherit color (dimmed via opacity), others use explicit gray.
+    if (fallbackDisplay !== null && fallbackDisplay !== undefined && resolvedContent === "anchorText" && isMiss) {
+      const fallbackClasses = isInlineVariant ? "opacity-50" : "text-gray-400 dark:text-gray-500";
+      return <span className={cn(fallbackClasses, className)}>{fallbackDisplay}</span>;
+    }
 
     const statusClasses = cn(
       // Found status (text color) - verified or partial match, for brackets variant
