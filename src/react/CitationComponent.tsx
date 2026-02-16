@@ -965,7 +965,10 @@ function AnchorTextFocusedImage({
             }}
           >
             <img
-              src={(verification.document?.verificationImageSrc ?? verification.document?.verificationImageBase64) as string}
+              src={
+                (verification.document?.verificationImageSrc ??
+                  verification.document?.verificationImageBase64) as string
+              }
               alt="Citation verification"
               className="block w-full h-auto"
               style={{
@@ -1357,7 +1360,7 @@ function DefaultPopoverContent({
   sourceLabel,
   indicatorVariant = "icon",
 }: PopoverContentProps) {
-  const hasImage = (verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64);
+  const hasImage = verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
 
@@ -1781,7 +1784,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
     // Resolve the image source, preferring the new field name with fallback to deprecated one
-    const resolvedImageSrc = verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64 ?? null;
+    const resolvedImageSrc =
+      verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64 ?? null;
 
     // Spinner timeout: auto-hide after SPINNER_TIMEOUT_MS if still pending
     const [spinnerTimedOut, setSpinnerTimedOut] = useState(false);
