@@ -1811,6 +1811,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const status = useMemo(() => getStatusFromVerification(verification), [verification]);
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
+    // Resolve the image source, preferring the new field name with fallback to deprecated one
+    const resolvedImageSrc =
+      verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64 ?? null;
+
     // Spinner timeout: auto-hide after SPINNER_TIMEOUT_MS if still pending
     const [spinnerTimedOut, setSpinnerTimedOut] = useState(false);
     const spinnerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1820,7 +1824,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // - BUT NOT if we have a verification image or definitive status
     // - AND NOT if spinner has timed out
     const hasDefinitiveResult =
-      (verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64) ||
+      resolvedImageSrc ||
       verification?.status === "found" ||
       verification?.status === "found_anchor_text_only" ||
       verification?.status === "found_phrase_missed_anchor_text" ||
@@ -1870,9 +1874,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         verification: verification ?? null,
         isTooltipExpanded: isHovering,
         isImageExpanded: !!expandedImageSrc,
-        hasImage: !!(verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64),
+        hasImage: !!resolvedImageSrc,
       }),
-      [citation, citationKey, verification, isHovering, expandedImageSrc],
+      [citation, citationKey, verification, isHovering, expandedImageSrc, resolvedImageSrc],
     );
 
     // Apply behavior actions from custom handler
@@ -1881,19 +1885,14 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         if (actions.setImageExpanded !== undefined) {
           if (typeof actions.setImageExpanded === "string") {
             setExpandedImageSrc(actions.setImageExpanded);
-          } else if (
-            actions.setImageExpanded === true &&
-            (verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64)
-          ) {
-            setExpandedImageSrc(
-              verification.document.verificationImageSrc ?? verification.document.verificationImageBase64 ?? null,
-            );
+          } else if (actions.setImageExpanded === true && resolvedImageSrc) {
+            setExpandedImageSrc(resolvedImageSrc);
           } else if (actions.setImageExpanded === false) {
             setExpandedImageSrc(null);
           }
         }
       },
-      [verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64],
+      [resolvedImageSrc],
     );
 
     // Shared tap/click action handler - used by both click and touch handlers.
@@ -1948,10 +1947,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             setIsPhrasesExpanded(prev => !prev);
             break;
           case "expandImage":
-            if (verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64) {
-              setExpandedImageSrc(
-                verification.document.verificationImageSrc ?? verification.document.verificationImageBase64 ?? null,
-              );
+            if (resolvedImageSrc) {
+              setExpandedImageSrc(resolvedImageSrc);
             }
             break;
         }
@@ -1961,7 +1958,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         eventHandlers,
         citation,
         citationKey,
-        verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64,
+        resolvedImageSrc,
         getBehaviorContext,
         applyBehaviorActions,
       ],
@@ -2599,9 +2596,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const shouldShowPopover =
       !isPopoverHidden &&
       // Has verification with image or snippet
-      ((verification &&
-        ((verification.document?.verificationImageSrc ?? verification.document?.verificationImageBase64) ||
-          verification.verifiedMatchSnippet)) ||
+      ((verification && (resolvedImageSrc || verification.verifiedMatchSnippet)) ||
         // Loading/pending state
         shouldShowSpinner ||
         isPending ||
@@ -2609,9 +2604,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         // Miss state (show what was searched)
         isMiss);
 
-    const hasImage = !!(
-      verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64
-    );
+    const hasImage = !!resolvedImageSrc;
 
     // Image overlay
     const imageOverlay = expandedImageSrc ? (
@@ -2691,10 +2684,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             sourceLabel={sourceLabel}
             indicatorVariant={indicatorVariant}
             onImageClick={() => {
-              if (verification?.document?.verificationImageSrc ?? verification?.document?.verificationImageBase64) {
-                setExpandedImageSrc(
-                  verification.document.verificationImageSrc ?? verification.document.verificationImageBase64 ?? null,
-                );
+              if (resolvedImageSrc) {
+                setExpandedImageSrc(resolvedImageSrc);
               }
             }}
           />
