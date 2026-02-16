@@ -4,7 +4,6 @@ import { useRepositionGracePeriod } from "../react/hooks/useRepositionGracePerio
 // Tests use real timers with waitFor() instead of fake timers because Bun's jest
 // doesn't fully support timer advancement APIs (advanceTimersByTime, runAllTimers, etc.)
 describe("useRepositionGracePeriod", () => {
-
   it("should initialize with grace period inactive", () => {
     const { result } = renderHook(() => useRepositionGracePeriod(false, true, 300));
 
@@ -118,16 +117,25 @@ describe("useRepositionGracePeriod", () => {
     rerender({ contentExpanded: true, isOpen: true });
     expect(result.current.isInGracePeriod.current).toBe(true);
 
+    // Wait partway through grace period
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(result.current.isInGracePeriod.current).toBe(true);
+
     // Collapse (triggers new grace period, which should reset the timer)
     rerender({ contentExpanded: false, isOpen: true });
     expect(result.current.isInGracePeriod.current).toBe(true);
 
-    // Wait for grace period to expire
+    // Wait another 60ms (total 120ms from first expansion)
+    // Grace period should STILL be active because timer was reset on collapse
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(result.current.isInGracePeriod.current).toBe(true);
+
+    // Wait for the reset timer to complete (from collapse)
     await waitFor(
       () => {
         expect(result.current.isInGracePeriod.current).toBe(false);
       },
-      { timeout: gracePeriodMs + 100 },
+      { timeout: gracePeriodMs },
     );
   });
 
@@ -146,9 +154,9 @@ describe("useRepositionGracePeriod", () => {
     // Unmount
     unmount();
 
-    // Timer cleanup verified by afterEach useRealTimers()
-    // Note: Bun's jest doesn't support getTimerCount(), so we rely on
-    // useRealTimers() in afterEach to verify no timers leak between tests
+    // Timer cleanup is handled by React Testing Library's cleanup process,
+    // which unmounts components and clears effects/timers automatically.
+    // No explicit verification needed - timer leaks would cause other tests to fail.
   });
 
   it("should support custom grace period duration", async () => {
