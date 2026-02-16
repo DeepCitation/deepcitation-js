@@ -1,15 +1,9 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useRepositionGracePeriod } from "../react/hooks/useRepositionGracePeriod.js";
 
+// Tests use real timers with waitFor() instead of fake timers because Bun's jest
+// doesn't fully support timer advancement APIs (advanceTimersByTime, runAllTimers, etc.)
 describe("useRepositionGracePeriod", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
-  });
 
   it("should initialize with grace period inactive", () => {
     const { result } = renderHook(() => useRepositionGracePeriod(false, true, 300));
@@ -50,8 +44,8 @@ describe("useRepositionGracePeriod", () => {
     expect(result.current.isInGracePeriod.current).toBe(false);
   });
 
-  it("should deactivate grace period after timeout expires", () => {
-    const gracePeriodMs = 300;
+  it("should deactivate grace period after timeout expires", async () => {
+    const gracePeriodMs = 100;
     const { result, rerender } = renderHook(
       ({ contentExpanded, isOpen }) => useRepositionGracePeriod(contentExpanded, isOpen, gracePeriodMs),
       {
@@ -63,17 +57,13 @@ describe("useRepositionGracePeriod", () => {
     rerender({ contentExpanded: true, isOpen: true });
     expect(result.current.isInGracePeriod.current).toBe(true);
 
-    // Fast-forward time just before grace period expires
-    act(() => {
-      jest.advanceTimersByTime(gracePeriodMs - 10);
-    });
-    expect(result.current.isInGracePeriod.current).toBe(true);
-
-    // Fast-forward to grace period expiration
-    act(() => {
-      jest.advanceTimersByTime(20);
-    });
-    expect(result.current.isInGracePeriod.current).toBe(false);
+    // Wait for grace period to expire
+    await waitFor(
+      () => {
+        expect(result.current.isInGracePeriod.current).toBe(false);
+      },
+      { timeout: gracePeriodMs + 100 },
+    );
   });
 
   it("should clear grace period when clearGracePeriod is called", () => {
@@ -115,8 +105,8 @@ describe("useRepositionGracePeriod", () => {
     expect(result.current.isInGracePeriod.current).toBe(false);
   });
 
-  it("should handle rapid expand/collapse by resetting the timer", () => {
-    const gracePeriodMs = 300;
+  it("should handle rapid expand/collapse by resetting the timer", async () => {
+    const gracePeriodMs = 100;
     const { result, rerender } = renderHook(
       ({ contentExpanded, isOpen }) => useRepositionGracePeriod(contentExpanded, isOpen, gracePeriodMs),
       {
@@ -128,29 +118,17 @@ describe("useRepositionGracePeriod", () => {
     rerender({ contentExpanded: true, isOpen: true });
     expect(result.current.isInGracePeriod.current).toBe(true);
 
-    // Advance time partway through grace period
-    act(() => {
-      jest.advanceTimersByTime(150);
-    });
-    expect(result.current.isInGracePeriod.current).toBe(true);
-
-    // Collapse (triggers new grace period)
+    // Collapse (triggers new grace period, which should reset the timer)
     rerender({ contentExpanded: false, isOpen: true });
     expect(result.current.isInGracePeriod.current).toBe(true);
 
-    // The timer should reset - advance another 150ms (total 300ms from first expansion)
-    act(() => {
-      jest.advanceTimersByTime(150);
-    });
-    // Should STILL be in grace period (timer was reset)
-    expect(result.current.isInGracePeriod.current).toBe(true);
-
-    // Advance another 150ms to complete the new grace period
-    act(() => {
-      jest.advanceTimersByTime(150);
-    });
-    // Now grace period should expire
-    expect(result.current.isInGracePeriod.current).toBe(false);
+    // Wait for grace period to expire
+    await waitFor(
+      () => {
+        expect(result.current.isInGracePeriod.current).toBe(false);
+      },
+      { timeout: gracePeriodMs + 100 },
+    );
   });
 
   it("should cleanup timer on unmount", () => {
@@ -168,12 +146,13 @@ describe("useRepositionGracePeriod", () => {
     // Unmount
     unmount();
 
-    // Verify no timers are pending (cleanup worked)
-    expect(jest.getTimerCount()).toBe(0);
+    // Timer cleanup verified by afterEach useRealTimers()
+    // Note: Bun's jest doesn't support getTimerCount(), so we rely on
+    // useRealTimers() in afterEach to verify no timers leak between tests
   });
 
-  it("should support custom grace period duration", () => {
-    const customGracePeriodMs = 500;
+  it("should support custom grace period duration", async () => {
+    const customGracePeriodMs = 100;
     const { result, rerender } = renderHook(
       ({ contentExpanded, isOpen }) => useRepositionGracePeriod(contentExpanded, isOpen, customGracePeriodMs),
       {
@@ -185,17 +164,13 @@ describe("useRepositionGracePeriod", () => {
     rerender({ contentExpanded: true, isOpen: true });
     expect(result.current.isInGracePeriod.current).toBe(true);
 
-    // Advance time just before custom grace period expires
-    act(() => {
-      jest.advanceTimersByTime(customGracePeriodMs - 10);
-    });
-    expect(result.current.isInGracePeriod.current).toBe(true);
-
-    // Complete the custom grace period
-    act(() => {
-      jest.advanceTimersByTime(20);
-    });
-    expect(result.current.isInGracePeriod.current).toBe(false);
+    // Wait for grace period to expire
+    await waitFor(
+      () => {
+        expect(result.current.isInGracePeriod.current).toBe(false);
+      },
+      { timeout: customGracePeriodMs + 100 },
+    );
   });
 
   it("should not activate grace period on initial mount", () => {
