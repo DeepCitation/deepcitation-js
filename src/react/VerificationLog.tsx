@@ -255,7 +255,7 @@ function PageLineLink({ pageLineText, proofUrl }: { pageLineText: string; proofU
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline shrink-0 uppercase tracking-wide cursor-pointer"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <span>{pageLineText}</span>
         <span className="w-2.5 h-2.5">

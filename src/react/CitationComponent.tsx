@@ -1360,7 +1360,7 @@ function PageNumberLink({ pageNumber, proofUrl }: { pageNumber: number; proofUrl
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         <span>Page {pageNumber}</span>
         <span className="w-3 h-3">
