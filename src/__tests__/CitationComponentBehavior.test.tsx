@@ -112,7 +112,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("does NOT show spinner with isLoading when verification has definitive status", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} isLoading={true} />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} isLoading={true} />,
       );
 
       // A definitive verification status should override isLoading
@@ -127,7 +127,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("shows check icon for found status", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />,
       );
 
       // Should NOT have a spinner
@@ -172,7 +172,7 @@ describe("CitationComponent behaviorConfig", () => {
   describe("showIndicator prop", () => {
     it("shows indicator by default (showIndicator=true)", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />,
       );
 
       // Should have verified indicator
@@ -182,7 +182,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("hides indicator when showIndicator=false", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} showIndicator={false} />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} showIndicator={false} />,
       );
 
       // Should NOT have any status indicators
@@ -197,7 +197,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("hides spinner when showIndicator=false and isPending", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={pendingVerification} showIndicator={false} />
+        <CitationComponent citation={baseCitation} verification={pendingVerification} showIndicator={false} />,
       );
 
       // Should NOT have spinner
@@ -215,7 +215,7 @@ describe("CitationComponent behaviorConfig", () => {
           variant="brackets"
           showIndicator={false}
           renderIndicator={() => customIndicator}
-        />
+        />,
       );
 
       // Custom indicator should still be rendered
@@ -233,7 +233,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={missVerification}
           variant="brackets"
           showIndicator={false}
-        />
+        />,
       );
 
       // Should NOT have error indicator
@@ -289,7 +289,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("does not open image overlay on click when no image is available", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -305,7 +305,7 @@ describe("CitationComponent behaviorConfig", () => {
       const onClick = jest.fn();
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} eventHandlers={{ onClick }} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} eventHandlers={{ onClick }} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -331,7 +331,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -352,7 +352,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -378,7 +378,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
           eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -404,7 +404,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -433,7 +433,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -456,7 +456,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -483,7 +483,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -508,7 +508,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -534,7 +534,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -567,7 +567,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
           eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -589,7 +589,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
           eventHandlers={{ onClick: eventHandlerOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -619,7 +619,7 @@ describe("CitationComponent behaviorConfig", () => {
               trackingData.push(`clicked:${citationKey}`);
             },
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -652,7 +652,7 @@ describe("CitationComponent behaviorConfig", () => {
               eventHandlerCalls.push("event");
             },
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -679,7 +679,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -698,7 +698,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -720,7 +720,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -743,7 +743,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -769,7 +769,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter: behaviorOnEnter } }}
           eventHandlers={{ onMouseEnter: eventHandlerOnEnter }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -791,7 +791,7 @@ describe("CitationComponent behaviorConfig", () => {
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave: behaviorOnLeave } }}
           eventHandlers={{ onMouseLeave: eventHandlerOnLeave }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -814,7 +814,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -836,7 +836,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onHover: { onLeave } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -873,7 +873,7 @@ describe("CitationComponent behaviorConfig", () => {
           behaviorConfig={{
             onClick: customOnClick,
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -898,7 +898,7 @@ describe("CitationComponent behaviorConfig", () => {
             onClick: customOnClick,
             onHover: { onEnter, onLeave },
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -944,7 +944,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithImage}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -972,7 +972,7 @@ describe("CitationComponent behaviorConfig", () => {
   describe("edge cases", () => {
     it("handles undefined behaviorConfig gracefully", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} behaviorConfig={undefined} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} behaviorConfig={undefined} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -989,7 +989,7 @@ describe("CitationComponent behaviorConfig", () => {
 
     it("handles empty behaviorConfig object", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} behaviorConfig={{}} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} behaviorConfig={{}} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1012,7 +1012,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={verificationWithoutImage}
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1028,7 +1028,7 @@ describe("CitationComponent behaviorConfig", () => {
       const onEnter = jest.fn();
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={null} behaviorConfig={{ onHover: { onEnter } }} />
+        <CitationComponent citation={baseCitation} verification={null} behaviorConfig={{ onHover: { onEnter } }} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1049,7 +1049,7 @@ describe("CitationComponent behaviorConfig", () => {
           citation={baseCitation}
           verification={missVerification}
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1136,7 +1136,7 @@ describe("CitationComponent behaviorConfig", () => {
       };
 
       const { container } = render(
-        <CitationComponent citation={citationWithoutAnchor} verification={verificationWithImage} />
+        <CitationComponent citation={citationWithoutAnchor} verification={verificationWithImage} />,
       );
 
       // Click to open popover
@@ -1305,7 +1305,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(false);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1325,7 +1325,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={false} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={false} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1450,7 +1450,7 @@ describe("CitationComponent mobile/touch detection", () => {
         <>
           <CitationComponent citation={citation1} verification={verificationWithImage} />
           <CitationComponent citation={citation2} verification={verificationWithImage} />
-        </>
+        </>,
       );
 
       const citations = container.querySelectorAll("[data-citation-id]");
@@ -1543,7 +1543,7 @@ describe("CitationComponent mobile/touch detection", () => {
           behaviorConfig={{
             onClick: onClickMock,
           }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1567,7 +1567,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1597,7 +1597,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1624,7 +1624,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1658,7 +1658,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1690,7 +1690,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(false);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={false} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={false} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1723,7 +1723,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(true);
 
       const { container, unmount } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} isMobile={true} />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1803,7 +1803,7 @@ describe("CitationComponent mobile/touch detection", () => {
       mockTouchDevice(false);
 
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1890,7 +1890,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="eager"
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1913,7 +1913,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("shows popover on first click (deprecated eager mode uses lazy behavior)", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="eager" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="eager" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1933,7 +1933,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("has cursor-pointer class (not cursor-zoom-in) even with image available", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="eager" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="eager" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1942,7 +1942,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("has cursor-pointer class when no image is available", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} interactionMode="eager" />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} interactionMode="eager" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -1978,7 +1978,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2001,7 +2001,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("shows popover on first click (not image overlay)", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2021,7 +2021,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("toggles search details on second click (not image overlay)", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2042,7 +2042,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("has cursor-pointer class initially (before popover is shown)", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2051,7 +2051,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("stays cursor-pointer after first click (lazy mode doesn't zoom)", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2068,7 +2068,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("stays cursor-pointer throughout interactions in lazy mode", () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2094,7 +2094,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           eventHandlers={{ onClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2114,7 +2114,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("works correctly without image (no zoom needed)", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithoutImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2139,7 +2139,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("applies hover styles but not popover on hover", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />
+        <CitationComponent citation={baseCitation} verification={verificationWithImage} interactionMode="lazy" />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2173,7 +2173,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2201,7 +2201,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onClick: customOnClick }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2222,7 +2222,7 @@ describe("CitationComponent interactionMode", () => {
           verification={verificationWithImage}
           interactionMode="lazy"
           behaviorConfig={{ onHover: { onEnter } }}
-        />
+        />,
       );
 
       const citation = container.querySelector("[data-citation-id]");
@@ -2268,7 +2268,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("should NOT close popover during reposition grace period after expanding details", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />
+        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />,
       );
 
       const trigger = container.querySelector("[data-citation-id]");
@@ -2314,7 +2314,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("should clear grace period when cursor re-enters popover", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />
+        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />,
       );
 
       const trigger = container.querySelector("[data-citation-id]");
@@ -2361,7 +2361,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("should close popover after grace period expires", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />
+        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />,
       );
 
       const trigger = container.querySelector("[data-citation-id]");
@@ -2409,7 +2409,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("should clear grace period when popover closes", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />
+        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />,
       );
 
       const trigger = container.querySelector("[data-citation-id]");
@@ -2471,7 +2471,7 @@ describe("CitationComponent interactionMode", () => {
 
     it("should handle rapid expand/collapse without issues", async () => {
       const { container } = render(
-        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />
+        <CitationComponent citation={baseCitation} verification={verificationWithSearchAttempts} />,
       );
 
       const trigger = container.querySelector("[data-citation-id]");
@@ -2672,9 +2672,7 @@ describe("CitationComponent proof URL links", () => {
       document: { verifiedPageNumber: 5 },
     };
 
-    const { container } = render(
-      <CitationComponent citation={baseCitation} verification={verification} />
-    );
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
 
     // Click to open popover
     const trigger = container.querySelector("[data-citation-id]");
@@ -2699,9 +2697,7 @@ describe("CitationComponent proof URL links", () => {
       proof: { proofUrl: "javascript:alert('XSS')" },
     };
 
-    const { container } = render(
-      <CitationComponent citation={baseCitation} verification={verification} />
-    );
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
 
     // Click to open popover
     const trigger = container.querySelector("[data-citation-id]");
@@ -2726,9 +2722,7 @@ describe("CitationComponent proof URL links", () => {
       proof: { proofUrl: "data:text/html,<script>alert('XSS')</script>" },
     };
 
-    const { container } = render(
-      <CitationComponent citation={baseCitation} verification={verification} />
-    );
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
 
     // Click to open popover
     const trigger = container.querySelector("[data-citation-id]");
@@ -2753,9 +2747,7 @@ describe("CitationComponent proof URL links", () => {
       proof: { proofUrl: "https://evil.com/fake-proof" },
     };
 
-    const { container } = render(
-      <CitationComponent citation={baseCitation} verification={verification} />
-    );
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
 
     // Click to open popover
     const trigger = container.querySelector("[data-citation-id]");

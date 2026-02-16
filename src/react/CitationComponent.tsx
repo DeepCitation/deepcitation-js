@@ -41,7 +41,6 @@ import { CheckIcon, ExternalLinkIcon, SpinnerIcon, WarningIcon, XIcon } from "./
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
-import { isValidProofUrl } from "./urlUtils.js";
 import type {
   BaseCitationProps,
   CitationBehaviorActions,
@@ -55,6 +54,7 @@ import type {
   IndicatorVariant,
   UrlFetchStatus,
 } from "./types.js";
+import { isValidProofUrl } from "./urlUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
 

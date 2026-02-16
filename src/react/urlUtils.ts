@@ -5,9 +5,9 @@
  * These are separated from the component file to comply with Fast Refresh rules.
  */
 
+import { isApprovedDomain } from "../utils/urlSafety.js";
 import type { UrlFetchStatus } from "./types.js";
 import { isBlockedStatus, isErrorStatus, isVerifiedStatus } from "./urlStatus.js";
-import { isApprovedDomain } from "../utils/urlSafety.js";
 
 /**
  * Validates that a URL uses a safe protocol (http: or https:).
