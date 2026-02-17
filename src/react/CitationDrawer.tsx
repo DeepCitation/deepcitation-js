@@ -21,7 +21,7 @@ import { formatCaptureDate } from "./dateUtils.js";
 import { CheckIcon, CopyIcon, ExternalLinkIcon, MissIcon, ZoomInIcon } from "./icons.js";
 import { sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";
-import { FaviconImage } from "./VerificationLog.js";
+import { FaviconImage } from "./index.js";
 
 // =========
 // Drawer-adapted method display names (subset of VerificationLog's METHOD_DISPLAY_NAMES)

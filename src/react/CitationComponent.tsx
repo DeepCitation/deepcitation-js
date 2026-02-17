@@ -75,7 +75,7 @@ import {
   SourceContextHeader,
   StatusHeader,
   VerificationLog,
-} from "./VerificationLog.js";
+} from "./index.js";
 
 // Re-export types for convenience
 export type {
