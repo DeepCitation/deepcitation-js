@@ -1,4 +1,5 @@
 import type { Citation } from "../types/citation.js";
+import { validateRegexInput } from "../utils/regexSafety.js";
 
 /**
  * Regex pattern for extracting HTML attributes from cite tags.
@@ -14,6 +15,7 @@ const ATTR_REGEX_PATTERN = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.
  * @returns Object with snake_case keys and values
  */
 export function parseCiteAttributes(citeTag: string): Record<string, string | undefined> {
+  validateRegexInput(citeTag);
   const attrs: Record<string, string | undefined> = {};
   const attrRegex = new RegExp(ATTR_REGEX_PATTERN.source, ATTR_REGEX_PATTERN.flags);
   let match: RegExpExecArray | null;

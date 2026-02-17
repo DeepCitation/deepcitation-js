@@ -430,13 +430,11 @@ const normalizeCitationContent = (input: string): string => {
 
     content = decodeHtmlEntities(content);
 
-    // Normalize quotes: unescape all backslash sequences before quotes, then re-escape.
-    // Single-pass replacement avoids CodeQL js/incomplete-sanitization warnings
-    // that occur with chained .replace() calls (where earlier replacements can
-    // reintroduce patterns matched by later ones).
-    // \\*' matches zero or more backslashes followed by a quote, replacing all with \'
-    content = content.replace(/\\*'/g, () => "\\'");
-    content = content.replace(/\\*"/g, () => '\\"');
+    // Normalize quotes in a single pass: match any backslash sequences followed by
+    // a quote character and replace with a consistently escaped quote.
+    // This avoids CodeQL js/incomplete-sanitization warnings from chained .replace()
+    // calls where earlier replacements can reintroduce patterns matched by later ones.
+    content = content.replace(/\\*(['"])/g, (_, quote) => `\\${quote}`);
 
     return `${canonicalizeCiteAttributeKey(key)}='${content}'`;
   });
