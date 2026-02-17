@@ -60,9 +60,10 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(TRUSTED_IMG);
-      expect(result!.dimensions).toEqual({ width: 800, height: 1200 });
-      expect(result!.highlightBox).toEqual({ x: 10, y: 20, width: 100, height: 50 });
+      if (!result) throw new Error("Expected result to be non-null");
+      expect(result.src).toBe(TRUSTED_IMG);
+      expect(result.dimensions).toEqual({ width: 800, height: 1200 });
+      expect(result.highlightBox).toEqual({ x: 10, y: 20, width: 100, height: 50 });
     });
 
     it("falls back to proofImageUrl when no matchPage exists", () => {
@@ -84,9 +85,9 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(TRUSTED_CDN_IMG);
-      expect(result!.dimensions).toBeNull();
-      expect(result!.highlightBox).toBeNull();
+      if (!result) throw new Error("Expected result"); expect(result.src).toBe(TRUSTED_CDN_IMG);
+      if (!result) throw new Error("Expected result"); expect(result.dimensions).toBeNull();
+      if (!result) throw new Error("Expected result"); expect(result.highlightBox).toBeNull();
     });
 
     it("falls back to verificationImageSrc when no matchPage or proofImageUrl", () => {
@@ -101,9 +102,9 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(TRUSTED_IMG);
-      expect(result!.dimensions).toEqual({ width: 600, height: 900 });
-      expect(result!.highlightBox).toBeNull();
+      if (!result) throw new Error("Expected result"); expect(result.src).toBe(TRUSTED_IMG);
+      if (!result) throw new Error("Expected result"); expect(result.dimensions).toEqual({ width: 600, height: 900 });
+      if (!result) throw new Error("Expected result"); expect(result.highlightBox).toBeNull();
     });
 
     it("falls back to proofImageUrl when matchPage has no source", () => {
@@ -121,7 +122,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(TRUSTED_CDN_IMG);
+      if (!result) throw new Error("Expected result"); expect(result.src).toBe(TRUSTED_CDN_IMG);
     });
   });
 
@@ -192,7 +193,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(TRUSTED_IMG);
+      if (!result) throw new Error("Expected result"); expect(result.src).toBe(TRUSTED_IMG);
     });
 
     it("rejects all untrusted sources and returns null", () => {
@@ -227,7 +228,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(pngDataUri);
+      if (!result) throw new Error("Expected result"); expect(result.src).toBe(pngDataUri);
     });
   });
 
@@ -248,7 +249,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.highlightBox).toBeNull();
+      if (!result) throw new Error("Expected result"); expect(result.highlightBox).toBeNull();
     });
 
     it("defaults textItems to empty array when matchPage has none", () => {
@@ -266,7 +267,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.textItems).toEqual([]);
+      if (!result) throw new Error("Expected result"); expect(result.textItems).toEqual([]);
     });
 
     it("passes through textItems from matchPage", () => {
@@ -285,7 +286,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.textItems).toEqual(textItems);
+      if (!result) throw new Error("Expected result"); expect(result.textItems).toEqual(textItems);
     });
 
     it("defaults dimensions to null for verificationImageSrc without dimensions", () => {
@@ -300,7 +301,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.dimensions).toBeNull();
+      if (!result) throw new Error("Expected result"); expect(result.dimensions).toBeNull();
     });
 
     it("returns empty pages array gracefully", () => {
@@ -312,7 +313,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
-      expect(result!.src).toBe(TRUSTED_CDN_IMG);
+      if (!result) throw new Error("Expected result"); expect(result.src).toBe(TRUSTED_CDN_IMG);
     });
   });
 });
