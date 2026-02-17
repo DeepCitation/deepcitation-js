@@ -23,11 +23,14 @@ import {
   buildKeyholeMaskImage,
   DOT_COLORS,
   DOT_INDICATOR_SIZE_STYLE,
+  EVIDENCE_TRAY_BORDER_DASHED,
+  EVIDENCE_TRAY_BORDER_SOLID,
   EXPANDED_POPOVER_HEIGHT,
   EXPANDED_POPOVER_MAX_WIDTH,
   EXPANDED_POPOVER_WIDTH_DEFAULT,
   EXPANDED_POPOVER_WIDTH_VAR,
   getPortalContainer,
+  isValidProofImageSrc,
   INDICATOR_SIZE_STYLE,
   KEYHOLE_FADE_WIDTH,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
@@ -102,6 +105,9 @@ const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
 
 /** Debounce threshold for ignoring click events after touch (ms) */
 const TOUCH_CLICK_DEBOUNCE_MS = 100;
+
+/** Tolerance factor for coordinate scaling sanity checks (5% overflow for rounding errors) */
+const SCALING_TOLERANCE = 1.05;
 
 // =============================================================================
 // TOUCH DEVICE DETECTION
@@ -925,7 +931,7 @@ const MissDot = () => <DotIndicator color="red" label="Not found" />;
 // =============================================================================
 
 /** Source data for the expanded page viewer. */
-interface ExpandedImageSource {
+export interface ExpandedImageSource {
   src: string;
   dimensions?: { width: number; height: number } | null;
   highlightBox?: ScreenBox | null;
@@ -939,12 +945,12 @@ interface ExpandedImageSource {
  * 2. proof.proofImageUrl (good: CDN image, no overlay data)
  * 3. document.verificationImageSrc (baseline: keyhole image at full size)
  */
-function resolveExpandedImage(verification: Verification | null | undefined): ExpandedImageSource | null {
+export function resolveExpandedImage(verification: Verification | null | undefined): ExpandedImageSource | null {
   if (!verification) return null;
 
   // 1. Best: matching page from verification.pages array
   const matchPage = verification.pages?.find(p => p.isMatchPage);
-  if (matchPage?.source) {
+  if (matchPage?.source && isValidProofImageSrc(matchPage.source)) {
     return {
       src: matchPage.source,
       dimensions: matchPage.dimensions,
@@ -954,7 +960,7 @@ function resolveExpandedImage(verification: Verification | null | undefined): Ex
   }
 
   // 2. Good: CDN-hosted proof image
-  if (verification.proof?.proofImageUrl) {
+  if (verification.proof?.proofImageUrl && isValidProofImageSrc(verification.proof.proofImageUrl)) {
     return {
       src: verification.proof.proofImageUrl,
       dimensions: null,
@@ -964,7 +970,7 @@ function resolveExpandedImage(verification: Verification | null | undefined): Ex
   }
 
   // 3. Baseline: keyhole verification image at full size
-  if (verification.document?.verificationImageSrc) {
+  if (verification.document?.verificationImageSrc && isValidProofImageSrc(verification.document.verificationImageSrc)) {
     return {
       src: verification.document.verificationImageSrc,
       dimensions: verification.document.verificationImageDimensions ?? null,
@@ -1005,7 +1011,7 @@ function resolveHighlightBox(verification: Verification): { x: number; width: nu
       const scaledX = item.x * scale;
       const scaledWidth = item.width * scale;
       // Sanity check: if scaled coords are within image bounds, use them
-      if (scaledX >= 0 && scaledX + scaledWidth <= imgDims.width * 1.05) {
+      if (scaledX >= 0 && scaledX + scaledWidth <= imgDims.width * SCALING_TOLERANCE) {
         return { x: scaledX, width: scaledWidth };
       }
     }
@@ -1620,9 +1626,7 @@ function EvidenceTray({
   const hasImage = verification?.document?.verificationImageSrc;
   const isMiss = status.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
-  const borderClass = isMiss
-    ? "border border-dashed border-gray-300 dark:border-gray-600"
-    : "border border-gray-200 dark:border-gray-700";
+  const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
 
   // Determine hover CTA text
   const ctaText = isMiss ? "Verify manually" : "Expand to full page";
@@ -1707,6 +1711,7 @@ function ExpandedPageViewer({
   // biome-ignore lint/correctness/useExhaustiveDependencies: refs are stable
   useLayoutEffect(() => {
     if (!imageLoaded || !highlightBox || !dimensions) return;
+    if (dimensions.width <= 0 || dimensions.height <= 0) return;
     const container = scrollContainerRef.current;
     const img = imageRef.current;
     if (!container || !img) return;
