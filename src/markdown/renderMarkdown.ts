@@ -2,6 +2,7 @@ import { getCitationStatus } from "../parsing/parseCitation.js";
 import { generateCitationKey } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
+import { safeReplace } from "../utils/regexSafety.js";
 import {
   getCitationDisplayText,
   getIndicator,
@@ -136,8 +137,8 @@ export function renderCitationsAsMarkdown(input: string, options: RenderMarkdown
   let citationIndex = 0;
 
   // Replace cite tags with rendered variants
-  // Use module-level regex directly - replace() handles lastIndex reset automatically
-  const markdown = input.replace(CITE_TAG_REGEX, match => {
+  // Use safeReplace to validate input length before regex (ReDoS prevention)
+  const markdown = safeReplace(input, CITE_TAG_REGEX, match => {
     citationIndex++;
     const attrs = parseCiteAttributes(match);
     const citation = buildCitationFromAttrs(attrs, citationIndex);

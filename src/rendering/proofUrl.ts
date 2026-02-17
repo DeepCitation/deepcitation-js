@@ -1,4 +1,5 @@
 import type { VerificationRecord } from "../types/citation.js";
+import { safeReplace } from "../utils/regexSafety.js";
 
 /**
  * Options for building proof page URLs.
@@ -31,7 +32,7 @@ export interface ProofUrlOptions {
  * The proof ID comes from the verification response (assigned by backend).
  */
 export function buildProofUrl(proofId: string, options: ProofUrlOptions): string {
-  const base = options.baseUrl.replace(/\/+$/, "");
+  const base = safeReplace(options.baseUrl, /\/+$/, "");
   const url = new URL(`${base}/p/${encodeURIComponent(proofId)}`);
 
   if (options.view) url.searchParams.set("view", options.view);

@@ -1,6 +1,7 @@
 import { formatPageLocation, getIndicator } from "../../markdown/markdownVariants.js";
 import { getCitationStatus } from "../../parsing/parseCitation.js";
 import { generateCitationKey } from "../../react/utils.js";
+import { safeReplace } from "../../utils/regexSafety.js";
 import { buildCitationFromAttrs, parseCiteAttributes } from "../citationParser.js";
 import { buildProofUrl, buildSnippetImageUrl } from "../proofUrl.js";
 import type { RenderCitationWithStatus } from "../types.js";
@@ -50,8 +51,8 @@ export function renderCitationsForGitHub(input: string, options: GitHubRenderOpt
   const proofUrls: Record<string, string> = {};
   let citationIndex = 0;
 
-  // Use module-level regex directly - replace() handles lastIndex reset automatically
-  const markdown = input.replace(CITE_TAG_REGEX, match => {
+  // Use safeReplace to validate input length before regex (ReDoS prevention)
+  const markdown = safeReplace(input, CITE_TAG_REGEX, match => {
     citationIndex++;
     const attrs = parseCiteAttributes(match);
     const citation = buildCitationFromAttrs(attrs, citationIndex);

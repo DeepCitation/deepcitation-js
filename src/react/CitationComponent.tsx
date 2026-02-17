@@ -54,6 +54,7 @@ import type {
   IndicatorVariant,
   UrlFetchStatus,
 } from "./types.js";
+import { validateRegexInput } from "../utils/regexSafety.js";
 import { isValidProofUrl } from "./urlUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
@@ -258,6 +259,7 @@ function getDefaultContent(variant: CitationVariant): CitationContent {
  * Handles cases where LLM output includes brackets in anchorText.
  */
 function stripBrackets(text: string): string {
+  validateRegexInput(text);
   return text.replace(/^\[+\s*/, "").replace(/\s*\]+$/, "");
 }
 
