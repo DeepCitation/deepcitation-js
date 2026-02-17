@@ -132,11 +132,6 @@ export interface ProofHosting {
 }
 
 /**
- * @deprecated Use `ProofHosting` instead. Renamed to avoid collision with the URL-citation concept.
- */
-export type ProofUrl = ProofHosting;
-
-/**
  * A page returned from verification for user inspection.
  * Extends SourcePage from boxes.ts with verification-specific metadata.
  */

@@ -29,7 +29,6 @@ export type {
 export type {
   DocumentVerificationResult,
   ProofHosting,
-  ProofUrl,
   UrlVerificationResult,
   Verification,
   VerificationPage,
