@@ -15,6 +15,7 @@ updates:
       github-actions:
         patterns:
           - "*"
+    open-pull-requests-limit: 3
 
   # Keep npm devDependencies up to date
   - package-ecosystem: "npm"
@@ -32,8 +33,5 @@ updates:
     groups:
       dev-dependencies:
         patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    open-pull-requests-limit: 10
+          - "*" # This groups ALL updates into one PR
+    open-pull-requests-limit: 3
