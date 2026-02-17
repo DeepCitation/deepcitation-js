@@ -15,7 +15,7 @@ import {
   SpinnerIcon,
   XCircleIcon,
 } from "./icons.js";
-import { buildSearchSummary, type SearchSummary } from "./searchSummaryUtils.js";
+import type { SearchSummary } from "./searchSummaryUtils.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
 import { isValidProofUrl, sanitizeUrl } from "./urlUtils.js";
