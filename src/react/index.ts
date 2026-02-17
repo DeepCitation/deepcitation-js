@@ -221,11 +221,13 @@ export {
 export {
   AttemptingToVerify,
   type AttemptingToVerifyProps,
+  buildSearchSummary,
   FaviconImage,
   QuoteBox,
   type QuoteBoxProps,
   QuotedText,
   type QuotedTextProps,
+  type SearchSummary,
   SourceContextHeader,
   type SourceContextHeaderProps,
   StatusHeader,
