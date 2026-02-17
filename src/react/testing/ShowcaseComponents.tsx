@@ -3,15 +3,20 @@ import { useState } from "react";
 import type { Citation } from "../../types/citation";
 import type { SearchAttempt } from "../../types/search";
 import type { Verification } from "../../types/verification";
-import { CitationComponent } from "../CitationComponent";
-import { CitationDrawer, CitationDrawerItemComponent } from "../CitationDrawer";
 import type { CitationDrawerItem } from "../CitationDrawer.types";
-import { groupCitationsBySource } from "../CitationDrawer.utils";
-import { CitationDrawerTrigger } from "../CitationDrawerTrigger";
-import { SpinnerIcon } from "../icons";
+import {
+  CitationComponent,
+  CitationDrawer,
+  CitationDrawerItemComponent,
+  CitationDrawerTrigger,
+  groupCitationsBySource,
+  QuoteBox,
+  SpinnerIcon,
+  StatusHeader,
+  UrlCitationComponent,
+  VerificationLog,
+} from "../index";
 import type { UrlCitationMeta } from "../types";
-import { UrlCitationComponent } from "../UrlCitationComponent";
-import { QuoteBox, StatusHeader, VerificationLog } from "../VerificationLog";
 import { allUrlStatuses, allVerificationStatuses, urlAccessFailureFixtures } from "./ShowcaseFixtures";
 
 // =============================================================================
@@ -183,10 +188,12 @@ const longCitation: Citation = {
 
 const verifiedVerification: Verification = {
   status: "found",
-  verifiedPageNumber: 5,
   verifiedMatchSnippet: "Revenue increased by 15% in Q4 2024.",
-  verificationImageBase64:
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  document: {
+    verifiedPageNumber: 5,
+    verificationImageSrc:
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  },
 };
 
 const partialVerification: Verification = {
@@ -332,10 +339,12 @@ const urlCitation: Citation = {
 
 const urlVerifiedVerification: Verification = {
   status: "found",
-  verifiedPageNumber: 1,
   verifiedMatchSnippet: "The TGU transitions and Halos require control, not brute strength.",
-  verificationImageBase64:
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  document: {
+    verifiedPageNumber: 1,
+    verificationImageSrc:
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  },
 };
 
 const urlNotFoundVerification: Verification = {

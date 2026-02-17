@@ -71,11 +71,6 @@ export interface DocumentVerificationResult {
    * Image source for the verification snippet. Can be a base64 data URI, a URL, or a local path.
    */
   verificationImageSrc?: string | null;
-  /**
-   * @deprecated Use `verificationImageSrc` instead. This field may contain a base64 data URI,
-   * URL, or file path — not necessarily base64-encoded data despite the name.
-   */
-  verificationImageBase64?: string | null;
   verificationImageDimensions?: { width: number; height: number } | null;
 }
 
@@ -128,9 +123,11 @@ export interface UrlVerificationResult {
  * }
  * ```
  */
-export interface ProofUrl {
+export interface ProofHosting {
   proofId?: string;
+  /** Interactive proof page URL (HTML) */
   proofUrl?: string;
+  /** Direct image URL (CDN-hosted page render) */
   proofImageUrl?: string;
 }
 
@@ -143,6 +140,8 @@ export interface VerificationPage extends SourcePage {
   isMatchPage?: boolean;
   /** Highlighted region on this page (if match found) */
   highlightBox?: ScreenBox;
+  /** OCR text items on this page (forward-compatible: text selection, annotations) */
+  textItems?: DeepTextItem[];
 }
 
 export interface Verification {
@@ -179,7 +178,7 @@ export interface Verification {
   url?: UrlVerificationResult;
 
   /** Proof hosting results */
-  proof?: ProofUrl;
+  proof?: ProofHosting;
 
   // ========== Pages for user inspection ==========
   /** Pages returned from verification for user inspection */

@@ -6,6 +6,7 @@ import { COPY_FEEDBACK_DURATION_MS, DOT_COLORS } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import {
   CheckIcon,
+  ChevronRightIcon,
   CopyIcon,
   DocumentIcon,
   ExternalLinkIcon,
@@ -14,6 +15,7 @@ import {
   SpinnerIcon,
   XCircleIcon,
 } from "./icons.js";
+import type { SearchSummary } from "./searchSummaryUtils.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
 import { isValidProofUrl, sanitizeUrl } from "./urlUtils.js";
@@ -151,6 +153,8 @@ export interface SourceContextHeaderProps {
    * (e.g., "Company Blog" instead of "example.com/blog/post").
    */
   sourceLabel?: string;
+  /** Callback when the page pill is clicked to expand to full page view */
+  onExpand?: () => void;
 }
 
 /** Maximum length for display name truncation in source headers */
@@ -272,6 +276,76 @@ function PageLineLink({ pageLineText, proofUrl }: { pageLineText: string; proofU
   );
 }
 
+// =============================================================================
+// PAGE PILL COMPONENT
+// =============================================================================
+
+interface PagePillProps {
+  /** Page number to display */
+  pageNumber: number;
+  /** Status color scheme for the pill */
+  colorScheme: "green" | "amber" | "red" | "gray";
+  /** Callback when clicked (triggers expansion) */
+  onClick?: () => void;
+}
+
+/** Page pill color classes by status */
+const PAGE_PILL_COLORS = {
+  green: "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700",
+  amber: "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700",
+  red: "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600",
+  gray: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600",
+} as const;
+
+/**
+ * Compact badge showing page number with chevron-right expansion indicator.
+ * Verified → brand/blue; not-found → neutral/dark.
+ * Click triggers in-popover expansion to full page view.
+ */
+export function PagePill({ pageNumber, colorScheme, onClick }: PagePillProps) {
+  if (pageNumber <= 0) return null;
+
+  const colorClasses = PAGE_PILL_COLORS[colorScheme];
+
+  if (!onClick) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded border",
+          colorClasses,
+        )}
+      >
+        p.{pageNumber}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={e => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={cn(
+        "inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded border cursor-pointer",
+        "transition-colors hover:opacity-80",
+        colorClasses,
+      )}
+      aria-label={`Expand to full page ${pageNumber}`}
+    >
+      <span>p.{pageNumber}</span>
+      <span className="size-2.5">
+        <ChevronRightIcon />
+      </span>
+    </button>
+  );
+}
+
+// =============================================================================
+// SOURCE CONTEXT HEADER COMPONENT
+// =============================================================================
+
 /**
  * SourceContextHeader displays source information (favicon + source info) for citations.
  * Shown at the top of popovers to give auditors immediate visibility into citation sources.
@@ -281,7 +355,13 @@ function PageLineLink({ pageLineText, proofUrl }: { pageLineText: string; proofU
  *
  * The `sourceLabel` prop allows overriding the displayed source name for both types.
  */
-export function SourceContextHeader({ citation, verification, status, sourceLabel }: SourceContextHeaderProps) {
+export function SourceContextHeader({
+  citation,
+  verification,
+  status,
+  sourceLabel,
+  onExpand,
+}: SourceContextHeaderProps) {
   const isUrl = isUrlCitation(citation);
 
   if (isUrl) {
@@ -363,7 +443,7 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
     );
   }
 
-  // Document citation: show document icon + label + page/line info (right-aligned)
+  // Document citation: show document icon + label + page pill (right-aligned)
   // Note: attachmentId should never be shown to users - only show the label if available
   // sourceLabel takes precedence over verification.label
   const label = sourceLabel || verification?.label;
@@ -373,8 +453,11 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
   // Display text: use label, fall back to "Document" (never show attachmentId to users)
   const displayName = label || "Document";
 
-  // Format page/line text
+  // Format page/line text (for fallback when no onExpand)
   const pageLineText = formatPageLineText(pageNumber, lineIds);
+
+  // Derive color scheme for PagePill
+  const colorScheme = getStatusColorScheme(status);
 
   return (
     <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
@@ -388,7 +471,12 @@ export function SourceContextHeader({ citation, verification, status, sourceLabe
           </span>
         )}
       </div>
-      {pageLineText && <PageLineLink pageLineText={pageLineText} proofUrl={verification?.proof?.proofUrl} />}
+      {/* Show PagePill with expand action when onExpand is provided and page number exists */}
+      {onExpand && pageNumber && pageNumber > 0 ? (
+        <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} />
+      ) : (
+        pageLineText && <PageLineLink pageLineText={pageLineText} proofUrl={verification?.proof?.proofUrl} />
+      )}
     </div>
   );
 }
@@ -1011,75 +1099,6 @@ function VerificationLogSummary({
 // SEARCH SUMMARY BUILDER
 // =============================================================================
 
-interface SearchSummary {
-  totalAttempts: number;
-  pageRange: string; // "page 3" or "pages 3-7"
-  includesFullDocScan: boolean;
-  closestMatch?: { text: string; page?: number };
-}
-
-/**
- * Build a human-readable summary of search attempts for not-found states.
- * Computes page range, full doc scan presence, and closest match if any.
- *
- * NOTE: Utility function prepared for future task #4 (enhance not-found display).
- * Currently unused but ready for integration into AuditSearchDisplay component.
- * See plans/drawer-trigger-copy-polish.md for remaining tasks.
- */
-function _buildSearchSummary(searchAttempts: SearchAttempt[], verification?: Verification | null): SearchSummary {
-  const totalAttempts = searchAttempts.length;
-
-  // Collect unique pages searched
-  const pagesSearched = new Set<number>();
-  let includesFullDocScan = false;
-  for (const attempt of searchAttempts) {
-    if (attempt.pageSearched != null) {
-      pagesSearched.add(attempt.pageSearched);
-    }
-    if (attempt.searchScope === "document") {
-      includesFullDocScan = true;
-    }
-  }
-
-  // Format page range
-  let pageRange: string;
-  if (pagesSearched.size === 0) {
-    pageRange = "";
-  } else if (pagesSearched.size === 1) {
-    const [page] = pagesSearched;
-    pageRange = `page ${page}`;
-  } else {
-    const sorted = Array.from(pagesSearched).sort((a, b) => a - b);
-    pageRange = `pages ${sorted[0]}-${sorted[sorted.length - 1]}`;
-  }
-
-  // Find closest match: look for matchedText on unsuccessful attempts, or rejected matches
-  let closestMatch: SearchSummary["closestMatch"];
-
-  // First check verification.verifiedMatchSnippet
-  if (verification?.verifiedMatchSnippet) {
-    const page = verification.document?.verifiedPageNumber ?? undefined;
-    closestMatch = {
-      text: verification.verifiedMatchSnippet,
-      page: page != null && page > 0 ? page : undefined,
-    };
-  }
-
-  // If no snippet from verification, look through search attempts for rejected/partial matches
-  if (!closestMatch) {
-    for (const attempt of searchAttempts) {
-      if (!attempt.success && attempt.matchedText) {
-        closestMatch = {
-          text: attempt.matchedText,
-          page: attempt.pageSearched,
-        };
-        break; // Take the first one found
-      }
-    }
-  }
-
-  return { totalAttempts, pageRange, includesFullDocScan, closestMatch };
-}
 
 // =============================================================================
 // AUDIT-FOCUSED SEARCH DISPLAY

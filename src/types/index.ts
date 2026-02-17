@@ -28,7 +28,7 @@ export type {
 // Found highlight types
 export type {
   DocumentVerificationResult,
-  ProofUrl,
+  ProofHosting,
   UrlVerificationResult,
   Verification,
   VerificationPage,

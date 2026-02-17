@@ -6,7 +6,7 @@ import {
   FaviconImage,
   LookingForSection,
   SourceContextHeader,
-} from "../react/VerificationLog";
+} from "../react/index";
 import { getVariationLabel } from "../react/variationLabels";
 import type { Citation } from "../types/citation";
 import type { Verification } from "../types/verification";
