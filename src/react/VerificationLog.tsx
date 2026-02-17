@@ -15,7 +15,6 @@ import {
   SpinnerIcon,
   XCircleIcon,
 } from "./icons.js";
-import type { SearchSummary } from "./searchSummaryUtils.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
 import { isValidProofUrl, sanitizeUrl } from "./urlUtils.js";
@@ -459,6 +458,11 @@ export function SourceContextHeader({
   // Derive color scheme for PagePill
   const colorScheme = getStatusColorScheme(status);
 
+  // Determine which page actions to show
+  const proofUrl = verification?.proof?.proofUrl;
+  const hasProofUrl = proofUrl && isValidProofUrl(proofUrl);
+  const showPagePill = onExpand && pageNumber && pageNumber > 0;
+
   return (
     <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -471,12 +475,14 @@ export function SourceContextHeader({
           </span>
         )}
       </div>
-      {/* Show PagePill with expand action when onExpand is provided and page number exists */}
-      {onExpand && pageNumber && pageNumber > 0 ? (
-        <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} />
-      ) : (
-        pageLineText && <PageLineLink pageLineText={pageLineText} proofUrl={verification?.proof?.proofUrl} />
-      )}
+      {/* Show both PagePill (in-popover expansion) AND PageLineLink (external proof) when available */}
+      <div className="flex items-center gap-2">
+        {showPagePill && <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} />}
+        {/* Show PageLineLink when: has proof URL OR no pill (fallback to static text) */}
+        {pageLineText && (hasProofUrl || !showPagePill) && (
+          <PageLineLink pageLineText={pageLineText} proofUrl={hasProofUrl ? proofUrl : undefined} />
+        )}
+      </div>
     </div>
   );
 }
@@ -1098,7 +1104,6 @@ function VerificationLogSummary({
 // =============================================================================
 // SEARCH SUMMARY BUILDER
 // =============================================================================
-
 
 // =============================================================================
 // AUDIT-FOCUSED SEARCH DISPLAY
