@@ -11,7 +11,7 @@ import { CitationDrawerTrigger } from "../CitationDrawerTrigger";
 import { SpinnerIcon } from "../icons";
 import type { UrlCitationMeta } from "../types";
 import { UrlCitationComponent } from "../UrlCitationComponent";
-import { QuoteBox, StatusHeader, VerificationLog } from "../index";
+import { QuoteBox, StatusHeader, VerificationLog } from "../VerificationLog";
 import { allUrlStatuses, allVerificationStatuses, urlAccessFailureFixtures } from "./ShowcaseFixtures";
 
 // =============================================================================
