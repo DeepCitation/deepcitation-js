@@ -32,8 +32,5 @@ updates:
     groups:
       dev-dependencies:
         patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+          - "*" # This groups ALL updates into one PR
     open-pull-requests-limit: 10
