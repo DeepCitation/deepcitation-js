@@ -217,16 +217,20 @@ export {
   isDocumentCitation,
   isUrlCitation,
 } from "./utils.js";
+// Search Summary Utilities
+export { buildSearchSummary, type SearchSummary } from "./searchSummaryUtils.js";
 // Verification Log Components (Search attempt timeline display)
 export {
+  type AmbiguityInfo,
+  AmbiguityWarning,
   AttemptingToVerify,
   type AttemptingToVerifyProps,
   FaviconImage,
+  LookingForSection,
   QuoteBox,
   type QuoteBoxProps,
   QuotedText,
   type QuotedTextProps,
-  type SearchSummary,
   SourceContextHeader,
   type SourceContextHeaderProps,
   StatusHeader,

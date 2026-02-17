@@ -69,13 +69,8 @@ import type {
 } from "./types.js";
 import { isValidProofUrl } from "./urlUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
-import {
-  buildSearchSummary,
-  QuotedText,
-  SourceContextHeader,
-  StatusHeader,
-  VerificationLog,
-} from "./VerificationLog.js";
+import { QuotedText, SourceContextHeader, StatusHeader, VerificationLog } from "./VerificationLog.js";
+import { buildSearchSummary } from "./searchSummaryUtils.js";
 
 // Re-export types for convenience
 export type {
