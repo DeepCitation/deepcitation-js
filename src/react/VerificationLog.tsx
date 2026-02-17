@@ -459,6 +459,11 @@ export function SourceContextHeader({
   // Derive color scheme for PagePill
   const colorScheme = getStatusColorScheme(status);
 
+  // Determine which page actions to show
+  const hasProofUrl = !!verification?.proof?.proofUrl && isValidProofUrl(verification.proof.proofUrl);
+  const showPagePill = onExpand && pageNumber && pageNumber > 0;
+  const showPageLink = pageLineText && !showPagePill; // Only show link as fallback
+
   return (
     <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -471,12 +476,15 @@ export function SourceContextHeader({
           </span>
         )}
       </div>
-      {/* Show PagePill with expand action when onExpand is provided and page number exists */}
-      {onExpand && pageNumber && pageNumber > 0 ? (
-        <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} />
-      ) : (
-        pageLineText && <PageLineLink pageLineText={pageLineText} proofUrl={verification?.proof?.proofUrl} />
-      )}
+      {/* Show both PagePill (in-popover expansion) AND PageLineLink (external proof) when available */}
+      <div className="flex items-center gap-2">
+        {showPagePill && <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} />}
+        {showPageLink && <PageLineLink pageLineText={pageLineText} proofUrl={verification?.proof?.proofUrl} />}
+        {/* Show external proof link even when PagePill is shown */}
+        {showPagePill && hasProofUrl && pageLineText && (
+          <PageLineLink pageLineText={pageLineText} proofUrl={verification.proof.proofUrl} />
+        )}
+      </div>
     </div>
   );
 }
