@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     // INTENTIONAL: Allow returning unverified citations if no attachmentId provided.
     // This is a valid use case (extraction-only mode) and not a security bypass.
     // lgtm[js/user-controlled-bypass]
+    // codeql[js/user-controlled-bypass]
     if (!attachmentId) {
       // No attachmentId - return citations without verification
       return NextResponse.json({

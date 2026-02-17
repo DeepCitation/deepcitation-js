@@ -2,6 +2,7 @@ import { generateCitationKey } from "../react/utils.js";
 import type { Citation, CitationRecord, CitationStatus, DocumentCitation, UrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { createSafeObject, isSafeKey } from "../utils/objectSafety.js";
+import { safeMatch } from "../utils/regexSafety.js";
 import { getAllCitationsFromDeferredResponse, hasDeferredCitations } from "./citationParser.js";
 import { normalizeCitations } from "./normalizeCitation.js";
 
@@ -355,12 +356,13 @@ const parseJsonCitation = (jsonCitation: unknown, citationNumber?: number): Cita
   if (startPageId) {
     // Try full format first: page_number_5_index_2 or pageId_5_index_2
     // Performance fix: use module-level compiled regex
-    const pageMatch = startPageId.match(PAGE_ID_SIMPLE_REGEX);
+    // Security fix: use safeMatch to prevent ReDoS on untrusted JSON input
+    const pageMatch = safeMatch(startPageId, PAGE_ID_SIMPLE_REGEX);
     if (pageMatch) {
       pageNumber = parseInt(pageMatch[1], 10);
     } else {
       // Try simple n_m format: 5_4 (page 5, index 4)
-      const simpleMatch = startPageId.match(SIMPLE_PAGE_INDEX_REGEX);
+      const simpleMatch = safeMatch(startPageId, SIMPLE_PAGE_INDEX_REGEX);
       if (simpleMatch) {
         pageNumber = parseInt(simpleMatch[1], 10);
       }

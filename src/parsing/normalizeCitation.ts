@@ -1,7 +1,8 @@
 import { generateCitationKey } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { createSafeObject, isSafeKey } from "../utils/objectSafety.js";
+import { createSafeObject, safeAssign } from "../utils/objectSafety.js";
+import { validateRegexInput } from "../utils/regexSafety.js";
 import { getCitationStatus } from "./parseCitation.js";
 
 /**
@@ -50,6 +51,9 @@ export interface ReplaceCitationsOptions {
  */
 const parseCiteAttributes = (citeTag: string): Record<string, string | undefined> => {
   const attrs: Record<string, string | undefined> = {};
+
+  // Security: validate input length before regex operations to prevent ReDoS
+  validateRegexInput(citeTag);
 
   // Match attribute patterns: key='value' or key="value"
   const attrRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
@@ -137,6 +141,9 @@ export const getVerificationTextIndicator = (verification: Verification | null |
  * ```
  */
 export const replaceCitations = (markdownWithCitations: string, options: ReplaceCitationsOptions = {}): string => {
+  // Security: validate input length before regex operations to prevent ReDoS
+  validateRegexInput(markdownWithCitations);
+
   const { leaveAnchorTextBehind = false, verifications, showVerificationStatus = false } = options;
 
   // Track citation index for matching with numbered verification keys
@@ -164,6 +171,7 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
       const parsePageNumber = (startPageId?: string): number | undefined => {
         if (!startPageId) return undefined;
         // Performance fix: use module-level compiled regex
+        // Note: parent replaceCitations() already validated the full input
         const match = startPageId.match(PAGE_NUMBER_REGEX);
         return match ? parseInt(match[1], 10) : undefined;
       };
@@ -171,6 +179,7 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
       const parseLineIds = (lineIdsStr?: string): number[] | undefined => {
         if (!lineIdsStr) return undefined;
 
+        // Note: parent replaceCitations() already validated the full input
         // Performance fix: limit range expansion to prevent memory exhaustion
         const MAX_RANGE_SIZE = 1000;
         const SAMPLE_COUNT = 50;
@@ -418,13 +427,11 @@ const normalizeCitationContent = (input: string): string => {
 
     content = decodeHtmlEntities(content);
 
-    // Normalize quotes - backslashes are intentionally NOT escaped here
-    // because they're used for escape sequences (\n, \', \") that are
-    // properly handled by parseCitation.ts
-    // lgtm[js/incomplete-sanitization]
-    content = content.replace(/\\\\'/g, "'").replace(/\\'/g, "'").replace(/'/g, "\\'");
-    // lgtm[js/incomplete-sanitization]
-    content = content.replace(/\\\\"/g, '"').replace(/\\"/g, '"').replace(/"/g, '\\"');
+    // Normalize quotes in a single pass: match any backslash sequences followed by
+    // a quote character and replace with a consistently escaped quote.
+    // This avoids CodeQL js/incomplete-sanitization warnings from chained .replace()
+    // calls where earlier replacements can reintroduce patterns matched by later ones.
+    content = content.replace(/\\*(['"])/g, (_: string, quote: string) => `\\${quote}`);
 
     return `${canonicalizeCiteAttributeKey(key)}='${content}'`;
   });
@@ -496,10 +503,8 @@ const normalizeCitationContent = (input: string): string => {
       const rawKey = match[1];
       const value = match[3]; // match[2] is the quote character
       const key = canonicalizeCiteAttributeKey(rawKey);
-      // Additional safety check - canonicalizeCiteAttributeKey should only return safe keys
-      if (isSafeKey(key)) {
-        attrs[key] = value;
-      }
+      // Security: use safeAssign to prevent prototype pollution (rejects __proto__, constructor, prototype)
+      safeAssign(attrs, key, value);
     }
 
     // If we didn't find any parsable attrs, don't touch the tag.

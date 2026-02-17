@@ -2,6 +2,7 @@ import { formatPageLocation, getIndicator } from "../../markdown/markdownVariant
 import { getCitationStatus } from "../../parsing/parseCitation.js";
 import { generateCitationKey } from "../../react/utils.js";
 import type { CitationStatus } from "../../types/citation.js";
+import { safeMatch } from "../../utils/regexSafety.js";
 import { buildCitationFromAttrs, parseCiteAttributes } from "../citationParser.js";
 import type { RenderCitationWithStatus } from "../types.js";
 import { bold, colorize, dim, horizontalRule, shouldUseColor } from "./ansiColors.js";
@@ -94,8 +95,8 @@ export function renderCitationsForTerminal(input: string, options: TerminalRende
   // Do a single pass to collect replacements, then apply them.
   const replacements: Array<{ original: string; colored: string; plain: string }> = [];
 
-  // Use module-level regex directly - match() handles lastIndex reset automatically
-  const matches = input.match(CITE_TAG_REGEX);
+  // Use safeMatch to validate input length before regex (ReDoS prevention)
+  const matches = safeMatch(input, CITE_TAG_REGEX);
   if (matches) {
     for (const match of matches) {
       citationIndex++;
