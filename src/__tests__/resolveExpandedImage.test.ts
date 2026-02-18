@@ -3,8 +3,9 @@
  * for the expanded page viewer's image source.
  *
  * Security model: each source is validated with isValidProofImageSrc() before use.
- * Trusted: HTTPS from api.deepcitation.com / cdn.deepcitation.com, localhost (dev), safe raster data URIs.
- * Rejected: SVG data URIs, javascript: URIs, arbitrary HTTPS hosts.
+ * Trusted: HTTPS from api.deepcitation.com / cdn.deepcitation.com / proof.deepcitation.com,
+ *          localhost (dev), same-origin relative paths, safe raster data URIs.
+ * Rejected: SVG data URIs, javascript: URIs, arbitrary HTTPS hosts, relative paths with `..` traversal.
  * Invalid sources are skipped and the next tier is tried.
  * Correctness: validates cascade priority (matchPage → proofImageUrl → verificationImageSrc).
  */
@@ -16,6 +17,10 @@ import type { Verification } from "../types/verification";
 // Representative image URLs for tests
 const TRUSTED_IMG = "https://api.deepcitation.com/proof/img.png";
 const TRUSTED_CDN_IMG = "https://cdn.deepcitation.com/proof/page1.avif";
+const TRUSTED_PROOF_IMG = "https://proof.deepcitation.com/p/abc123?format=avif&view=page";
+
+// Same-origin relative paths — allowed (served from current host)
+const RELATIVE_PATH_IMG = "/demo/legal/page-1.avif";
 
 // Localhost — allowed (dev environment)
 const LOCALHOST_IMG = "http://localhost:3000/proof/img.png";
@@ -24,6 +29,12 @@ const UNTRUSTED_HTTPS_IMG = "https://evil.example.com/proof/img.png";
 // Dangerous data URI types — rejected
 const SVG_DATA_URI = "data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KDEpIj48L3N2Zz4=";
 const JAVASCRIPT_URI = "javascript:alert(1)";
+// Path traversal — rejected even though it starts with /
+const TRAVERSAL_PATH = "/demo/../../etc/passwd";
+// URL-encoded path traversal — %2e%2e decodes to ..
+const ENCODED_TRAVERSAL_PATH = "/demo/%2e%2e/%2e%2e/etc/passwd";
+// Protocol-relative URL — rejected (resolves to external host)
+const PROTOCOL_RELATIVE_URL = "//evil.com/proof/img.avif";
 
 describe("resolveExpandedImage", () => {
   describe("null/undefined handling", () => {
@@ -212,6 +223,66 @@ describe("resolveExpandedImage", () => {
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
       expect(result?.src).toBe(LOCALHOST_IMG);
+    });
+
+    it("accepts proof.deepcitation.com as matchPage source (tier 1)", () => {
+      const verification: Verification = {
+        status: "found",
+        pages: [
+          {
+            pageNumber: 1,
+            isMatchPage: true,
+            source: TRUSTED_PROOF_IMG,
+            dimensions: { width: 800, height: 1200 },
+          },
+        ],
+      };
+      const result = resolveExpandedImage(verification);
+      expect(result).not.toBeNull();
+      expect(result?.src).toBe(TRUSTED_PROOF_IMG);
+    });
+
+    it("accepts relative path as verificationImageSrc (tier 3)", () => {
+      const verification: Verification = {
+        status: "found",
+        document: {
+          verificationImageSrc: RELATIVE_PATH_IMG,
+          verifiedPageNumber: 1,
+        },
+      };
+      const result = resolveExpandedImage(verification);
+      expect(result).not.toBeNull();
+      expect(result?.src).toBe(RELATIVE_PATH_IMG);
+    });
+
+    it("rejects relative path with .. traversal", () => {
+      const verification: Verification = {
+        status: "found",
+        document: {
+          verificationImageSrc: TRAVERSAL_PATH,
+          verifiedPageNumber: 1,
+        },
+      };
+      expect(resolveExpandedImage(verification)).toBeNull();
+    });
+
+    it("rejects URL-encoded path traversal (%2e%2e)", () => {
+      const verification: Verification = {
+        status: "found",
+        document: {
+          verificationImageSrc: ENCODED_TRAVERSAL_PATH,
+          verifiedPageNumber: 1,
+        },
+      };
+      expect(resolveExpandedImage(verification)).toBeNull();
+    });
+
+    it("rejects protocol-relative URL (//evil.com)", () => {
+      const verification: Verification = {
+        status: "found",
+        pages: [{ pageNumber: 1, isMatchPage: true, source: PROTOCOL_RELATIVE_URL }],
+      };
+      expect(resolveExpandedImage(verification)).toBeNull();
     });
   });
 
