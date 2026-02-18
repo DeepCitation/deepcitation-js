@@ -89,9 +89,7 @@ describe("resolveExpandedImage", () => {
       expect(result).not.toBeNull();
       if (!result) throw new Error("Expected result");
       expect(result.src).toBe(TRUSTED_CDN_IMG);
-      if (!result) throw new Error("Expected result");
       expect(result.dimensions).toBeNull();
-      if (!result) throw new Error("Expected result");
       expect(result.highlightBox).toBeNull();
     });
 
@@ -190,7 +188,10 @@ describe("resolveExpandedImage", () => {
       expect(result.src).toBe(SVG_DATA_URI);
     });
 
-    it("accepts javascript: URI in proofImageUrl (inert in img src)", () => {
+    it("passes through any proofImageUrl without validation (all sources server-generated)", () => {
+      // Rationale: verificationImageSrc is already rendered unvalidated in AnchorTextFocusedImage.
+      // Applying validation only to options 1+2 created an inconsistent trust boundary.
+      // All three sources come from the same server-controlled verification object.
       const verification: Verification = {
         status: "found",
         proof: { proofImageUrl: JAVASCRIPT_URI },

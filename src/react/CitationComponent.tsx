@@ -33,6 +33,7 @@ import {
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
   MIN_WORD_DIFFERENCE,
+  MISS_TRAY_THUMBNAIL_HEIGHT,
   MISS_WAVY_UNDERLINE_STYLE,
   PARTIAL_COLOR_STYLE,
   PENDING_COLOR_STYLE,
@@ -1349,6 +1350,9 @@ function SearchAnalysisSummary({
  * For verified/partial: Shows keyhole image with "Expand to full page" hover CTA.
  * For not-found: Shows search analysis summary with "Verify manually" hover CTA.
  * When `onExpand` is provided, the tray is clickable. Otherwise, it's informational only.
+ *
+ * @param proofImageSrc - Full-page proof image for miss states only. Ignored when
+ *   `hasImage` is truthy (verified/partial path renders the keyhole image instead).
  */
 function EvidenceTray({
   verification,
@@ -1380,7 +1384,7 @@ function EvidenceTray({
       ) : isMiss && searchAttempts.length > 0 ? (
         <>
           {proofImageSrc && (
-            <div className="overflow-hidden" style={{ height: 72 }}>
+            <div className="overflow-hidden" style={{ height: MISS_TRAY_THUMBNAIL_HEIGHT }}>
               <img
                 src={proofImageSrc}
                 className="w-full h-full object-cover object-top"
