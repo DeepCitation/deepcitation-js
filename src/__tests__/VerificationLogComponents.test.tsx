@@ -500,7 +500,9 @@ describe("SourceContextHeader", () => {
         proof: { proofUrl: "https://api.deepcitation.com/proof/123" },
       };
 
-      const { queryByRole, container } = render(<SourceContextHeader citation={citation} verification={verification} />);
+      const { queryByRole, container } = render(
+        <SourceContextHeader citation={citation} verification={verification} />,
+      );
 
       // No external link — proof URLs are no longer rendered as links
       expect(queryByRole("link")).toBeNull();
@@ -577,7 +579,9 @@ describe("SourceContextHeader", () => {
         proof: { proofUrl: "https://cdn.deepcitation.com/proof/456" },
       };
 
-      const { queryByRole, container } = render(<SourceContextHeader citation={citation} verification={verification} />);
+      const { queryByRole, container } = render(
+        <SourceContextHeader citation={citation} verification={verification} />,
+      );
 
       // No external link — proof URLs are no longer rendered as links
       expect(queryByRole("link")).toBeNull();

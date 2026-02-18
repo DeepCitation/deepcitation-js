@@ -17,7 +17,7 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
-import { isValidProofUrl, sanitizeUrl } from "./urlUtils.js";
+import { sanitizeUrl } from "./urlUtils.js";
 import { cn, isUrlCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
 
@@ -240,38 +240,6 @@ export function FaviconImage({
       onError={() => setHasError(true)}
       loading="lazy"
     />
-  );
-}
-
-/**
- * Displays page/line location text, optionally as a clickable link to the proof image.
- * Falls back to static text if proof URL is unavailable or fails validation.
- * Uses smaller icon size (w-2.5 h-2.5) to match the smaller font size (text-[10px]).
- */
-function PageLineLink({ pageLineText, proofUrl }: { pageLineText: string; proofUrl?: string }): React.ReactNode {
-  const safeProofUrl = proofUrl ? isValidProofUrl(proofUrl) : null;
-
-  if (safeProofUrl) {
-    return (
-      <a
-        href={safeProofUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline shrink-0 uppercase tracking-wide cursor-pointer"
-        onClick={e => e.stopPropagation()}
-      >
-        <span>{pageLineText}</span>
-        <span className="w-2.5 h-2.5">
-          <ExternalLinkIcon />
-        </span>
-      </a>
-    );
-  }
-
-  return (
-    <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0 uppercase tracking-wide">
-      {pageLineText}
-    </span>
   );
 }
 
@@ -1399,7 +1367,12 @@ interface VerificationLogTimelineProps {
  * - For found/partial: Shows only the successful match details
  * - For not_found: Shows all search attempts with clear count
  */
-export function VerificationLogTimeline({ searchAttempts, fullPhrase, anchorText, status }: VerificationLogTimelineProps) {
+export function VerificationLogTimeline({
+  searchAttempts,
+  fullPhrase,
+  anchorText,
+  status,
+}: VerificationLogTimelineProps) {
   return (
     <div id="verification-log-timeline" style={{ maxHeight: MAX_TIMELINE_HEIGHT }} className="overflow-y-auto">
       <AuditSearchDisplay

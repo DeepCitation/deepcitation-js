@@ -1,4 +1,5 @@
 import React, { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
 // React 19.2+ Activity component for prefetching - falls back to Fragment if unavailable
 const Activity =
   (
@@ -28,7 +29,6 @@ import {
   EXPANDED_POPOVER_WIDTH_DEFAULT,
   EXPANDED_POPOVER_WIDTH_VAR,
   INDICATOR_SIZE_STYLE,
-  isValidProofImageSrc,
   KEYHOLE_FADE_WIDTH,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
@@ -1438,14 +1438,7 @@ function EvidenceTray({
         </div>
       ) : (
         /* Informational: non-clickable display */
-        <div
-          className={cn(
-            "w-full rounded-lg overflow-hidden text-left",
-            borderClass,
-          )}
-        >
-          {content}
-        </div>
+        <div className={cn("w-full rounded-lg overflow-hidden text-left", borderClass)}>{content}</div>
       )}
     </div>
   );
@@ -1609,9 +1602,7 @@ function DefaultPopoverContent({
     const resolved = resolveExpandedImage(verification);
     if (!expandedImageSrcOverride) return resolved;
     // Custom src provided: override, or create a minimal ExpandedImageSource if none exists
-    return resolved
-      ? { ...resolved, src: expandedImageSrcOverride }
-      : { src: expandedImageSrcOverride };
+    return resolved ? { ...resolved, src: expandedImageSrcOverride } : { src: expandedImageSrcOverride };
   }, [verification, expandedImageSrcOverride]);
 
   // Whether this is a document citation (URL citations don't have page expansion)
@@ -1816,17 +1807,15 @@ function DefaultPopoverContent({
               onImageClick={onImageClick}
               proofImageSrc={expandedImage?.src}
             />
-          ) : (
-            /* Show EvidenceTray for miss with search analysis (no image), or null */
-            isMiss && verification?.searchAttempts?.length && verification ? (
-              <EvidenceTray
-                verification={verification}
-                status={status}
-                onExpand={canExpand ? handleExpand : undefined}
-                proofImageSrc={expandedImage?.src}
-              />
-            ) : null
-          )}
+          ) : /* Show EvidenceTray for miss with search analysis (no image), or null */
+          isMiss && verification?.searchAttempts?.length && verification ? (
+            <EvidenceTray
+              verification={verification}
+              status={status}
+              onExpand={canExpand ? handleExpand : undefined}
+              proofImageSrc={expandedImage?.src}
+            />
+          ) : null}
         </div>
       </Activity>
     );
@@ -2104,27 +2093,24 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     );
 
     // Apply behavior actions from custom handler
-    const applyBehaviorActions = useCallback(
-      (actions: CitationBehaviorActions) => {
-        if (actions.setImageExpanded !== undefined) {
-          if (actions.setImageExpanded === false) {
-            // Close: collapse to summary and dismiss the popover
-            setPopoverViewState("summary");
-            setCustomExpandedSrc(null);
-            setIsHovering(false);
-          } else if (actions.setImageExpanded) {
-            // Open: show popover in expanded (image) view
-            setIsHovering(true);
-            setPopoverViewState("expanded");
-            // If a custom image URL was provided, use it instead of the verification image
-            if (typeof actions.setImageExpanded === "string") {
-              setCustomExpandedSrc(actions.setImageExpanded);
-            }
+    const applyBehaviorActions = useCallback((actions: CitationBehaviorActions) => {
+      if (actions.setImageExpanded !== undefined) {
+        if (actions.setImageExpanded === false) {
+          // Close: collapse to summary and dismiss the popover
+          setPopoverViewState("summary");
+          setCustomExpandedSrc(null);
+          setIsHovering(false);
+        } else if (actions.setImageExpanded) {
+          // Open: show popover in expanded (image) view
+          setIsHovering(true);
+          setPopoverViewState("expanded");
+          // If a custom image URL was provided, use it instead of the verification image
+          if (typeof actions.setImageExpanded === "string") {
+            setCustomExpandedSrc(actions.setImageExpanded);
           }
         }
-      },
-      [],
-    );
+      }
+    }, []);
 
     // Shared tap/click action handler - used by both click and touch handlers.
     // Extracts the common logic to avoid duplication.
@@ -2177,15 +2163,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             break;
         }
       },
-      [
-        behaviorConfig,
-        eventHandlers,
-        citation,
-        citationKey,
-        resolvedImageSrc,
-        getBehaviorContext,
-        applyBehaviorActions,
-      ],
+      [behaviorConfig, eventHandlers, citation, citationKey, getBehaviorContext, applyBehaviorActions],
     );
 
     // Click handler
@@ -2246,14 +2224,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         behaviorConfig.onHover.onEnter(getBehaviorContext());
       }
       eventHandlers?.onMouseEnter?.(citation, citationKey);
-    }, [
-      eventHandlers,
-      behaviorConfig,
-      citation,
-      citationKey,
-      getBehaviorContext,
-      isAnyOverlayOpen,
-    ]);
+    }, [eventHandlers, behaviorConfig, citation, citationKey, getBehaviorContext, isAnyOverlayOpen]);
 
     const handleMouseLeave = useCallback(() => {
       // Popover is click-to-open, so it should only close on click (not on hover-away).
@@ -2262,13 +2233,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         behaviorConfig.onHover.onLeave(getBehaviorContext());
       }
       eventHandlers?.onMouseLeave?.(citation, citationKey);
-    }, [
-      eventHandlers,
-      behaviorConfig,
-      citation,
-      citationKey,
-      getBehaviorContext,
-    ]);
+    }, [eventHandlers, behaviorConfig, citation, citationKey, getBehaviorContext]);
 
     // Escape key handling is managed by Radix Popover via onOpenChange and onEscapeKeyDown props
 

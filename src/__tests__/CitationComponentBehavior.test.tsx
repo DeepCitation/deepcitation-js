@@ -1137,7 +1137,6 @@ describe("CitationComponent behaviorConfig", () => {
       expect(actualHighlights.length).toBe(0);
     });
   });
-
 });
 
 // =============================================================================

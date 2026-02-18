@@ -35,11 +35,7 @@ describe("buildSearchSummary", () => {
     });
 
     it("returns correct totalAttempts", () => {
-      const attempts = [
-        attempt({ pageSearched: 1 }),
-        attempt({ pageSearched: 1 }),
-        attempt({ pageSearched: 1 }),
-      ];
+      const attempts = [attempt({ pageSearched: 1 }), attempt({ pageSearched: 1 }), attempt({ pageSearched: 1 })];
       expect(buildSearchSummary(attempts).totalAttempts).toBe(3);
     });
   });
@@ -51,21 +47,13 @@ describe("buildSearchSummary", () => {
     });
 
     it("formats multiple pages as 'pages N-M' (sorted)", () => {
-      const attempts = [
-        attempt({ pageSearched: 5 }),
-        attempt({ pageSearched: 2 }),
-        attempt({ pageSearched: 4 }),
-      ];
+      const attempts = [attempt({ pageSearched: 5 }), attempt({ pageSearched: 2 }), attempt({ pageSearched: 4 })];
       const summary = buildSearchSummary(attempts);
       expect(summary.pageRange).toBe("pages 2-5");
     });
 
     it("deduplicates repeated pageSearched values", () => {
-      const attempts = [
-        attempt({ pageSearched: 2 }),
-        attempt({ pageSearched: 2 }),
-        attempt({ pageSearched: 2 }),
-      ];
+      const attempts = [attempt({ pageSearched: 2 }), attempt({ pageSearched: 2 }), attempt({ pageSearched: 2 })];
       const summary = buildSearchSummary(attempts);
       expect(summary.pageRange).toBe("page 2");
     });
@@ -123,10 +111,7 @@ describe("buildSearchSummary", () => {
 
   describe("full document scan detection", () => {
     it("sets includesFullDocScan when any attempt has searchScope 'document'", () => {
-      const attempts = [
-        attempt({ pageSearched: 2 }),
-        attempt({ searchScope: "document" }),
-      ];
+      const attempts = [attempt({ pageSearched: 2 }), attempt({ searchScope: "document" })];
       expect(buildSearchSummary(attempts).includesFullDocScan).toBe(true);
     });
 
@@ -152,9 +137,7 @@ describe("buildSearchSummary", () => {
     });
 
     it("falls back to matchedText on a failed attempt", () => {
-      const attempts = [
-        attempt({ success: false, matchedText: "close but not quite" }),
-      ];
+      const attempts = [attempt({ success: false, matchedText: "close but not quite" })];
       const summary = buildSearchSummary(attempts);
       expect(summary.closestMatch?.text).toBe("close but not quite");
     });
