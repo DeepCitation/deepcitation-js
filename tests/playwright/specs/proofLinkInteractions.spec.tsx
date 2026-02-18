@@ -63,6 +63,8 @@ test.describe("Proof Link Interactions", () => {
       document: {
         verifiedPageNumber: 5,
       },
+      // Snippet required for shouldShowPopover — but no image means canExpand is false
+      verifiedMatchSnippet: "relevant text from the document",
     };
 
     await mount(
