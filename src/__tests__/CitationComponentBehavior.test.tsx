@@ -492,7 +492,7 @@ describe("CitationComponent behaviorConfig", () => {
       });
 
       // Custom action: image should be expanded
-      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("can apply setImageExpanded with string src", async () => {
@@ -516,7 +516,7 @@ describe("CitationComponent behaviorConfig", () => {
         fireEvent.click(citation as HTMLElement);
       });
 
-      const overlayImage = container.querySelector("[role='dialog'] img");
+      const overlayImage = document.querySelector("[role='dialog'] img");
       expect(overlayImage).toBeInTheDocument();
       expect(overlayImage?.getAttribute("src")).toBe(customImageSrc);
     });
@@ -543,14 +543,14 @@ describe("CitationComponent behaviorConfig", () => {
       await act(async () => {
         fireEvent.click(citation as HTMLElement);
       });
-      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).toBeInTheDocument();
 
-      // Click overlay to close
-      const overlay = container.querySelector("[role='dialog']");
+      // Click overlay to close (clicking the dialog backdrop itself triggers dismissal)
+      const overlay = document.querySelector("[role='dialog']");
       await act(async () => {
         fireEvent.click(overlay as HTMLElement);
       });
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
 
     it("still calls eventHandlers.onClick when custom handler returns actions", async () => {
@@ -882,7 +882,7 @@ describe("CitationComponent behaviorConfig", () => {
       });
 
       // Custom action was applied
-      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("onHover works independently of click configuration", async () => {
@@ -954,14 +954,14 @@ describe("CitationComponent behaviorConfig", () => {
         fireEvent.click(citation as HTMLElement);
       });
       expect(contexts[0].isImageExpanded).toBe(false);
-      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).toBeInTheDocument();
 
       // Second click - image should now be expanded
       await act(async () => {
         fireEvent.click(citation as HTMLElement);
       });
       expect(contexts[1].isImageExpanded).toBe(true);
-      expect(container.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).not.toBeInTheDocument();
     });
   });
 
@@ -2205,7 +2205,7 @@ describe("CitationComponent interactionMode", () => {
       });
 
       // Custom action should open image directly (bypassing lazy mode)
-      expect(container.querySelector("[role='dialog']")).toBeInTheDocument();
+      expect(document.querySelector("[role='dialog']")).toBeInTheDocument();
     });
 
     it("onHover callbacks still work in lazy mode", async () => {

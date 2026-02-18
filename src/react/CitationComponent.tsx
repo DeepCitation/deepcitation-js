@@ -1212,21 +1212,21 @@ function HighlightedPhrase({
 }) {
   // Don't highlight when citation is "not found" - misleading to highlight text that wasn't found
   if (isMiss || !anchorText || !fullPhrase.includes(anchorText)) {
-    return <span className="italic text-gray-600 dark:text-gray-300">&ldquo;{fullPhrase}&rdquo;</span>;
+    return <span className="italic text-gray-600 dark:text-gray-300">{fullPhrase}</span>;
   }
   const wc = (s: string) => {
     const trimmed = s.trim();
     return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
   };
   if (wc(fullPhrase) - wc(anchorText) < MIN_WORD_DIFFERENCE) {
-    return <span className="italic text-gray-600 dark:text-gray-300">&ldquo;{fullPhrase}&rdquo;</span>;
+    return <span className="italic text-gray-600 dark:text-gray-300">{fullPhrase}</span>;
   }
   const idx = fullPhrase.indexOf(anchorText);
   return (
     <span className="italic text-gray-600 dark:text-gray-300">
-      &ldquo;{fullPhrase.slice(0, idx)}
+      {fullPhrase.slice(0, idx)}
       <span style={ANCHOR_HIGHLIGHT_STYLE}>{anchorText}</span>
-      {fullPhrase.slice(idx + anchorText.length)}&rdquo;
+      {fullPhrase.slice(idx + anchorText.length)}
     </span>
   );
 }
@@ -1587,6 +1587,8 @@ interface PopoverContentProps {
   viewState?: PopoverViewState;
   /** Callback when view state changes */
   onViewStateChange?: (viewState: PopoverViewState) => void;
+  /** Override the expanded image src (from behaviorConfig.onClick returning setImageExpanded: "<url>") */
+  expandedImageSrcOverride?: string | null;
 }
 
 function DefaultPopoverContent({
@@ -1600,13 +1602,21 @@ function DefaultPopoverContent({
   indicatorVariant = "icon",
   viewState = "summary",
   onViewStateChange,
+  expandedImageSrcOverride,
 }: PopoverContentProps) {
   const hasImage = verification?.document?.verificationImageSrc;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
 
-  // Resolve expanded image for the full-page viewer
-  const expandedImage = useMemo(() => resolveExpandedImage(verification), [verification]);
+  // Resolve expanded image for the full-page viewer; allow caller to override the src
+  const expandedImage = useMemo(() => {
+    const resolved = resolveExpandedImage(verification);
+    if (!expandedImageSrcOverride) return resolved;
+    // Custom src provided: override, or create a minimal ExpandedImageSource if none exists
+    return resolved
+      ? { ...resolved, src: expandedImageSrcOverride }
+      : { src: expandedImageSrcOverride };
+  }, [verification, expandedImageSrcOverride]);
 
   // Whether this is a document citation (URL citations don't have page expansion)
   const isDocCitation = !isUrlCitation(citation);
@@ -1734,7 +1744,7 @@ function DefaultPopoverContent({
           )}
 
           {fullPhrase && (
-            <div className="mx-3 my-2 px-3 py-2 text-sm leading-relaxed break-words rounded bg-gray-50 dark:bg-gray-800/50">
+            <div className="mx-3 my-2 pl-3 pr-3 py-2 text-sm leading-relaxed break-words rounded bg-gray-50 dark:bg-gray-800/50 border-l-[3px] border-gray-300 dark:border-gray-600">
               <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isMiss} />
             </div>
           )}
@@ -1796,7 +1806,7 @@ function DefaultPopoverContent({
           )}
 
           {fullPhrase && (
-            <div className="mx-3 my-2 px-3 py-2 text-sm leading-relaxed break-words rounded bg-gray-50 dark:bg-gray-800/50">
+            <div className="mx-3 my-2 pl-3 pr-3 py-2 text-sm leading-relaxed break-words rounded bg-gray-50 dark:bg-gray-800/50 border-l-[3px] border-gray-300 dark:border-gray-600">
               <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isMiss} />
             </div>
           )}
@@ -1954,11 +1964,14 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     }, [contentProp, variant]);
     const [isHovering, setIsHovering] = useState(false);
     const [popoverViewState, setPopoverViewState] = useState<PopoverViewState>("summary");
+    // Custom image src from behaviorConfig.onClick returning setImageExpanded: "<url>"
+    const [customExpandedSrc, setCustomExpandedSrc] = useState<string | null>(null);
 
     // Reset expanded view state when popover closes
     useEffect(() => {
       if (!isHovering) {
         setPopoverViewState("summary");
+        setCustomExpandedSrc(null);
       }
     }, [isHovering]);
 
@@ -2099,9 +2112,18 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       (actions: CitationBehaviorActions) => {
         if (actions.setImageExpanded !== undefined) {
           if (actions.setImageExpanded === false) {
+            // Close: collapse to summary and dismiss the popover
             setPopoverViewState("summary");
+            setCustomExpandedSrc(null);
+            setIsHovering(false);
           } else if (actions.setImageExpanded) {
+            // Open: show popover in expanded (image) view
+            setIsHovering(true);
             setPopoverViewState("expanded");
+            // If a custom image URL was provided, use it instead of the verification image
+            if (typeof actions.setImageExpanded === "string") {
+              setCustomExpandedSrc(actions.setImageExpanded);
+            }
           }
         }
       },
@@ -2253,20 +2275,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     ]);
 
     const handleMouseLeave = useCallback(() => {
-      // Don't close the popover if an image overlay is open - user expects to return to popover
-      // after closing the zoomed image
-      if (isAnyOverlayOpen) return;
-      // Delay closing to allow mouse to move to popover
+      // Popover is click-to-open, so it should only close on click (not on hover-away).
+      // Fire external callbacks for consumers tracking hover state, but do not close the popover.
       cancelHoverCloseTimeout();
-      hoverCloseTimeoutRef.current = setTimeout(() => {
-        if (!isOverPopoverRef.current && !isAnyOverlayOpenRef.current) {
-          setIsHovering(false);
-          if (behaviorConfig?.onHover?.onLeave) {
-            behaviorConfig.onHover.onLeave(getBehaviorContext());
-          }
-          eventHandlers?.onMouseLeave?.(citation, citationKey);
-        }
-      }, HOVER_CLOSE_DELAY_MS);
+      if (behaviorConfig?.onHover?.onLeave) {
+        behaviorConfig.onHover.onLeave(getBehaviorContext());
+      }
+      eventHandlers?.onMouseLeave?.(citation, citationKey);
     }, [
       eventHandlers,
       behaviorConfig,
@@ -2274,7 +2289,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       citationKey,
       getBehaviorContext,
       cancelHoverCloseTimeout,
-      isAnyOverlayOpen,
     ]);
 
     // Popover content hover handlers
@@ -2284,30 +2298,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     }, [cancelHoverCloseTimeout]);
 
     const handlePopoverMouseLeave = useCallback(() => {
+      // Popover is click-to-open, so it persists when the mouse leaves the popover content.
       isOverPopoverRef.current = false;
-      // Don't close the popover if an image overlay is open - user expects to return to popover
-      // after closing the zoomed image
-      if (isAnyOverlayOpen) return;
-      // Delay closing to allow mouse to move back to trigger
-      cancelHoverCloseTimeout();
-      hoverCloseTimeoutRef.current = setTimeout(() => {
-        if (!isAnyOverlayOpenRef.current) {
-          setIsHovering(false);
-          if (behaviorConfig?.onHover?.onLeave) {
-            behaviorConfig.onHover.onLeave(getBehaviorContext());
-          }
-          eventHandlers?.onMouseLeave?.(citation, citationKey);
-        }
-      }, HOVER_CLOSE_DELAY_MS);
-    }, [
-      eventHandlers,
-      behaviorConfig,
-      citation,
-      citationKey,
-      getBehaviorContext,
-      cancelHoverCloseTimeout,
-      isAnyOverlayOpen,
-    ]);
+    }, []);
 
     // Cleanup hover timeout on unmount
     useEffect(() => {
@@ -2863,6 +2856,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             indicatorVariant={indicatorVariant}
             viewState={popoverViewState}
             onViewStateChange={setPopoverViewState}
+            expandedImageSrcOverride={customExpandedSrc}
             onImageClick={() => {
               setPopoverViewState("expanded");
             }}
@@ -2929,6 +2923,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               }}
               onMouseEnter={handlePopoverMouseEnter}
               onMouseLeave={handlePopoverMouseLeave}
+              onClick={(e: React.MouseEvent) => {
+                // Clicking directly on the popover backdrop (not on inner content) dismisses it.
+                // e.target === e.currentTarget means the click hit the dialog's own element,
+                // not a child element — so this only fires when clicking the outer wrapper area.
+                if (e.target === e.currentTarget) setIsHovering(false);
+              }}
             >
               {popoverContentElement}
             </PopoverContent>
