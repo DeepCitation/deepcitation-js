@@ -317,7 +317,7 @@ export const SAFE_DATA_IMAGE_PREFIXES = [
 ] as const;
 
 /** Trusted CDN hostnames for proof images. */
-export const TRUSTED_IMAGE_HOSTS = ["api.deepcitation.com", "cdn.deepcitation.com"] as const;
+export const TRUSTED_IMAGE_HOSTS = ["api.deepcitation.com", "cdn.deepcitation.com", "proof.deepcitation.com"] as const;
 
 /** Localhost hostnames allowed for development environments. */
 const DEV_HOSTNAMES = ["localhost", "127.0.0.1"] as const;
@@ -335,6 +335,18 @@ export function isValidProofImageSrc(src: unknown): src is string {
   const lower = trimmed.toLowerCase();
   if (lower.startsWith("data:")) {
     return SAFE_DATA_IMAGE_PREFIXES.some(prefix => lower.startsWith(prefix));
+  }
+
+  // Same-origin relative paths (e.g. "/demo/legal/page-1.avif") — safe because
+  // the browser resolves them against the current host.
+  // Reject: protocol-relative URLs (//evil.com), path traversal (..), and encoded traversal (%2e).
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    try {
+      const decoded = decodeURIComponent(trimmed);
+      if (!decoded.includes("..")) return true;
+    } catch {
+      return false; // malformed percent-encoding — reject
+    }
   }
 
   try {
