@@ -99,8 +99,6 @@ function useIsTouchDevice(): boolean {
 
 /** Icon overlap when bar is expanded (rem scales with root font size) */
 const ICON_MARGIN_EXPANDED = "-0.25rem";
-/** Icon overlap when bar is collapsed (rem scales with root font size) */
-const ICON_MARGIN_COLLAPSED = "-0.5rem";
 
 // =========
 // Internal types
@@ -363,7 +361,7 @@ function StackedStatusIcons({
           key={flatItem.item.citationKey}
           className="relative transition-[margin-left] duration-100 ease-out"
           style={{
-            marginLeft: i === 0 ? 0 : isHovered ? ICON_MARGIN_EXPANDED : ICON_MARGIN_COLLAPSED,
+            marginLeft: ICON_MARGIN_EXPANDED,
             zIndex: Math.max(1, Math.min(20, displayItems.length - i)),
           }}
           onMouseEnter={() => onIconHover(i)}
@@ -389,7 +387,7 @@ function StackedStatusIcons({
         <div
           className="transition-[margin-left] duration-100 ease-out"
           style={{
-            marginLeft: isHovered ? ICON_MARGIN_EXPANDED : ICON_MARGIN_COLLAPSED,
+            marginLeft: ICON_MARGIN_EXPANDED,
             zIndex: 0,
           }}
         >
