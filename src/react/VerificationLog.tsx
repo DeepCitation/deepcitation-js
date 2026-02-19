@@ -8,10 +8,12 @@ import {
   CheckIcon,
   ChevronRightIcon,
   DocumentIcon,
+  ExternalLinkIcon,
   GlobeIcon,
   MissIcon,
   SpinnerIcon,
-  XCircleIcon
+  XCircleIcon,
+  XIcon,
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
@@ -94,6 +96,14 @@ export interface SourceContextHeaderProps {
   sourceLabel?: string;
   /** Callback when the page pill is clicked to expand to full page view */
   onExpand?: () => void;
+  /**
+   * Callback to close/go back from the expanded view.
+   * When provided, the page pill shows an X button (active/expanded state)
+   * instead of the chevron-right expand affordance.
+   */
+  onClose?: () => void;
+  /** External proof URL shown as an icon link on the right side (expanded view) */
+  proofUrl?: string | null;
 }
 
 /**
@@ -186,8 +196,10 @@ interface PagePillProps {
   pageNumber: number;
   /** Status color scheme for the pill */
   colorScheme: "green" | "amber" | "red" | "gray";
-  /** Callback when clicked (triggers expansion) */
+  /** Callback when clicked (triggers expansion) — shows chevron-right */
   onClick?: () => void;
+  /** Callback to close from expanded view — shows X and active (blue) styling */
+  onClose?: () => void;
 }
 
 /** Page pill color classes by status */
@@ -199,14 +211,35 @@ const PAGE_PILL_COLORS = {
 } as const;
 
 /**
- * Compact badge showing page number with chevron-right expansion indicator.
- * Uses neutral gray for all states — status is conveyed by the icon in StatusHeader.
- * Click triggers in-popover expansion to full page view.
+ * Compact badge showing page number.
+ * - Default (no action): static label
+ * - With `onClick`: shows chevron-right, triggers expansion to full page view
+ * - With `onClose`: shows X icon with blue "active" styling, triggers close/back
  */
-export function PagePill({ pageNumber, colorScheme, onClick }: PagePillProps) {
+export function PagePill({ pageNumber, colorScheme, onClick, onClose }: PagePillProps) {
   if (pageNumber <= 0) return null;
 
   const colorClasses = PAGE_PILL_COLORS[colorScheme];
+
+  // Active/expanded state: show page number + X to close
+  if (onClose) {
+    return (
+      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded border bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+        <span>p.{pageNumber}</span>
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="ml-0.5 size-2.5 flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity"
+          aria-label={`Close page ${pageNumber} view`}
+        >
+          <XIcon />
+        </button>
+      </span>
+    );
+  }
 
   if (!onClick) {
     return (
@@ -262,6 +295,8 @@ export function SourceContextHeader({
   status,
   sourceLabel,
   onExpand,
+  onClose,
+  proofUrl,
 }: SourceContextHeaderProps) {
   const isUrl = isUrlCitation(citation);
 
@@ -270,7 +305,7 @@ export function SourceContextHeader({
   const lineIds = verification?.document?.verifiedLineIds ?? (isUrl ? undefined : citation.lineIds);
   const pageLineText = formatPageLineText(pageNumber, lineIds);
   const colorScheme = getStatusColorScheme(status);
-  const showPagePill = !!onExpand && !!pageNumber && pageNumber > 0;
+  const showPagePill = (!!onExpand || !!onClose) && !!pageNumber && pageNumber > 0;
 
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
@@ -311,13 +346,34 @@ export function SourceContextHeader({
           </>
         )}
       </div>
-      {/* Right: Page pill + external link */}
+      {/* Right: Page pill + optional proof link */}
       <div className="flex items-center gap-2">
-        {showPagePill && <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} />}
+        {showPagePill && (
+          <PagePill
+            pageNumber={pageNumber}
+            colorScheme={colorScheme}
+            onClick={onExpand}
+            onClose={onClose}
+          />
+        )}
         {!showPagePill && pageLineText && (
           <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0 uppercase tracking-wide">
             {pageLineText}
           </span>
+        )}
+        {proofUrl && (
+          <a
+            href={proofUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="shrink-0 p-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            aria-label="Open proof in new tab"
+          >
+            <span className="size-3.5 block">
+              <ExternalLinkIcon />
+            </span>
+          </a>
         )}
       </div>
     </div>

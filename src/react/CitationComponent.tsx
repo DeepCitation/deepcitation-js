@@ -42,7 +42,7 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
-import { ArrowLeftIcon, CheckIcon, ExpandArrowsIcon, ExternalLinkIcon, HandIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
+import { CheckIcon, ExpandArrowsIcon, ExternalLinkIcon, HandIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
@@ -1473,34 +1473,6 @@ function EvidenceTray({
 // EXPANDED PAGE VIEWER
 // =============================================================================
 
-/** Status text/color mapping for expanded header */
-type ColorScheme = "green" | "amber" | "red" | "gray";
-const EXPANDED_STATUS_DISPLAY: Record<ColorScheme, { text: string; className: string }> = {
-  green: { text: "Verified", className: "text-green-600 dark:text-green-400" },
-  amber: { text: "Partial", className: "text-amber-500 dark:text-amber-400" },
-  red: { text: "Not found", className: "text-red-500 dark:text-red-400" },
-  gray: { text: "Pending", className: "text-gray-400 dark:text-gray-500" },
-};
-
-/** Map SearchStatus to color scheme (mirrors VerificationLog's getStatusColorScheme) */
-function expandedHeaderColorScheme(status?: SearchStatus | null): ColorScheme {
-  if (!status) return "gray";
-  switch (status) {
-    case "found":
-    case "found_anchor_text_only":
-    case "found_phrase_missed_anchor_text":
-      return "green";
-    case "found_on_other_page":
-    case "found_on_other_line":
-    case "partial_text_found":
-    case "first_word_found":
-      return "amber";
-    case "not_found":
-      return "red";
-    default:
-      return "gray";
-  }
-}
 
 function ExpandedPageViewer({
   expandedImage,
@@ -1563,17 +1535,6 @@ function ExpandedPageViewer({
   const { highlightBox, dimensions } = expandedImage;
   const isMiss = verification?.status === "not_found";
 
-  // Derive display info for header
-  const displayName = sourceLabel || verification?.label || "Document";
-  // Shows the verified (found) page when available, falling back to the citation's expected page.
-  // For partial matches (found_on_other_page), this shows the actual found page — intentional,
-  // since the expanded view shows that page's image.
-  const pageNumber =
-    verification?.document?.verifiedPageNumber ??
-    (citation && !isUrlCitation(citation) ? citation.pageNumber : undefined);
-  const colorScheme = expandedHeaderColorScheme(status);
-  const statusDisplay = EXPANDED_STATUS_DISPLAY[colorScheme];
-
   // Auto-scroll to center highlight on mount
   useLayoutEffect(() => {
     if (!imageLoaded || !highlightBox || !dimensions) return;
@@ -1586,8 +1547,8 @@ function ExpandedPageViewer({
     const renderedWidth = img.clientWidth;
     const renderedHeight = img.clientHeight;
     const highlightCenterX = ((highlightBox.x + highlightBox.width / 2) / dimensions.width) * renderedWidth;
-    // PDF y=0 is at bottom; flip to CSS y=0 at top
-    const highlightCenterY = (1 - (highlightBox.y + highlightBox.height / 2) / dimensions.height) * renderedHeight;
+    // Image coordinates: y=0 at top, same as CSS scroll — no flip needed
+    const highlightCenterY = ((highlightBox.y + highlightBox.height / 2) / dimensions.height) * renderedHeight;
 
     // Scroll to center highlight in viewport
     container.scrollLeft = Math.max(0, highlightCenterX - container.clientWidth / 2);
@@ -1596,69 +1557,17 @@ function ExpandedPageViewer({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Context-rich header: Back + source name + status + page */}
-      <div
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 border-b shrink-0",
-          isMiss
-            ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50"
-            : "border-gray-200 dark:border-gray-700",
-        )}
-      >
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation();
-            onBack();
-          }}
-          className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
-        >
-          <span className="size-3.5">
-            <ArrowLeftIcon />
-          </span>
-          <span>Back</span>
-          <span
-            aria-hidden="true"
-            className="text-[9px] px-1 py-0.5 border border-gray-200 dark:border-gray-700 rounded text-gray-400 ml-0.5"
-          >
-            Esc
-          </span>
-        </button>
-        <div className="flex-1 min-w-0" />
-        <span className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-[40%]" title={displayName}>
-          {displayName}
-        </span>
-        <span
-          className={cn(
-            "text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full",
-            statusDisplay.className,
-            colorScheme === "green" && "bg-green-50 dark:bg-green-950/30",
-            colorScheme === "amber" && "bg-amber-50 dark:bg-amber-950/30",
-            colorScheme === "red" && "bg-red-50 dark:bg-red-950/30",
-          )}
-        >
-          {statusDisplay.text}
-        </span>
-        {pageNumber != null && pageNumber > 0 && (
-          <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-500 dark:text-gray-400 shrink-0 whitespace-nowrap">
-            p.{pageNumber}
-          </span>
-        )}
-        {proofUrl && (
-          <a
-            href={proofUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="shrink-0 p-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
-            aria-label="Open proof in new tab"
-          >
-            <span className="size-3.5 block">
-              <ExternalLinkIcon />
-            </span>
-          </a>
-        )}
-      </div>
+      {/* Shared header — same component as popover summary view */}
+      {citation && (
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          status={status}
+          sourceLabel={sourceLabel}
+          onClose={onBack}
+          proofUrl={proofUrl}
+        />
+      )}
 
       {/* Not-found banner */}
       {isMiss && (
