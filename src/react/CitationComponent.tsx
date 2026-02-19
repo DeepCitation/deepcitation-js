@@ -1363,7 +1363,7 @@ function SearchAnalysisSummary({
 
 /**
  * Evidence tray — the "proof zone" at the bottom of the summary popover.
- * For verified/partial: Shows keyhole image with "Expand to full page" hover CTA.
+ * For verified/partial: Shows keyhole image with "Expand" hover CTA.
  * For not-found: Shows search analysis summary with "Verify manually" hover CTA.
  * When `onExpand` is provided, the tray is clickable. Otherwise, it's informational only.
  *
@@ -1389,7 +1389,7 @@ function EvidenceTray({
   const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
 
   // Determine hover CTA text (only shown when expandable)
-  const ctaText = isMiss ? "Verify manually" : "Expand to full page";
+  const ctaText = isMiss ? "Verify manually" : "Expand";
 
   // Shared inner content
   const content = (
