@@ -72,11 +72,11 @@ const SpinnerIcon = () => (
 // ============================================================================
 
 const VERIFICATION_STATUS_CONFIG = {
-  verified: { icon: '✓', className: 'text-green-600 dark:text-green-500' },
-  partial: { icon: '~', className: 'text-amber-500 dark:text-amber-400' },
-  pending: { icon: '…', className: 'text-gray-400 dark:text-gray-500' },
-  failed: { icon: '✗', className: 'text-red-500 dark:text-red-400' },
-  unknown: { icon: '?', className: 'text-gray-400 dark:text-gray-500' },
+  verified: { icon: "✓", className: "text-green-600 dark:text-green-500" },
+  partial: { icon: "~", className: "text-amber-500 dark:text-amber-400" },
+  pending: { icon: "…", className: "text-gray-400 dark:text-gray-500" },
+  failed: { icon: "✗", className: "text-red-500 dark:text-red-400" },
+  unknown: { icon: "?", className: "text-gray-400 dark:text-gray-500" },
 } as const;
 
 type VerificationStatusType = keyof typeof VERIFICATION_STATUS_CONFIG;
@@ -91,7 +91,7 @@ const VerificationBadge = ({
   if (!showVerificationIndicator || !verificationStatus) return null;
   const config = VERIFICATION_STATUS_CONFIG[verificationStatus];
   return (
-    <span className={classNames('text-sm ml-1', config.className)} aria-label={verificationStatus}>
+    <span className={classNames("text-sm ml-1", config.className)} aria-label={verificationStatus}>
       {config.icon}
     </span>
   );
@@ -152,8 +152,6 @@ export const SourcesListItem = forwardRef<HTMLDivElement, SourcesListItemProps>(
     const favicon = useMemo(() => getFaviconUrl(url, faviconUrl), [url, faviconUrl]);
     const detectedType = useMemo(() => sourceType || detectSourceType(url), [sourceType, url]);
 
-
-
     return (
       <div
         ref={ref}
@@ -213,7 +211,10 @@ export const SourcesListItem = forwardRef<HTMLDivElement, SourcesListItemProps>(
             <span className="text-gray-900 dark:text-gray-100 font-medium text-sm leading-tight line-clamp-2">
               {title}
             </span>
-            <VerificationBadge showVerificationIndicator={showVerificationIndicator} verificationStatus={verificationStatus} />
+            <VerificationBadge
+              showVerificationIndicator={showVerificationIndicator}
+              verificationStatus={verificationStatus}
+            />
           </div>
 
           {/* Platform/Domain */}
@@ -311,14 +312,14 @@ SourcesTrigger.displayName = "SourcesTrigger";
 // ============================================================================
 
 interface SourcesListHeaderProps {
-  header: SourcesListProps['header'];
+  header: SourcesListProps["header"];
   sources: SourcesListItemProps[];
   variant: string;
   handleClose: () => void;
 }
 
 const SourcesListHeader = ({ header: headerConfig = {}, sources, variant, handleClose }: SourcesListHeaderProps) => {
-  const { title = 'Sources', showCloseButton = true, showCount = true, renderHeader: customRender } = headerConfig;
+  const { title = "Sources", showCloseButton = true, showCount = true, renderHeader: customRender } = headerConfig;
 
   if (customRender) {
     return customRender({
@@ -330,7 +331,7 @@ const SourcesListHeader = ({ header: headerConfig = {}, sources, variant, handle
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-      {showCloseButton && variant !== 'inline' && (
+      {showCloseButton && variant !== "inline" && (
         <button
           type="button"
           onClick={handleClose}
@@ -347,7 +348,7 @@ const SourcesListHeader = ({ header: headerConfig = {}, sources, variant, handle
         )}
       </h2>
       {/* Spacer for centering when close button is present */}
-      {showCloseButton && variant !== 'inline' && <div className="w-8" />}
+      {showCloseButton && variant !== "inline" && <div className="w-8" />}
     </div>
   );
 };
@@ -363,7 +364,7 @@ interface SourcesListContentAreaProps {
   groupByDomain: boolean;
   groupedSources: Record<string, SourcesListItemProps[]> | null;
   listClassName?: string;
-  onSourceClick?: SourcesListItemProps['onClick'];
+  onSourceClick?: SourcesListItemProps["onClick"];
   showVerificationIndicators: boolean;
   showCitationBadges: boolean;
   renderItem?: (source: SourcesListItemProps, index: number) => React.ReactNode;

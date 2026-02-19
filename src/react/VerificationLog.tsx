@@ -1233,7 +1233,12 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
         </div>
         <div className="space-y-0.5">
           {searchAttempts.map((attempt, attemptIdx) => (
-            <SearchAttemptRow key={`${attempt.method}-${attempt.pageSearched ?? "doc"}-${attemptIdx}`} attempt={attempt} index={attemptIdx + 1} totalCount={searchAttempts.length} />
+            <SearchAttemptRow
+              key={`${attempt.method}-${attempt.pageSearched ?? "doc"}-${attemptIdx}`}
+              attempt={attempt}
+              index={attemptIdx + 1}
+              totalCount={searchAttempts.length}
+            />
           ))}
         </div>
       </div>

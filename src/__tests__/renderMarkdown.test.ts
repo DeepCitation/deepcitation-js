@@ -6,8 +6,8 @@ import {
   toSuperscript,
 } from "../markdown/markdownVariants.js";
 import { renderCitationsAsMarkdown, toMarkdown } from "../markdown/renderMarkdown.js";
-import { INDICATOR_SETS } from "../markdown/types.js";
 import type { IndicatorStyle } from "../markdown/types.js";
+import { INDICATOR_SETS } from "../markdown/types.js";
 import { getCitationStatus } from "../parsing/parseCitation.js";
 import type { Citation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";

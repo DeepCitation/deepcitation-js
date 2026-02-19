@@ -115,14 +115,20 @@ interface FoundContentTabProps {
   emptyText: string;
   maxCollapsedLength: number;
   verifiedKeySpan?: string;
-  renderCopyButton?: (text: string, position: 'expected' | 'found') => React.ReactNode;
+  renderCopyButton?: (text: string, position: "expected" | "found") => React.ReactNode;
 }
 
-const FoundContentTab = ({ actual, emptyText, maxCollapsedLength, verifiedKeySpan, renderCopyButton }: FoundContentTabProps) => (
+const FoundContentTab = ({
+  actual,
+  emptyText,
+  maxCollapsedLength,
+  verifiedKeySpan,
+  renderCopyButton,
+}: FoundContentTabProps) => (
   <div data-testid="tab-content-found" className="mt-3">
     {actual ? (
       <div className="relative">
-        {renderCopyButton && <div className="absolute top-2 right-2">{renderCopyButton(actual, 'found')}</div>}
+        {renderCopyButton && <div className="absolute top-2 right-2">{renderCopyButton(actual, "found")}</div>}
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md text-sm text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-words">
           <CollapsibleText
             text={actual}

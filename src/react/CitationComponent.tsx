@@ -2600,22 +2600,25 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     );
 
     // Apply behavior actions from custom handler
-    const applyBehaviorActions = useCallback((actions: CitationBehaviorActions) => {
-      if (actions.setImageExpanded !== undefined) {
-        if (actions.setImageExpanded === false) {
-          // Close: collapse to summary and dismiss the popover
-          closePopover();
-        } else if (actions.setImageExpanded) {
-          // Open: show popover in expanded (full page) view
-          setIsHovering(true);
-          setPopoverViewState("expanded-page");
-          // If a custom image URL was provided, validate before storing
-          if (typeof actions.setImageExpanded === "string" && isValidProofImageSrc(actions.setImageExpanded)) {
-            setCustomExpandedSrc(actions.setImageExpanded);
+    const applyBehaviorActions = useCallback(
+      (actions: CitationBehaviorActions) => {
+        if (actions.setImageExpanded !== undefined) {
+          if (actions.setImageExpanded === false) {
+            // Close: collapse to summary and dismiss the popover
+            closePopover();
+          } else if (actions.setImageExpanded) {
+            // Open: show popover in expanded (full page) view
+            setIsHovering(true);
+            setPopoverViewState("expanded-page");
+            // If a custom image URL was provided, validate before storing
+            if (typeof actions.setImageExpanded === "string" && isValidProofImageSrc(actions.setImageExpanded)) {
+              setCustomExpandedSrc(actions.setImageExpanded);
+            }
           }
         }
-      }
-    }, [closePopover]);
+      },
+      [closePopover],
+    );
 
     // Shared tap/click action handler - used by both click and touch handlers.
     // Extracts the common logic to avoid duplication.

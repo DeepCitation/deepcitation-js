@@ -1009,12 +1009,14 @@ export function CitationDrawer({
   if (!isOpen) return null;
 
   // Pre-compute stagger offsets for each group (cumulative citation count)
-  const staggerOffsets = sortedGroups.reduce<number[]>((acc, group, idx) => {
+  const staggerOffsets = sortedGroups.reduce<number[]>((acc, _group, idx) => {
     if (idx === 0) {
       acc.push(0);
     } else {
       const prevGroup = sortedGroups[idx - 1];
-      acc.push(acc[idx - 1] + (prevGroup.citations.length === 1 && !renderCitationItem ? 1 : prevGroup.citations.length));
+      acc.push(
+        acc[idx - 1] + (prevGroup.citations.length === 1 && !renderCitationItem ? 1 : prevGroup.citations.length),
+      );
     }
     return acc;
   }, []);
