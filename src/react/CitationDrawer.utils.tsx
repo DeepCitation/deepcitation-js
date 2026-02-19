@@ -176,6 +176,154 @@ export function getStatusPriority(verification: Verification | null): number {
   return 1; // verified
 }
 
+// =========
+// Status summary + sorting utilities
+// =========
+
+/**
+ * Status category bucket used for status-grouped views.
+ * Maps to getStatusPriority() tiers: notFound(4), partial(3), pending(2), verified(1).
+ */
+export type StatusCategory = "notFound" | "partial" | "pending" | "verified";
+
+/**
+ * A section of citations grouped by their status.
+ * Used by the "By status" view in the drawer.
+ */
+export interface StatusSection {
+  category: StatusCategory;
+  label: string;
+  color: string;
+  items: CitationDrawerItem[];
+}
+
+/**
+ * Single source of truth for status display styling.
+ * Maps each StatusCategory to a human label, text color (for section headers/labels),
+ * and border color (for citation item left borders in CitationDrawer).
+ */
+export const STATUS_DISPLAY_MAP: Record<StatusCategory, { label: string; textColor: string; borderColor: string }> = {
+  notFound: { label: "Not found", textColor: "text-red-500", borderColor: "border-l-red-400 dark:border-l-red-500" },
+  partial: {
+    label: "Partial match",
+    textColor: "text-amber-500",
+    borderColor: "border-l-amber-400 dark:border-l-amber-500",
+  },
+  pending: { label: "Verifying", textColor: "text-gray-400", borderColor: "border-l-gray-300 dark:border-l-gray-600" },
+  verified: {
+    label: "Verified",
+    textColor: "text-green-500",
+    borderColor: "border-l-green-400 dark:border-l-green-500",
+  },
+};
+
+/**
+ * Summary of verification statuses across all citations.
+ * Computed from citation groups for header display and progress bar.
+ */
+export function computeStatusSummary(groups: SourceCitationGroup[]): {
+  verified: number;
+  partial: number;
+  notFound: number;
+  pending: number;
+  total: number;
+} {
+  let verified = 0;
+  let partial = 0;
+  let notFound = 0;
+  let pending = 0;
+
+  for (const group of groups) {
+    if (!group?.citations || !Array.isArray(group.citations)) continue;
+    for (const item of group.citations) {
+      const priority = getStatusPriority(item.verification);
+      switch (priority) {
+        case 4:
+          notFound++;
+          break;
+        case 3:
+          partial++;
+          break;
+        case 2:
+          pending++;
+          break;
+        default:
+          verified++;
+      }
+    }
+  }
+
+  return { verified, partial, notFound, pending, total: verified + partial + notFound + pending };
+}
+
+/**
+ * Sort citation groups by worst status (failures first).
+ * Within each group, individual citations are also sorted worst-first.
+ * Returns a new array (does not mutate input).
+ */
+export function sortGroupsByWorstStatus(groups: SourceCitationGroup[]): SourceCitationGroup[] {
+  return [...groups]
+    .map(group => ({
+      ...group,
+      citations: [...group.citations].sort(
+        (a, b) => getStatusPriority(b.verification) - getStatusPriority(a.verification),
+      ),
+    }))
+    .sort((a, b) => {
+      const worstA = a.citations.length > 0 ? Math.max(...a.citations.map(c => getStatusPriority(c.verification))) : 0;
+      const worstB = b.citations.length > 0 ? Math.max(...b.citations.map(c => getStatusPriority(c.verification))) : 0;
+      return worstB - worstA;
+    });
+}
+
+/**
+ * Get the StatusCategory for a citation item.
+ */
+export function getItemStatusCategory(item: CitationDrawerItem): StatusCategory {
+  const priority = getStatusPriority(item.verification);
+  switch (priority) {
+    case 4:
+      return "notFound";
+    case 3:
+      return "partial";
+    case 2:
+      return "pending";
+    default:
+      return "verified";
+  }
+}
+
+/**
+ * Group all citations into StatusSections for the "By status" view.
+ * Returns sections ordered: notFound → partial → pending → verified.
+ * Empty sections are omitted.
+ */
+export function groupCitationsByStatus(groups: SourceCitationGroup[]): StatusSection[] {
+  const buckets: Record<StatusCategory, CitationDrawerItem[]> = {
+    notFound: [],
+    partial: [],
+    pending: [],
+    verified: [],
+  };
+
+  for (const group of groups) {
+    for (const item of group.citations) {
+      buckets[getItemStatusCategory(item)].push(item);
+    }
+  }
+
+  const categoryOrder: StatusCategory[] = ["notFound", "partial", "pending", "verified"];
+
+  return categoryOrder
+    .filter(category => buckets[category].length > 0)
+    .map(category => ({
+      category,
+      label: STATUS_DISPLAY_MAP[category].label,
+      color: STATUS_DISPLAY_MAP[category].textColor,
+      items: buckets[category],
+    }));
+}
+
 /**
  * Hook for managing citation drawer state.
  *
