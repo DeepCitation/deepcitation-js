@@ -391,7 +391,7 @@ export function StackedStatusIcons({
             zIndex: 0,
           }}
         >
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 text-[9px] font-medium text-gray-600 dark:text-gray-300">
+          <span className="inline-flex items-center justify-center size-5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
             +{overflowCount}
           </span>
         </div>

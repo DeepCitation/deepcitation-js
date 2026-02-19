@@ -238,8 +238,8 @@ export const DOT_COLORS = {
  * minWidth/minHeight ensure a minimum of 6px for visibility at very small font sizes.
  */
 export const DOT_INDICATOR_SIZE_STYLE: React.CSSProperties = {
-  width: "0.45em",
-  height: "0.45em",
+  width: "0.4em",
+  height: "0.4em",
   minWidth: "6px",
   minHeight: "6px",
 };

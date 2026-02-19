@@ -831,6 +831,67 @@ function CompactSingleCitationRow({
 }
 
 // =========
+// DrawerSourceHeading — favicon + name label for the drawer header
+// =========
+
+/**
+ * Replaces the generic title text in the drawer header with the same source
+ * identification as CitationDrawerTrigger's label: favicon (or letter avatar)
+ * + source name, with "+N" overflow for multiple sources.
+ */
+function DrawerSourceHeading({
+  citationGroups,
+  sourceLabelMap,
+  fallbackTitle,
+}: {
+  citationGroups: SourceCitationGroup[];
+  sourceLabelMap?: Record<string, string>;
+  fallbackTitle: string;
+}) {
+  if (citationGroups.length === 0) {
+    return (
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{fallbackTitle}</h2>
+    );
+  }
+
+  const firstGroup = citationGroups[0];
+  const firstCitation = firstGroup.citations[0]?.citation;
+  const labelOverride = lookupSourceLabel(firstCitation, sourceLabelMap);
+  const primaryName = labelOverride || firstGroup.sourceName || fallbackTitle;
+  const isUrlSource = !!firstGroup.sourceDomain;
+  const overflowCount = citationGroups.length - 1;
+
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {/* Favicon for URL sources, letter avatar for documents */}
+      <div className="shrink-0">
+        {isUrlSource ? (
+          <FaviconImage
+            faviconUrl={firstGroup.sourceFavicon || null}
+            domain={firstGroup.sourceDomain || null}
+            alt={primaryName}
+          />
+        ) : (
+          <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
+              {primaryName.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Source name with overflow count */}
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+        {primaryName}
+        {overflowCount > 0 && (
+          <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal text-sm">+{overflowCount}</span>
+        )}
+      </h2>
+    </div>
+  );
+}
+
+// =========
 // CitationDrawer
 // =========
 
@@ -980,7 +1041,11 @@ export function CitationDrawer({
         <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+              <DrawerSourceHeading
+                citationGroups={citationGroups}
+                sourceLabelMap={sourceLabelMap}
+                fallbackTitle={title}
+              />
               {totalCitations > 0 && (
                 <div className="mt-0.5">
                   <StackedStatusIcons

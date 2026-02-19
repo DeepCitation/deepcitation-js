@@ -582,7 +582,7 @@ const PartialIndicator = () => (
  * Dynamic sizing via em units for font-proportional scaling.
  */
 const MissIndicator = () => (
-  <StatusIndicatorWrapper className="[text-decoration:none]" dataIndicator="error">
+  <StatusIndicatorWrapper className="relative top-[0.1em] [text-decoration:none]" dataIndicator="error">
     <XIcon />
   </StatusIndicatorWrapper>
 );
@@ -606,7 +606,7 @@ const DotIndicator = ({
 }) => (
   <span
     className={cn(
-      "inline-block ml-0.5 rounded-full [text-decoration:none] align-middle",
+      "inline-flex relative ml-1 top-[0.1em] rounded-full [text-decoration:none]",
       DOT_COLORS[color],
       pulse && "animate-pulse",
     )}
@@ -641,7 +641,8 @@ export interface ExpandedImageSource {
  * Tries in order:
  * 1. matchPage from verification.pages (best: has image, dimensions, highlight, textItems)
  * 2. proof.proofImageUrl (good: CDN image, no overlay data)
- * 3. document.verificationImageSrc (baseline: keyhole image at full size)
+ * 3. url.webPageScreenshotBase64 (URL citations: full page screenshot)
+ * 4. document.verificationImageSrc (baseline: keyhole image at full size)
  *
  * Each source is validated with isValidProofImageSrc() before use, blocking SVG data URIs
  * (which can contain scripts), javascript: URIs, and untrusted hosts. Localhost is allowed
@@ -672,7 +673,16 @@ export function resolveExpandedImage(verification: Verification | null | undefin
     };
   }
 
-  // 3. Baseline: keyhole verification image at full size
+  // 3. URL screenshot — base64-encoded page screenshot (URL citations)
+  const urlScreenshot = verification.url?.webPageScreenshotBase64;
+  if (urlScreenshot) {
+    const src = urlScreenshot.startsWith("data:") ? urlScreenshot : `data:image/jpeg;base64,${urlScreenshot}`;
+    if (isValidProofImageSrc(src)) {
+      return { src, dimensions: null, highlightBox: null, textItems: [] };
+    }
+  }
+
+  // 4. Baseline: keyhole verification image at full size
   if (verification.document?.verificationImageSrc && isValidProofImageSrc(verification.document.verificationImageSrc)) {
     return {
       src: verification.document.verificationImageSrc,
@@ -1773,9 +1783,8 @@ function DefaultPopoverContent({
       : { src: expandedImageSrcOverride };
   }, [verification, expandedImageSrcOverride]);
 
-  // Whether this is a document citation (URL citations don't have page expansion)
   const isDocCitation = !isUrlCitation(citation);
-  const canExpand = isDocCitation && !!expandedImage;
+  const canExpand = !!expandedImage;
 
   const handleExpand = useCallback(() => {
     if (!canExpand) return;
