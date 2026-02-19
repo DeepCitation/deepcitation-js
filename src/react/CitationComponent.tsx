@@ -1523,13 +1523,15 @@ function ExpandedPageViewer({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  // Track current src to prevent stale onLoad/onError from a previous image
+  const currentSrcRef = useRef(expandedImage.src);
+
   // Reset image states when the source changes (e.g. expandedImageSrcOverride)
-  const imageSrc = expandedImage.src;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: imageSrc is an intentional trigger to reset loading/error state when the image source changes
   useEffect(() => {
+    currentSrcRef.current = expandedImage.src;
     setImageLoaded(false);
     setImageError(false);
-  }, [imageSrc]);
+  }, [expandedImage.src]);
 
   const { highlightBox, dimensions } = expandedImage;
   const isMiss = verification?.status === "not_found";
@@ -1620,8 +1622,8 @@ function ExpandedPageViewer({
 
         {/* Error fallback */}
         {imageError && (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-3">
-            <span className="size-8">
+          <div role="alert" className="flex flex-col items-center justify-center h-64 text-gray-400 gap-3">
+            <span className="size-8" aria-hidden="true">
               <WarningIcon />
             </span>
             <span className="text-sm">Image failed to load</span>
@@ -1649,8 +1651,12 @@ function ExpandedPageViewer({
               src={expandedImage.src}
               alt="Full page verification"
               className={cn("block w-full", imageError && "hidden")}
-              onLoad={() => setImageLoaded(true)}
-              onError={() => setImageError(true)}
+              onLoad={() => {
+                if (expandedImage.src === currentSrcRef.current) setImageLoaded(true);
+              }}
+              onError={() => {
+                if (expandedImage.src === currentSrcRef.current) setImageError(true);
+              }}
             />
           )}
 
