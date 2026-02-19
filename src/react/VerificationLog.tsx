@@ -25,9 +25,6 @@ import { getVariationLabel } from "./variationLabels.js";
 // CONSTANTS
 // =============================================================================
 
-/** Maximum length for matched text display before truncation */
-const MAX_MATCHED_TEXT_LENGTH = 40;
-
 /** Maximum length for quote box phrase display */
 const MAX_QUOTE_BOX_LENGTH = 150;
 
@@ -673,7 +670,7 @@ export function StatusHeader({
   foundPage,
   expectedPage,
   compact = false,
-  anchorText,
+  anchorText: _anchorText,
   hidePageBadge = false,
   indicatorVariant = "icon",
 }: StatusHeaderProps) {

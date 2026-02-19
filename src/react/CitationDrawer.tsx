@@ -27,7 +27,8 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { CheckIcon, ExternalLinkIcon, MissIcon } from "./icons.js";
-import { flattenCitations, StackedStatusIcons } from "./CitationDrawerTrigger.js";
+import { flattenCitations } from "./CitationDrawer.utils.js";
+import { StackedStatusIcons } from "./CitationDrawerTrigger.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
 import { sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";

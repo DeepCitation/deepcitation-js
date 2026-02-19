@@ -2,7 +2,8 @@ import type React from "react";
 import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
-import { getStatusInfo, getStatusPriority } from "./CitationDrawer.utils.js";
+import { flattenCitations, getStatusInfo } from "./CitationDrawer.utils.js";
+import type { FlatCitationItem } from "./CitationDrawer.utils.js";
 import { isValidProofImageSrc } from "./constants.js";
 import { cn } from "./utils.js";
 
@@ -104,14 +105,6 @@ const ICON_MARGIN_EXPANDED = "-0.25rem";
 // Internal types
 // =========
 
-/** Flattened citation item with source context for tooltip display */
-export interface FlatCitationItem {
-  item: CitationDrawerItem;
-  sourceName: string;
-  sourceFavicon?: string;
-  group: SourceCitationGroup;
-}
-
 // =========
 // Internal utilities
 // =========
@@ -142,26 +135,6 @@ function generateDefaultLabel(citationGroups: SourceCitationGroup[]): string {
   const truncated = firstName.length > 25 ? `${firstName.slice(0, 25)}...` : firstName;
   if (citationGroups.length === 1) return truncated;
   return `${truncated} +${citationGroups.length - 1}`;
-}
-
-/**
- * Flatten citation groups into individual citation items with source context.
- * Sorted by status priority (worst first) so failures appear at the start of the icon row.
- */
-export function flattenCitations(citationGroups: SourceCitationGroup[]): FlatCitationItem[] {
-  const items: FlatCitationItem[] = [];
-  for (const group of citationGroups) {
-    for (const item of group.citations) {
-      items.push({
-        item,
-        sourceName: group.sourceName?.trim() || "Source",
-        sourceFavicon: group.sourceFavicon,
-        group,
-      });
-    }
-  }
-  // Sort worst-status-first so failures appear at the leading edge
-  return items.sort((a, b) => getStatusPriority(b.item.verification) - getStatusPriority(a.item.verification));
 }
 
 // =========

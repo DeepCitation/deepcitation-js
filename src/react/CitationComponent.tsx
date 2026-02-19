@@ -900,6 +900,7 @@ export function AnchorTextFocusedImage({
 
           {/* Left pan hint — clicking pans the image left */}
           {scrollState.canScrollLeft && (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: pan hints are inside a <button>; keyboard access is provided by the parent element
             <div
               className="absolute left-0 top-0 h-full flex items-center pl-1.5 opacity-0 group-hover/keyhole:opacity-100 transition-opacity duration-150 cursor-pointer"
               aria-label="Pan image left"
@@ -918,6 +919,7 @@ export function AnchorTextFocusedImage({
 
           {/* Right pan hint — clicking pans the image right */}
           {scrollState.canScrollRight && (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: pan hints are inside a <button>; keyboard access is provided by the parent element
             <div
               className="absolute right-0 top-0 h-full flex items-center pr-1.5 opacity-0 group-hover/keyhole:opacity-100 transition-opacity duration-150 cursor-pointer"
               aria-label="Pan image right"
@@ -1766,20 +1768,18 @@ function DefaultPopoverContent({
     onViewStateChange?.("expanded-page");
   }, [canExpand, onViewStateChange]);
 
-  const handleBack = useCallback(() => {
-    onViewStateChange?.("summary");
-    // Restore scroll position after returning to summary
-    requestAnimationFrame(() => {
-      if (summaryContainerRef.current) {
-        summaryContainerRef.current.scrollTop = savedScrollTopRef.current;
-      }
-    });
-  }, [onViewStateChange]);
-
   // Transitions to the evidence image modal when the keyhole strip is clicked.
+  // Guard: only transition if there is actually an evidence image to show, so the user
+  // is never left in expanded-evidence state with an invisible (null) portal — especially
+  // important on mobile where ESC and outside-tap are unavailable.
   const handleKeyholeClick = useCallback(() => {
+    const rawUrlScreenshot = verification?.url?.webPageScreenshotBase64;
+    const evidenceSrc =
+      verification?.document?.verificationImageSrc ??
+      (rawUrlScreenshot ? normalizeScreenshotSrc(rawUrlScreenshot) : undefined);
+    if (!evidenceSrc || !isValidProofImageSrc(evidenceSrc)) return;
     onViewStateChange?.("expanded-evidence");
-  }, [onViewStateChange]);
+  }, [onViewStateChange, verification]);
 
   // Get page info (document citations only)
   const expectedPage = !isUrlCitation(citation) ? citation.pageNumber : undefined;
@@ -1966,7 +1966,7 @@ function DefaultPopoverContent({
               verification={verification}
               status={status}
               onExpand={handleExpand}
-              onImageClick={canExpand ? handleKeyholeClick : undefined}
+              onImageClick={handleKeyholeClick}
               proofImageSrc={expandedImage?.src}
             />
           ) : /* Show EvidenceTray for miss with search analysis (no image), or null */
@@ -3033,6 +3033,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               if (!evidenceSrc || !isValidProofImageSrc(evidenceSrc)) return null;
               // Evidence image modal: centered, sizes to content, capped at viewport
               return createPortal(
+                // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is supplementary; keyboard exit is handled by the document-level ESC handler
                 <div
                   className="animate-in fade-in-0 duration-150"
                   style={{
