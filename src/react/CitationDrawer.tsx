@@ -17,7 +17,6 @@ import {
   sortGroupsByWorstStatus,
 } from "./CitationDrawer.utils.js";
 import {
-  COPY_FEEDBACK_DURATION_MS,
   getPortalContainer,
   isValidProofImageSrc,
   Z_INDEX_BACKDROP_DEFAULT,
@@ -26,7 +25,7 @@ import {
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
-import { CheckIcon, CopyIcon, ExternalLinkIcon, MissIcon, ZoomInIcon } from "./icons.js";
+import { CheckIcon, ExternalLinkIcon, MissIcon } from "./icons.js";
 import { sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";
 import { FaviconImage } from "./VerificationLog.js";
@@ -466,21 +465,12 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const { citation, verification } = item;
   const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [imageExpanded, setImageExpanded] = useState(false);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   // Sync expanded state when defaultExpanded changes from false → true
   // (useState initializer only runs on mount; this handles async autoExpandKey updates)
   useEffect(() => {
     if (defaultExpanded) setIsExpanded(true);
   }, [defaultExpanded]);
-
-  // Auto-reset copy state
-  useEffect(() => {
-    if (copyState === "idle") return;
-    const id = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
-    return () => clearTimeout(id);
-  }, [copyState]);
 
   // Get display values with fallbacks
   const sourceName =
@@ -548,21 +538,8 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     [item, onReadMore],
   );
 
-  const handleCopyAnchor = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const text = citation.anchorText?.toString() || articleTitle;
-      if (!text) return;
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopyState("copied");
-      } catch {
-        setCopyState("error");
-      }
-    },
-    [citation.anchorText, articleTitle],
-  );
+  // Source URL for "open page" link (URL citations only)
+  const sourceUrl = citation.type === "url" && citation.url ? sanitizeUrl(citation.url) : null;
 
   return (
     <div
@@ -614,7 +591,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             {!hideSourceName && sourceName && (
               <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">{sourceName}</div>
             )}
-            {/* Title/phrase row with page number, copy button, and timestamp */}
+            {/* Title/phrase row with page number and timestamp */}
             <div className="flex items-center gap-1.5">
               {shouldMergePhrase ? (
                 <div className="text-sm text-gray-900 dark:text-gray-100 truncate" title={fullPhrase}>
@@ -629,23 +606,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                     {articleTitle}
                   </h4>
                 )
-              )}
-              {/* Copy button — always in DOM, opacity on hover (no layout shift) */}
-              {(articleTitle || shouldMergePhrase) && (
-                <button
-                  type="button"
-                  onClick={handleCopyAnchor}
-                  className={cn(
-                    "shrink-0 p-0.5 rounded transition-opacity cursor-pointer",
-                    copyState === "copied"
-                      ? "opacity-100 text-green-600 dark:text-green-400"
-                      : "opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300",
-                  )}
-                  aria-label={copyState === "copied" ? "Copied!" : "Copy anchor text"}
-                  title={copyState === "copied" ? "Copied!" : "Copy"}
-                >
-                  <span className="size-3.5 block">{copyState === "copied" ? <CheckIcon /> : <CopyIcon />}</span>
-                </button>
               )}
               {pageNumber != null && pageNumber > 0 && (
                 <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">p.{pageNumber}</span>
@@ -695,42 +655,15 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
               isNotFound ? "bg-red-50/50 dark:bg-red-950/20" : "bg-gray-50 dark:bg-gray-800/50",
             )}
           >
-            {/* Proof image — click to expand/collapse */}
+            {/* Proof image — static thumbnail */}
             {proofImage && (
               <div className="px-4 py-2">
-                <button
-                  type="button"
-                  className={cn(
-                    "relative group/img block rounded border border-gray-200 dark:border-gray-700 overflow-hidden transition-all",
-                    imageExpanded ? "cursor-zoom-out" : "cursor-zoom-in",
-                  )}
-                  onClick={e => {
-                    e.stopPropagation();
-                    setImageExpanded(prev => !prev);
-                  }}
-                  aria-label={imageExpanded ? "Collapse proof image" : "Expand proof image"}
-                >
-                  <img
-                    src={proofImage}
-                    alt="Verification proof"
-                    className={cn(
-                      "w-auto object-contain transition-[max-height] duration-200",
-                      imageExpanded ? "max-h-[600px]" : "max-h-40",
-                    )}
-                    loading="lazy"
-                  />
-                  {/* Hover overlay with zoom hint (only when collapsed) */}
-                  {!imageExpanded && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/img:bg-black/10 transition-colors">
-                      <span className="opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center gap-1 text-xs text-white bg-black/60 rounded px-2 py-1">
-                        <span className="size-3.5">
-                          <ZoomInIcon />
-                        </span>
-                        Expand
-                      </span>
-                    </div>
-                  )}
-                </button>
+                <img
+                  src={proofImage}
+                  alt="Verification proof"
+                  className="w-auto max-h-40 object-contain rounded border border-gray-200 dark:border-gray-700"
+                  loading="lazy"
+                />
               </div>
             )}
 
@@ -774,6 +707,24 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                     </button>
                   )}
                 </p>
+              </div>
+            )}
+
+            {/* Open page — consistent action for all expanded URL citations */}
+            {sourceUrl && (
+              <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800">
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                  onClick={e => e.stopPropagation()}
+                >
+                  Open source page
+                  <span className="size-3 block">
+                    <ExternalLinkIcon />
+                  </span>
+                </a>
               </div>
             )}
           </div>
