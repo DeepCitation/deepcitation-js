@@ -71,9 +71,7 @@ describe("normalizeScreenshotSrc", () => {
 
   describe("Security: Invalid base64 format", () => {
     it("should throw on HTML/script injection attempt", () => {
-      expect(() => normalizeScreenshotSrc("<script>alert(1)</script>")).toThrow(
-        "Invalid base64 format detected",
-      );
+      expect(() => normalizeScreenshotSrc("<script>alert(1)</script>")).toThrow("Invalid base64 format detected");
     });
 
     it("should throw on string with special characters", () => {
