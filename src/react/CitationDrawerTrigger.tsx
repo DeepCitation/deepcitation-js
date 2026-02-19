@@ -37,7 +37,7 @@ export interface CitationDrawerTriggerProps {
   className?: string;
   /** Label text override (default: auto-generated from status counts) */
   label?: string;
-  /** Maximum status icons to display (default: 10) */
+  /** Maximum status icons to display before collapsing into a +N overflow chip (default: 5) */
   maxIcons?: number;
   /** Whether to show proof image thumbnails in hover tooltips (default: true) */
   showProofThumbnails?: boolean;
@@ -105,7 +105,7 @@ const ICON_MARGIN_EXPANDED = "-0.25rem";
 // =========
 
 /** Flattened citation item with source context for tooltip display */
-interface FlatCitationItem {
+export interface FlatCitationItem {
   item: CitationDrawerItem;
   sourceName: string;
   sourceFavicon?: string;
@@ -148,7 +148,7 @@ function generateDefaultLabel(citationGroups: SourceCitationGroup[]): string {
  * Flatten citation groups into individual citation items with source context.
  * Sorted by status priority (worst first) so failures appear at the start of the icon row.
  */
-function flattenCitations(citationGroups: SourceCitationGroup[]): FlatCitationItem[] {
+export function flattenCitations(citationGroups: SourceCitationGroup[]): FlatCitationItem[] {
   const items: FlatCitationItem[] = [];
   for (const group of citationGroups) {
     for (const item of group.citations) {
@@ -329,7 +329,7 @@ function CitationTooltip({
 // StackedStatusIcons — horizontally expanding icon row (per-citation)
 // =========
 
-function StackedStatusIcons({
+export function StackedStatusIcons({
   flatCitations,
   isHovered,
   maxIcons,
@@ -514,7 +514,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
       isOpen,
       className,
       label,
-      maxIcons = 10,
+      maxIcons = 5,
       showProofThumbnails = true,
       indicatorVariant = "icon",
     },
@@ -628,9 +628,6 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
               onSourceClick={onSourceClick}
               indicatorVariant={indicatorVariant}
             />
-
-            {/* Badge pill — verified/total count */}
-            <TriggerBadge summary={statusSummary} />
 
             {/* Label */}
             <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{displayLabel}</span>

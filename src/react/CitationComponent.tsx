@@ -1399,7 +1399,7 @@ function EvidenceTray({
             }
           }}
           className={cn(
-            "w-full rounded-lg overflow-hidden text-left cursor-pointer group relative",
+            "w-full rounded-xs overflow-hidden text-left cursor-pointer group relative",
             "transition-opacity",
             borderClass,
           )}
@@ -1408,7 +1408,7 @@ function EvidenceTray({
           {content}
 
           {/* Hover overlay with CTA text */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors duration-150 flex items-center justify-center pointer-events-none rounded-lg">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors duration-150 flex items-center justify-center pointer-events-none rounded-xs">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-white/90 dark:bg-gray-900/90 px-2 py-1 rounded shadow-sm">
               {ctaText}
             </span>
@@ -1416,7 +1416,7 @@ function EvidenceTray({
         </div>
       ) : (
         /* Informational: non-clickable display */
-        <div className={cn("w-full rounded-lg overflow-hidden text-left", borderClass)}>{content}</div>
+        <div className={cn("w-full rounded-xs overflow-hidden text-left", borderClass)}>{content}</div>
       )}
     </div>
   );
@@ -1938,7 +1938,7 @@ function DefaultPopoverContent({
           />
 
           {fullPhrase && (
-            <div className="mx-3 mt-1 mb-3 pl-3 pr-3 py-2 text-sm leading-relaxed break-words rounded bg-gray-50 dark:bg-gray-800/50 border-l-[3px] border-green-500 dark:border-green-600">
+            <div className="mx-3 mt-1 mb-3 pl-3 pr-3 py-2 text-sm leading-relaxed break-words  bg-gray-50 dark:bg-gray-800/50 border-l-[3px] border-green-500 dark:border-green-600">
               <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isMiss} />
             </div>
           )}
@@ -2001,7 +2001,7 @@ function DefaultPopoverContent({
           {fullPhrase && (
             <div
               className={cn(
-                "mx-3 mt-1 mb-3 pl-3 pr-3 py-2 text-sm leading-relaxed break-words rounded bg-gray-50 dark:bg-gray-800/50 border-l-[3px]",
+                "mx-3 mt-1 mb-3 pl-3 pr-3 py-2 text-sm leading-relaxed break-words bg-gray-50 dark:bg-gray-800/50 border-l-[3px]",
                 isMiss ? "border-red-500 dark:border-red-400" : "border-amber-500 dark:border-amber-400",
               )}
             >

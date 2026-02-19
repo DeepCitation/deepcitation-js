@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
@@ -7,12 +7,11 @@ import { formatCaptureDate } from "./dateUtils.js";
 import {
   CheckIcon,
   ChevronRightIcon,
-  CopyIcon,
   DocumentIcon,
   GlobeIcon,
   MissIcon,
   SpinnerIcon,
-  XCircleIcon,
+  XCircleIcon
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
@@ -73,64 +72,6 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
 };
 
 // =============================================================================
-// URL ANCHOR TEXT ROW (with copy button)
-// =============================================================================
-
-/**
- * Row showing quoted anchor text with copy button for URL citations.
- * Matches the style of StatusHeader's copy button for document citations.
- */
-function UrlAnchorTextRow({ anchorText, displayAnchorText }: { anchorText: string; displayAnchorText: string }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
-
-  // Auto-reset copy state after feedback duration
-  useEffect(() => {
-    if (copyState === "idle") return;
-    const timeoutId = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
-    return () => clearTimeout(timeoutId);
-  }, [copyState]);
-
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!anchorText) return;
-
-      try {
-        await navigator.clipboard.writeText(anchorText);
-        setCopyState("copied");
-      } catch (err) {
-        console.error("Failed to copy text:", err);
-        setCopyState("error");
-      }
-    },
-    [anchorText],
-  );
-
-  return (
-    <div className="mt-1 pl-6 flex items-center gap-1.5">
-      <QuotedText className="text-xs text-gray-500 dark:text-gray-400 truncate">{displayAnchorText}</QuotedText>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className={cn(
-          "shrink-0 p-0.5 rounded transition-colors cursor-pointer",
-          copyState === "copied"
-            ? "text-green-600 dark:text-green-400"
-            : copyState === "error"
-              ? "text-red-500 dark:text-red-400"
-              : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300",
-        )}
-        aria-label={copyState === "copied" ? "Copied!" : "Copy quoted text"}
-        title={copyState === "copied" ? "Copied!" : "Copy quote"}
-      >
-        <span className="size-3.5 block">{copyState === "copied" ? <CheckIcon /> : <CopyIcon />}</span>
-      </button>
-    </div>
-  );
-}
-
-// =============================================================================
 // SOURCE CONTEXT HEADER COMPONENT
 // =============================================================================
 
@@ -154,12 +95,6 @@ export interface SourceContextHeaderProps {
   /** Callback when the page pill is clicked to expand to full page view */
   onExpand?: () => void;
 }
-
-/** Maximum length for display name truncation in source headers */
-const _MAX_SOURCE_DISPLAY_NAME_LENGTH = 60;
-
-/** Maximum length for anchor text display in miss headers */
-const _MAX_MISS_ANCHOR_TEXT_LENGTH = 60;
 
 /**
  * Maps document verification SearchStatus to UrlFetchStatus for display in UrlCitationComponent.
@@ -235,7 +170,7 @@ export function FaviconImage({
     <img
       src={effectiveFaviconUrl}
       alt={alt?.trim() || "Source"}
-      className="w-4 h-4 shrink-0 rounded-sm"
+      className="w-4 h-4 shrink-0 rounded-xs"
       onError={() => setHasError(true)}
       loading="lazy"
     />
@@ -344,7 +279,7 @@ export function SourceContextHeader({
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
 
   return (
-    <div className="flex items-center justify-between gap-2 p-3 mb-2 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex items-center justify-between gap-2 px-3 py-4 mb-2 border-b border-gray-200 dark:border-gray-700">
       {/* Left: Icon + source name */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
         {isUrl ? (
@@ -563,68 +498,6 @@ function _formatScopeBadge(attempt: SearchAttempt): string {
   }
 
   return "Unknown";
-}
-
-/**
- * Get result text for a search attempt.
- */
-function _getAttemptResultText(attempt: SearchAttempt): string {
-  if (attempt.success) {
-    if (attempt.matchedText) {
-      const truncated =
-        attempt.matchedText.length > MAX_MATCHED_TEXT_LENGTH
-          ? `${attempt.matchedText.slice(0, MAX_MATCHED_TEXT_LENGTH)}...`
-          : attempt.matchedText;
-      return `Found: "${truncated}"`;
-    }
-    return "Match found";
-  }
-
-  // Failed attempt
-  if (attempt.note) return attempt.note;
-
-  return "Text does not match";
-}
-
-/**
- * Get deemphasized detail text for GitHub CI/CD style display.
- * Shows location info in a clean, subtle format.
- */
-function _getAttemptDetailText(attempt: SearchAttempt): string {
-  const page = attempt.pageSearched;
-  const line = attempt.lineSearched;
-  const scope = attempt.searchScope;
-
-  // For successful matches, show where it was found
-  if (attempt.success) {
-    if (attempt.foundLocation) {
-      const { page: foundPage, line: foundLine } = attempt.foundLocation;
-      if (foundLine != null) {
-        return `Found on page ${foundPage}, line ${foundLine}`;
-      }
-      return `Found on page ${foundPage}`;
-    }
-    if (page != null) {
-      if (line != null) {
-        const lineStr = Array.isArray(line) ? `${line[0]}-${line[line.length - 1]}` : line.toString();
-        return `Page ${page}, line ${lineStr}`;
-      }
-      return `Page ${page}`;
-    }
-  }
-
-  // For failed searches, show where we searched
-  if (scope === "document") return "Full document search";
-
-  if (page != null) {
-    if (line != null) {
-      const lineStr = Array.isArray(line) ? `lines ${line[0]}-${line[line.length - 1]}` : `line ${line}`;
-      return `Page ${page}, ${lineStr}`;
-    }
-    return `Page ${page}, all lines`;
-  }
-
-  return "";
 }
 
 // =============================================================================
@@ -1224,7 +1097,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
     return (
       <div className="px-4 py-3 space-y-3 text-sm">
         <div>
-          <div className="p-2.5 bg-gray-50 dark:bg-gray-800/40 rounded-md space-y-2">
+          <div className="p-2.5 bg-gray-50 dark:bg-gray-800/40 space-y-2">
             {/* What was matched */}
             <div className="flex items-start gap-2">
               <span className="size-3.5 max-w-3.5 max-h-3.5 mt-0.5 text-green-600 dark:text-green-400 shrink-0">

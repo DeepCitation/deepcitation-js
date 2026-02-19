@@ -8,13 +8,11 @@ import type {
   CitationDrawerProps,
   SourceCitationGroup,
 } from "./CitationDrawer.types.js";
-import type { StatusCategory } from "./CitationDrawer.utils.js";
 import {
   computeStatusSummary,
   extractDomain,
   getItemStatusCategory,
   getStatusInfo,
-  groupCitationsByStatus,
   STATUS_DISPLAY_MAP,
   sortGroupsByWorstStatus,
 } from "./CitationDrawer.utils.js";
@@ -30,6 +28,7 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { CheckIcon, ExternalLinkIcon, MissIcon, XIcon, ZoomInIcon } from "./icons.js";
+import { flattenCitations, StackedStatusIcons } from "./CitationDrawerTrigger.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
 import { isValidProofUrl, sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";
@@ -221,142 +220,6 @@ function wordCount(str: string): number {
 }
 
 // HighlightedPhrase — imported from ./HighlightedPhrase.js (canonical location)
-
-// =========
-// StatusProgressBar — thin GitHub-language-bar-style status breakdown
-// =========
-
-/**
- * Thin progress bar showing proportional status breakdown.
- * Each segment grows proportional to its count using flex-grow.
- */
-function StatusProgressBar({
-  verified,
-  partial,
-  notFound,
-  pending,
-}: {
-  verified: number;
-  partial: number;
-  notFound: number;
-  pending: number;
-}) {
-  const segments = [
-    { status: "notFound", count: notFound, color: "bg-red-500 dark:bg-red-400" },
-    { status: "partial", count: partial, color: "bg-amber-500 dark:bg-amber-400" },
-    { status: "pending", count: pending, color: "bg-gray-300 dark:bg-gray-600" },
-    { status: "verified", count: verified, color: "bg-green-500 dark:bg-green-400" },
-  ].filter(s => s.count > 0);
-
-  if (segments.length === 0) return null;
-
-  return (
-    <div
-      className="flex h-1 w-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800"
-      role="img"
-      aria-label="Verification status breakdown"
-    >
-      {segments.map((seg, i) => (
-        <div
-          key={seg.status}
-          className={cn(
-            "transition-all duration-300",
-            seg.color,
-            i === 0 && "rounded-l-full",
-            i === segments.length - 1 && "rounded-r-full",
-          )}
-          style={{ flexGrow: seg.count }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// =========
-// ViewModeToggle — segmented "By status" / "By source" toggle
-// =========
-
-type ViewMode = "status" | "source";
-
-function ViewModeToggle({ mode, onChange }: { mode: ViewMode; onChange: (mode: ViewMode) => void }) {
-  return (
-    <div
-      className="inline-flex rounded-md border border-gray-200 dark:border-gray-700 text-[11px] font-medium"
-      role="radiogroup"
-      aria-label="View mode"
-    >
-      {(["status", "source"] as const).map(m => (
-        <button
-          key={m}
-          type="button"
-          role="radio"
-          aria-checked={mode === m}
-          aria-label={m === "status" ? "Group citations by verification status" : "Group citations by source"}
-          className={cn(
-            "px-2.5 py-1 transition-colors cursor-pointer",
-            m === "status" && "rounded-l-md",
-            m === "source" && "rounded-r-md",
-            mode === m
-              ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300",
-          )}
-          onClick={() => onChange(m)}
-        >
-          {m === "status" ? "By status" : "By source"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// =========
-// StatusSectionHeader — header for status-grouped sections
-// =========
-
-function StatusSectionHeader({
-  label,
-  count,
-  color,
-  isCollapsed,
-  onToggle,
-}: {
-  label: string;
-  count: number;
-  color: string;
-  isCollapsed?: boolean;
-  onToggle?: () => void;
-}) {
-  if (!onToggle) {
-    return (
-      <div className="px-4 py-1.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-        <span className={cn("text-xs font-medium", color)}>{label}</span>
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">({count})</span>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="w-full px-4 py-1.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-      aria-expanded={!isCollapsed}
-    >
-      <svg
-        className={cn("w-3 h-3 text-gray-400 transition-transform duration-200", isCollapsed && "-rotate-90")}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden="true"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-      </svg>
-      <span className={cn("text-xs font-medium", color)}>{label}</span>
-      <span className="text-[11px] text-gray-400 dark:text-gray-500">({count})</span>
-    </button>
-  );
-}
 
 // =========
 // SourceGroupHeader
@@ -566,6 +429,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   hideSourceName = false,
   defaultExpanded = false,
   style,
+  sourceLabelMap,
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
   const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
@@ -599,7 +463,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const sourceName =
     citation.type === "url"
       ? citation.siteName || citation.domain || extractDomain(citation.url) || "Source"
-      : verification?.label || "Document";
+      : lookupSourceLabel(citation, sourceLabelMap) || verification?.label || "Document";
   const articleTitle =
     (citation.type === "url" ? citation.title : undefined) || citation.anchorText || citation.fullPhrase;
   const snippet =
@@ -799,18 +663,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             )}
             onAnimationEnd={() => setWasAutoExpanded(false)}
           >
-            {/* Quote box — bordered phrase with status-colored left border */}
-            {fullPhrase && (
-              <div
-                className={cn(
-                  "mx-4 mt-2.5 pl-3 pr-3 py-2 text-sm leading-relaxed break-words rounded bg-white dark:bg-gray-900/50 border-l-[3px]",
-                  statusBorderColor,
-                )}
-              >
-                <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isNotFound} />
-              </div>
-            )}
-
             {/* Proof image — clickable thumbnail with lightbox (not-found uses NotFoundCallout below) */}
             {proofImage && !isNotFound && (
               <div className="px-4 py-2">
@@ -1113,77 +965,15 @@ export function CitationDrawer({
   indicatorVariant = "icon",
   sourceLabelMap,
 }: CitationDrawerProps): React.ReactNode {
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    try {
-      const stored = typeof window !== "undefined" ? localStorage.getItem("dc-drawer-view-mode") : null;
-      if (stored === "source" || stored === "status") return stored;
-    } catch {
-      /* SSR or localStorage unavailable */
-    }
-    return "status";
-  });
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    setViewMode(mode);
-    try {
-      if (typeof window !== "undefined") localStorage.setItem("dc-drawer-view-mode", mode);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  // Track collapsed status sections (e.g. auto-collapse "Verified" when problems exist)
-  const [collapsedSections, setCollapsedSections] = useState<Set<StatusCategory>>(new Set());
-  // Track all not-found item keys for auto-expand on open
-  const [autoExpandKeys, setAutoExpandKeys] = useState<Set<string> | null>(null);
-  const prevIsOpenRef = React.useRef(false);
-
   // Status summary for header and progress bar
   const summary = useMemo(() => computeStatusSummary(citationGroups), [citationGroups]);
 
-  // Sorted groups for "By source" view
+  // Sorted groups for display
   const sortedGroups = useMemo(() => sortGroupsByWorstStatus(citationGroups), [citationGroups]);
 
-  // Status sections for "By status" view
-  const statusSections = useMemo(() => groupCitationsByStatus(citationGroups), [citationGroups]);
-
-  // Flatten all citations for total count
+  // Flatten all citations for total count and header icons
   const totalCitations = summary.total;
-
-  // Build status summary text
-  const summaryText = useMemo(() => {
-    const parts: string[] = [];
-    if (summary.notFound > 0) parts.push(`${summary.notFound} not found`);
-    if (summary.partial > 0) parts.push(`${summary.partial} partial`);
-    if (summary.pending > 0) parts.push(`${summary.pending} verifying`);
-    if (summary.verified > 0) parts.push(`${summary.verified} verified`);
-    return parts.join(" · ");
-  }, [summary]);
-
-  // Pre-compute all not-found keys as a stable derived value. The loop runs once per
-  // citationGroups change (memoized), collecting ALL not-found items for auto-expansion.
-  const notFoundKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const group of citationGroups) {
-      for (const item of group.citations) {
-        if (getItemStatusCategory(item) === "notFound") keys.add(item.citationKey);
-      }
-    }
-    return keys.size > 0 ? keys : null;
-  }, [citationGroups]);
-
-  // Auto-expand all not-found items and auto-collapse verified section when drawer opens
-  React.useEffect(() => {
-    if (isOpen && !prevIsOpenRef.current) {
-      setAutoExpandKeys(notFoundKeys);
-      // Smart default: auto-collapse "Verified" section when problems exist
-      if (summary.notFound > 0 || summary.partial > 0) {
-        setCollapsedSections(new Set<StatusCategory>(["verified"]));
-      } else {
-        setCollapsedSections(new Set());
-      }
-    }
-    prevIsOpenRef.current = isOpen;
-  }, [isOpen, notFoundKeys, summary.notFound, summary.partial]);
+  const flatCitations = useMemo(() => flattenCitations(citationGroups), [citationGroups]);
 
   // Handle escape key
   React.useEffect(() => {
@@ -1198,15 +988,6 @@ export function CitationDrawer({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
-
-  const toggleSection = useCallback((category: StatusCategory) => {
-    setCollapsedSections(prev => {
-      const next = new Set(prev);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
-      return next;
-    });
-  }, []);
 
   // Don't render if closed
   if (!isOpen) return null;
@@ -1227,6 +1008,7 @@ export function CitationDrawer({
           isLast={isLastGroup}
           onClick={onCitationClick}
           indicatorVariant={indicatorVariant}
+          sourceLabelMap={sourceLabelMap}
         />
       );
     }
@@ -1251,7 +1033,7 @@ export function CitationDrawer({
                 indicatorVariant={indicatorVariant}
                 hideSourceName
                 sourceLabelMap={sourceLabelMap}
-                defaultExpanded={autoExpandKeys?.has(item.citationKey) ?? false}
+
                 style={{ animationDelay: `${delay}ms` }}
               />
             );
@@ -1259,50 +1041,6 @@ export function CitationDrawer({
         </div>
       </div>
     );
-  };
-
-  const renderStatusView = () => {
-    let statusStaggerIndex = 0;
-    return statusSections.map((section, sectionIndex) => {
-      const isCollapsed = collapsedSections.has(section.category);
-      return (
-        <div key={section.category}>
-          <StatusSectionHeader
-            label={section.label}
-            count={section.items.length}
-            color={section.color}
-            isCollapsed={isCollapsed}
-            onToggle={() => toggleSection(section.category)}
-          />
-          <div
-            className="grid transition-[grid-template-rows] duration-200 ease-out"
-            style={{ gridTemplateRows: isCollapsed ? "0fr" : "1fr" }}
-          >
-            <div className="overflow-hidden" style={{ minHeight: 0 }}>
-              {section.items.map((item, index) => {
-                const delay = statusStaggerIndex * 35;
-                statusStaggerIndex++;
-                return renderCitationItem ? (
-                  <React.Fragment key={item.citationKey}>{renderCitationItem(item)}</React.Fragment>
-                ) : (
-                  <CitationDrawerItemComponent
-                    key={item.citationKey}
-                    item={item}
-                    isLast={sectionIndex === statusSections.length - 1 && index === section.items.length - 1}
-                    onClick={onCitationClick}
-                    onReadMore={onReadMore}
-                    indicatorVariant={indicatorVariant}
-                    sourceLabelMap={sourceLabelMap}
-                    defaultExpanded={autoExpandKeys?.has(item.citationKey) ?? false}
-                    style={{ animationDelay: `${delay}ms` }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      );
-    });
   };
 
   const drawerContent = (
@@ -1341,10 +1079,22 @@ export function CitationDrawer({
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-              {totalCitations > 0 && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{summaryText}</p>}
+              {totalCitations > 0 && (
+                <div className="mt-0.5">
+                  <StackedStatusIcons
+                    flatCitations={flatCitations}
+                    isHovered={false}
+                    maxIcons={5}
+                    hoveredIndex={null}
+                    onIconHover={() => {}}
+                    onIconLeave={() => {}}
+                    showProofThumbnails={false}
+                    indicatorVariant={indicatorVariant}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {totalCitations > 1 && <ViewModeToggle mode={viewMode} onChange={handleViewModeChange} />}
               <button
                 type="button"
                 onClick={onClose}
@@ -1363,19 +1113,12 @@ export function CitationDrawer({
               </button>
             </div>
           </div>
-          {totalCitations > 0 && (
-            <div className="mt-2">
-              <StatusProgressBar {...summary} />
-            </div>
-          )}
         </div>
 
         {/* Citation list */}
         <div className="flex-1 overflow-y-auto">
           {totalCitations === 0 ? (
             <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No citations to display</div>
-          ) : viewMode === "status" ? (
-            renderStatusView()
           ) : (
             sortedGroups.map((group, groupIndex) =>
               renderGroup(group, groupIndex, groupIndex === sortedGroups.length - 1),
