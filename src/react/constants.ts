@@ -4,7 +4,6 @@
  */
 
 import type React from "react";
-import { safeTest } from "../utils/regexSafety.js";
 
 /**
  * CSS custom property name for the wavy underline color.
@@ -343,9 +342,14 @@ export function isValidProofImageSrc(src: unknown): src is string {
   // Reject: protocol-relative URLs (//evil.com), path traversal (..), encoded traversal (%2e),
   // Unicode lookalike traversal (fullwidth dots), double-encoding, and null bytes.
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    // Defense-in-depth: reject obvious traversal before expensive decoding
+    if (trimmed.includes("..")) return false;
+
     try {
       // Validate input length before expensive operations to prevent DoS
-      const MAX_PATH_LENGTH = 10_000; // Reasonable limit for URL paths
+      // Legitimate proof image paths (e.g., /api/proof/abc123.avif) are typically <200 chars.
+      // 2KB limit provides 10x headroom for complex query strings while preventing DoS.
+      const MAX_PATH_LENGTH = 2_000;
       if (trimmed.length > MAX_PATH_LENGTH) return false;
 
       // Iteratively decode until stable to prevent double-encoded traversal (%252e%252e)
@@ -359,11 +363,9 @@ export function isValidProofImageSrc(src: unknown): src is string {
         decoded = decodeURIComponent(decoded);
         iterations++;
         if (iterations >= MAX_DECODE_ITERATIONS) break;
-      } while (decoded !== previous && decoded.includes("%"));
+      } while (decoded !== previous);
 
       // Normalize Unicode (NFC) to handle composed characters consistently
-      // Note: This does NOT convert fullwidth dots (U+FF0E) to ASCII—those are
-      // caught by the lookalike regex below
       const normalized = decoded.normalize("NFC");
 
       // Reject null bytes (C truncation attack)
@@ -372,9 +374,9 @@ export function isValidProofImageSrc(src: unknown): src is string {
       // Reject Unicode lookalike dots that could be used for traversal obfuscation
       // U+FF0E (fullwidth full stop), U+2024 (one dot leader), U+FE52 (small full stop), etc.
       const dangerousUnicodeDots = /[\uFF0E\u2024\uFE52\u2025\u2026]/;
-      if (safeTest(dangerousUnicodeDots, normalized)) return false;
+      if (dangerousUnicodeDots.test(normalized)) return false;
 
-      // Reject path traversal sequences
+      // Reject path traversal sequences (also catches encoded forms after decoding)
       if (normalized.includes("..")) return false;
 
       // Accept valid same-origin relative paths
