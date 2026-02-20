@@ -380,6 +380,31 @@ export const ANCHOR_HIGHLIGHT_STYLE: React.CSSProperties = {
 export const MIN_WORD_DIFFERENCE = 2;
 
 // =============================================================================
+// CITATION ANNOTATION OVERLAY
+// =============================================================================
+//
+// Constants for drawing citation annotations on full-page proof images.
+// Mirrors @filelasso/shared/utils/citationDrawing values — deepcitation-js
+// cannot import from shared, so the values are duplicated here.
+
+/** Border width for citation bracket outlines (px). */
+export const CITATION_BRACKET_BORDER_WIDTH = 2;
+/** Blue bracket color for exact/full-phrase matches. */
+export const CITATION_BRACKET_BLUE = "#005595";
+/** Amber bracket color for partial/anchor-text matches. */
+export const CITATION_BRACKET_AMBER = "#fbbf24";
+/** Semi-transparent overlay covering non-citation areas (spotlight effect). */
+export const SPOTLIGHT_OVERLAY_COLOR = "rgba(26, 26, 26, 0.4)";
+
+/**
+ * Calculates bracket arm width based on highlight height.
+ * Matches the backend's `getBracketWidth` (ratio = 1/5, clamped to 4–12px).
+ */
+export function getCitationBracketWidth(heightPx: number): number {
+  return Math.max(4, Math.min(heightPx * 0.2, 12));
+}
+
+// =============================================================================
 // EVIDENCE TRAY & EXPANDED VIEW
 // =============================================================================
 

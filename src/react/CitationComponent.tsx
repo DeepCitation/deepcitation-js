@@ -43,6 +43,7 @@ import {
   POPOVER_WIDTH_VAR,
   VERIFIED_COLOR_STYLE,
 } from "./constants.js";
+import { CitationAnnotationOverlay } from "./CitationAnnotationOverlay.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
@@ -85,6 +86,36 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
 
 /** Tracks which deprecation warnings have already been emitted (dev-mode only). */
 const deprecationWarned = new Set<string>();
+
+// ---------- Body scroll lock (ref-counted) ----------
+// Multiple CitationComponent instances may open simultaneously (hover overlap).
+// A simple capture-and-restore pattern breaks when locks stack. Instead we
+// ref-count: the first lock captures the original values, the last unlock
+// restores them. This prevents leaving the page permanently scroll-locked.
+let scrollLockCount = 0;
+let scrollLockOriginalOverflow = "";
+let scrollLockOriginalPaddingRight = "";
+
+function acquireScrollLock() {
+  if (scrollLockCount === 0) {
+    scrollLockOriginalOverflow = document.body.style.overflow;
+    scrollLockOriginalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+  }
+  scrollLockCount++;
+}
+
+function releaseScrollLock() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount === 0) {
+    document.body.style.overflow = scrollLockOriginalOverflow;
+    document.body.style.paddingRight = scrollLockOriginalPaddingRight;
+  }
+}
 
 /** Popover container width. Customizable via CSS custom property `--dc-popover-width`. */
 const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
@@ -944,6 +975,7 @@ export interface ExpandedImageSource {
   src: string;
   dimensions?: { width: number; height: number } | null;
   highlightBox?: ScreenBox | null;
+  renderScale?: { x: number; y: number } | null;
   textItems?: DeepTextItem[];
 }
 
@@ -979,6 +1011,7 @@ export function normalizeScreenshotSrc(raw: string): string {
  * Tries in order:
  * 1. matchPage from verification.pages (best: has image, dimensions, highlight, textItems)
  * 2. proof.proofImageUrl (good: CDN image, no overlay data)
+ * 2b. First non-match page from verification.pages (for not_found: pages were searched but none matched)
  * 3. url.webPageScreenshotBase64 (URL citations: full page screenshot)
  * 4. document.verificationImageSrc (baseline: keyhole image at full size)
  *
@@ -997,6 +1030,7 @@ export function resolveExpandedImage(verification: Verification | null | undefin
       src: matchPage.source,
       dimensions: matchPage.dimensions,
       highlightBox: matchPage.highlightBox ?? null,
+      renderScale: matchPage.renderScale ?? null,
       textItems: matchPage.textItems ?? [],
     };
   }
@@ -1011,12 +1045,28 @@ export function resolveExpandedImage(verification: Verification | null | undefin
     };
   }
 
+  // 2b. Non-match page fallback (for not_found — pages exist but none is a match)
+  const anyPage = verification.pages?.[0];
+  if (anyPage?.source && isValidProofImageSrc(anyPage.source)) {
+    return {
+      src: anyPage.source,
+      dimensions: anyPage.dimensions,
+      highlightBox: null,
+      renderScale: anyPage.renderScale ?? null,
+      textItems: anyPage.textItems ?? [],
+    };
+  }
+
   // 3. URL screenshot — base64-encoded page screenshot (URL citations)
   const urlScreenshot = verification.url?.webPageScreenshotBase64;
   if (urlScreenshot) {
-    const src = normalizeScreenshotSrc(urlScreenshot);
-    if (isValidProofImageSrc(src)) {
-      return { src, dimensions: null, highlightBox: null, textItems: [] };
+    try {
+      const src = normalizeScreenshotSrc(urlScreenshot);
+      if (isValidProofImageSrc(src)) {
+        return { src, dimensions: null, highlightBox: null, textItems: [] };
+      }
+    } catch {
+      // Malformed base64 — fall through to next candidate
     }
   }
 
@@ -1174,9 +1224,11 @@ export function AnchorTextFocusedImage({
   );
 
   const rawUrlScreenshot = verification.url?.webPageScreenshotBase64;
-  const rawImageSrc =
-    verification.document?.verificationImageSrc ??
-    (rawUrlScreenshot ? normalizeScreenshotSrc(rawUrlScreenshot) : undefined);
+  let normalizedUrlScreenshot: string | undefined;
+  if (rawUrlScreenshot) {
+    try { normalizedUrlScreenshot = normalizeScreenshotSrc(rawUrlScreenshot); } catch { /* malformed */ }
+  }
+  const rawImageSrc = verification.document?.verificationImageSrc ?? normalizedUrlScreenshot;
   const imageSrc = isValidProofImageSrc(rawImageSrc) ? rawImageSrc : null;
   if (!imageSrc) return null;
 
@@ -1851,6 +1903,7 @@ export function InlineExpandedImage({
   status,
   fill = false,
   onNaturalSize,
+  renderScale,
 }: {
   src: string;
   onCollapse: () => void;
@@ -1860,10 +1913,13 @@ export function InlineExpandedImage({
   fill?: boolean;
   /** Called after image load with natural pixel dimensions. */
   onNaturalSize?: (width: number, height: number) => void;
+  /** Scale factors for converting DeepTextItem PDF coords to image pixels. */
+  renderScale?: { x: number; y: number } | null;
 }) {
   const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
+  const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
 
   // Reset imageLoaded synchronously when src changes (avoids a useEffect render cycle).
   // This ensures the spinner shows while the new image loads after an evidence ↔ page swap.
@@ -1872,6 +1928,7 @@ export function InlineExpandedImage({
     prevSrcRef.current = src;
     setImageLoaded(false);
     setNaturalWidth(null);
+    setNaturalHeight(null);
   }
 
   // Derive footer label — matches EvidenceTrayFooter logic
@@ -1936,20 +1993,36 @@ export function InlineExpandedImage({
               </span>
             </div>
           )}
-          <img
-            src={src}
-            alt="Verification evidence"
-            className={cn("block", !imageLoaded && "hidden")}
-            style={{ maxWidth: "none" }}
-            onLoad={e => {
-              const w = e.currentTarget.naturalWidth;
-              const h = e.currentTarget.naturalHeight;
-              setImageLoaded(true);
-              setNaturalWidth(w);
-              onNaturalSize?.(w, h);
-            }}
-            draggable={false}
-          />
+          {/* Relative wrapper: positions annotation overlay exactly over the image */}
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <img
+              src={src}
+              alt="Verification evidence"
+              className={cn("block", !imageLoaded && "hidden")}
+              style={{ maxWidth: "none" }}
+              onLoad={e => {
+                const w = e.currentTarget.naturalWidth;
+                const h = e.currentTarget.naturalHeight;
+                setImageLoaded(true);
+                setNaturalWidth(w);
+                setNaturalHeight(h);
+                onNaturalSize?.(w, h);
+              }}
+              draggable={false}
+            />
+            {imageLoaded && renderScale && naturalWidth && naturalHeight && verification?.document?.phraseMatchDeepItem && (
+              <CitationAnnotationOverlay
+                phraseMatchDeepItem={verification.document.phraseMatchDeepItem}
+                renderScale={renderScale}
+                imageNaturalWidth={naturalWidth}
+                imageNaturalHeight={naturalHeight}
+                highlightColor={verification.highlightColor}
+                anchorTextDeepItem={verification.document.anchorTextMatchDeepItems?.[0]}
+                anchorText={verification.verifiedAnchorText}
+                fullPhrase={verification.verifiedFullPhrase}
+              />
+            )}
+          </div>
         </div>
       </div>
       {/* Footer — matches EvidenceTrayFooter style; shows collapse hint on hover */}
@@ -2025,7 +2098,7 @@ function DefaultPopoverContent({
     if (!expandedImageSrcOverride) return resolved;
     // Custom src provided: clear overlay metadata since dimensions belong to the original image
     return resolved
-      ? { ...resolved, src: expandedImageSrcOverride, dimensions: null, highlightBox: null }
+      ? { ...resolved, src: expandedImageSrcOverride, dimensions: null, highlightBox: null, renderScale: null }
       : { src: expandedImageSrcOverride };
   }, [verification, expandedImageSrcOverride]);
 
@@ -2243,7 +2316,7 @@ function DefaultPopoverContent({
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} onNaturalSize={handleExpandedImageLoad} />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
-            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill onNaturalSize={handleExpandedImageLoad} />
+            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill onNaturalSize={handleExpandedImageLoad} renderScale={expandedImage.renderScale} />
           ) : (
             <EvidenceTray
               verification={verification}
@@ -2329,7 +2402,7 @@ function DefaultPopoverContent({
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} onNaturalSize={handleExpandedImageLoad} />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
-            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill onNaturalSize={handleExpandedImageLoad} />
+            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill onNaturalSize={handleExpandedImageLoad} renderScale={expandedImage.renderScale} />
           ) : hasImage && verification ? (
             <EvidenceTray
               verification={verification}
@@ -2338,8 +2411,8 @@ function DefaultPopoverContent({
               onImageClick={handleKeyholeClick}
               proofImageSrc={expandedImage?.src}
             />
-          ) : /* Show EvidenceTray for miss with search analysis (no image), or null */
-          isMiss && verification?.searchAttempts?.length && verification ? (
+          ) : /* Show EvidenceTray for miss with search analysis or expandable page, or null */
+          isMiss && (verification?.searchAttempts?.length || canExpandToPage) && verification ? (
             <EvidenceTray
               verification={verification}
               status={status}
@@ -2508,40 +2581,38 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       return () => document.removeEventListener("keydown", handler, true);
     }, [popoverViewState]);
 
-    // Lock body scroll when the popover is open.
-    // Radix Popover content is position:fixed, so page scroll would disconnect
-    // the trigger from the popover. Locking also removes the confusing browser
-    // scrollbar while the popover is visible.
-    // Compensates for scrollbar width to avoid layout shift on lock/unlock.
+    // Lock body scroll when the popover is open (ref-counted so overlapping
+    // instances don't leave the page permanently locked). See acquireScrollLock().
     useEffect(() => {
       if (!isHovering) return;
-      const prevOverflow = document.body.style.overflow;
-      const prevPaddingRight = document.body.style.paddingRight;
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = "hidden";
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-      }
-      return () => {
-        document.body.style.overflow = prevOverflow;
-        document.body.style.paddingRight = prevPaddingRight;
-      };
+      acquireScrollLock();
+      return () => releaseScrollLock();
     }, [isHovering]);
 
-    // When entering expanded-page mode, compute a sideOffset that pushes the popover's
-    // top edge to near the top of the viewport (y≈8px), so the expanded image can fill
-    // the full viewport height — both above and below the trigger position.
-    // Formula for side="bottom": popoverTop = triggerBottom + sideOffset
-    //   → sideOffset = MARGIN - triggerBottom
+    // When entering expanded-page mode, compute offsets that position the popover:
+    //   Y axis: top edge near viewport top (y≈8px) so the image fills the full height.
+    //   X axis: horizontally centered on the viewport (not the trigger).
+    //
+    // avoidCollisions is disabled for expanded-page to prevent floating-ui from
+    // overriding the vertical offset, so we must handle horizontal centering ourselves.
+    //
+    // Formulas (side="bottom", align="center"):
+    //   sideOffset  = MARGIN - triggerBottom
+    //   alignOffset = viewportCenterX - triggerCenterX
+    const [expandedPageAlignOffset, setExpandedPageAlignOffset] = useState<number | null>(null);
     useLayoutEffect(() => {
       if (popoverViewState !== "expanded-page") {
         setExpandedPageSideOffset(null);
+        setExpandedPageAlignOffset(null);
         return;
       }
       const trigger = triggerRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
       setExpandedPageSideOffset(8 - rect.bottom);
+      const triggerCenterX = rect.left + rect.width / 2;
+      const viewportCenterX = window.innerWidth / 2;
+      setExpandedPageAlignOffset(Math.round(viewportCenterX - triggerCenterX));
     }, [popoverViewState]);
 
     // Dismiss the popover and reset its view state in one step.
@@ -3193,6 +3264,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               side={popoverViewState === "expanded-page" ? "bottom" : (popoverPosition === "bottom" ? "bottom" : "top")}
               avoidCollisions={popoverViewState !== "expanded-page"}
               sideOffset={popoverViewState === "expanded-page" && expandedPageSideOffset !== null ? expandedPageSideOffset : undefined}
+              alignOffset={popoverViewState === "expanded-page" && expandedPageAlignOffset !== null ? expandedPageAlignOffset : undefined}
               onPointerDownOutside={(e: Event) => e.preventDefault()}
               onInteractOutside={(e: Event) => e.preventDefault()}
               style={

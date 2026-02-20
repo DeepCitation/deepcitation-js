@@ -18,6 +18,8 @@ import {
 import { StackedStatusIcons } from "./CitationDrawerTrigger.js";
 import { EvidenceTray, InlineExpandedImage } from "./CitationComponent.js";
 import {
+  EASE_COLLAPSE,
+  EASE_EXPAND,
   getPortalContainer,
   isValidProofImageSrc,
   Z_INDEX_BACKDROP_DEFAULT,
@@ -369,9 +371,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
         className="grid transition-[grid-template-rows] duration-150"
         style={{
           gridTemplateRows: isExpanded ? "1fr" : "0fr",
-          transitionTimingFunction: isExpanded
-            ? "cubic-bezier(0.16, 0, 0, 1)"   /* expand: fast start, gentle stop */
-            : "cubic-bezier(0.4, 0, 1, 1)",    /* collapse: gentle start, snap shut */
+          transitionTimingFunction: isExpanded ? EASE_EXPAND : EASE_COLLAPSE,
         }}
       >
         <div className="overflow-hidden" style={{ minHeight: 0 }}>
