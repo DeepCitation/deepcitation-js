@@ -44,7 +44,7 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
-import { CheckIcon, ChevronRightIcon, ExpandArrowsIcon, ExternalLinkIcon, HandIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
+import { CheckIcon, ExpandArrowsIcon, ExternalLinkIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
@@ -1217,13 +1217,13 @@ export function AnchorTextFocusedImage({
             />
           </div>
 
-          {/* Corner affordance icon — hand if pannable, expand arrows if only expandable */}
-          {(isPannable || onImageClick) && (
+          {/* Corner affordance icon — expand arrows when expandable */}
+          {onImageClick && (
             <div
               className="absolute bottom-1.5 right-1.5 size-4 p-0.5 rounded bg-black/30 text-white opacity-50 group-hover/keyhole:opacity-80 transition-opacity duration-150 pointer-events-none"
               aria-hidden="true"
             >
-              {isPannable ? <HandIcon /> : <ExpandArrowsIcon />}
+              <ExpandArrowsIcon />
             </div>
           )}
 
@@ -1241,7 +1241,7 @@ export function AnchorTextFocusedImage({
               }}
             >
               <span className="text-[9px] font-semibold text-white bg-black/50 px-1.5 py-0.5 rounded leading-none">
-                ← Pan
+                ←
               </span>
             </div>
           )}
@@ -1260,7 +1260,7 @@ export function AnchorTextFocusedImage({
               }}
             >
               <span className="text-[9px] font-semibold text-white bg-black/50 px-1.5 py-0.5 rounded leading-none">
-                Pan →
+                →
               </span>
             </div>
           )}
@@ -1589,10 +1589,12 @@ function EvidenceTrayFooter({
   status,
   searchAttempts,
   verifiedAt,
+  showExpandHint,
 }: {
   status?: SearchStatus | null;
   searchAttempts?: SearchAttempt[];
   verifiedAt?: Date | string | null;
+  showExpandHint?: boolean;
 }) {
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
@@ -1621,7 +1623,14 @@ function EvidenceTrayFooter({
 
   return (
     <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500">
-      <span>{outcomeLabel}</span>
+      <span>
+        {outcomeLabel}
+        {showExpandHint && (
+          <span className="opacity-0 group-hover/ev-tray:opacity-100 transition-opacity duration-150">
+            {" · Click to expand"}
+          </span>
+        )}
+      </span>
       {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
     </div>
   );
@@ -1766,6 +1775,7 @@ function EvidenceTray({
           status={verification?.status}
           searchAttempts={searchAttempts}
           verifiedAt={verification?.verifiedAt}
+          showExpandHint={!!onImageClick}
         />
       )}
     </>
@@ -1790,7 +1800,7 @@ function EvidenceTray({
             }
           }}
           className={cn(
-            "w-full rounded-xs overflow-hidden text-left cursor-pointer group relative",
+            "w-full rounded-xs overflow-hidden text-left cursor-pointer group/ev-tray relative",
             "transition-opacity",
             borderClass,
           )}
@@ -1799,8 +1809,8 @@ function EvidenceTray({
           {content}
 
           {/* Hover overlay — expand icon in corner */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors duration-150 flex items-end justify-end p-1.5 pointer-events-none rounded-xs">
-            <div className="size-5 opacity-0 group-hover:opacity-90 transition-opacity duration-150 bg-white/80 dark:bg-gray-900/80 rounded shadow-sm p-0.5 text-gray-500 dark:text-gray-400">
+          <div className="absolute inset-0 bg-black/0 group-hover/ev-tray:bg-black/5 dark:group-hover/ev-tray:bg-white/5 transition-colors duration-150 flex items-end justify-end p-1.5 pointer-events-none rounded-xs">
+            <div className="size-5 opacity-0 group-hover/ev-tray:opacity-90 transition-opacity duration-150 bg-white/80 dark:bg-gray-900/80 rounded shadow-sm p-0.5 text-gray-500 dark:text-gray-400">
               <ExpandArrowsIcon />
             </div>
           </div>
@@ -2035,23 +2045,67 @@ function ExpandedPageViewer({
  * Replaces Zone 3 (evidence tray) when the keyhole is expanded in-place.
  * Renders the image at natural size with 2D drag-to-pan. The summary content
  * (Zone 1 header + Zone 2 quote) stays visible above — this component is
- * deliberately headerless.
+ * deliberately headerless. Click (without drag) to collapse.
  */
-function InlineExpandedImage({ src, onCollapse }: { src: string; onCollapse: () => void }) {
-  const { containerRef, isDragging, handlers: panHandlers } = useDragToPan({ direction: "xy" });
+function InlineExpandedImage({
+  src,
+  onCollapse,
+  verification,
+  status,
+}: {
+  src: string;
+  onCollapse: () => void;
+  verification?: Verification | null;
+  status?: CitationStatus;
+}) {
+  const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // Derive footer label — matches EvidenceTrayFooter logic
+  const isMiss = status?.isMiss;
+  const searchAttempts = verification?.searchAttempts ?? [];
+  let outcomeLabel: string;
+  if (isMiss) {
+    const count = searchAttempts.length;
+    outcomeLabel = `Scan complete · ${count} ${count === 1 ? "search" : "searches"}`;
+  } else {
+    const successfulAttempt = searchAttempts.find(a => a.success);
+    if (successfulAttempt?.matchedVariation === "exact_full_phrase") {
+      outcomeLabel = "Exact match";
+    } else if (successfulAttempt?.matchedVariation === "normalized_full_phrase") {
+      outcomeLabel = "Normalized match";
+    } else if (
+      successfulAttempt?.matchedVariation === "exact_anchor_text" ||
+      successfulAttempt?.matchedVariation === "normalized_anchor_text"
+    ) {
+      outcomeLabel = "Anchor text match";
+    } else {
+      outcomeLabel = "Match found";
+    }
+  }
+  const formatted = formatCaptureDate(verification?.verifiedAt);
+  const dateStr = formatted?.display ?? "";
+
   return (
-    <div className="mx-3 mb-3 animate-in fade-in-0 duration-150">
+    <div className="mx-3 mb-3 animate-in fade-in-0 duration-150 group/expanded-img">
+      {/* Scrollable image area — click (no drag) collapses */}
       <div
         ref={containerRef}
         className="relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm"
         style={{
           maxHeight: "min(600px, 80dvh)",
           overscrollBehavior: "none",
-          cursor: isDragging ? "grabbing" : "grab",
+          cursor: isDragging ? "grabbing" : "zoom-out",
         }}
         onDragStart={e => e.preventDefault()}
+        onClick={e => {
+          e.stopPropagation();
+          if (wasDragging.current) {
+            wasDragging.current = false;
+            return;
+          }
+          onCollapse();
+        }}
         {...panHandlers}
       >
         {!imageLoaded && (
@@ -2070,20 +2124,16 @@ function InlineExpandedImage({ src, onCollapse }: { src: string; onCollapse: () 
           draggable={false}
         />
       </div>
-      <button
-        type="button"
-        onClick={e => {
-          e.stopPropagation();
-          onCollapse();
-        }}
-        className="w-full flex items-center justify-center gap-1 py-1 text-[10px] text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700 transition-colors"
-        aria-label="Collapse image"
-      >
-        <span className="-rotate-90 size-2.5 block">
-          <ChevronRightIcon />
+      {/* Footer — matches EvidenceTrayFooter style; shows collapse hint on hover */}
+      <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">
+        <span>
+          {outcomeLabel}
+          <span className="opacity-0 group-hover/expanded-img:opacity-100 transition-opacity duration-150">
+            {" · Click to collapse"}
+          </span>
         </span>
-        Collapse
-      </button>
+        {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
+      </div>
     </div>
   );
 }
@@ -2176,6 +2226,16 @@ function DefaultPopoverContent({
       return null;
     }
   }, [verification]);
+
+  // Prefetch images imperatively when the popover becomes visible.
+  // Keyhole image: preload as soon as the popover opens (user is hovering).
+  // Page image: preload now so it's ready when the user clicks to expand.
+  useEffect(() => {
+    if (!isVisible) return;
+    if (evidenceSrc) new Image().src = evidenceSrc;
+    const pageSrc = expandedImage?.src;
+    if (pageSrc && isValidProofImageSrc(pageSrc)) new Image().src = pageSrc;
+  }, [isVisible, evidenceSrc, expandedImage?.src]);
 
   // Toggles the keyhole image expansion in Zone 3. Clicking when already expanded collapses.
   const handleKeyholeClick = useCallback(() => {
@@ -2300,7 +2360,7 @@ function DefaultPopoverContent({
 
           {/* Zone 3: Expanded keyhole image OR normal evidence tray */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
-            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} />
+            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
           ) : (
             <EvidenceTray
               verification={verification}
@@ -2370,7 +2430,7 @@ function DefaultPopoverContent({
 
           {/* Zone 3: Expanded keyhole image OR normal evidence tray */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
-            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} />
+            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
           ) : hasImage && verification ? (
             <EvidenceTray
               verification={verification}
