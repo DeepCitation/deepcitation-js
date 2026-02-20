@@ -35,13 +35,15 @@ import {
   POPOVER_CONTAINER_BASE_CLASSES,
   POPOVER_MORPH_DURATION_MS,
   POPOVER_WIDTH_DEFAULT,
+  SPINNER_TIMEOUT_MS,
+  TOUCH_CLICK_DEBOUNCE_MS,
   POPOVER_WIDTH_VAR,
   VERIFIED_COLOR_STYLE,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
-import { CheckIcon, ExternalLinkIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
+import { CheckIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
@@ -81,14 +83,8 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
 /** Tracks which deprecation warnings have already been emitted (dev-mode only). */
 const deprecationWarned = new Set<string>();
 
-/** Auto-hide spinner after this duration if verification is still pending. */
-const SPINNER_TIMEOUT_MS = 5000;
-
 /** Popover container width. Customizable via CSS custom property `--dc-popover-width`. */
 const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
-
-/** Debounce threshold for ignoring click events after touch (ms) */
-const TOUCH_CLICK_DEBOUNCE_MS = 100;
 
 /** Tolerance factor for coordinate scaling sanity checks (5% overflow for rounding errors) */
 const SCALING_TOLERANCE = 1.05;
@@ -1970,10 +1966,19 @@ function DefaultPopoverContent({
 
   const canExpand = !!expandedImage;
 
+  // Tracks which state we entered expanded-page from, so onCollapse can return there.
+  // "expanded-evidence" → expanded-page → back: returns to expanded-evidence (no InlineExpandedImage remount, no animation).
+  // "summary" → expanded-page → back: returns to summary.
+  const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
+
   const handleExpand = useCallback(() => {
     if (!canExpand) return;
+    // Only record origin state when first entering expanded-page (not on redundant calls)
+    if (viewState !== "expanded-page") {
+      prevBeforeExpandedPageRef.current = viewState === "expanded-evidence" ? "expanded-evidence" : "summary";
+    }
     onViewStateChange?.("expanded-page");
-  }, [canExpand, onViewStateChange]);
+  }, [canExpand, onViewStateChange, viewState]);
 
   // Resolve the evidence image src once at this level (used by handleKeyholeClick and Zone 3).
   const evidenceSrc = useMemo(() => {
@@ -2118,7 +2123,7 @@ function DefaultPopoverContent({
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
-            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
+            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} />
           ) : (
             <EvidenceTray
               verification={verification}
@@ -2189,7 +2194,7 @@ function DefaultPopoverContent({
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
-            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
+            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} />
           ) : hasImage && verification ? (
             <EvidenceTray
               verification={verification}

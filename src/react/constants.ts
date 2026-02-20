@@ -187,12 +187,6 @@ export const PENDING_COLOR_STYLE: React.CSSProperties = {
 };
 
 /**
- * Duration in ms to show "Copied" feedback before resetting to idle state.
- * Used for copy-to-clipboard feedback in various components.
- */
-export const COPY_FEEDBACK_DURATION_MS = 2000;
-
-/**
  * Base CSS classes for popover containers in CitationComponent.
  * Provides consistent styling for all popover states (pending, success, partial, error).
  */
@@ -405,5 +399,41 @@ export const EXPANDED_POPOVER_MAX_WIDTH = "calc(100vw - 2rem)";
 export const EXPANDED_POPOVER_HEIGHT =
   "min(calc(100vh - 2rem), var(--radix-popover-content-available-height, calc(100vh - 2rem)))";
 
-/** Transition duration for popover morph animation */
+// =============================================================================
+// ANIMATION & TRANSITION TIMINGS
+// =============================================================================
+//
+// Single source of truth for all UI timing values.
+//
+// Semantic duration aliases (maps to Tailwind duration classes):
+//   ANIM_FAST_MS     → duration-150  (hover/opacity fades)
+//   ANIM_STANDARD_MS → duration-200  (popover entry, chevron, grid transitions)
+//   ANIM_SLOW_MS     → duration-300  (drawer slide, popover morph)
+//
+// NOTE: Tailwind duration-* classes in JSX must remain as literal strings for
+// JIT purging. These constants serve as documentary cross-references only.
+
+/** Fast transition: hover/opacity fades. Tailwind equivalent: duration-150. */
+export const ANIM_FAST_MS = 150;
+/** Standard transition: popover entry, chevron, grid. Tailwind equivalent: duration-200. */
+export const ANIM_STANDARD_MS = 200;
+/** Slow transition: drawer slide, popover morph. Tailwind equivalent: duration-300. */
+export const ANIM_SLOW_MS = 300;
+
+/** Delay in ms before hiding a tooltip on mouse leave (prevents flicker on cursor exit). */
+export const TOOLTIP_HIDE_DELAY_MS = 80;
+
+/** Debounce threshold in ms for ignoring click events immediately after touch events. */
+export const TOUCH_CLICK_DEBOUNCE_MS = 100;
+
+/**
+ * Duration in ms to show "Copied" feedback before resetting to idle state.
+ * Used for copy-to-clipboard feedback in various components.
+ */
+export const COPY_FEEDBACK_DURATION_MS = 2000;
+
+/** Auto-hide spinner after this duration if verification is still pending. */
+export const SPINNER_TIMEOUT_MS = 5000;
+
+/** Transition duration for popover morph animation. */
 export const POPOVER_MORPH_DURATION_MS = 300;
