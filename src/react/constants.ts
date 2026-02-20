@@ -358,6 +358,8 @@ export function isValidProofImageSrc(src: unknown): src is string {
       } while (decoded !== previous);
 
       // Normalize Unicode (NFC) to handle composed characters consistently
+      // Note: This does NOT convert fullwidth dots (U+FF0E) to ASCII—those are
+      // caught by the lookalike regex below
       const normalized = decoded.normalize('NFC');
 
       // Reject null bytes (C truncation attack)
@@ -369,7 +371,10 @@ export function isValidProofImageSrc(src: unknown): src is string {
       if (dangerousUnicodeDots.test(normalized)) return false;
 
       // Reject path traversal sequences
-      if (!normalized.includes("..")) return true;
+      if (normalized.includes("..")) return false;
+
+      // Accept valid same-origin relative paths
+      return true;
     } catch {
       return false; // malformed percent-encoding — reject
     }

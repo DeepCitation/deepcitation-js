@@ -302,7 +302,7 @@ describe("resolveExpandedImage", () => {
           verifiedPageNumber: 1,
         },
       };
-      // Unicode normalization should convert \uFF0E to . and then reject ..
+      // Should be rejected by the Unicode lookalike regex (\uFF0E is fullwidth dot)
       expect(resolveExpandedImage(verification)).toBeNull();
     });
 
