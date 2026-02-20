@@ -1908,6 +1908,7 @@ function ExpandedPageViewer({
           status={status}
           sourceLabel={sourceLabel}
           onClose={onBack}
+          proofUrl={proofUrl}
         />
       )}
 
@@ -3117,6 +3118,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                 return createPortal(
                   // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is supplementary; keyboard exit is handled by the document-level ESC handler
                   <div
+                    role="dialog"
+                    aria-label="Full size verification image"
+                    aria-modal="true"
                     className="animate-in fade-in-0 duration-150"
                     style={{
                       position: "fixed",
@@ -3158,9 +3162,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               if (!expandedImageForPortal) return null;
               const proofUrl = verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
               return createPortal(
+                // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is supplementary; keyboard exit is handled by the document-level ESC handler
                 <div
+                  role="dialog"
+                  aria-label="Expanded page view"
+                  aria-modal="true"
                   className="bg-white dark:bg-gray-900 flex flex-col animate-in fade-in-0 duration-150"
                   style={{ position: "fixed", inset: 0, zIndex: Z_INDEX_OVERLAY_DEFAULT, overflow: "hidden" }}
+                  onClick={e => {
+                    if (e.target === e.currentTarget) closePopover();
+                  }}
                 >
                   <ExpandedPageViewer
                     expandedImage={expandedImageForPortal}
