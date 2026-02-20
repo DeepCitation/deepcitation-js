@@ -442,6 +442,36 @@ export function getCitationBracketWidth(heightPx: number): number {
 }
 
 // =============================================================================
+// KEYHOLE SKIP THRESHOLD
+// =============================================================================
+//
+// When the verification image's natural height is close to the keyhole strip
+// height, the keyhole crop adds no value — expanding would reveal almost
+// nothing new. Skip the expand affordance when image nearly fits.
+
+/**
+ * Factor applied to keyhole strip height to decide when to suppress expansion.
+ * When `naturalHeight ≤ KEYHOLE_STRIP_HEIGHT_DEFAULT × KEYHOLE_SKIP_THRESHOLD`,
+ * the image already shows ≥ 80% of its content in the keyhole strip, so the
+ * expand step would reveal almost nothing new.
+ */
+export const KEYHOLE_SKIP_THRESHOLD = 1.25;
+
+// =============================================================================
+// ZOOM CONTROLS (InlineExpandedImage)
+// =============================================================================
+//
+// Zoom constants for the expanded image viewer. Controls are subtle but
+// always available on both desktop and mobile.
+
+/** Zoom step for +/− buttons (0.25 = 25% increments). */
+export const EXPANDED_ZOOM_STEP = 0.25;
+/** Minimum zoom level (50%). */
+export const EXPANDED_ZOOM_MIN = 0.5;
+/** Maximum zoom level (300%). */
+export const EXPANDED_ZOOM_MAX = 3.0;
+
+// =============================================================================
 // EVIDENCE TRAY & EXPANDED VIEW
 // =============================================================================
 

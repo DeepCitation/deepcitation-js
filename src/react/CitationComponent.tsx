@@ -26,9 +26,13 @@ import {
   EASE_EXPAND,
   EVIDENCE_TRAY_BORDER_DASHED,
   EVIDENCE_TRAY_BORDER_SOLID,
+  EXPANDED_ZOOM_MAX,
+  EXPANDED_ZOOM_MIN,
+  EXPANDED_ZOOM_STEP,
   INDICATOR_SIZE_STYLE,
   isValidProofImageSrc,
   KEYHOLE_FADE_WIDTH,
+  KEYHOLE_SKIP_THRESHOLD,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
   MISS_TRAY_THUMBNAIL_HEIGHT,
@@ -47,7 +51,7 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
-import { CheckIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
+import { CheckIcon, SpinnerIcon, WarningIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
@@ -1196,13 +1200,16 @@ export function AnchorTextFocusedImage({
       img.naturalHeight > 0 ? img.naturalWidth * (stripHeight / img.naturalHeight) : img.naturalWidth;
     const containerWidth = container.clientWidth;
 
-    // Detect whether the image fits entirely within the keyhole (no cropping in either dimension).
-    // naturalHeight <= stripHeight → image is short enough to show in full vertically.
+    // Detect whether the image nearly fits within the keyhole (minimal cropping).
+    // Uses KEYHOLE_SKIP_THRESHOLD (1.25) so images within ~80% of keyhole height
+    // are treated as "fits" — expanding would reveal almost nothing new.
     // displayedWidth <= containerWidth → image is narrow enough to show in full horizontally.
-    // When both are true, the keyhole already reveals everything — expand/pan adds no value.
+    // When both are true, the keyhole already reveals nearly everything — expand adds no value.
     if (displayedWidth > 0) {
       const imageFitsCompletely =
-        img.naturalHeight > 0 && img.naturalHeight <= stripHeight && displayedWidth <= containerWidth;
+        img.naturalHeight > 0 &&
+        img.naturalHeight <= stripHeight * KEYHOLE_SKIP_THRESHOLD &&
+        displayedWidth <= containerWidth;
       setImageFitInfo({ displayedWidth, imageFitsCompletely });
     }
 
@@ -1904,6 +1911,9 @@ export function EvidenceTray({
  * Renders the image at natural size with 2D drag-to-pan. The summary content
  * (Zone 1 header + Zone 2 quote) stays visible above — this component is
  * deliberately headerless. Click (without drag) to collapse.
+ *
+ * When `fill` is true (expanded-page mode), includes subtle zoom controls
+ * (−/+/percentage) for both desktop and mobile. Mobile defaults to fit-to-width.
  */
 export function InlineExpandedImage({
   src,
@@ -1930,6 +1940,25 @@ export function InlineExpandedImage({
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
 
+  // Zoom state — only active when fill=true (expanded-page mode).
+  // 1.0 = natural pixel size. < 1.0 = fit-to-width (shrunk to container).
+  const [zoom, setZoom] = useState(1);
+  const containerWidthRef = useRef<number | null>(null);
+  const hasSetInitialZoom = useRef(false);
+
+  // Track container width via ResizeObserver for fit-to-width calculation
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w != null && w > 0) containerWidthRef.current = w;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fill, containerRef]);
+
   // Reset imageLoaded synchronously when src changes (avoids a useEffect render cycle).
   // This ensures the spinner shows while the new image loads after an evidence ↔ page swap.
   const prevSrcRef = useRef(src);
@@ -1938,7 +1967,33 @@ export function InlineExpandedImage({
     setImageLoaded(false);
     setNaturalWidth(null);
     setNaturalHeight(null);
+    hasSetInitialZoom.current = false;
   }
+
+  // On mobile, default to fit-to-width zoom after image loads.
+  // On desktop, keep natural pixel size (zoom = 1).
+  useEffect(() => {
+    if (!fill || !imageLoaded || !naturalWidth || hasSetInitialZoom.current) return;
+    hasSetInitialZoom.current = true;
+    const cw = containerWidthRef.current;
+    if (!cw || cw <= 0) return;
+    const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    if (isMobileViewport && naturalWidth > cw) {
+      // Fit to container width on mobile so the whole page is visible
+      setZoom(Math.max(EXPANDED_ZOOM_MIN, cw / naturalWidth));
+    }
+  }, [fill, imageLoaded, naturalWidth]);
+
+  // Compute effective image width for zoom
+  const zoomedWidth = fill && naturalWidth ? naturalWidth * zoom : undefined;
+
+  // Clamp helper for zoom buttons
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => Math.min(EXPANDED_ZOOM_MAX, Math.round((z + EXPANDED_ZOOM_STEP) * 100) / 100));
+  }, []);
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => Math.max(EXPANDED_ZOOM_MIN, Math.round((z - EXPANDED_ZOOM_STEP) * 100) / 100));
+  }, []);
 
   // Derive footer label — matches EvidenceTrayFooter logic
   const isMiss = status?.isMiss;
@@ -1965,13 +2020,22 @@ export function InlineExpandedImage({
   const formatted = formatCaptureDate(verification?.verifiedAt);
   const dateStr = formatted?.display ?? "";
 
+  // Show zoom controls in fill mode when image has loaded
+  const showZoomControls = fill && imageLoaded && naturalWidth !== null;
+
   return (
     <div
       className={cn(
         "mx-3 mb-3 animate-in fade-in-0 duration-150 group/expanded-img",
         fill && "flex-1 min-h-0 flex flex-col",
       )}
-      style={naturalWidth !== null ? { maxWidth: naturalWidth } : undefined}
+      style={
+        zoomedWidth !== undefined
+          ? { maxWidth: zoomedWidth }
+          : naturalWidth !== null
+            ? { maxWidth: naturalWidth }
+            : undefined
+      }
     >
       {/* Scrollable image area — click (no drag) collapses */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: drag-to-pan area; keyboard exit handled by parent popover Escape */}
@@ -2010,12 +2074,18 @@ export function InlineExpandedImage({
             </div>
           )}
           {/* Relative wrapper: positions annotation overlay exactly over the image */}
-          <div style={{ position: "relative", display: "inline-block" }}>
+          <div
+            style={{
+              position: "relative",
+              display: "inline-block",
+              ...(zoomedWidth !== undefined ? { width: zoomedWidth } : {}),
+            }}
+          >
             <img
               src={src}
               alt="Verification evidence"
               className={cn("block", !imageLoaded && "hidden")}
-              style={{ maxWidth: "none" }}
+              style={zoomedWidth !== undefined ? { width: zoomedWidth, maxWidth: "none" } : { maxWidth: "none" }}
               onLoad={e => {
                 const w = e.currentTarget.naturalWidth;
                 const h = e.currentTarget.naturalHeight;
@@ -2044,6 +2114,59 @@ export function InlineExpandedImage({
               )}
           </div>
         </div>
+
+        {/* Floating zoom controls — subtle pill, bottom-right, sticky */}
+        {showZoomControls && (
+          <div
+            style={{
+              position: "sticky",
+              bottom: 8,
+              left: "100%",
+              transform: "translateX(calc(-100% - 8px))",
+              width: "fit-content",
+              zIndex: 1,
+              pointerEvents: "auto",
+            }}
+          >
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: zoom controls are auxiliary UI, main interaction is drag-to-pan */}
+            <div
+              className="flex items-center gap-0.5 bg-black/40 backdrop-blur-sm text-white/80 rounded-full px-1 py-0.5 shadow-sm"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  handleZoomOut();
+                }}
+                disabled={zoom <= EXPANDED_ZOOM_MIN}
+                className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
+                aria-label="Zoom out"
+              >
+                <span className="size-3.5">
+                  <ZoomOutIcon />
+                </span>
+              </button>
+              <span className="min-w-[3ch] text-center font-mono tabular-nums select-none text-[11px] leading-none">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  handleZoomIn();
+                }}
+                disabled={zoom >= EXPANDED_ZOOM_MAX}
+                className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
+                aria-label="Zoom in"
+              >
+                <span className="size-3.5">
+                  <ZoomInIcon />
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {/* Footer — matches EvidenceTrayFooter style; shows collapse hint on hover */}
       <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">
@@ -2307,14 +2430,13 @@ function DefaultPopoverContent({
             transition: isExpanded
               ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
               : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`,
-            // Full-page only: fill the PopoverContent height (set to 100dvh, capped by
-            // maxHeight on PopoverContent). Using 100% instead of the CSS var breaks
-            // the feedback loop where floating-ui recomputes available-height mid-render.
-            // Keyhole evidence keeps its natural height (image is wide, not tall).
+            // Full-page only: flex column layout with inherited maxHeight from PopoverContent.
+            // No forced height — the popover sizes to content, capped by the viewport boundary.
+            // Small images keep the popover compact; large images grow to the maxHeight cap.
             ...(isFullPage && {
               display: "flex",
               flexDirection: "column" as const,
-              height: "100%",
+              maxHeight: "inherit",
               overflowY: "hidden" as const,
             }),
           }}
@@ -3347,7 +3469,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                         expandedImageWidth !== null
                           ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
                           : "calc(100dvw - 2rem)",
-                      height: "100dvh",
+                      // No forced height — popover sizes to content, capped by maxHeight.
+                      // Small images → compact popover. Large images → grows to boundary.
                       // Override Popover.tsx's default maxHeight (which uses
                       // --radix-popover-content-available-height, only measuring space
                       // on ONE side of the trigger) to allow filling the full viewport.
