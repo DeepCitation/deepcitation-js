@@ -191,7 +191,7 @@ export const PENDING_COLOR_STYLE: React.CSSProperties = {
  * Provides consistent styling for all popover states (pending, success, partial, error).
  */
 export const POPOVER_CONTAINER_BASE_CLASSES =
-  "rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md max-h-[inherit] overflow-y-auto";
+  "rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-md";
 
 /**
  * Dynamic indicator size styles.
