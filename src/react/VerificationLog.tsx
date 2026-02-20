@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
-import { COPY_FEEDBACK_DURATION_MS, DOT_COLORS } from "./constants.js";
+import { DOT_COLORS } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import {
   ArrowLeftIcon,
   CheckIcon,
   ChevronRightIcon,
-  CopyIcon,
   DocumentIcon,
+  ExternalLinkIcon,
   GlobeIcon,
   MissIcon,
   SpinnerIcon,
@@ -72,69 +72,6 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
 };
 
 // =============================================================================
-// URL ANCHOR TEXT ROW (with copy button)
-// =============================================================================
-
-/**
- * Row showing quoted anchor text with copy button for URL citations.
- * Matches the style of StatusHeader's copy button for document citations.
- */
-function UrlAnchorTextRow({ anchorText, displayAnchorText }: { anchorText: string; displayAnchorText: string }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
-  const copyResetTimerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  // Cleanup timer on unmount to prevent memory leak
-  useEffect(() => {
-    return () => clearTimeout(copyResetTimerRef.current);
-  }, []);
-
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!anchorText) return;
-
-      // Clear any pending reset timer before starting a new copy
-      clearTimeout(copyResetTimerRef.current);
-
-      try {
-        await navigator.clipboard.writeText(anchorText);
-        setCopyState("copied");
-      } catch (err) {
-        console.error("Failed to copy text:", err);
-        setCopyState("error");
-      }
-
-      // Auto-reset copy state after feedback duration
-      copyResetTimerRef.current = setTimeout(() => setCopyState("idle"), COPY_FEEDBACK_DURATION_MS);
-    },
-    [anchorText],
-  );
-
-  return (
-    <div className="mt-1 pl-6 flex items-center gap-1.5">
-      <QuotedText className="text-xs text-gray-500 dark:text-gray-400 truncate">{displayAnchorText}</QuotedText>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className={cn(
-          "shrink-0 p-0.5 rounded transition-colors cursor-pointer",
-          copyState === "copied"
-            ? "text-green-600 dark:text-green-400"
-            : copyState === "error"
-              ? "text-red-500 dark:text-red-400"
-              : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300",
-        )}
-        aria-label={copyState === "copied" ? "Copied!" : "Copy quoted text"}
-        title={copyState === "copied" ? "Copied!" : "Copy quote"}
-      >
-        <span className="size-3.5 block">{copyState === "copied" ? <CheckIcon /> : <CopyIcon />}</span>
-      </button>
-    </div>
-  );
-}
-
-// =============================================================================
 // SOURCE CONTEXT HEADER COMPONENT
 // =============================================================================
 
@@ -163,6 +100,19 @@ export interface SourceContextHeaderProps {
    * instead of the chevron-right expand affordance.
    */
   onClose?: () => void;
+  /**
+   * Callback for the ← Back button only — does NOT affect the page pill state.
+   * Use this when you want a back button but the page pill should stay in expand
+   * (chevron) mode rather than the active/X mode that `onClose` triggers.
+   * If both `onBack` and `onClose` are set, `onBack` takes priority for the button.
+   */
+  onBack?: () => void;
+  /**
+   * Validated proof URL to link to in the expanded view header.
+   * Only rendered when `onClose` is set (i.e., in expanded mode).
+   * Must be pre-validated — do not pass untrusted URLs.
+   */
+  proofUrl?: string | null;
 }
 
 /**
@@ -356,6 +306,8 @@ export function SourceContextHeader({
   sourceLabel,
   onExpand,
   onClose,
+  onBack,
+  proofUrl,
 }: SourceContextHeaderProps) {
   const isUrl = isUrlCitation(citation);
 
@@ -374,15 +326,19 @@ export function SourceContextHeader({
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
 
   return (
-    <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-200 dark:border-gray-700">
+    // biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation only; no interactive affordance
+    <div
+      className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-200 dark:border-gray-700"
+      onClick={e => e.stopPropagation()}
+    >
       {/* Left: Back button (expanded view) + Icon + source name */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        {onClose && (
+        {(onClose || onBack) && (
           <button
             type="button"
             onClick={e => {
               e.stopPropagation();
-              onClose();
+              (onBack ?? onClose)?.();
             }}
             className="shrink-0 flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors pr-1 border-r border-gray-200 dark:border-gray-700 mr-1"
             aria-label="Back to citation summary"
@@ -422,8 +378,23 @@ export function SourceContextHeader({
           </>
         )}
       </div>
-      {/* Right: Page pill — expand affordance in summary, active/close in expanded */}
+      {/* Right: Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-2">
+        {proofUrl && onClose && (
+          <a
+            href={proofUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            aria-label="Open proof in new tab"
+            className="shrink-0 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            title="Open proof in new tab"
+          >
+            <span className="size-3.5 block">
+              <ExternalLinkIcon />
+            </span>
+          </a>
+        )}
         {showPagePill && (
           <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} onClose={onClose} />
         )}
