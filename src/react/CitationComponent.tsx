@@ -1824,6 +1824,14 @@ export function InlineExpandedImage({
   const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // Reset imageLoaded synchronously when src changes (avoids a useEffect render cycle).
+  // This ensures the spinner shows while the new image loads after an evidence ↔ page swap.
+  const prevSrcRef = useRef(src);
+  if (prevSrcRef.current !== src) {
+    prevSrcRef.current = src;
+    setImageLoaded(false);
+  }
+
   // Derive footer label — matches EvidenceTrayFooter logic
   const isMiss = status?.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
@@ -1874,21 +1882,24 @@ export function InlineExpandedImage({
         {...panHandlers}
       >
         <style>{`[data-dc-inline-expanded]::-webkit-scrollbar { display: none; }`}</style>
-        {!imageLoaded && (
-          <div className="flex items-center justify-center h-24">
-            <span className="size-5 animate-spin text-gray-400">
-              <SpinnerIcon />
-            </span>
-          </div>
-        )}
-        <img
-          src={src}
-          alt="Verification evidence"
-          className={cn("block", !imageLoaded && "hidden")}
-          style={{ maxWidth: "none" }}
-          onLoad={() => setImageLoaded(true)}
-          draggable={false}
-        />
+        {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page). */}
+        <div key={src} className="animate-in fade-in-0 duration-150">
+          {!imageLoaded && (
+            <div className="flex items-center justify-center h-24">
+              <span className="size-5 animate-spin text-gray-400">
+                <SpinnerIcon />
+              </span>
+            </div>
+          )}
+          <img
+            src={src}
+            alt="Verification evidence"
+            className={cn("block", !imageLoaded && "hidden")}
+            style={{ maxWidth: "none" }}
+            onLoad={() => setImageLoaded(true)}
+            draggable={false}
+          />
+        </div>
       </div>
       {/* Footer — matches EvidenceTrayFooter style; shows collapse hint on hover */}
       <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">

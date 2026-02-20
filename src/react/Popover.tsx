@@ -9,6 +9,7 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as React from "react";
 import {
+  EXPANDED_POPOVER_HEIGHT,
   POPOVER_WIDTH_DEFAULT,
   POPOVER_WIDTH_VAR,
   Z_INDEX_BACKDROP_DEFAULT,
@@ -39,6 +40,10 @@ const PopoverContent = React.forwardRef<
           // Max width respects the CSS custom property (--dc-popover-width) and caps to viewport.
           // This must match the inner content width to prevent horizontal scrollbar.
           maxWidth: `min(var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT}), calc(100vw - 2rem))`,
+          // Use Radix's available-height var so the popover never exceeds the space between
+          // the trigger and the viewport boundary. A fixed 100vh value ignores trigger position
+          // and causes the top edge to clip above the viewport when the popover opens upward.
+          maxHeight: EXPANDED_POPOVER_HEIGHT,
           ...style,
         } as React.CSSProperties
       }
@@ -46,7 +51,7 @@ const PopoverContent = React.forwardRef<
         // Base styling: fit-content dimensions, viewport-aware max height
         // Ensures popover never exceeds screen bounds, leaving room for positioning
         "rounded-lg border bg-white shadow-xl outline-none",
-        "w-fit max-h-[calc(100vh-4rem)]",
+        "w-fit",
         "overflow-y-auto overflow-x-hidden",
         "border-gray-200 dark:border-gray-700 dark:bg-gray-900",
         // Animations - smooth 200ms entry for snappy feel
