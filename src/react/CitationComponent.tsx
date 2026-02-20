@@ -44,11 +44,11 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
-import { CheckIcon, ExpandArrowsIcon, ExternalLinkIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
+import { CheckIcon, ExternalLinkIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
-import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
+import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
 import type {
   BaseCitationProps,
   CitationBehaviorActions,
@@ -71,7 +71,7 @@ export type {
   CitationContent,
   CitationInteractionMode,
   CitationVariant,
-  IndicatorVariant,
+  IndicatorVariant
 } from "./types.js";
 
 /**
@@ -1191,7 +1191,7 @@ export function AnchorTextFocusedImage({
           <div
             ref={containerRef}
             data-dc-keyhole=""
-            className="overflow-x-auto overflow-y-hidden rounded-t-md"
+            className="overflow-x-auto overflow-y-hidden"
             style={{
               height: stripHeightStyle,
               WebkitMaskImage: maskImage,
@@ -1216,16 +1216,6 @@ export function AnchorTextFocusedImage({
               onError={handleImageError}
             />
           </div>
-
-          {/* Corner affordance icon — expand arrows when expandable */}
-          {onImageClick && (
-            <div
-              className="absolute bottom-1.5 right-1.5 size-4 p-0.5 rounded bg-black/30 text-white opacity-50 group-hover/keyhole:opacity-80 transition-opacity duration-150 pointer-events-none"
-              aria-hidden="true"
-            >
-              <ExpandArrowsIcon />
-            </div>
-          )}
 
           {/* Left pan hint — clicking pans the image left */}
           {scrollState.canScrollLeft && (
@@ -1807,13 +1797,6 @@ export function EvidenceTray({
           aria-label="Expand for details"
         >
           {content}
-
-          {/* Hover overlay — expand icon in corner */}
-          <div className="absolute inset-0 bg-black/0 group-hover/ev-tray:bg-black/5 dark:group-hover/ev-tray:bg-white/5 transition-colors duration-150 flex items-end justify-end p-1.5 pointer-events-none rounded-xs">
-            <div className="size-5 opacity-0 group-hover/ev-tray:opacity-90 transition-opacity duration-150 bg-white/80 dark:bg-gray-900/80 rounded shadow-sm p-0.5 text-gray-500 dark:text-gray-400">
-              <ExpandArrowsIcon />
-            </div>
-          </div>
         </div>
       ) : (
         /* Informational: non-clickable display */
