@@ -406,9 +406,13 @@ export const EXPANDED_POPOVER_HEIGHT =
 // Single source of truth for all UI timing values.
 //
 // Semantic duration aliases (maps to Tailwind duration classes):
-//   ANIM_FAST_MS     → duration-150  (hover/opacity fades)
-//   ANIM_STANDARD_MS → duration-200  (popover entry, chevron, grid transitions)
-//   ANIM_SLOW_MS     → duration-300  (drawer slide, popover morph)
+//   ANIM_FAST_MS     → duration-150  (hover/opacity fades, popover entry, chevron)
+//   ANIM_STANDARD_MS → duration-200  (drawer slide-in)
+//   ANIM_SLOW_MS     → duration-300  (drawer slide, heavy morphs)
+//
+// Expand/collapse morphs use separate constants + asymmetric easing:
+//   POPOVER_MORPH_EXPAND_MS   180ms  EASE_EXPAND   (fast start, gentle stop)
+//   POPOVER_MORPH_COLLAPSE_MS 120ms  EASE_COLLAPSE (gentle start, snap shut)
 //
 // NOTE: Tailwind duration-* classes in JSX must remain as literal strings for
 // JIT purging. These constants serve as documentary cross-references only.
@@ -435,5 +439,18 @@ export const COPY_FEEDBACK_DURATION_MS = 2000;
 /** Auto-hide spinner after this duration if verification is still pending. */
 export const SPINNER_TIMEOUT_MS = 5000;
 
-/** Transition duration for popover morph animation. */
-export const POPOVER_MORPH_DURATION_MS = 200;
+/** Transition duration for popover morph expand (summary → expanded). */
+export const POPOVER_MORPH_EXPAND_MS = 180;
+/** Transition duration for popover morph collapse (expanded → summary). Faster = snappier close. */
+export const POPOVER_MORPH_COLLAPSE_MS = 120;
+
+/**
+ * Easing for expand transitions — fast start, gentle stop.
+ * Bézier: aggressive entry (0.16), minimal overshoot, soft landing (0, 1).
+ */
+export const EASE_EXPAND = "cubic-bezier(0.16, 0, 0, 1)";
+/**
+ * Easing for collapse transitions — gentle start, accelerating close.
+ * Bézier: slow departure (0.4), then whip shut (1, 1).
+ */
+export const EASE_COLLAPSE = "cubic-bezier(0.4, 0, 1, 1)";

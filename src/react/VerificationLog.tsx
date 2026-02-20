@@ -933,7 +933,7 @@ function VerificationLogSummary({
     >
       <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
         <svg
-          className={cn("size-3 transition-transform duration-200", isExpanded && "rotate-90")}
+          className={cn("size-3 transition-transform duration-150", isExpanded && "rotate-90")}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

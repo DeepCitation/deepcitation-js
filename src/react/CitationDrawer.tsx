@@ -351,7 +351,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
           <svg
             aria-hidden="true"
             className={cn(
-              "w-4 h-4 shrink-0 mt-1 transition-transform duration-200",
+              "w-4 h-4 shrink-0 mt-1 transition-transform duration-150",
               isExpanded ? "rotate-180 text-gray-500 dark:text-gray-400" : "text-gray-400 dark:text-gray-500",
             )}
             fill="none"
@@ -366,8 +366,13 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
       {/* Expanded detail view — CSS grid animation for smooth height transition */}
       <div
-        className="grid transition-[grid-template-rows] duration-200 ease-out"
-        style={{ gridTemplateRows: isExpanded ? "1fr" : "0fr" }}
+        className="grid transition-[grid-template-rows] duration-150"
+        style={{
+          gridTemplateRows: isExpanded ? "1fr" : "0fr",
+          transitionTimingFunction: isExpanded
+            ? "cubic-bezier(0.16, 0, 0, 1)"   /* expand: fast start, gentle stop */
+            : "cubic-bezier(0.4, 0, 1, 1)",    /* collapse: gentle start, snap shut */
+        }}
       >
         <div className="overflow-hidden" style={{ minHeight: 0 }}>
           <div

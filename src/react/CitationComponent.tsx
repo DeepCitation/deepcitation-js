@@ -33,7 +33,10 @@ import {
   PARTIAL_COLOR_STYLE,
   PENDING_COLOR_STYLE,
   POPOVER_CONTAINER_BASE_CLASSES,
-  POPOVER_MORPH_DURATION_MS,
+  POPOVER_MORPH_EXPAND_MS,
+  POPOVER_MORPH_COLLAPSE_MS,
+  EASE_EXPAND,
+  EASE_COLLAPSE,
   POPOVER_WIDTH_DEFAULT,
   SPINNER_TIMEOUT_MS,
   TOUCH_CLICK_DEBOUNCE_MS,
@@ -85,6 +88,9 @@ const deprecationWarned = new Set<string>();
 
 /** Popover container width. Customizable via CSS custom property `--dc-popover-width`. */
 const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
+
+/** Extra px beyond image natural width for the expanded popover shell (mx-3 margins + borders). */
+const EXPANDED_IMAGE_SHELL_PX = 32;
 
 /** Tolerance factor for coordinate scaling sanity checks (5% overflow for rounding errors) */
 const SCALING_TOLERANCE = 1.05;
@@ -1700,7 +1706,7 @@ export function SearchAnalysisSummary({
           title={description}
         >
           <svg
-            className={cn("size-2.5 shrink-0 transition-transform duration-200", showDetails && "rotate-90")}
+            className={cn("size-2.5 shrink-0 transition-transform duration-150", showDetails && "rotate-90")}
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -1844,6 +1850,7 @@ export function InlineExpandedImage({
   verification,
   status,
   fill = false,
+  onNaturalSize,
 }: {
   src: string;
   onCollapse: () => void;
@@ -1851,6 +1858,8 @@ export function InlineExpandedImage({
   status?: CitationStatus;
   /** When true, the component expands to fill its flex parent (for use inside flex-column containers). */
   fill?: boolean;
+  /** Called after image load with natural pixel dimensions. */
+  onNaturalSize?: (width: number, height: number) => void;
 }) {
   const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -1933,8 +1942,11 @@ export function InlineExpandedImage({
             className={cn("block", !imageLoaded && "hidden")}
             style={{ maxWidth: "none" }}
             onLoad={e => {
+              const w = e.currentTarget.naturalWidth;
+              const h = e.currentTarget.naturalHeight;
               setImageLoaded(true);
-              setNaturalWidth(e.currentTarget.naturalWidth);
+              setNaturalWidth(w);
+              onNaturalSize?.(w, h);
             }}
             draggable={false}
           />
@@ -1984,6 +1996,8 @@ interface PopoverContentProps {
   onViewStateChange?: (viewState: PopoverViewState) => void;
   /** Override the expanded image src (from behaviorConfig.onClick returning setImageExpanded: "<url>") */
   expandedImageSrcOverride?: string | null;
+  /** Reports the expanded image's natural width (or null on collapse) so the parent can size PopoverContent. */
+  onExpandedWidthChange?: (width: number | null) => void;
 }
 
 function DefaultPopoverContent({
@@ -1997,6 +2011,7 @@ function DefaultPopoverContent({
   viewState = "summary",
   onViewStateChange,
   expandedImageSrcOverride,
+  onExpandedWidthChange,
 }: PopoverContentProps) {
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
@@ -2014,7 +2029,43 @@ function DefaultPopoverContent({
       : { src: expandedImageSrcOverride };
   }, [verification, expandedImageSrcOverride]);
 
-  const canExpand = !!expandedImage;
+  // Suppress page expand when page image dimensions are known and already fit within
+  // the evidence view constraints (≤480px wide, ≤600px tall) — expanding adds no value.
+  const pageFitsInEvidence = expandedImage?.dimensions &&
+    expandedImage.dimensions.width <= 480 &&
+    expandedImage.dimensions.height <= 600;
+  const canExpandToPage = !!expandedImage && !pageFitsInEvidence;
+
+  // Track the natural width of the currently displayed expanded image.
+  // Pre-set from known dimensions when entering an expanded state; confirmed by
+  // InlineExpandedImage onLoad. Used to clamp the inner container width so the
+  // popover doesn't stretch wider than the image.
+  const [expandedNaturalWidth, setExpandedNaturalWidth] = useState<number | null>(null);
+
+  // Helper: update local state AND report to parent in one step.
+  const setWidth = useCallback((w: number | null) => {
+    setExpandedNaturalWidth(w);
+    onExpandedWidthChange?.(w);
+  }, [onExpandedWidthChange]);
+
+  // Pre-set width from known dimensions when the view state changes.
+  // For expanded states without known dimensions, keep the previous width as an estimate
+  // (null → viewport-width fallback; or previous expanded width).
+  useEffect(() => {
+    if (viewState === "summary") {
+      setWidth(null);
+    } else if (viewState === "expanded-page" && expandedImage?.dimensions?.width) {
+      setWidth(expandedImage.dimensions.width);
+    } else if (viewState === "expanded-evidence") {
+      const w = verification?.document?.verificationImageDimensions?.width;
+      if (w) setWidth(w);
+    }
+  }, [viewState, expandedImage?.dimensions?.width, verification?.document?.verificationImageDimensions?.width, setWidth]);
+
+  // Callback for InlineExpandedImage onLoad — confirms/corrects the pre-set width.
+  const handleExpandedImageLoad = useCallback((width: number, _height: number) => {
+    setWidth(width);
+  }, [setWidth]);
 
   // Tracks which state we entered expanded-page from, so onCollapse can return there.
   // "expanded-evidence" → expanded-page → back: returns to expanded-evidence (no InlineExpandedImage remount, no animation).
@@ -2022,13 +2073,13 @@ function DefaultPopoverContent({
   const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
 
   const handleExpand = useCallback(() => {
-    if (!canExpand) return;
+    if (!canExpandToPage) return;
     // Only record origin state when first entering expanded-page (not on redundant calls)
     if (viewState !== "expanded-page") {
       prevBeforeExpandedPageRef.current = viewState === "expanded-evidence" ? "expanded-evidence" : "summary";
     }
     onViewStateChange?.("expanded-page");
-  }, [canExpand, onViewStateChange, viewState]);
+  }, [canExpandToPage, onViewStateChange, viewState]);
 
   // Resolve the evidence image src once at this level (used by handleKeyholeClick and Zone 3).
   const evidenceSrc = useMemo(() => {
@@ -2142,9 +2193,15 @@ function DefaultPopoverContent({
         <div
           className={cn(POPOVER_CONTAINER_BASE_CLASSES, "animate-in fade-in-0 duration-150")}
           style={{
-            width: isExpanded ? "100%" : POPOVER_WIDTH,
+            width: isExpanded
+              ? (expandedNaturalWidth !== null
+                ? `min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                : "calc(100dvw - 2rem)")
+              : POPOVER_WIDTH,
             maxWidth: "100%",
-            transition: `width ${POPOVER_MORPH_DURATION_MS}ms ease-out, height ${POPOVER_MORPH_DURATION_MS}ms ease-out`,
+            transition: isExpanded
+              ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
+              : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`,
             // Full-page only: fill the PopoverContent height (set to 100dvh, capped by
             // maxHeight on PopoverContent). Using 100% instead of the CSS var breaks
             // the feedback loop where floating-ui recomputes available-height mid-render.
@@ -2163,7 +2220,7 @@ function DefaultPopoverContent({
             verification={verification}
             status={searchStatus}
             sourceLabel={sourceLabel}
-            onExpand={isFullPage ? undefined : (canExpand ? handleExpand : undefined)}
+            onExpand={isFullPage ? undefined : (canExpandToPage ? handleExpand : undefined)}
             onClose={isFullPage ? () => onViewStateChange?.(prevBeforeExpandedPageRef.current) : undefined}
           />
           {/* Zone 2: Claim Body — Status + highlighted phrase */}
@@ -2184,14 +2241,14 @@ function DefaultPopoverContent({
 
           {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
-            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
+            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} onNaturalSize={handleExpandedImageLoad} />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
-            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill />
+            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill onNaturalSize={handleExpandedImageLoad} />
           ) : (
             <EvidenceTray
               verification={verification}
               status={status}
-              onExpand={handleExpand}
+              onExpand={canExpandToPage ? handleExpand : undefined}
               onImageClick={handleKeyholeClick}
             />
           )}
@@ -2211,9 +2268,15 @@ function DefaultPopoverContent({
         <div
           className={cn(POPOVER_CONTAINER_BASE_CLASSES, "animate-in fade-in-0 duration-150")}
           style={{
-            width: isExpanded ? "100%" : POPOVER_WIDTH,
+            width: isExpanded
+              ? (expandedNaturalWidth !== null
+                ? `min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                : "calc(100dvw - 2rem)")
+              : POPOVER_WIDTH,
             maxWidth: "100%",
-            transition: `width ${POPOVER_MORPH_DURATION_MS}ms ease-out, height ${POPOVER_MORPH_DURATION_MS}ms ease-out`,
+            transition: isExpanded
+              ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
+              : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`,
             ...(isFullPage && {
               display: "flex",
               flexDirection: "column" as const,
@@ -2228,7 +2291,7 @@ function DefaultPopoverContent({
             verification={verification}
             status={searchStatus}
             sourceLabel={sourceLabel}
-            onExpand={isFullPage ? undefined : (canExpand ? handleExpand : undefined)}
+            onExpand={isFullPage ? undefined : (canExpandToPage ? handleExpand : undefined)}
             onClose={isFullPage ? () => onViewStateChange?.(prevBeforeExpandedPageRef.current) : undefined}
           />
 
@@ -2264,14 +2327,14 @@ function DefaultPopoverContent({
 
           {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
-            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} />
+            <InlineExpandedImage src={evidenceSrc} onCollapse={() => onViewStateChange?.("summary")} verification={verification} status={status} onNaturalSize={handleExpandedImageLoad} />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
-            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill />
+            <InlineExpandedImage src={expandedImage.src} onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)} verification={verification} status={status} fill onNaturalSize={handleExpandedImageLoad} />
           ) : hasImage && verification ? (
             <EvidenceTray
               verification={verification}
               status={status}
-              onExpand={handleExpand}
+              onExpand={canExpandToPage ? handleExpand : undefined}
               onImageClick={handleKeyholeClick}
               proofImageSrc={expandedImage?.src}
             />
@@ -2280,7 +2343,7 @@ function DefaultPopoverContent({
             <EvidenceTray
               verification={verification}
               status={status}
-              onExpand={canExpand ? handleExpand : undefined}
+              onExpand={canExpandToPage ? handleExpand : undefined}
               proofImageSrc={expandedImage?.src}
             />
           ) : null}
@@ -2419,17 +2482,24 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const [popoverViewState, setPopoverViewState] = useState<PopoverViewState>("summary");
     // Custom image src from behaviorConfig.onClick returning setImageExpanded: "<url>"
     const [customExpandedSrc, setCustomExpandedSrc] = useState<string | null>(null);
+    // Natural width of the expanded image (propagated from DefaultPopoverContent).
+    // Used to size PopoverContent so floating-ui can position it correctly.
+    const [expandedImageWidth, setExpandedImageWidth] = useState<number | null>(null);
     // Computed sideOffset for expanded-page mode — positions the popover to span the full
     // viewport height by anchoring its top edge near the viewport top (not just below the trigger).
     const [expandedPageSideOffset, setExpandedPageSideOffset] = useState<number | null>(null);
 
 
-    // Close the expanded portal overlay on ESC key (capture phase to intercept before Radix).
+    // Collapse the expanded image on ESC key (capture phase to intercept before Radix).
+    // First Escape collapses the expanded view back to summary; second Escape (handled
+    // by Radix since popoverViewState is now "summary") closes the popover.
+    // stopPropagation prevents Radix from also handling ESC and closing the popover.
     useEffect(() => {
       if (popoverViewState === "summary") return;
       const handler = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
           e.preventDefault();
+          e.stopPropagation();
           setPopoverViewState("summary");
           setCustomExpandedSrc(null);
         }
@@ -2481,6 +2551,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       setIsHovering(false);
       setPopoverViewState("summary");
       setCustomExpandedSrc(null);
+      setExpandedImageWidth(null);
     }, []);
 
     // Track if popover was already open before current interaction (for mobile/lazy mode).
@@ -3065,6 +3136,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             viewState={popoverViewState}
             onViewStateChange={setPopoverViewState}
             expandedImageSrcOverride={customExpandedSrc}
+            onExpandedWidthChange={setExpandedImageWidth}
           />
         </CitationErrorBoundary>
       );
@@ -3127,7 +3199,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                 popoverViewState === "expanded-page"
                   ? {
                       maxWidth: "calc(100dvw - 2rem)",
-                      width: "calc(100dvw - 2rem)",
+                      // Clamp to image natural width + shell padding; fall back to
+                      // viewport width when dimensions are unknown (before image loads).
+                      width: expandedImageWidth !== null
+                        ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                        : "calc(100dvw - 2rem)",
                       height: "100dvh",
                       // Override Popover.tsx's default maxHeight (which uses
                       // --radix-popover-content-available-height, only measuring space
@@ -3135,7 +3211,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       maxHeight: "calc(100dvh - 2rem)",
                     }
                   : popoverViewState === "expanded-evidence"
-                    ? { maxWidth: "calc(100dvw - 2rem)", width: "calc(100dvw - 2rem)" }
+                    ? {
+                        maxWidth: "calc(100dvw - 2rem)",
+                        width: expandedImageWidth !== null
+                          ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                          : "calc(100dvw - 2rem)",
+                      }
                     : undefined
               }
               onClick={(e: React.MouseEvent) => {
