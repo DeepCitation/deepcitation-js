@@ -339,11 +339,37 @@ export function isValidProofImageSrc(src: unknown): src is string {
 
   // Same-origin relative paths (e.g. "/demo/legal/page-1.avif") — safe because
   // the browser resolves them against the current host.
-  // Reject: protocol-relative URLs (//evil.com), path traversal (..), and encoded traversal (%2e).
+  // Reject: protocol-relative URLs (//evil.com), path traversal (..), encoded traversal (%2e),
+  // Unicode lookalike traversal (fullwidth dots), double-encoding, and null bytes.
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
     try {
-      const decoded = decodeURIComponent(trimmed);
-      if (!decoded.includes("..")) return true;
+      // Iteratively decode until stable to prevent double-encoded traversal (%252e%252e)
+      let decoded = trimmed;
+      let previous;
+      let iterations = 0;
+      const MAX_DECODE_ITERATIONS = 5; // Prevent infinite loops on malicious input
+
+      do {
+        previous = decoded;
+        decoded = decodeURIComponent(decoded);
+        iterations++;
+        // Stop if we've decoded enough times or no more percent-encoding remains
+        if (iterations >= MAX_DECODE_ITERATIONS || !decoded.includes('%')) break;
+      } while (decoded !== previous);
+
+      // Normalize Unicode (NFC) to handle composed characters consistently
+      const normalized = decoded.normalize('NFC');
+
+      // Reject null bytes (C truncation attack)
+      if (normalized.includes('\0')) return false;
+
+      // Reject Unicode lookalike dots that could be used for traversal obfuscation
+      // U+FF0E (fullwidth full stop), U+2024 (one dot leader), U+FE52 (small full stop), etc.
+      const dangerousUnicodeDots = /[\uFF0E\u2024\uFE52\u2025\u2026]/;
+      if (dangerousUnicodeDots.test(normalized)) return false;
+
+      // Reject path traversal sequences
+      if (!normalized.includes("..")) return true;
     } catch {
       return false; // malformed percent-encoding — reject
     }
