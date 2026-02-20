@@ -436,4 +436,4 @@ export const COPY_FEEDBACK_DURATION_MS = 2000;
 export const SPINNER_TIMEOUT_MS = 5000;
 
 /** Transition duration for popover morph animation. */
-export const POPOVER_MORPH_DURATION_MS = 300;
+export const POPOVER_MORPH_DURATION_MS = 200;

@@ -2419,6 +2419,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const [popoverViewState, setPopoverViewState] = useState<PopoverViewState>("summary");
     // Custom image src from behaviorConfig.onClick returning setImageExpanded: "<url>"
     const [customExpandedSrc, setCustomExpandedSrc] = useState<string | null>(null);
+    // Computed sideOffset for expanded-page mode — positions the popover to span the full
+    // viewport height by anchoring its top edge near the viewport top (not just below the trigger).
+    const [expandedPageSideOffset, setExpandedPageSideOffset] = useState<number | null>(null);
 
 
     // Close the expanded portal overlay on ESC key (capture phase to intercept before Radix).
@@ -2454,6 +2457,22 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         document.body.style.paddingRight = prevPaddingRight;
       };
     }, [isHovering]);
+
+    // When entering expanded-page mode, compute a sideOffset that pushes the popover's
+    // top edge to near the top of the viewport (y≈8px), so the expanded image can fill
+    // the full viewport height — both above and below the trigger position.
+    // Formula for side="bottom": popoverTop = triggerBottom + sideOffset
+    //   → sideOffset = MARGIN - triggerBottom
+    useLayoutEffect(() => {
+      if (popoverViewState !== "expanded-page") {
+        setExpandedPageSideOffset(null);
+        return;
+      }
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setExpandedPageSideOffset(8 - rect.bottom);
+    }, [popoverViewState]);
 
     // Dismiss the popover and reset its view state in one step.
     // Replaces the old useEffect that watched isHovering — moving the reset into
@@ -3096,7 +3115,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             <PopoverContent
               ref={setPopoverContentRef}
               id={popoverId}
-              side={popoverPosition === "bottom" ? "bottom" : "top"}
+              // In expanded-page mode, force side="bottom" so our sideOffset formula is correct
+              // (popoverTop = triggerBottom + sideOffset). avoidCollisions is disabled so
+              // floating-ui doesn't override the computed position.
+              side={popoverViewState === "expanded-page" ? "bottom" : (popoverPosition === "bottom" ? "bottom" : "top")}
+              avoidCollisions={popoverViewState !== "expanded-page"}
+              sideOffset={popoverViewState === "expanded-page" && expandedPageSideOffset !== null ? expandedPageSideOffset : undefined}
               onPointerDownOutside={(e: Event) => e.preventDefault()}
               onInteractOutside={(e: Event) => e.preventDefault()}
               style={
@@ -3104,10 +3128,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                   ? {
                       maxWidth: "calc(100dvw - 2rem)",
                       width: "calc(100dvw - 2rem)",
-                      // Greedy height — gets capped by maxHeight (EXPANDED_POPOVER_HEIGHT, which
-                      // uses --radix-popover-content-available-height) so the popover fills the
-                      // full available space without a CSS-variable feedback loop.
                       height: "100dvh",
+                      // Override Popover.tsx's default maxHeight (which uses
+                      // --radix-popover-content-available-height, only measuring space
+                      // on ONE side of the trigger) to allow filling the full viewport.
+                      maxHeight: "calc(100dvh - 2rem)",
                     }
                   : popoverViewState === "expanded-evidence"
                     ? { maxWidth: "calc(100dvw - 2rem)", width: "calc(100dvw - 2rem)" }
