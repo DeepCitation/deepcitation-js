@@ -5,6 +5,7 @@ import type { SourceCitationGroup } from "./CitationDrawer.types.js";
 import type { FlatCitationItem } from "./CitationDrawer.utils.js";
 import { flattenCitations, getStatusInfo } from "./CitationDrawer.utils.js";
 import { isValidProofImageSrc, TOOLTIP_HIDE_DELAY_MS } from "./constants.js";
+import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { cn } from "./utils.js";
 
 // =========
@@ -63,36 +64,6 @@ export interface CitationDrawerTriggerProps {
 const handleFaviconError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
   (e.target as HTMLImageElement).style.opacity = "0";
 };
-
-/**
- * Detect if the primary pointing device is coarse (touch).
- * Uses media query (pointer: coarse) which identifies touch as primary input method.
- *
- * NOTE: Not 100% reliable for hybrid devices:
- * - iPads with keyboard/mouse can switch between coarse/fine
- * - Some Windows touchscreens report (pointer: fine) when mouse is primary
- *
- * Trade-off: Fails safely — if detected as non-touch when it's hybrid, hover
- * spread animation shows but doesn't break functionality. Direct drawer open
- * on touch devices (optimal UX) is the goal, but graceful degradation is fine.
- */
-function getIsTouchDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(pointer: coarse)").matches ?? false;
-}
-
-function useIsTouchDevice(): boolean {
-  const [isTouchDevice, setIsTouchDevice] = useState(() => getIsTouchDevice());
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia) {
-      const mediaQuery = window.matchMedia("(pointer: coarse)");
-      const handleChange = () => setIsTouchDevice(getIsTouchDevice());
-      mediaQuery.addEventListener?.("change", handleChange);
-      return () => mediaQuery.removeEventListener?.("change", handleChange);
-    }
-  }, []);
-  return isTouchDevice;
-}
 
 /** Icon overlap when bar is expanded (rem scales with root font size) */
 const ICON_MARGIN_EXPANDED = "-0.25rem";
