@@ -1913,7 +1913,8 @@ export function EvidenceTray({
  * deliberately headerless. Click (without drag) to collapse.
  *
  * When `fill` is true (expanded-page mode), includes subtle zoom controls
- * (−/+/percentage) for both desktop and mobile. Mobile defaults to fit-to-width.
+ * (−/slider/+) for both desktop and mobile. Mobile defaults to fit-to-screen.
+ * Supports pinch-to-zoom on touch devices and trackpad pinch (Ctrl+wheel).
  */
 export function InlineExpandedImage({
   src,
@@ -1939,21 +1940,35 @@ export function InlineExpandedImage({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
+  const isTouchDevice = useIsTouchDevice();
 
   // Zoom state — only active when fill=true (expanded-page mode).
-  // 1.0 = natural pixel size. < 1.0 = fit-to-width (shrunk to container).
+  // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
   const [zoom, setZoom] = useState(1);
-  const containerWidthRef = useRef<number | null>(null);
+  // Ref mirror of zoom for touch event handlers (avoids stale closures in pinch gesture)
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const containerSizeRef = useRef<{ width: number; height: number } | null>(null);
   const hasSetInitialZoom = useRef(false);
 
-  // Track container width via ResizeObserver for fit-to-width calculation
+  // Computed fit-to-screen zoom: scale so entire image fits in container
+  const fitZoom = useMemo(() => {
+    if (!naturalWidth || !naturalHeight || !containerSizeRef.current) return 1;
+    const { width: cw, height: ch } = containerSizeRef.current;
+    if (cw <= 0 || ch <= 0) return 1;
+    return Math.min(cw / naturalWidth, ch / naturalHeight);
+  }, [naturalWidth, naturalHeight, imageLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track container size via ResizeObserver (both width and height for fit-to-screen)
   useEffect(() => {
     if (!fill) return;
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width;
-      if (w != null && w > 0) containerWidthRef.current = w;
+      const rect = entries[0]?.contentRect;
+      if (rect && rect.width > 0 && rect.height > 0) {
+        containerSizeRef.current = { width: rect.width, height: rect.height };
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -1970,30 +1985,98 @@ export function InlineExpandedImage({
     hasSetInitialZoom.current = false;
   }
 
-  // On mobile, default to fit-to-width zoom after image loads.
+  // On mobile, default to fit-to-screen zoom after image loads so the entire page
+  // is visible without scrolling — users can then pinch or use slider to zoom in.
   // On desktop, keep natural pixel size (zoom = 1).
   useEffect(() => {
-    if (!fill || !imageLoaded || !naturalWidth || hasSetInitialZoom.current) return;
+    if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || hasSetInitialZoom.current) return;
     hasSetInitialZoom.current = true;
-    const cw = containerWidthRef.current;
-    if (!cw || cw <= 0) return;
-    const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
-    if (isMobileViewport && naturalWidth > cw) {
-      // Fit to container width on mobile so the whole page is visible
-      setZoom(Math.max(EXPANDED_ZOOM_MIN, cw / naturalWidth));
+    const cs = containerSizeRef.current;
+    if (!cs || cs.width <= 0 || cs.height <= 0) return;
+    if (isTouchDevice) {
+      // Fit to screen: scale so entire page fits in the container
+      const fit = Math.min(cs.width / naturalWidth, cs.height / naturalHeight);
+      if (fit < 1) setZoom(Math.max(EXPANDED_ZOOM_MIN, fit));
     }
-  }, [fill, imageLoaded, naturalWidth]);
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, isTouchDevice]);
+
+  // Clamp helper — shared by buttons, slider, pinch, and wheel
+  const clampZoom = useCallback((z: number) => {
+    return Math.max(EXPANDED_ZOOM_MIN, Math.min(EXPANDED_ZOOM_MAX, Math.round(z * 100) / 100));
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => clampZoom(z + EXPANDED_ZOOM_STEP));
+  }, [clampZoom]);
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => clampZoom(z - EXPANDED_ZOOM_STEP));
+  }, [clampZoom]);
+
+  // Trackpad pinch zoom (Ctrl+wheel) — prevents default browser zoom
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      // deltaY is negative for zoom-in, positive for zoom-out on trackpads
+      const delta = -e.deltaY * 0.005;
+      setZoom(z => clampZoom(z + delta));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [fill, containerRef, clampZoom]);
+
+  // Touch pinch-to-zoom (two-finger gesture).
+  // Uses zoomRef to read current zoom without re-registering listeners on every zoom change.
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    let initialDistance: number | null = null;
+    let initialZoom = 1;
+
+    const getTouchDistance = (touches: TouchList): number => {
+      const [a, b] = [touches[0], touches[1]];
+      if (!a || !b) return 0;
+      const dx = a.clientX - b.clientX;
+      const dy = a.clientY - b.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        initialDistance = getTouchDistance(e.touches);
+        initialZoom = zoomRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || initialDistance === null) return;
+      e.preventDefault(); // prevent native scroll while pinching
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / initialDistance;
+      setZoom(clampZoom(initialZoom * scale));
+    };
+
+    const onTouchEnd = () => {
+      initialDistance = null;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [fill, containerRef, clampZoom]);
 
   // Compute effective image width for zoom
   const zoomedWidth = fill && naturalWidth ? naturalWidth * zoom : undefined;
-
-  // Clamp helper for zoom buttons
-  const handleZoomIn = useCallback(() => {
-    setZoom(z => Math.min(EXPANDED_ZOOM_MAX, Math.round((z + EXPANDED_ZOOM_STEP) * 100) / 100));
-  }, []);
-  const handleZoomOut = useCallback(() => {
-    setZoom(z => Math.max(EXPANDED_ZOOM_MIN, Math.round((z - EXPANDED_ZOOM_STEP) * 100) / 100));
-  }, []);
 
   // Derive footer label — matches EvidenceTrayFooter logic
   const isMiss = status?.isMiss;
@@ -2115,7 +2198,8 @@ export function InlineExpandedImage({
           </div>
         </div>
 
-        {/* Floating zoom controls — subtle pill, bottom-right, sticky */}
+        {/* Floating zoom controls — subtle pill, bottom-right, sticky.
+            Contains −/slider/+ with percentage label. Supports drag on slider. */}
         {showZoomControls && (
           <div
             style={{
@@ -2147,6 +2231,29 @@ export function InlineExpandedImage({
                   <ZoomOutIcon />
                 </span>
               </button>
+              {/* Range slider — draggable zoom control */}
+              <input
+                type="range"
+                min={EXPANDED_ZOOM_MIN * 100}
+                max={EXPANDED_ZOOM_MAX * 100}
+                step={5}
+                value={Math.round(zoom * 100)}
+                onChange={e => {
+                  e.stopPropagation();
+                  setZoom(clampZoom(Number(e.target.value) / 100));
+                }}
+                onClick={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+                onTouchStart={e => e.stopPropagation()}
+                className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-3
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
+                  [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:cursor-pointer
+                  [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:rounded-full
+                  [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0
+                  [&::-moz-range-thumb]:cursor-pointer"
+                aria-label="Zoom level"
+              />
               <span className="min-w-[3ch] text-center font-mono tabular-nums select-none text-[11px] leading-none">
                 {Math.round(zoom * 100)}%
               </span>
