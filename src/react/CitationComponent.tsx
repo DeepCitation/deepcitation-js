@@ -51,6 +51,7 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
+import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { CheckIcon, SpinnerIcon, WarningIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
@@ -130,50 +131,6 @@ const EXPANDED_IMAGE_SHELL_PX = 32;
 
 /** Tolerance factor for coordinate scaling sanity checks (5% overflow for rounding errors) */
 const SCALING_TOLERANCE = 1.05;
-
-// =============================================================================
-// TOUCH DEVICE DETECTION
-// =============================================================================
-
-/**
- * Detects if the device has touch capability.
- * Uses useState + useEffect for React 17+ compatibility.
- *
- * This is used to auto-detect mobile/touch devices so the component can
- * show the popover on first tap rather than immediately opening the image overlay.
- *
- * Detection uses pointer: coarse media query as primary method, which specifically
- * identifies devices where the PRIMARY input is coarse (touch), avoiding false
- * positives on Windows laptops with touchscreens but mouse as primary input.
- */
-function getIsTouchDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  // Primary check: pointer: coarse media query
-  // This specifically checks if the PRIMARY pointing device is coarse (touch)
-  // Windows laptops with touchscreens typically report (pointer: fine) because
-  // the mouse/trackpad is the primary input device
-  const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  return hasCoarsePointer;
-}
-
-function useIsTouchDevice(): boolean {
-  // Initialize with current value (SSR-safe: defaults to false on server)
-  const [isTouchDevice, setIsTouchDevice] = useState(() => getIsTouchDevice());
-
-  useEffect(() => {
-    // Listen for changes in pointer capability (e.g., tablet mode changes)
-    if (typeof window !== "undefined" && window.matchMedia) {
-      const mediaQuery = window.matchMedia("(pointer: coarse)");
-      const handleChange = () => setIsTouchDevice(getIsTouchDevice());
-
-      // Use addEventListener with 'change' event (modern API)
-      mediaQuery.addEventListener?.("change", handleChange);
-      return () => mediaQuery.removeEventListener?.("change", handleChange);
-    }
-  }, []);
-
-  return isTouchDevice;
-}
 
 // =============================================================================
 // ERROR BOUNDARY
@@ -1948,10 +1905,13 @@ export function InlineExpandedImage({
   // Ref mirror of zoom for touch event handlers (avoids stale closures in pinch gesture)
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
-  const containerSizeRef = useRef<{ width: number; height: number } | null>(null);
+  // Container size as state (not ref) so that ResizeObserver updates trigger re-renders.
+  // This ensures the initial-zoom effect re-fires once the container is measured.
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const hasSetInitialZoom = useRef(false);
 
-  // Track container size via ResizeObserver (both width and height for fit-to-screen)
+  // Track container size via ResizeObserver (both width and height for fit-to-screen).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   useEffect(() => {
     if (!fill) return;
     const el = containerRef.current;
@@ -1959,12 +1919,12 @@ export function InlineExpandedImage({
     const observer = new ResizeObserver(entries => {
       const rect = entries[0]?.contentRect;
       if (rect && rect.width > 0 && rect.height > 0) {
-        containerSizeRef.current = { width: rect.width, height: rect.height };
+        setContainerSize({ width: rect.width, height: rect.height });
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [fill, containerRef]);
+  }, [fill]);
 
   // Reset imageLoaded synchronously when src changes (avoids a useEffect render cycle).
   // This ensures the spinner shows while the new image loads after an evidence ↔ page swap.
@@ -1982,21 +1942,18 @@ export function InlineExpandedImage({
   // On mobile, default to fit-to-screen zoom after image loads so the entire page
   // is visible without scrolling — users can then pinch or use slider to zoom in.
   // On desktop, keep natural pixel size (zoom = 1).
-  // NOTE: Only set hasSetInitialZoom=true after a successful zoom set (or when
-  // container size is available but no zoom change is needed). If container size
-  // isn't available yet (ResizeObserver hasn't fired), skip without marking as done
-  // so the effect retries on the next render after ResizeObserver populates the ref.
+  // containerSize is state (not a ref) so this effect re-fires once ResizeObserver
+  // has measured the container — no fragile timing dependency on render order.
   useEffect(() => {
     if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || hasSetInitialZoom.current) return;
-    const cs = containerSizeRef.current;
-    if (!cs || cs.width <= 0 || cs.height <= 0) return; // retry next render
+    if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;
     hasSetInitialZoom.current = true;
     if (isTouchDevice) {
       // Fit to screen: scale so entire page fits in the container
-      const fit = Math.min(cs.width / naturalWidth, cs.height / naturalHeight);
+      const fit = Math.min(containerSize.width / naturalWidth, containerSize.height / naturalHeight);
       if (fit < 1) setZoom(Math.max(EXPANDED_ZOOM_MIN, fit));
     }
-  }, [fill, imageLoaded, naturalWidth, naturalHeight, isTouchDevice]);
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, isTouchDevice, containerSize]);
 
   // Clamp helper — shared by buttons, slider, pinch, and wheel
   const clampZoom = useCallback((z: number) => {
@@ -2010,7 +1967,8 @@ export function InlineExpandedImage({
     setZoom(z => clampZoom(z - EXPANDED_ZOOM_STEP));
   }, [clampZoom]);
 
-  // Trackpad pinch zoom (Ctrl+wheel) — prevents default browser zoom
+  // Trackpad pinch zoom (Ctrl+wheel) — prevents default browser zoom.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   useEffect(() => {
     if (!fill) return;
     const el = containerRef.current;
@@ -2024,10 +1982,12 @@ export function InlineExpandedImage({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [fill, containerRef, clampZoom]);
+  }, [fill, clampZoom]);
 
   // Touch pinch-to-zoom (two-finger gesture).
-  // Uses zoomRef to read current zoom without re-registering listeners on every zoom change.
+  // Uses zoomRef to read current zoom so listeners can be registered once (on mount /
+  // fill change) rather than re-added on every zoom change during a pinch gesture.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   useEffect(() => {
     if (!fill) return;
     const el = containerRef.current;
@@ -2047,7 +2007,7 @@ export function InlineExpandedImage({
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
         const dist = getTouchDistance(e.touches);
-        if (dist < 1) return; // fingers at same point — avoid division by zero
+        if (dist < Number.EPSILON) return; // fingers at same point — avoid division by zero
         initialDistance = dist;
         initialZoom = zoomRef.current;
       }
@@ -2073,7 +2033,7 @@ export function InlineExpandedImage({
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [fill, containerRef, clampZoom]);
+  }, [fill, clampZoom]);
 
   // Compute effective image width for zoom
   const zoomedWidth = fill && naturalWidth ? naturalWidth * zoom : undefined;
