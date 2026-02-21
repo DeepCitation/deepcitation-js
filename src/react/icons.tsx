@@ -309,6 +309,30 @@ export const ZoomInIcon = ({ className }: { className?: string }) => (
 );
 
 /**
+ * Zoom-out icon for shrinking images (magnifying glass with minus)
+ * Size is controlled by parent container
+ */
+export const ZoomOutIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    width="100%"
+    height="100%"
+  >
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    <line x1="8" y1="11" x2="14" y2="11" />
+  </svg>
+);
+
+/**
  * Chevron right icon for expansion indicators (e.g., page pill)
  * Size is controlled by parent container
  */

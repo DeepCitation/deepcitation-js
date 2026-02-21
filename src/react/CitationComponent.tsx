@@ -26,9 +26,13 @@ import {
   EASE_EXPAND,
   EVIDENCE_TRAY_BORDER_DASHED,
   EVIDENCE_TRAY_BORDER_SOLID,
+  EXPANDED_ZOOM_MAX,
+  EXPANDED_ZOOM_MIN,
+  EXPANDED_ZOOM_STEP,
   INDICATOR_SIZE_STYLE,
   isValidProofImageSrc,
   KEYHOLE_FADE_WIDTH,
+  KEYHOLE_SKIP_THRESHOLD,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
   MISS_TRAY_THUMBNAIL_HEIGHT,
@@ -47,7 +51,8 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
-import { CheckIcon, SpinnerIcon, WarningIcon, XIcon } from "./icons.js";
+import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
+import { CheckIcon, SpinnerIcon, WarningIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
@@ -126,50 +131,6 @@ const EXPANDED_IMAGE_SHELL_PX = 32;
 
 /** Tolerance factor for coordinate scaling sanity checks (5% overflow for rounding errors) */
 const SCALING_TOLERANCE = 1.05;
-
-// =============================================================================
-// TOUCH DEVICE DETECTION
-// =============================================================================
-
-/**
- * Detects if the device has touch capability.
- * Uses useState + useEffect for React 17+ compatibility.
- *
- * This is used to auto-detect mobile/touch devices so the component can
- * show the popover on first tap rather than immediately opening the image overlay.
- *
- * Detection uses pointer: coarse media query as primary method, which specifically
- * identifies devices where the PRIMARY input is coarse (touch), avoiding false
- * positives on Windows laptops with touchscreens but mouse as primary input.
- */
-function getIsTouchDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  // Primary check: pointer: coarse media query
-  // This specifically checks if the PRIMARY pointing device is coarse (touch)
-  // Windows laptops with touchscreens typically report (pointer: fine) because
-  // the mouse/trackpad is the primary input device
-  const hasCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  return hasCoarsePointer;
-}
-
-function useIsTouchDevice(): boolean {
-  // Initialize with current value (SSR-safe: defaults to false on server)
-  const [isTouchDevice, setIsTouchDevice] = useState(() => getIsTouchDevice());
-
-  useEffect(() => {
-    // Listen for changes in pointer capability (e.g., tablet mode changes)
-    if (typeof window !== "undefined" && window.matchMedia) {
-      const mediaQuery = window.matchMedia("(pointer: coarse)");
-      const handleChange = () => setIsTouchDevice(getIsTouchDevice());
-
-      // Use addEventListener with 'change' event (modern API)
-      mediaQuery.addEventListener?.("change", handleChange);
-      return () => mediaQuery.removeEventListener?.("change", handleChange);
-    }
-  }, []);
-
-  return isTouchDevice;
-}
 
 // =============================================================================
 // ERROR BOUNDARY
@@ -1196,13 +1157,16 @@ export function AnchorTextFocusedImage({
       img.naturalHeight > 0 ? img.naturalWidth * (stripHeight / img.naturalHeight) : img.naturalWidth;
     const containerWidth = container.clientWidth;
 
-    // Detect whether the image fits entirely within the keyhole (no cropping in either dimension).
-    // naturalHeight <= stripHeight → image is short enough to show in full vertically.
+    // Detect whether the image nearly fits within the keyhole (minimal cropping).
+    // Uses KEYHOLE_SKIP_THRESHOLD (1.25) so images within ~80% of keyhole height
+    // are treated as "fits" — expanding would reveal almost nothing new.
     // displayedWidth <= containerWidth → image is narrow enough to show in full horizontally.
-    // When both are true, the keyhole already reveals everything — expand/pan adds no value.
+    // When both are true, the keyhole already reveals nearly everything — expand adds no value.
     if (displayedWidth > 0) {
       const imageFitsCompletely =
-        img.naturalHeight > 0 && img.naturalHeight <= stripHeight && displayedWidth <= containerWidth;
+        img.naturalHeight > 0 &&
+        img.naturalHeight <= stripHeight * KEYHOLE_SKIP_THRESHOLD &&
+        displayedWidth <= containerWidth;
       setImageFitInfo({ displayedWidth, imageFitsCompletely });
     }
 
@@ -1904,6 +1868,10 @@ export function EvidenceTray({
  * Renders the image at natural size with 2D drag-to-pan. The summary content
  * (Zone 1 header + Zone 2 quote) stays visible above — this component is
  * deliberately headerless. Click (without drag) to collapse.
+ *
+ * When `fill` is true (expanded-page mode), includes subtle zoom controls
+ * (−/slider/+) for both desktop and mobile. Mobile defaults to fit-to-screen.
+ * Supports pinch-to-zoom on touch devices and trackpad pinch (Ctrl+wheel).
  */
 export function InlineExpandedImage({
   src,
@@ -1929,16 +1897,146 @@ export function InlineExpandedImage({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
+  const isTouchDevice = useIsTouchDevice();
+
+  // Zoom state — only active when fill=true (expanded-page mode).
+  // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
+  const [zoom, setZoom] = useState(1);
+  // Ref mirror of zoom for touch event handlers (avoids stale closures in pinch gesture)
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  // Container size as state (not ref) so that ResizeObserver updates trigger re-renders.
+  // This ensures the initial-zoom effect re-fires once the container is measured.
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  const hasSetInitialZoom = useRef(false);
+
+  // Track container size via ResizeObserver (both width and height for fit-to-screen).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      const rect = entries[0]?.contentRect;
+      if (rect && rect.width > 0 && rect.height > 0) {
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fill]);
 
   // Reset imageLoaded synchronously when src changes (avoids a useEffect render cycle).
   // This ensures the spinner shows while the new image loads after an evidence ↔ page swap.
+  // Also reset zoom to 1 so each page starts at default scale.
   const prevSrcRef = useRef(src);
   if (prevSrcRef.current !== src) {
     prevSrcRef.current = src;
     setImageLoaded(false);
     setNaturalWidth(null);
     setNaturalHeight(null);
+    setZoom(1);
+    hasSetInitialZoom.current = false;
   }
+
+  // On mobile, default to fit-to-screen zoom after image loads so the entire page
+  // is visible without scrolling — users can then pinch or use slider to zoom in.
+  // On desktop, keep natural pixel size (zoom = 1).
+  // containerSize is state (not a ref) so this effect re-fires once ResizeObserver
+  // has measured the container — no fragile timing dependency on render order.
+  useEffect(() => {
+    if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || hasSetInitialZoom.current) return;
+    if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;
+    hasSetInitialZoom.current = true;
+    if (isTouchDevice) {
+      // Fit to screen: scale so entire page fits in the container
+      const fit = Math.min(containerSize.width / naturalWidth, containerSize.height / naturalHeight);
+      if (fit < 1) setZoom(Math.max(EXPANDED_ZOOM_MIN, fit));
+    }
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, isTouchDevice, containerSize]);
+
+  // Clamp helper — shared by buttons, slider, pinch, and wheel
+  const clampZoom = useCallback((z: number) => {
+    return Math.max(EXPANDED_ZOOM_MIN, Math.min(EXPANDED_ZOOM_MAX, Math.round(z * 100) / 100));
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => clampZoom(z + EXPANDED_ZOOM_STEP));
+  }, [clampZoom]);
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => clampZoom(z - EXPANDED_ZOOM_STEP));
+  }, [clampZoom]);
+
+  // Trackpad pinch zoom (Ctrl+wheel) — prevents default browser zoom.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      // deltaY is negative for zoom-in, positive for zoom-out on trackpads
+      const delta = -e.deltaY * 0.005;
+      setZoom(z => clampZoom(z + delta));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [fill, clampZoom]);
+
+  // Touch pinch-to-zoom (two-finger gesture).
+  // Uses zoomRef to read current zoom so listeners can be registered once (on mount /
+  // fill change) rather than re-added on every zoom change during a pinch gesture.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    let initialDistance: number | null = null;
+    let initialZoom = 1;
+
+    const getTouchDistance = (touches: TouchList): number => {
+      const [a, b] = [touches[0], touches[1]];
+      if (!a || !b) return 0;
+      const dx = a.clientX - b.clientX;
+      const dy = a.clientY - b.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = getTouchDistance(e.touches);
+        if (dist < Number.EPSILON) return; // fingers at same point — avoid division by zero
+        initialDistance = dist;
+        initialZoom = zoomRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || initialDistance === null) return;
+      e.preventDefault(); // prevent native scroll while pinching
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / initialDistance;
+      setZoom(clampZoom(initialZoom * scale));
+    };
+
+    const onTouchEnd = () => {
+      initialDistance = null;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [fill, clampZoom]);
+
+  // Compute effective image width for zoom
+  const zoomedWidth = fill && naturalWidth ? naturalWidth * zoom : undefined;
 
   // Derive footer label — matches EvidenceTrayFooter logic
   const isMiss = status?.isMiss;
@@ -1965,85 +2063,180 @@ export function InlineExpandedImage({
   const formatted = formatCaptureDate(verification?.verifiedAt);
   const dateStr = formatted?.display ?? "";
 
+  // Show zoom controls in fill mode when image has loaded
+  const showZoomControls = fill && imageLoaded && naturalWidth !== null;
+
   return (
     <div
       className={cn(
         "mx-3 mb-3 animate-in fade-in-0 duration-150 group/expanded-img",
         fill && "flex-1 min-h-0 flex flex-col",
       )}
-      style={naturalWidth !== null ? { maxWidth: naturalWidth } : undefined}
+      style={
+        zoomedWidth !== undefined
+          ? { maxWidth: zoomedWidth }
+          : naturalWidth !== null
+            ? { maxWidth: naturalWidth }
+            : undefined
+      }
     >
-      {/* Scrollable image area — click (no drag) collapses */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: drag-to-pan area; keyboard exit handled by parent popover Escape */}
-      <div
-        ref={containerRef}
-        data-dc-inline-expanded=""
-        className={cn(
-          "relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm",
-          fill && "flex-1 min-h-0",
-        )}
-        style={{
-          ...(fill ? {} : { maxHeight: "min(600px, 80dvh)" }),
-          overscrollBehavior: "none",
-          cursor: isDragging ? "grabbing" : fill ? "grab" : "zoom-out",
-          ...KEYHOLE_SCROLLBAR_HIDE,
-        }}
-        onDragStart={e => e.preventDefault()}
-        onClick={e => {
-          e.stopPropagation();
-          if (wasDragging.current) {
-            wasDragging.current = false;
-            return;
-          }
-          onCollapse();
-        }}
-        {...panHandlers}
-      >
-        <style>{`[data-dc-inline-expanded]::-webkit-scrollbar { display: none; }`}</style>
-        {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page). */}
-        <div key={src} className="animate-in fade-in-0 duration-150">
-          {!imageLoaded && (
-            <div className="flex items-center justify-center h-24">
-              <span className="size-5 animate-spin text-gray-400">
-                <SpinnerIcon />
-              </span>
-            </div>
+      {/* Wrapper: relative so zoom controls can be positioned absolutely over the scroll area */}
+      <div className={cn("relative", fill && "flex-1 min-h-0 flex flex-col")}>
+        {/* Scrollable image area — click (no drag) collapses */}
+        {/* biome-ignore lint/a11y/useKeyWithClickEvents: drag-to-pan area; keyboard exit handled by parent popover Escape */}
+        <div
+          ref={containerRef}
+          data-dc-inline-expanded=""
+          className={cn(
+            "relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm",
+            fill && "flex-1 min-h-0",
           )}
-          {/* Relative wrapper: positions annotation overlay exactly over the image */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <img
-              src={src}
-              alt="Verification evidence"
-              className={cn("block", !imageLoaded && "hidden")}
-              style={{ maxWidth: "none" }}
-              onLoad={e => {
-                const w = e.currentTarget.naturalWidth;
-                const h = e.currentTarget.naturalHeight;
-                setImageLoaded(true);
-                setNaturalWidth(w);
-                setNaturalHeight(h);
-                onNaturalSize?.(w, h);
+          style={{
+            ...(fill ? {} : { maxHeight: "min(600px, 80dvh)" }),
+            overscrollBehavior: "none",
+            cursor: isDragging ? "grabbing" : fill ? "grab" : "zoom-out",
+            ...KEYHOLE_SCROLLBAR_HIDE,
+          }}
+          onDragStart={e => e.preventDefault()}
+          onClick={e => {
+            e.stopPropagation();
+            if (wasDragging.current) {
+              wasDragging.current = false;
+              return;
+            }
+            onCollapse();
+          }}
+          {...panHandlers}
+        >
+          <style>{`[data-dc-inline-expanded]::-webkit-scrollbar { display: none; }`}</style>
+          {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page). */}
+          <div key={src} className="animate-in fade-in-0 duration-150">
+            {!imageLoaded && (
+              <div className="flex items-center justify-center h-24">
+                <span className="size-5 animate-spin text-gray-400">
+                  <SpinnerIcon />
+                </span>
+              </div>
+            )}
+            {/* Relative wrapper: positions annotation overlay exactly over the image */}
+            <div
+              style={{
+                position: "relative",
+                display: "inline-block",
+                ...(zoomedWidth !== undefined ? { width: zoomedWidth } : {}),
               }}
-              draggable={false}
-            />
-            {imageLoaded &&
-              renderScale &&
-              naturalWidth &&
-              naturalHeight &&
-              verification?.document?.phraseMatchDeepItem && (
-                <CitationAnnotationOverlay
-                  phraseMatchDeepItem={verification.document.phraseMatchDeepItem}
-                  renderScale={renderScale}
-                  imageNaturalWidth={naturalWidth}
-                  imageNaturalHeight={naturalHeight}
-                  highlightColor={verification.highlightColor}
-                  anchorTextDeepItem={verification.document.anchorTextMatchDeepItems?.[0]}
-                  anchorText={verification.verifiedAnchorText}
-                  fullPhrase={verification.verifiedFullPhrase}
-                />
-              )}
+            >
+              <img
+                src={src}
+                alt="Verification evidence"
+                className={cn("block", !imageLoaded && "hidden")}
+                style={zoomedWidth !== undefined ? { width: zoomedWidth, maxWidth: "none" } : { maxWidth: "none" }}
+                onLoad={e => {
+                  const w = e.currentTarget.naturalWidth;
+                  const h = e.currentTarget.naturalHeight;
+                  setImageLoaded(true);
+                  setNaturalWidth(w);
+                  setNaturalHeight(h);
+                  onNaturalSize?.(w, h);
+                }}
+                draggable={false}
+              />
+              {imageLoaded &&
+                renderScale &&
+                naturalWidth &&
+                naturalHeight &&
+                verification?.document?.phraseMatchDeepItem && (
+                  <CitationAnnotationOverlay
+                    phraseMatchDeepItem={verification.document.phraseMatchDeepItem}
+                    renderScale={renderScale}
+                    imageNaturalWidth={naturalWidth}
+                    imageNaturalHeight={naturalHeight}
+                    highlightColor={verification.highlightColor}
+                    anchorTextDeepItem={verification.document.anchorTextMatchDeepItems?.[0]}
+                    anchorText={verification.verifiedAnchorText}
+                    fullPhrase={verification.verifiedFullPhrase}
+                  />
+                )}
+            </div>
           </div>
         </div>
+
+        {/* Floating zoom controls — positioned absolutely over the scroll container
+            so they stay visible regardless of horizontal/vertical scroll position.
+            Contains −/slider/+ with percentage label. Supports drag on slider. */}
+        {showZoomControls && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+              zIndex: 1,
+              pointerEvents: "auto",
+            }}
+          >
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: zoom controls are auxiliary UI, main interaction is drag-to-pan */}
+            <div
+              className="flex items-center gap-0.5 bg-black/40 backdrop-blur-sm text-white/80 rounded-full px-1 py-0.5 shadow-sm"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  handleZoomOut();
+                }}
+                disabled={zoom <= EXPANDED_ZOOM_MIN}
+                className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
+                aria-label="Zoom out"
+              >
+                <span className="size-3.5">
+                  <ZoomOutIcon />
+                </span>
+              </button>
+              {/* Range slider — draggable zoom control */}
+              <input
+                type="range"
+                min={EXPANDED_ZOOM_MIN * 100}
+                max={EXPANDED_ZOOM_MAX * 100}
+                step={5}
+                value={Math.round(zoom * 100)}
+                onChange={e => {
+                  e.stopPropagation();
+                  setZoom(clampZoom(Number(e.target.value) / 100));
+                }}
+                onClick={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+                onTouchStart={e => e.stopPropagation()}
+                className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-3
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
+                  [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:cursor-pointer
+                  [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:rounded-full
+                  [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0
+                  [&::-moz-range-thumb]:cursor-pointer"
+                aria-label="Zoom level"
+                aria-valuetext={`${Math.round(zoom * 100)}%`}
+              />
+              <span className="min-w-[4ch] text-center font-mono tabular-nums select-none text-[11px] leading-none">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  handleZoomIn();
+                }}
+                disabled={zoom >= EXPANDED_ZOOM_MAX}
+                className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
+                aria-label="Zoom in"
+              >
+                <span className="size-3.5">
+                  <ZoomInIcon />
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {/* Footer — matches EvidenceTrayFooter style; shows collapse hint on hover */}
       <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">
@@ -2307,14 +2500,13 @@ function DefaultPopoverContent({
             transition: isExpanded
               ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
               : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`,
-            // Full-page only: fill the PopoverContent height (set to 100dvh, capped by
-            // maxHeight on PopoverContent). Using 100% instead of the CSS var breaks
-            // the feedback loop where floating-ui recomputes available-height mid-render.
-            // Keyhole evidence keeps its natural height (image is wide, not tall).
+            // Full-page only: flex column layout with inherited maxHeight from PopoverContent.
+            // No forced height — the popover sizes to content, capped by the viewport boundary.
+            // Small images keep the popover compact; large images grow to the maxHeight cap.
             ...(isFullPage && {
               display: "flex",
               flexDirection: "column" as const,
-              height: "100%",
+              maxHeight: "inherit",
               overflowY: "hidden" as const,
             }),
           }}
@@ -3347,7 +3539,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                         expandedImageWidth !== null
                           ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
                           : "calc(100dvw - 2rem)",
-                      height: "100dvh",
+                      // No forced height — popover sizes to content, capped by maxHeight.
+                      // Small images → compact popover. Large images → grows to boundary.
                       // Override Popover.tsx's default maxHeight (which uses
                       // --radix-popover-content-available-height, only measuring space
                       // on ONE side of the trigger) to allow filling the full viewport.
