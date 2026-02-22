@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import React from "react";
+import type React from "react";
 import type { CitationStatus } from "../types/citation.js";
 import {
   DOT_COLORS,

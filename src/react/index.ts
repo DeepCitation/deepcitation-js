@@ -18,9 +18,7 @@ export {
   CitationComponent,
   type CitationComponentProps,
   type CitationVariant,
-  type ExpandedImageSource,
   MemoizedCitationComponent,
-  resolveExpandedImage,
 } from "./CitationComponent.js";
 // Citation Drawer (ChatGPT-style bottom sheet)
 export {
@@ -92,6 +90,7 @@ export {
   Z_INDEX_OVERLAY_DEFAULT,
   Z_INDEX_POPOVER_VAR,
 } from "./constants.js";
+export { type ExpandedImageSource, resolveExpandedImage } from "./EvidenceTray.js";
 // Accessibility Hooks
 export { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 // Icons

@@ -7,16 +7,11 @@
  * @packageDocumentation
  */
 
-import React from "react";
+import type React from "react";
 import type { CitationStatus } from "../types/citation.js";
 import { CitationStatusIndicator, type CitationStatusIndicatorProps } from "./CitationStatusIndicator.js";
 import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
-import type {
-  BaseCitationProps,
-  CitationContent,
-  CitationRenderProps,
-  CitationVariant,
-} from "./types.js";
+import type { BaseCitationProps, CitationContent, CitationRenderProps, CitationVariant } from "./types.js";
 import { cn, isUrlCitation } from "./utils.js";
 
 // =============================================================================
@@ -32,6 +27,7 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
 };
 
 /** Variants that handle their own hover styling (don't need parent hover) */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility constant exported alongside component
 export const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge", "linter", "superscript"]);
 
 /**
@@ -50,6 +46,7 @@ export const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge"
  *     Lower opacity is more subtle since the wrapper may extend beyond the visual element.
  * @returns Array of Tailwind class strings for hover states
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function getStatusHoverClasses(
   isVerified: boolean,
   isPartialMatch: boolean,
@@ -74,6 +71,7 @@ export function getStatusHoverClasses(
 /**
  * Get the default content type based on variant.
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function getDefaultContent(variant: CitationVariant): CitationContent {
   switch (variant) {
     case "chip":
@@ -92,6 +90,7 @@ export function getDefaultContent(variant: CitationVariant): CitationContent {
  * Strip leading/trailing brackets from text.
  * Handles cases where LLM output includes brackets in anchorText.
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function stripBrackets(text: string): string {
   return text.replace(/^\[+\s*/, "").replace(/\s*\]+$/, "");
 }
@@ -100,6 +99,7 @@ export function stripBrackets(text: string): string {
  * Get display text based on content type and citation data.
  * Returns "1" as fallback if no citation number is available.
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function getDisplayText(
   citation: BaseCitationProps["citation"],
   content: CitationContent,

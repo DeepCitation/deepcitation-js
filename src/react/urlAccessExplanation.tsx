@@ -7,7 +7,6 @@
  * @packageDocumentation
  */
 
-import React from "react";
 import type { SearchStatus } from "../types/search.js";
 import type { UrlAccessStatus } from "../types/verification.js";
 import type { UrlFetchStatus } from "./types.js";
@@ -40,6 +39,7 @@ export interface UrlAccessExplanation {
  * For the generic "blocked" status, uses the error message to infer the specific
  * block type (paywall, login, rate limit, geo-restriction, or anti-bot fallback).
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function mapUrlAccessStatusToFetchStatus(status: UrlAccessStatus, errorMessage?: string | null): UrlFetchStatus {
   switch (status) {
     case "accessible":
@@ -72,6 +72,7 @@ export function mapUrlAccessStatusToFetchStatus(status: UrlAccessStatus, errorMe
  * the generic "blocked" status. Falls back to "blocked_antibot" (site protection)
  * as the most common cause.
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function inferBlockedType(errorMessage?: string | null): UrlFetchStatus {
   if (!errorMessage) return "blocked_antibot";
   const msg = errorMessage.toLowerCase();
@@ -94,6 +95,7 @@ export function inferBlockedType(errorMessage?: string | null): UrlFetchStatus {
  * Maps SearchStatus (from verification response) to UrlFetchStatus (UI layer).
  * Used as fallback when verification.url.urlAccessStatus is not available.
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function mapSearchStatusToFetchStatus(status: SearchStatus | null | undefined): UrlFetchStatus {
   if (!status) return "pending";
   switch (status) {
@@ -128,6 +130,7 @@ export function mapSearchStatusToFetchStatus(status: SearchStatus | null | undef
  * Get a structured explanation for URL access failures.
  * Returns null for success/pending/unknown statuses (no explanation needed).
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
 export function getUrlAccessExplanation(
   fetchStatus: UrlFetchStatus,
   errorMessage?: string | null,

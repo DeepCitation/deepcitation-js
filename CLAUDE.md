@@ -56,11 +56,18 @@ src/
 │   └── promptCompression.ts
 ├── react/
 │   ├── index.ts
-│   ├── CitationComponent.tsx   # HOVER_CLOSE_DELAY_MS, REPOSITION_GRACE_PERIOD_MS etc.
-│   ├── CitationVariants.tsx    # useCitationEvents(), StatusIndicators
+│   ├── CitationComponent.tsx       # Main component, error boundary, popover wiring
+│   ├── CitationContentDisplay.tsx  # Variant rendering (chip, superscript, badge, etc.)
+│   ├── CitationStatusIndicator.tsx # Status indicators (verified/partial/miss/pending dots & icons)
+│   ├── CitationVariants.tsx        # useCitationEvents(), StatusIndicators
+│   ├── DefaultPopoverContent.tsx   # Three-zone popover content (success/partial/miss)
+│   ├── EvidenceTray.tsx            # Evidence display, keyhole viewer, expanded page
 │   ├── SourcesListComponent.tsx
 │   ├── UrlCitationComponent.tsx
+│   ├── citationStatus.ts          # Status derivation, isPartialSearchStatus(), getTrustLevel()
 │   ├── constants.ts      # MISS_WAVY_UNDERLINE_STYLE, DOT_INDICATOR_*_STYLE, isValidProofImageSrc(), getPortalContainer()
+│   ├── outcomeLabel.ts            # deriveOutcomeLabel() — shared outcome label logic
+│   ├── urlAccessExplanation.tsx   # URL access failure mapping + UrlAccessExplanationSection
 │   ├── HighlightedPhrase.tsx # HighlightedPhrase — CANONICAL LOCATION
 │   ├── dateUtils.ts      # formatCaptureDate()
 │   └── utils.ts          # generateCitationKey() — CANONICAL LOCATION
@@ -184,6 +191,20 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `wordCount()` | `src/react/overlayGeometry.ts` | Safe word counting with size limits |
 | `toPercentRect()` | `src/react/overlayGeometry.ts` | PDF to CSS coordinate conversion |
 | `isValidOverlayGeometry()` | `src/react/overlayGeometry.ts` | Geometry validation |
+| `isPartialSearchStatus()` | `src/react/citationStatus.ts` | Single source of truth for partial status checks |
+| `getTrustLevel()`, `isLowTrustMatch()` | `src/react/citationStatus.ts` | Trust classification from MatchedVariation |
+| `getStatusFromVerification()` | `src/react/citationStatus.ts` | Verification → CitationStatus mapping |
+| `getStatusLabel()` | `src/react/citationStatus.ts` | Status → display string |
+| `deriveOutcomeLabel()` | `src/react/outcomeLabel.ts` | Shared outcome label (Exact match / Scan complete / etc.) |
+| `normalizeScreenshotSrc()` | `src/react/EvidenceTray.tsx` | Screenshot data URI normalization + validation |
+| `resolveExpandedImage()` | `src/react/EvidenceTray.tsx` | Resolve best image source for expanded view |
+| `EvidenceTray` | `src/react/EvidenceTray.tsx` | Evidence display with keyhole viewer |
+| `InlineExpandedImage` | `src/react/EvidenceTray.tsx` | Expanded page image viewer with zoom |
+| `DefaultPopoverContent` | `src/react/DefaultPopoverContent.tsx` | Three-zone popover layout (success/partial/miss) |
+| `CitationStatusIndicator` | `src/react/CitationStatusIndicator.tsx` | Unified status indicator component |
+| `CitationContentDisplay` | `src/react/CitationContentDisplay.tsx` | Variant rendering (chip, superscript, badge, etc.) |
+| `getUrlAccessExplanation()` | `src/react/urlAccessExplanation.tsx` | URL access failure explanation mapping |
+| `UrlAccessExplanationSection` | `src/react/urlAccessExplanation.tsx` | URL access failure display component |
 
 ### Example
 

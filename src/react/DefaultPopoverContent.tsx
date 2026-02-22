@@ -1,0 +1,542 @@
+/**
+ * Default popover content — three-zone layout for citation popovers.
+ *
+ * Contains the popover view state types, popover content props, and the
+ * DefaultPopoverContent component that renders success/partial/miss/fallback
+ * states with Zone 1 (header), Zone 2 (claim), and Zone 3 (evidence).
+ *
+ * @packageDocumentation
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CitationStatus } from "../types/citation.js";
+import type { Verification } from "../types/verification.js";
+import { getStatusLabel } from "./citationStatus.js";
+import {
+  EASE_COLLAPSE,
+  EASE_EXPAND,
+  EXPANDED_IMAGE_SHELL_PX,
+  isValidProofImageSrc,
+  POPOVER_CONTAINER_BASE_CLASSES,
+  POPOVER_MORPH_COLLAPSE_MS,
+  POPOVER_MORPH_EXPAND_MS,
+  POPOVER_WIDTH,
+} from "./constants.js";
+import {
+  EvidenceTray,
+  getHumanizingMessage,
+  InlineExpandedImage,
+  normalizeScreenshotSrc,
+  resolveExpandedImage,
+} from "./EvidenceTray.js";
+import { HighlightedPhrase } from "./HighlightedPhrase.js";
+import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
+import { SpinnerIcon } from "./icons.js";
+import type { BaseCitationProps } from "./types.js";
+import {
+  getUrlAccessExplanation,
+  mapSearchStatusToFetchStatus,
+  mapUrlAccessStatusToFetchStatus,
+  UrlAccessExplanationSection,
+} from "./urlAccessExplanation.js";
+import { isValidProofUrl } from "./urlUtils.js";
+import { cn, isUrlCitation } from "./utils.js";
+import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
+
+// React 19.2+ Activity component for prefetching - falls back to Fragment if unavailable
+const Activity =
+  (
+    React as {
+      Activity?: React.ComponentType<{
+        mode: "visible" | "hidden";
+        children: React.ReactNode;
+      }>;
+    }
+  ).Activity ?? (({ children }: { mode: "visible" | "hidden"; children: React.ReactNode }) => <>{children}</>);
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+/** Popover view state: summary (default), evidence image expanded in-place, or full proof page */
+export type PopoverViewState = "summary" | "expanded-evidence" | "expanded-page";
+
+export interface PopoverContentProps {
+  citation: BaseCitationProps["citation"];
+  verification: Verification | null;
+  status: CitationStatus;
+  isLoading?: boolean;
+  /** Whether the popover is currently visible (used for Activity prefetching) */
+  isVisible?: boolean;
+  /**
+   * Override label for the source display in the popover header.
+   * See BaseCitationProps.sourceLabel for details.
+   */
+  sourceLabel?: string;
+  /**
+   * Visual style for status indicators inside the popover.
+   * @default "icon"
+   */
+  indicatorVariant?: "icon" | "dot";
+  /** Current view state: summary or expanded */
+  viewState?: PopoverViewState;
+  /** Callback when view state changes */
+  onViewStateChange?: (viewState: PopoverViewState) => void;
+  /** Override the expanded image src (from behaviorConfig.onClick returning setImageExpanded: "<url>") */
+  expandedImageSrcOverride?: string | null;
+  /** Reports the expanded image's natural width (or null on collapse) so the parent can size PopoverContent. */
+  onExpandedWidthChange?: (width: number | null) => void;
+  /** Ref tracking which state preceded expanded-page, for correct Escape back-navigation. */
+  prevBeforeExpandedPageRef?: React.MutableRefObject<"summary" | "expanded-evidence">;
+}
+
+// =============================================================================
+// COMPONENT
+// =============================================================================
+
+export function DefaultPopoverContent({
+  citation,
+  verification,
+  status,
+  isLoading = false,
+  isVisible = true,
+  sourceLabel,
+  indicatorVariant = "icon",
+  viewState = "summary",
+  onViewStateChange,
+  expandedImageSrcOverride,
+  onExpandedWidthChange,
+  prevBeforeExpandedPageRef: propPrevBeforeExpandedPageRef,
+}: PopoverContentProps) {
+  const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
+  const { isMiss, isPartialMatch, isPending, isVerified } = status;
+  const searchStatus = verification?.status;
+
+  // Save/restore scroll position for back navigation
+
+  // Resolve expanded image for the full-page viewer; allow caller to override the src
+  const expandedImage = useMemo(() => {
+    const resolved = resolveExpandedImage(verification);
+    if (!expandedImageSrcOverride) return resolved;
+    // Custom src provided: clear overlay metadata since dimensions belong to the original image
+    return resolved
+      ? { ...resolved, src: expandedImageSrcOverride, dimensions: null, highlightBox: null, renderScale: null }
+      : { src: expandedImageSrcOverride };
+  }, [verification, expandedImageSrcOverride]);
+
+  // Suppress page expand when page image dimensions are known and already fit within
+  // the evidence view constraints (≤480px wide, ≤600px tall) — expanding adds no value.
+  const canExpandToPage = !!expandedImage;
+
+  // Track the natural width of the currently displayed expanded image.
+  // Pre-set from known dimensions when entering an expanded state; confirmed by
+  // InlineExpandedImage onLoad. Used to clamp the inner container width so the
+  // popover doesn't stretch wider than the image.
+  const [expandedNaturalWidth, setExpandedNaturalWidth] = useState<number | null>(null);
+
+  // Helper: update local state AND report to parent in one step.
+  const setWidth = useCallback(
+    (w: number | null) => {
+      setExpandedNaturalWidth(w);
+      onExpandedWidthChange?.(w);
+    },
+    [onExpandedWidthChange],
+  );
+
+  // Pre-set width from known dimensions when the view state changes.
+  // For expanded states without known dimensions, keep the previous width as an estimate
+  // (null → viewport-width fallback; or previous expanded width).
+  useEffect(() => {
+    if (viewState === "summary") {
+      setWidth(null);
+    } else if (viewState === "expanded-evidence") {
+      const w = verification?.document?.verificationImageDimensions?.width;
+      if (w) setWidth(w);
+    }
+  }, [viewState, verification?.document?.verificationImageDimensions?.width, setWidth]);
+
+  // Callback for InlineExpandedImage onLoad — confirms/corrects the pre-set width.
+  const handleExpandedImageLoad = useCallback(
+    (width: number, _height: number) => {
+      setWidth(width);
+    },
+    [setWidth],
+  );
+
+  // Skip morph animations when the user prefers reduced motion (OS accessibility setting).
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  /** Build the morph transition string, respecting prefers-reduced-motion. */
+  const morphTransition = (isExpanded: boolean): string => {
+    if (prefersReducedMotion) return "none";
+    return isExpanded
+      ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
+      : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`;
+  };
+
+  // Tracks which state we entered expanded-page from, so onCollapse can return there.
+  // "expanded-evidence" → expanded-page → back: returns to expanded-evidence (no InlineExpandedImage remount, no animation).
+  // "summary" → expanded-page → back: returns to summary.
+  // The ref may be lifted from the parent (CitationComponent) so that onEscapeKeyDown on
+  // <PopoverContent> can read the same value. Fall back to a local ref for the prefetch instance.
+  const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
+  const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
+
+  const handleExpand = useCallback(() => {
+    if (!canExpandToPage) return;
+    // Only record origin state when first entering expanded-page (not on redundant calls)
+    if (viewState !== "expanded-page") {
+      prevBeforeExpandedPageRef.current = viewState === "expanded-evidence" ? "expanded-evidence" : "summary";
+    }
+    onViewStateChange?.("expanded-page");
+  }, [canExpandToPage, onViewStateChange, viewState, prevBeforeExpandedPageRef]);
+
+  // Resolve the evidence image src once at this level (used by handleKeyholeClick and Zone 3).
+  const evidenceSrc = useMemo(() => {
+    if (verification?.document?.verificationImageSrc) {
+      const s = verification.document.verificationImageSrc;
+      return isValidProofImageSrc(s) ? s : null;
+    }
+    const raw = verification?.url?.webPageScreenshotBase64;
+    if (!raw) return null;
+    try {
+      const s = normalizeScreenshotSrc(raw);
+      return isValidProofImageSrc(s) ? s : null;
+    } catch {
+      return null;
+    }
+  }, [verification]);
+
+  // Prefetch images imperatively when the popover becomes visible.
+  // Keyhole image: preload as soon as the popover opens (user is hovering).
+  // Page image: preload now so it's ready when the user clicks to expand.
+  useEffect(() => {
+    if (!isVisible) return;
+    if (evidenceSrc) new Image().src = evidenceSrc;
+    const pageSrc = expandedImage?.src;
+    if (pageSrc && isValidProofImageSrc(pageSrc)) new Image().src = pageSrc;
+  }, [isVisible, evidenceSrc, expandedImage?.src]);
+
+  // Toggles the keyhole image expansion in Zone 3. Clicking when already expanded collapses.
+  const handleKeyholeClick = useCallback(() => {
+    if (viewState === "expanded-evidence") {
+      onViewStateChange?.("summary");
+      return;
+    }
+    if (!evidenceSrc) return;
+    onViewStateChange?.("expanded-evidence");
+  }, [viewState, evidenceSrc, onViewStateChange]);
+
+  // Get page info (document citations only)
+  const expectedPage = !isUrlCitation(citation) ? citation.pageNumber : undefined;
+  const foundPage = verification?.document?.verifiedPageNumber ?? undefined;
+
+  // Get humanizing message for partial/not-found states
+  const anchorText = citation.anchorText?.toString();
+  const fullPhrase = citation.fullPhrase;
+  const humanizingMessage = useMemo(
+    () => getHumanizingMessage(searchStatus, anchorText, expectedPage ?? undefined, foundPage),
+    [searchStatus, anchorText, expectedPage, foundPage],
+  );
+
+  // Get URL access explanation for blocked/error states (URL citations only)
+  const urlAccessExplanation = useMemo(() => {
+    if (!isUrlCitation(citation)) return null;
+    const urlAccessStatus = verification?.url?.urlAccessStatus;
+    const errorMsg = verification?.url?.urlVerificationError;
+    const fetchStatus = urlAccessStatus
+      ? mapUrlAccessStatusToFetchStatus(urlAccessStatus, errorMsg)
+      : mapSearchStatusToFetchStatus(searchStatus);
+    return getUrlAccessExplanation(fetchStatus, verification?.url?.urlVerificationError);
+  }, [citation, verification, searchStatus]);
+
+  // Loading/pending state view — skeleton mirrors resolved layout shape
+  if (isLoading || isPending) {
+    const searchingPhrase = fullPhrase || anchorText;
+    return (
+      <div className={`${POPOVER_CONTAINER_BASE_CLASSES} min-w-[200px] max-w-[480px]`}>
+        {/* Source context header */}
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          status={searchStatus}
+          sourceLabel={sourceLabel}
+        />
+        <div className="p-3 flex flex-col gap-2.5">
+          {/* Skeleton: status bar placeholder */}
+          <div className="h-3 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          {/* Skeleton: quote box placeholder */}
+          <div className="pl-3 border-l-[3px] border-gray-200 dark:border-gray-700 space-y-1.5">
+            <div className="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="h-3 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          </div>
+          {/* Skeleton: image strip placeholder */}
+          <div className="h-[60px] w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          {/* Actual search status */}
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+            <span className="inline-block relative top-[0.1em] mr-1.5 size-2 animate-spin">
+              <SpinnerIcon />
+            </span>
+            Searching...
+          </span>
+          {searchingPhrase && (
+            <p className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded font-mono text-[11px] break-words text-gray-700 dark:text-gray-300">
+              &ldquo;{searchingPhrase.length > 80 ? `${searchingPhrase.slice(0, 80)}…` : searchingPhrase}&rdquo;
+            </p>
+          )}
+          {!isUrlCitation(citation) && citation.pageNumber && citation.pageNumber > 0 && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">Looking on p.{citation.pageNumber}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // SUCCESS STATE (Green) - Three-zone layout: Header + Claim + Evidence
+  // ==========================================================================
+  if (isVerified && !isPartialMatch && !isMiss && hasImage && verification) {
+    const isExpanded = viewState === "expanded-evidence" || viewState === "expanded-page";
+    const isFullPage = viewState === "expanded-page";
+    const validProofUrl =
+      isFullPage && verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
+    return (
+      <Activity mode={isVisible ? "visible" : "hidden"}>
+        <div
+          className={cn(POPOVER_CONTAINER_BASE_CLASSES, "animate-in fade-in-0 duration-150")}
+          style={{
+            width: isExpanded
+              ? expandedNaturalWidth !== null
+                ? `max(${POPOVER_WIDTH}, min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
+                : "calc(100dvw - 2rem)"
+              : POPOVER_WIDTH,
+            maxWidth: "100%",
+            transition: morphTransition(isExpanded),
+            // Full-page only: flex column layout. height: 100% propagates the
+            // definite height from PopoverContent so flex-1 children can fill it.
+            ...(isFullPage && {
+              display: "flex",
+              flexDirection: "column" as const,
+              height: "100%",
+              overflowY: "hidden" as const,
+            }),
+          }}
+        >
+          {/* Zone 1: Metadata Header */}
+          <SourceContextHeader
+            citation={citation}
+            verification={verification}
+            status={searchStatus}
+            sourceLabel={sourceLabel}
+            onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
+            onClose={isFullPage ? () => onViewStateChange?.(prevBeforeExpandedPageRef.current) : undefined}
+            proofUrl={validProofUrl}
+          />
+          {/* Zone 2: Claim Body — Status + highlighted phrase */}
+          <StatusHeader
+            status={searchStatus}
+            foundPage={foundPage}
+            expectedPage={expectedPage ?? undefined}
+            hidePageBadge
+            anchorText={anchorText}
+            indicatorVariant={indicatorVariant}
+          />
+
+          {fullPhrase && (
+            <div className="mx-3 mt-1 mb-3 pl-3 pr-3 py-2 text-xs leading-relaxed break-words bg-gray-50 dark:bg-gray-800/50 border-l-[3px] border-green-500 dark:border-green-600">
+              <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isMiss} />
+            </div>
+          )}
+
+          {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray */}
+          {viewState === "expanded-evidence" && evidenceSrc ? (
+            <InlineExpandedImage
+              src={evidenceSrc}
+              onCollapse={() => onViewStateChange?.("summary")}
+              verification={verification}
+              status={status}
+              onNaturalSize={handleExpandedImageLoad}
+            />
+          ) : viewState === "expanded-page" && expandedImage?.src ? (
+            <InlineExpandedImage
+              src={expandedImage.src}
+              onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
+              verification={verification}
+              status={status}
+              fill
+              onNaturalSize={handleExpandedImageLoad}
+              renderScale={expandedImage.renderScale}
+            />
+          ) : (
+            <EvidenceTray
+              verification={verification}
+              status={status}
+              onExpand={canExpandToPage ? handleExpand : undefined}
+              onImageClick={handleKeyholeClick}
+            />
+          )}
+        </div>
+      </Activity>
+    );
+  }
+
+  // ==========================================================================
+  // PARTIAL/DISPLACED STATE (Amber) or NOT FOUND (Red) - Three-zone layout
+  // ==========================================================================
+  if (isMiss || isPartialMatch) {
+    const isExpanded = viewState === "expanded-evidence" || viewState === "expanded-page";
+    const isFullPage = viewState === "expanded-page";
+    const validProofUrl =
+      isFullPage && verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
+    return (
+      <Activity mode={isVisible ? "visible" : "hidden"}>
+        <div
+          className={cn(POPOVER_CONTAINER_BASE_CLASSES, "animate-in fade-in-0 duration-150")}
+          style={{
+            width: isExpanded
+              ? expandedNaturalWidth !== null
+                ? `max(${POPOVER_WIDTH}, min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
+                : "calc(100dvw - 2rem)"
+              : POPOVER_WIDTH,
+            maxWidth: "100%",
+            transition: morphTransition(isExpanded),
+            ...(isFullPage && {
+              display: "flex",
+              flexDirection: "column" as const,
+              height: "100%",
+              overflowY: "hidden" as const,
+            }),
+          }}
+        >
+          {/* Zone 1: Metadata Header */}
+          <SourceContextHeader
+            citation={citation}
+            verification={verification}
+            status={searchStatus}
+            sourceLabel={sourceLabel}
+            onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
+            onClose={isFullPage ? () => onViewStateChange?.(prevBeforeExpandedPageRef.current) : undefined}
+            proofUrl={validProofUrl}
+          />
+
+          {/* Zone 2: Claim Body — Status + highlighted phrase */}
+          <StatusHeader
+            status={searchStatus}
+            foundPage={foundPage}
+            expectedPage={expectedPage ?? undefined}
+            hidePageBadge
+            anchorText={anchorText}
+            indicatorVariant={indicatorVariant}
+          />
+
+          {/* URL access explanation (for URL citations with access failures) */}
+          {urlAccessExplanation && <UrlAccessExplanationSection explanation={urlAccessExplanation} />}
+          {/* Humanizing message for document citations */}
+          {!urlAccessExplanation && humanizingMessage && (
+            <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">
+              {humanizingMessage}
+            </div>
+          )}
+
+          {fullPhrase && (
+            <div
+              className={cn(
+                "mx-3 mt-1 mb-3 pl-3 pr-3 py-2 text-xs leading-relaxed break-words bg-gray-50 dark:bg-gray-800/50 border-l-[3px]",
+                isMiss ? "border-red-500 dark:border-red-400" : "border-amber-500 dark:border-amber-400",
+              )}
+            >
+              <HighlightedPhrase fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isMiss} />
+            </div>
+          )}
+
+          {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray.
+              Same structure as the success block — page view does not depend on status. */}
+          {viewState === "expanded-evidence" && evidenceSrc ? (
+            <InlineExpandedImage
+              src={evidenceSrc}
+              onCollapse={() => onViewStateChange?.("summary")}
+              verification={verification}
+              status={status}
+              onNaturalSize={handleExpandedImageLoad}
+            />
+          ) : viewState === "expanded-page" && expandedImage?.src ? (
+            <InlineExpandedImage
+              src={expandedImage.src}
+              onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
+              verification={verification}
+              status={status}
+              fill
+              onNaturalSize={handleExpandedImageLoad}
+              renderScale={expandedImage.renderScale}
+            />
+          ) : hasImage && verification ? (
+            <EvidenceTray
+              verification={verification}
+              status={status}
+              onExpand={canExpandToPage ? handleExpand : undefined}
+              onImageClick={handleKeyholeClick}
+              proofImageSrc={expandedImage?.src}
+            />
+          ) : /* Fallback for miss without keyhole image: search analysis + optional page thumbnail */
+          isMiss && (verification?.searchAttempts?.length || canExpandToPage) && verification ? (
+            <EvidenceTray
+              verification={verification}
+              status={status}
+              onExpand={canExpandToPage ? handleExpand : undefined}
+              proofImageSrc={expandedImage?.src}
+            />
+          ) : null}
+        </div>
+      </Activity>
+    );
+  }
+
+  // ==========================================================================
+  // FALLBACK: Text-only view (verified/partial match without image)
+  // ==========================================================================
+  const statusLabel = getStatusLabel(status);
+  const hasSnippet = verification?.verifiedMatchSnippet;
+  const pageNumber = verification?.document?.verifiedPageNumber;
+
+  if (!hasSnippet && !statusLabel && !urlAccessExplanation) return null;
+
+  return (
+    <div className={`${POPOVER_CONTAINER_BASE_CLASSES} min-w-[180px] max-w-full`}>
+      {/* Source context header */}
+      <SourceContextHeader
+        citation={citation}
+        verification={verification}
+        status={searchStatus}
+        sourceLabel={sourceLabel}
+      />
+      {/* URL access explanation (for URL citations with access failures) */}
+      {urlAccessExplanation && <UrlAccessExplanationSection explanation={urlAccessExplanation} />}
+      <div className="p-3 flex flex-col gap-2">
+        {!urlAccessExplanation && statusLabel && (
+          <span
+            className={cn(
+              "text-xs font-medium",
+              status.isVerified && !status.isPartialMatch && "text-green-600 dark:text-green-400",
+              status.isPartialMatch && "text-amber-500 dark:text-amber-400",
+              status.isMiss && "text-red-500 dark:text-red-400",
+              status.isPending && "text-gray-500 dark:text-gray-400",
+            )}
+          >
+            {statusLabel}
+          </span>
+        )}
+        {hasSnippet && (
+          <q
+            className="border-l-2 border-gray-300 dark:border-gray-600 pl-1.5 ml-0.5 text-sm text-gray-700 dark:text-gray-200"
+            style={{ quotes: "none" }}
+          >
+            {verification.verifiedMatchSnippet}
+          </q>
+        )}
+        {pageNumber && pageNumber > 0 && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">Page {pageNumber}</span>
+        )}
+      </div>
+    </div>
+  );
+}

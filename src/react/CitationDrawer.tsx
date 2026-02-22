@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CitationStatus } from "../types/citation.js";
-import { EvidenceTray, InlineExpandedImage } from "./CitationComponent.js";
 import type {
   CitationDrawerItem,
   CitationDrawerItemProps,
@@ -11,8 +10,8 @@ import type {
 import {
   computeStatusSummary,
   flattenCitations,
+  generateDefaultLabel,
   getItemStatusCategory,
-  getPrimarySourceName,
   getStatusInfo,
   resolveGroupLabels,
   STATUS_DISPLAY_MAP,
@@ -29,6 +28,7 @@ import {
   Z_INDEX_DRAWER_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
+import { EvidenceTray, InlineExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ExternalLinkIcon } from "./icons.js";
@@ -63,8 +63,7 @@ function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
   for (const group of groups) {
     for (const { citation, verification } of group.citations) {
       const page =
-        (citation.type !== "url" ? citation.pageNumber : undefined) ??
-        verification?.document?.verifiedPageNumber;
+        (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
       if (page != null && page > 0) pages.add(page);
     }
   }
@@ -309,10 +308,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
           {/* Header: fullPhrase with anchorText highlighted */}
           <div className="flex-1 min-w-0">
-            <div
-              className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2"
-              title={fullPhrase || anchorText}
-            >
+            <div className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2" title={fullPhrase || anchorText}>
               <HighlightedPhrase
                 fullPhrase={fullPhrase || anchorText || ""}
                 anchorText={anchorText}
@@ -606,9 +602,9 @@ function DrawerSourceGroup({
 // =========
 
 /**
- * Replaces the generic title text in the drawer header with the same source
- * identification as CitationDrawerTrigger's label: favicon (or letter avatar)
- * + source name, with "+N" overflow for multiple sources.
+ * Drawer header source label — renders the same text as CitationDrawerTrigger
+ * (favicon/letter avatar + generateDefaultLabel output) so heading and trigger
+ * always agree regardless of how sourceName is set.
  */
 function DrawerSourceHeading({
   citationGroups,
@@ -625,12 +621,10 @@ function DrawerSourceHeading({
   }
 
   const firstGroup = citationGroups[0];
-  // Use the same label computation as CitationDrawerTrigger:
-  // label prop wins, then getPrimarySourceName (shared canonical function).
-  // The "+N" overflow is rendered separately in a styled <span>.
-  const primaryName = label?.trim() || getPrimarySourceName(citationGroups);
+  // Use the exact same label as CitationDrawerTrigger — generateDefaultLabel handles
+  // truncation and "+N" overflow in one place, ensuring heading and trigger always match.
+  const displayLabel = label?.trim() || generateDefaultLabel(citationGroups);
   const isUrlSource = !!firstGroup.sourceDomain;
-  const overflowCount = citationGroups.length - 1;
 
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -640,24 +634,19 @@ function DrawerSourceHeading({
           <FaviconImage
             faviconUrl={firstGroup.sourceFavicon || null}
             domain={firstGroup.sourceDomain || null}
-            alt={primaryName}
+            alt={displayLabel}
           />
         ) : (
           <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
             <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
-              {primaryName.charAt(0).toUpperCase()}
+              {displayLabel.charAt(0).toUpperCase()}
             </span>
           </div>
         )}
       </div>
 
-      {/* Source name with overflow count */}
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-        {primaryName}
-        {overflowCount > 0 && (
-          <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal text-sm">+{overflowCount}</span>
-        )}
-      </h2>
+      {/* Source label — identical text to CitationDrawerTrigger */}
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{displayLabel}</h2>
     </div>
   );
 }

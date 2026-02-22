@@ -9,7 +9,8 @@
  * @packageDocumentation
  */
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt, SearchStatus } from "../types/search.js";
@@ -37,6 +38,7 @@ import { useDragToPan } from "./hooks/useDragToPan.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { SpinnerIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { deriveOutcomeLabel } from "./outcomeLabel.js";
+import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "./overlayGeometry.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
 import { cn } from "./utils.js";
 import { VerificationLogTimeline } from "./VerificationLog.js";
@@ -847,6 +849,7 @@ export function InlineExpandedImage({
   // This ensures the initial-zoom effect re-fires once the container is measured.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const hasSetInitialZoom = useRef(false);
+  const hasScrolledToAnnotation = useRef(false);
 
   // Track container size via ResizeObserver (both width and height for fit-to-screen).
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
@@ -876,6 +879,7 @@ export function InlineExpandedImage({
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
     hasSetInitialZoom.current = false;
+    hasScrolledToAnnotation.current = false;
   }
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.
@@ -901,6 +905,41 @@ export function InlineExpandedImage({
     // not the natural pixel width (which could be e.g. 1700px for a PDF page).
     onNaturalSize?.(Math.round(naturalWidth * fitZoom), Math.round(naturalHeight * fitZoom));
   }, [fill, imageLoaded, naturalWidth, naturalHeight, containerSize, onNaturalSize]);
+
+  // Auto-scroll to annotation: after the fit-to-screen zoom is set, scroll the
+  // container so the phraseMatchDeepItem annotation is centered in view.
+  // Uses requestAnimationFrame to wait for the DOM to reflow at the new zoom level.
+  // Cleanup cancels the rAF to prevent stale callbacks during Activity reconnection.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref; verification/renderScale are read inside but don't need to re-trigger
+  useEffect(() => {
+    if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || !hasSetInitialZoom.current) return;
+    if (hasScrolledToAnnotation.current) return;
+
+    const phraseItem = verification?.document?.phraseMatchDeepItem;
+    if (!phraseItem || !renderScale) return;
+
+    hasScrolledToAnnotation.current = true;
+
+    const rafId = requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const target = computeAnnotationScrollTarget(
+        phraseItem,
+        renderScale,
+        naturalWidth,
+        naturalHeight,
+        zoom,
+        container.clientWidth,
+        container.clientHeight,
+      );
+      if (target) {
+        container.scrollLeft = target.scrollLeft;
+        container.scrollTop = target.scrollTop;
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, zoom]);
 
   // Clamp helper — shared by buttons, slider, pinch, and wheel.
   // Uses zoomFloor (not EXPANDED_ZOOM_MIN) so the lower bound respects the
@@ -1003,7 +1042,7 @@ export function InlineExpandedImage({
     return () => document.removeEventListener("pointerup", unlock);
   }, [sliderLockWidth]);
 
-  const isMiss = status?.isMiss;
+  const _isMiss = status?.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
   const outcomeLabel = deriveOutcomeLabel(verification?.status, searchAttempts);
   const formatted = formatCaptureDate(verification?.verifiedAt);
@@ -1011,6 +1050,15 @@ export function InlineExpandedImage({
 
   // Show zoom controls in fill mode when image has loaded
   const showZoomControls = fill && imageLoaded && naturalWidth !== null;
+
+  // Compute transform-origin from annotation position (fill mode only).
+  // This makes the fade+scale animation originate from the annotation location.
+  const annotationOrigin = useMemo(() => {
+    if (!fill || !renderScale || !naturalWidth || !naturalHeight) return null;
+    const phraseItem = verification?.document?.phraseMatchDeepItem;
+    if (!phraseItem) return null;
+    return computeAnnotationOriginPercent(phraseItem, renderScale, naturalWidth, naturalHeight);
+  }, [fill, renderScale, naturalWidth, naturalHeight, verification?.document?.phraseMatchDeepItem]);
 
   const footerEl = (
     <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">
@@ -1067,8 +1115,18 @@ export function InlineExpandedImage({
           {...panHandlers}
         >
           <style>{`[data-dc-inline-expanded]::-webkit-scrollbar { display: none; }`}</style>
-          {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page). */}
-          <div key={src} className="animate-in fade-in-0 duration-150">
+          {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page).
+              In fill mode with an annotation, the scale animation originates from the annotation
+              position via transform-origin, creating a "zoom from annotation" visual effect. */}
+          <div
+            key={src}
+            className={cn("animate-in fade-in-0 duration-150", fill && annotationOrigin && "zoom-in-95")}
+            style={
+              annotationOrigin
+                ? { transformOrigin: `${annotationOrigin.xPercent}% ${annotationOrigin.yPercent}%` }
+                : undefined
+            }
+          >
             {!imageLoaded && (
               <div className="flex items-center justify-center h-24">
                 <span className="size-5 animate-spin text-gray-400">
