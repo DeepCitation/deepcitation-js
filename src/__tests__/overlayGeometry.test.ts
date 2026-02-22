@@ -1,8 +1,5 @@
 import { describe, expect, test } from "@jest/globals";
-import {
-  computeAnnotationOriginPercent,
-  computeAnnotationScrollTarget,
-} from "../react/overlayGeometry";
+import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "../react/overlayGeometry";
 
 // Helper: a standard annotation item and rendering context for tests.
 // Represents text near the center of a 1000×1400 PDF page rendered to a
@@ -39,9 +36,7 @@ describe("computeAnnotationScrollTarget", () => {
   test("clamps to 0 when annotation is near top-left", () => {
     // Item at top-left of image: PDF coords (0, 1400) → image (0, 0)
     const topLeftItem = { x: 0, y: 1400, width: 50, height: 10 };
-    const result = computeAnnotationScrollTarget(
-      topLeftItem, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 600,
-    );
+    const result = computeAnnotationScrollTarget(topLeftItem, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 600);
     expect(result).not.toBeNull();
     expect(result?.scrollLeft).toBe(0);
     expect(result?.scrollTop).toBe(0);
@@ -55,7 +50,13 @@ describe("computeAnnotationScrollTarget", () => {
     const containerH = 600;
 
     const result = computeAnnotationScrollTarget(
-      bottomRightItem, RENDER_SCALE, IMAGE_W, IMAGE_H, zoom, containerW, containerH,
+      bottomRightItem,
+      RENDER_SCALE,
+      IMAGE_W,
+      IMAGE_H,
+      zoom,
+      containerW,
+      containerH,
     );
     expect(result).not.toBeNull();
     // Max scroll: (2000 - 800, 2800 - 600) = (1200, 2200)
@@ -64,23 +65,17 @@ describe("computeAnnotationScrollTarget", () => {
   });
 
   test("returns null for zero renderScale", () => {
-    const result = computeAnnotationScrollTarget(
-      ITEM, { x: 0, y: 2 }, IMAGE_W, IMAGE_H, 1, 800, 600,
-    );
+    const result = computeAnnotationScrollTarget(ITEM, { x: 0, y: 2 }, IMAGE_W, IMAGE_H, 1, 800, 600);
     expect(result).toBeNull();
   });
 
   test("returns null for zero zoom", () => {
-    const result = computeAnnotationScrollTarget(
-      ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 0, 800, 600,
-    );
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 0, 800, 600);
     expect(result).toBeNull();
   });
 
   test("returns null for negative zoom", () => {
-    const result = computeAnnotationScrollTarget(
-      ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, -1, 800, 600,
-    );
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, -1, 800, 600);
     expect(result).toBeNull();
   });
 
@@ -96,16 +91,12 @@ describe("computeAnnotationScrollTarget", () => {
   });
 
   test("returns null for Infinity inputs", () => {
-    expect(
-      computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, Infinity, 800, 600),
-    ).toBeNull();
+    expect(computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, Infinity, 800, 600)).toBeNull();
   });
 
   test("no-op when image fits entirely in container (scroll = 0,0)", () => {
     // Container is larger than image × zoom → maxScroll = 0 in both axes
-    const result = computeAnnotationScrollTarget(
-      ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 0.1, 2000, 2000,
-    );
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 0.1, 2000, 2000);
     expect(result).not.toBeNull();
     expect(result?.scrollLeft).toBe(0);
     expect(result?.scrollTop).toBe(0);
@@ -114,9 +105,7 @@ describe("computeAnnotationScrollTarget", () => {
   test("handles PDF y-axis flip correctly", () => {
     // Item at PDF y=1400 (top of page) → imageY = 2800 - 2800 = 0 (top of image)
     const topItem = { x: 500, y: 1400, width: 100, height: 10 };
-    const result = computeAnnotationScrollTarget(
-      topItem, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 600,
-    );
+    const result = computeAnnotationScrollTarget(topItem, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 600);
     expect(result).not.toBeNull();
     // imageY = 2800 - 1400*2 = 0, center = 0 + 20/2 = 10
     // scrollTop = 10 - 300 = -290, clamped to 0

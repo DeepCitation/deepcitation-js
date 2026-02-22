@@ -790,7 +790,6 @@ describe("useCitationDrawer", () => {
 describe("getStatusPriority", () => {
   it("returns 1 for verified statuses", () => {
     expect(getStatusPriority({ status: "found" })).toBe(1);
-    expect(getStatusPriority({ status: "found_anchor_text_only" })).toBe(1);
     expect(getStatusPriority({ status: "found_phrase_missed_anchor_text" })).toBe(1);
   });
 
@@ -805,6 +804,7 @@ describe("getStatusPriority", () => {
     expect(getStatusPriority({ status: "found_on_other_page" })).toBe(3);
     expect(getStatusPriority({ status: "found_on_other_line" })).toBe(3);
     expect(getStatusPriority({ status: "first_word_found" })).toBe(3);
+    expect(getStatusPriority({ status: "found_anchor_text_only" })).toBe(3);
   });
 
   it("returns 4 for not_found status", () => {
