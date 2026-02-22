@@ -5,6 +5,14 @@ import type { SearchAttempt, SearchStatus } from "../types/search.js";
 import type { Verification, VerificationPage } from "../types/verification.js";
 import { getStatusFromVerification, getStatusLabel, isLowTrustMatch } from "./citationStatus.js";
 import {
+  CitationContentDisplay,
+  type CitationContentDisplayProps,
+  getDefaultContent,
+  getDisplayText,
+  getStatusHoverClasses,
+  VARIANTS_WITH_OWN_HOVER,
+} from "./CitationContentDisplay.js";
+import {
   CitationStatusIndicator,
   type CitationStatusIndicatorProps,
   type SpinnerStage,
@@ -21,8 +29,6 @@ import { useCitationOverlay } from "./CitationOverlayContext.js";
 import { computeKeyholeOffset } from "./computeKeyholeOffset.js";
 import {
   buildKeyholeMaskImage,
-  DOT_COLORS,
-  DOT_INDICATOR_SIZE_STYLE,
   EASE_COLLAPSE,
   EASE_EXPAND,
   EVIDENCE_TRAY_BORDER_DASHED,
@@ -31,7 +37,6 @@ import {
   EXPANDED_ZOOM_MIN,
   EXPANDED_ZOOM_STEP,
   FOOTER_HINT_DURATION_MS,
-  INDICATOR_SIZE_STYLE,
   isValidProofImageSrc,
   KEYHOLE_FADE_WIDTH,
   KEYHOLE_SKIP_THRESHOLD,
@@ -39,8 +44,6 @@ import {
   KEYHOLE_STRIP_HEIGHT_VAR,
   MISS_TRAY_THUMBNAIL_HEIGHT,
   MISS_WAVY_UNDERLINE_STYLE,
-  PARTIAL_COLOR_STYLE,
-  PENDING_COLOR_STYLE,
   POPOVER_CONTAINER_BASE_CLASSES,
   POPOVER_MORPH_COLLAPSE_MS,
   POPOVER_MORPH_EXPAND_MS,
@@ -48,14 +51,13 @@ import {
   POPOVER_WIDTH_VAR,
   SPINNER_TIMEOUT_MS,
   TOUCH_CLICK_DEBOUNCE_MS,
-  VERIFIED_COLOR_STYLE,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
-import { CheckIcon, SpinnerIcon, WarningIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
+import { SpinnerIcon, WarningIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
@@ -204,104 +206,8 @@ class CitationErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBou
   }
 }
 
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
-
-/** Variants that handle their own hover styling (don't need parent hover) */
-const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge", "linter", "superscript"]);
-
-/**
- * Get status-aware hover classes for contained hover styling.
- * Used by chip, superscript, and other variants that need hover contained within their bounds.
- *
- * @param isVerified - Whether the citation is verified
- * @param isPartialMatch - Whether it's a partial match
- * @param isMiss - Whether it's not found
- * @param shouldShowSpinner - Whether to show loading spinner
- * @param opacity - Opacity level for hover backgrounds:
- *   - 15 (default): Used for contained variants (chip, superscript) where hover is
- *     applied directly to the element. Higher opacity provides better visual feedback
- *     since the element itself is the hover target.
- *   - 10: Used for the outer trigger wrapper on variants without contained hover.
- *     Lower opacity is more subtle since the wrapper may extend beyond the visual element.
- * @returns Array of Tailwind class strings for hover states
- */
-function getStatusHoverClasses(
-  isVerified: boolean,
-  isPartialMatch: boolean,
-  isMiss: boolean,
-  shouldShowSpinner: boolean,
-  opacity: 10 | 15 = 15,
-): (string | false)[] {
-  const opacitySuffix = opacity === 10 ? "/10" : "/15";
-  return [
-    isVerified &&
-      !isPartialMatch &&
-      !shouldShowSpinner &&
-      `hover:bg-green-600${opacitySuffix} dark:hover:bg-green-500${opacitySuffix}`,
-    isPartialMatch &&
-      !shouldShowSpinner &&
-      `hover:bg-amber-500${opacitySuffix} dark:hover:bg-amber-500${opacitySuffix}`,
-    isMiss && !shouldShowSpinner && `hover:bg-red-500${opacitySuffix} dark:hover:bg-red-400${opacitySuffix}`,
-    (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) && "hover:bg-gray-200 dark:hover:bg-gray-700",
-  ];
-}
-
-/**
- * Get the default content type based on variant.
- */
-function getDefaultContent(variant: CitationVariant): CitationContent {
-  switch (variant) {
-    case "chip":
-    case "text":
-    case "brackets":
-    case "linter":
-      return "anchorText";
-    case "badge":
-      return "source";
-    default:
-      return "number";
-  }
-}
-
-/**
- * Strip leading/trailing brackets from text.
- * Handles cases where LLM output includes brackets in anchorText.
- */
-function stripBrackets(text: string): string {
-  return text.replace(/^\[+\s*/, "").replace(/\s*\]+$/, "");
-}
-
-/**
- * Get display text based on content type and citation data.
- * Returns "1" as fallback if no citation number is available.
- */
-function getDisplayText(
-  citation: BaseCitationProps["citation"],
-  content: CitationContent,
-  fallbackDisplay?: string | null,
-): string {
-  if (content === "indicator") {
-    return "";
-  }
-
-  if (content === "anchorText") {
-    const raw = citation.anchorText?.toString() || citation.citationNumber?.toString() || fallbackDisplay || "1";
-    return stripBrackets(raw);
-  }
-
-  if (content === "source") {
-    // Source content: show siteName or domain (URL citations only)
-    if (isUrlCitation(citation)) {
-      return citation.siteName || citation.domain || citation.anchorText?.toString() || "Source";
-    }
-    return citation.anchorText?.toString() || "Source";
-  }
-
-  // content === "number"
-  return citation.citationNumber?.toString() || "1";
-}
+// Utility functions and CitationContentDisplay
+// imported from ./CitationContentDisplay.js (canonical location)
 
 // =============================================================================
 // TYPES
@@ -440,6 +346,36 @@ export interface CitationComponentProps extends BaseCitationProps {
 
 // Indicator components, SpinnerStage, CitationStatusIndicator
 // imported from ./CitationStatusIndicator.js (canonical location)
+
+// =============================================================================
+// FOOTER HINT (shared bold-then-muted hint for evidence tray / expanded image)
+// =============================================================================
+
+/** Renders hint text that appears bold/dark for 2s, then transitions to muted gray. */
+function FooterHint({ text }: { text: string }) {
+  const [highlighted, setHighlighted] = useState(true);
+  const reducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setHighlighted(false);
+      return;
+    }
+    const timer = setTimeout(() => setHighlighted(false), FOOTER_HINT_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [reducedMotion]);
+
+  return (
+    <span
+      className={cn(
+        "font-bold transition-colors duration-500",
+        highlighted ? "text-gray-900 dark:text-gray-200" : "text-gray-400 dark:text-gray-500",
+      )}
+    >
+      {text}
+    </span>
+  );
+}
 
 // =============================================================================
 // CITATION CONTENT DISPLAY (extracted from inline renderCitationContent)
