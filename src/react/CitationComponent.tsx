@@ -1131,6 +1131,7 @@ export function AnchorTextFocusedImage({
   verification,
   onImageClick,
   onFitStateChange,
+  onAlreadyFullSize,
   page,
   onViewPageClick,
 }: {
@@ -1138,6 +1139,8 @@ export function AnchorTextFocusedImage({
   onImageClick?: () => void;
   /** Called after image load to report whether the image fits entirely within the keyhole. */
   onFitStateChange?: (fitsCompletely: boolean) => void;
+  /** Called when the user clicks but the image already fits — lets parent show a flash hint. */
+  onAlreadyFullSize?: () => void;
   page?: VerificationPage | null;
   onViewPageClick?: (page: VerificationPage) => void;
 }) {
@@ -1236,13 +1239,20 @@ export function AnchorTextFocusedImage({
           style={{ cursor: isDragging ? "grabbing" : isPannable ? "grab" : canExpand ? "zoom-in" : "default" }}
           onClick={e => {
             e.preventDefault();
-            e.stopPropagation();
             // Suppress click if user was dragging
             if (wasDragging.current) {
               wasDragging.current = false;
+              e.stopPropagation();
               return;
             }
-            if (canExpand) onImageClick?.();
+            if (canExpand) {
+              e.stopPropagation();
+              onImageClick?.();
+            } else if (imageFitInfo?.imageFitsCompletely) {
+              // Image already fits — flash a hint instead of silently doing nothing.
+              e.stopPropagation();
+              onAlreadyFullSize?.();
+            }
           }}
           aria-label={
             [isPannable && "Drag or click arrows to pan", canExpand && "click to view full size"]
@@ -1643,6 +1653,7 @@ function EvidenceTrayFooter({
   verifiedAt,
   showExpandHint,
   reviewDurationMs,
+  showFullSizeFlash,
 }: {
   status?: SearchStatus | null;
   searchAttempts?: SearchAttempt[];
@@ -1650,6 +1661,8 @@ function EvidenceTrayFooter({
   showExpandHint?: boolean;
   /** User review duration (ms). When provided, shows retroactive receipt: "Reviewed 5.2s" */
   reviewDurationMs?: number | null;
+  /** Briefly true when the user clicks an already-full-size keyhole image. */
+  showFullSizeFlash?: boolean;
 }) {
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
@@ -1685,11 +1698,31 @@ function EvidenceTrayFooter({
     <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500">
       <span>
         {outcomeLabel}
-        {showExpandHint && (
+        {showFullSizeFlash ? (
+          <>
+            <style>{`
+              @keyframes dc-flash-hint {
+                0% { opacity: 0; }
+                12% { opacity: 1; }
+                75% { opacity: 1; }
+                100% { opacity: 0; }
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .dc-flash-hint { animation: none !important; opacity: 1 !important; }
+              }
+            `}</style>
+            <span
+              className="dc-flash-hint font-bold text-blue-600 dark:text-blue-400"
+              style={{ animation: "dc-flash-hint 2s ease-out forwards" }}
+            >
+              {" · Already full size"}
+            </span>
+          </>
+        ) : showExpandHint ? (
           <span className="opacity-0 group-hover/ev-tray:opacity-100 transition-opacity duration-150">
             {" · Click to expand"}
           </span>
-        )}
+        ) : null}
       </span>
       <span>
         {reviewReceipt && <span style={reviewStyle}>{reviewReceipt}</span>}
@@ -1815,6 +1848,18 @@ export function EvidenceTray({
   const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
   const [keyholeImageFits, setKeyholeImageFits] = useState(false);
 
+  // Flash state: briefly shows "Already full size" when user clicks a keyhole that already fits.
+  const [showFullSizeFlash, setShowFullSizeFlash] = useState(false);
+  const fullSizeFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleAlreadyFullSize = useCallback(() => {
+    setShowFullSizeFlash(true);
+    if (fullSizeFlashTimer.current) clearTimeout(fullSizeFlashTimer.current);
+    fullSizeFlashTimer.current = setTimeout(() => setShowFullSizeFlash(false), 2000);
+  }, []);
+  useEffect(() => () => {
+    if (fullSizeFlashTimer.current) clearTimeout(fullSizeFlashTimer.current);
+  }, []);
+
   // Shared inner content
   const content = (
     <>
@@ -1824,6 +1869,7 @@ export function EvidenceTray({
           verification={verification}
           onImageClick={onImageClick}
           onFitStateChange={setKeyholeImageFits}
+          onAlreadyFullSize={handleAlreadyFullSize}
         />
       ) : isMiss && searchAttempts.length > 0 ? (
         <>
@@ -1849,8 +1895,11 @@ export function EvidenceTray({
           verifiedAt={verification?.verifiedAt}
           showExpandHint={!!onImageClick && !keyholeImageFits}
           reviewDurationMs={reviewDurationMs}
+          showFullSizeFlash={showFullSizeFlash}
         />
       )}
+
+
     </>
   );
 
@@ -1971,21 +2020,18 @@ export function InlineExpandedImage({
     hasSetInitialZoom.current = false;
   }
 
-  // On mobile, default to fit-to-screen zoom after image loads so the entire page
-  // is visible without scrolling — users can then pinch or use slider to zoom in.
-  // On desktop, keep natural pixel size (zoom = 1).
+  // Default to fit-to-screen zoom after image loads so the entire page is visible
+  // without scrolling. Users can then zoom in via slider, Ctrl+wheel, or pinch.
   // containerSize is state (not a ref) so this effect re-fires once ResizeObserver
   // has measured the container — no fragile timing dependency on render order.
   useEffect(() => {
     if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || hasSetInitialZoom.current) return;
     if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;
     hasSetInitialZoom.current = true;
-    if (isTouchDevice) {
-      // Fit to screen: scale so entire page fits in the container
-      const fit = Math.min(containerSize.width / naturalWidth, containerSize.height / naturalHeight);
-      if (fit < 1) setZoom(Math.max(EXPANDED_ZOOM_MIN, fit));
-    }
-  }, [fill, imageLoaded, naturalWidth, naturalHeight, isTouchDevice, containerSize]);
+    // Fit to screen: scale so entire page fits in the container
+    const fit = Math.min(containerSize.width / naturalWidth, containerSize.height / naturalHeight);
+    if (fit < 1) setZoom(Math.max(EXPANDED_ZOOM_MIN, fit));
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, containerSize]);
 
   // Clamp helper — shared by buttons, slider, pinch, and wheel
   const clampZoom = useCallback((z: number) => {
@@ -2070,6 +2116,19 @@ export function InlineExpandedImage({
   // Compute effective image width for zoom
   const zoomedWidth = fill && naturalWidth ? naturalWidth * zoom : undefined;
 
+  // Lock the outer container width while the range slider is being dragged so
+  // the absolutely-positioned zoom controls don't shift under the user's cursor.
+  // When maxWidth shrinks (zoom-out), the container's right edge moves left,
+  // pulling the controls along. minWidth >= maxWidth overrides the shrink.
+  const outerRef = useRef<HTMLDivElement>(null);
+  const [sliderLockWidth, setSliderLockWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (sliderLockWidth === null) return;
+    const unlock = () => setSliderLockWidth(null);
+    document.addEventListener("pointerup", unlock, { once: true });
+    return () => document.removeEventListener("pointerup", unlock);
+  }, [sliderLockWidth]);
+
   // Derive footer label — matches EvidenceTrayFooter logic
   const isMiss = status?.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
@@ -2100,13 +2159,16 @@ export function InlineExpandedImage({
 
   return (
     <div
+      ref={outerRef}
       className={cn(
         "mx-3 mb-3 animate-in fade-in-0 duration-150 group/expanded-img",
         fill && "flex-1 min-h-0 flex flex-col",
       )}
       style={
         zoomedWidth !== undefined
-          ? { maxWidth: Math.max(zoomedWidth, naturalWidth!) }
+          ? sliderLockWidth !== null
+            ? { width: sliderLockWidth, minWidth: sliderLockWidth, maxWidth: sliderLockWidth }
+            : { maxWidth: zoomedWidth }
           : naturalWidth !== null
             ? { maxWidth: naturalWidth }
             : undefined
@@ -2237,6 +2299,10 @@ export function InlineExpandedImage({
                   setZoom(clampZoom(Number(e.target.value) / 100));
                 }}
                 onClick={e => e.stopPropagation()}
+                onPointerDown={e => {
+                  e.stopPropagation();
+                  if (outerRef.current) setSliderLockWidth(outerRef.current.offsetWidth);
+                }}
                 onMouseDown={e => e.stopPropagation()}
                 onTouchStart={e => e.stopPropagation()}
                 className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer
@@ -2683,7 +2749,8 @@ function DefaultPopoverContent({
             </div>
           )}
 
-          {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray */}
+          {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray.
+              Same structure as the success block — page view does not depend on status. */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage
               src={evidenceSrc}
@@ -2711,7 +2778,7 @@ function DefaultPopoverContent({
               proofImageSrc={expandedImage?.src}
               reviewDurationMs={reviewDurationMs}
             />
-          ) : /* Show EvidenceTray for miss with search analysis or expandable page, or null */
+          ) : /* Fallback for miss without keyhole image: search analysis + optional page thumbnail */
           isMiss && (verification?.searchAttempts?.length || canExpandToPage) && verification ? (
             <EvidenceTray
               verification={verification}
@@ -3646,6 +3713,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       // --radix-popover-content-available-height, only measuring space
                       // on ONE side of the trigger) to allow filling the full viewport.
                       maxHeight: "calc(100dvh - 2rem)",
+                      // The inner InlineExpandedImage handles its own scrolling (with hidden
+                      // scrollbars). Override PopoverContent's default overflow-y-auto to
+                      // prevent a redundant outer scrollbar from appearing.
+                      overflowY: "hidden",
                     }
                   : popoverViewState === "expanded-evidence"
                     ? {
