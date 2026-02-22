@@ -4,6 +4,7 @@ import type { Citation } from "../types/index.js";
 import { sha1Hash } from "../utils/sha.js";
 import { AuthenticationError, type DeepCitationError, RateLimitError, ServerError, ValidationError } from "./errors.js";
 import type {
+  AttachmentResponse,
   CitationInput,
   ConvertFileInput,
   ConvertFileResponse,
@@ -269,7 +270,7 @@ export class DeepCitation {
     if (options?.attachmentId) formData.append("attachmentId", options.attachmentId);
     if (options?.filename) formData.append("filename", options.filename);
 
-    const response = await fetch(`${this.apiUrl}/prepareFile`, {
+    const response = await fetch(`${this.apiUrl}/prepareAttachment`, {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}` },
       body: formData,
@@ -386,7 +387,7 @@ export class DeepCitation {
   async prepareConvertedFile(options: PrepareConvertedFileOptions): Promise<UploadFileResponse> {
     this.logger.info?.("Preparing converted file", { attachmentId: options.attachmentId });
 
-    const response = await fetch(`${this.apiUrl}/prepareFile`, {
+    const response = await fetch(`${this.apiUrl}/prepareAttachment`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -447,7 +448,7 @@ export class DeepCitation {
       skipCache: options.skipCache,
     });
 
-    const response = await fetch(`${this.apiUrl}/prepareFile`, {
+    const response = await fetch(`${this.apiUrl}/prepareAttachment`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -849,6 +850,60 @@ export class DeepCitation {
 
     const result = (await response.json()) as DeleteAttachmentResponse;
     this.logger.info?.("Attachment deleted", { attachmentId: result.attachmentId });
+    return result;
+  }
+
+  /**
+   * Get full attachment metadata by ID.
+   *
+   * Returns the attachment's status, pages, verifications, and optional deep text items.
+   * Note: responses can be large for documents with many pages or verifications.
+   *
+   * @param attachmentId - The attachment ID to query
+   * @returns Full attachment metadata including pages and verifications
+   * @throws {ValidationError} When attachmentId is empty or missing (client-side)
+   * @throws {ValidationError} When the API returns a 4xx error (e.g., 404 not found, 400 bad request)
+   * @throws {ServerError} When the server encounters an internal error (5xx)
+   *
+   * @example
+   * ```typescript
+   * const attachment = await deepcitation.getAttachment("abc123");
+   * switch (attachment.status) {
+   *   case "ready":
+   *     console.log(`${attachment.pageCount} pages, ${Object.keys(attachment.verifications).length} verifications`);
+   *     break;
+   *   case "processing":
+   *     console.log("Attachment is still being processed");
+   *     break;
+   *   case "error":
+   *     console.log("Attachment processing failed");
+   *     break;
+   * }
+   * ```
+   */
+  async getAttachment(attachmentId: string): Promise<AttachmentResponse> {
+    if (!attachmentId) {
+      throw new ValidationError("attachmentId is required");
+    }
+
+    this.logger.info?.("Getting attachment", { attachmentId });
+
+    const response = await fetch(`${this.apiUrl}/getAttachment`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ attachmentId }),
+    });
+
+    if (!response.ok) {
+      this.logger.error?.("Get attachment failed", { attachmentId, status: response.status });
+      throw await createApiError(response, "Get attachment");
+    }
+
+    const result = (await response.json()) as AttachmentResponse;
+    this.logger.info?.("Get attachment complete", { attachmentId: result.id, status: result.status });
     return result;
   }
 }
