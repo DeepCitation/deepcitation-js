@@ -1963,8 +1963,6 @@ export function InlineExpandedImage({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
-  const isTouchDevice = useIsTouchDevice();
-
   // Zoom state — only active when fill=true (expanded-page mode).
   // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
   const [zoom, setZoom] = useState(1);
@@ -2171,13 +2169,15 @@ export function InlineExpandedImage({
         fill && "flex-1 min-h-0 flex flex-col",
       )}
       style={
-        zoomedWidth !== undefined
-          ? sliderLockWidth !== null
-            ? { width: sliderLockWidth, minWidth: sliderLockWidth, maxWidth: sliderLockWidth }
-            : { maxWidth: zoomedWidth }
-          : naturalWidth !== null
-            ? { maxWidth: naturalWidth }
-            : undefined
+        fill
+          ? undefined // fill mode: container fills popover width, image scrolls inside
+          : zoomedWidth !== undefined
+            ? sliderLockWidth !== null
+              ? { width: sliderLockWidth, minWidth: sliderLockWidth, maxWidth: sliderLockWidth }
+              : { maxWidth: zoomedWidth }
+            : naturalWidth !== null
+              ? { maxWidth: naturalWidth }
+              : undefined
       }
     >
       {/* Wrapper: relative so zoom controls can be positioned absolutely over the scroll area */}
@@ -2928,9 +2928,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Natural width of the expanded image (propagated from DefaultPopoverContent).
     // Used to size PopoverContent so floating-ui can position it correctly.
     const [expandedImageWidth, setExpandedImageWidth] = useState<number | null>(null);
-    // Computed sideOffset for expanded-page mode — positions the popover to span the full
-    // viewport height by anchoring its top edge near the viewport top (not just below the trigger).
-    const [expandedPageSideOffset, setExpandedPageSideOffset] = useState<number | null>(null);
 
     // Collapse the expanded image on ESC key (capture phase to intercept before Radix).
     // First Escape collapses the expanded view back to summary; second Escape (handled
@@ -2958,31 +2955,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       return () => releaseScrollLock();
     }, [isHovering]);
 
-    // When entering expanded-page mode, compute offsets that position the popover:
-    //   Y axis: top edge near viewport top (y≈8px) so the image fills the full height.
-    //   X axis: horizontally centered on the viewport (not the trigger).
-    //
-    // avoidCollisions is disabled for expanded-page to prevent floating-ui from
-    // overriding the vertical offset, so we must handle horizontal centering ourselves.
-    //
-    // Formulas (side="bottom", align="center"):
-    //   sideOffset  = MARGIN - triggerBottom
-    //   alignOffset = viewportCenterX - triggerCenterX
-    const [expandedPageAlignOffset, setExpandedPageAlignOffset] = useState<number | null>(null);
-    useLayoutEffect(() => {
-      if (popoverViewState !== "expanded-page") {
-        setExpandedPageSideOffset(null);
-        setExpandedPageAlignOffset(null);
-        return;
-      }
-      const trigger = triggerRef.current;
-      if (!trigger) return;
-      const rect = trigger.getBoundingClientRect();
-      setExpandedPageSideOffset(8 - rect.bottom);
-      const triggerCenterX = rect.left + rect.width / 2;
-      const viewportCenterX = window.innerWidth / 2;
-      setExpandedPageAlignOffset(Math.round(viewportCenterX - triggerCenterX));
-    }, [popoverViewState]);
 
     // Dismiss the popover and reset its view state in one step.
     // Replaces the old useEffect that watched isHovering — moving the reset into
@@ -3066,6 +3038,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     // ========== Popover Telemetry ==========
     // Track popover open/close for TtC telemetry events
+    // biome-ignore lint/correctness/useExhaustiveDependencies: firstSeenAtRef/verification are stable refs or read at call-time — only isHovering transitions should trigger this effect
     useEffect(() => {
       if (isHovering && firstSeenAtRef.current != null) {
         popoverOpenedAtRef.current = Date.now();
@@ -3105,7 +3078,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
         popoverOpenedAtRef.current = null;
       }
-    }, [isHovering, citationKey, firstSeenAtRef, verification]);
+    }, [isHovering, citationKey]);
 
     // Derive status from verification object
     const status = useMemo(() => getStatusFromVerification(verification), [verification]);
@@ -3678,29 +3651,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             <PopoverContent
               ref={setPopoverContentRef}
               id={popoverId}
-              // In expanded-page mode, force side="bottom" so our sideOffset formula is correct
-              // (popoverTop = triggerBottom + sideOffset). avoidCollisions is disabled so
-              // floating-ui doesn't override the computed position.
-              side={popoverViewState === "expanded-page" ? "bottom" : popoverPosition === "bottom" ? "bottom" : "top"}
-              avoidCollisions={popoverViewState !== "expanded-page"}
-              sideOffset={
-                popoverViewState === "expanded-page" && expandedPageSideOffset !== null
-                  ? expandedPageSideOffset
-                  : undefined
-              }
-              alignOffset={
-                popoverViewState === "expanded-page" && expandedPageAlignOffset !== null
-                  ? expandedPageAlignOffset
-                  : undefined
-              }
+              side={popoverPosition === "bottom" ? "bottom" : "top"}
               onPointerDownOutside={(e: Event) => e.preventDefault()}
               onInteractOutside={(e: Event) => e.preventDefault()}
               style={
                 popoverViewState === "expanded-page"
                   ? {
                       maxWidth: "calc(100dvw - 2rem)",
-                      // Clamp to image natural width + shell padding; fall back to
-                      // viewport width when dimensions are unknown (before image loads).
                       width:
                         expandedImageWidth !== null
                           ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
@@ -3714,7 +3671,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       // The inner InlineExpandedImage handles its own scrolling (with hidden
                       // scrollbars). Override PopoverContent's default overflow-y-auto to
                       // prevent a redundant outer scrollbar from appearing.
-                      overflowY: "hidden",
+                      overflowY: "hidden" as const,
                     }
                   : popoverViewState === "expanded-evidence"
                     ? {

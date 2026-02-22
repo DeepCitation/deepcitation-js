@@ -617,9 +617,12 @@ function DrawerSourceGroup({
  */
 function DrawerSourceHeading({
   citationGroups,
+  label,
   fallbackTitle,
 }: {
   citationGroups: SourceCitationGroup[];
+  /** Explicit label override — same as CitationDrawerTrigger's `label` prop */
+  label?: string;
   fallbackTitle: string;
 }) {
   if (citationGroups.length === 0) {
@@ -627,7 +630,8 @@ function DrawerSourceHeading({
   }
 
   const firstGroup = citationGroups[0];
-  const primaryName = firstGroup.sourceName?.trim() || fallbackTitle;
+  // Mirror CitationDrawerTrigger: label prop wins, then group.sourceName, then fallback
+  const primaryName = label?.trim() || firstGroup.sourceName?.trim() || fallbackTitle;
   const isUrlSource = !!firstGroup.sourceDomain;
   const overflowCount = citationGroups.length - 1;
 
@@ -687,6 +691,7 @@ export function CitationDrawer({
   onClose,
   citationGroups,
   title = "Citations",
+  label,
   // showMoreSection and maxVisibleItems are deprecated — accepted but ignored
   showMoreSection: _showMoreSection,
   maxVisibleItems: _maxVisibleItems,
@@ -775,6 +780,7 @@ export function CitationDrawer({
             <div className="flex-1 min-w-0">
               <DrawerSourceHeading
                 citationGroups={citationGroups}
+                label={label}
                 fallbackTitle={title}
               />
               {totalCitations > 0 && (

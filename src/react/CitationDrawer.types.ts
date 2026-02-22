@@ -45,6 +45,14 @@ export interface CitationDrawerProps {
   citationGroups: SourceCitationGroup[];
   /** Title for the drawer header */
   title?: string;
+  /**
+   * Label text override for the drawer heading (e.g., filename or URL).
+   * Works like CitationDrawerTrigger's `label` prop: when provided, overrides
+   * the auto-derived source name from citation groups. Use this to ensure
+   * the drawer heading shows the source identity (filename, domain) rather
+   * than citation content.
+   */
+  label?: string;
   /** @deprecated No longer used. The drawer always shows all items in a flat scrollable list. */
   showMoreSection?: boolean;
   /** @deprecated No longer used. The drawer always shows all items in a flat scrollable list. */

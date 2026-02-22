@@ -45,6 +45,7 @@ export const REVIEW_DWELL_THRESHOLD_MS = 2000;
  * - >= 60000ms:    ">60s"
  */
 export function formatTtc(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "instant";
   if (ms < TTC_INSTANT_THRESHOLD_MS) return "instant";
   if (ms >= TTC_MAX_DISPLAY_MS) return ">60s";
   if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -119,7 +120,7 @@ export interface CitationTimingResult {
   /** System TtC: time from component mount to verification resolution (ms) */
   timeToCertaintyMs: number | null;
   /** Ref to the firstSeenAt timestamp (exposed for popover telemetry in CitationComponent) */
-  firstSeenAtRef: React.RefObject<number | null>;
+  firstSeenAtRef: React.MutableRefObject<number | null>;
 }
 
 /**
@@ -146,9 +147,10 @@ export function useCitationTiming(
   const onTimingEventRef = useRef(onTimingEvent);
   onTimingEventRef.current = onTimingEvent;
 
-  // 1. On mount: record firstSeenAt, emit "citation_seen"
+  // 1. On mount (or citationKey change): record firstSeenAt, reset evidenceReadyFired, emit "citation_seen"
   useEffect(() => {
     firstSeenAtRef.current = Date.now();
+    evidenceReadyFiredRef.current = false;
     onTimingEventRef.current?.({
       event: "citation_seen",
       citationKey,
@@ -167,9 +169,6 @@ export function useCitationTiming(
       const now = Date.now();
       const computed = Math.max(0, now - firstSeenAtRef.current);
       setTtcMs(computed);
-
-      // Stamp on the verification object (mutation-safe per codebase pattern)
-      if (verification) verification.timeToCertaintyMs = computed;
 
       onTimingEventRef.current?.({
         event: "evidence_ready",
