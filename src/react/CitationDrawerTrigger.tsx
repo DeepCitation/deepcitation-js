@@ -1,4 +1,5 @@
-import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Verification } from "../types/verification.js";
 import type { FlatCitationItem } from "./CitationDrawer.utils.js";
 import type { SourceCitationGroup } from "./CitationDrawer.types.js";
