@@ -1887,8 +1887,15 @@ export function EvidenceTray({
     </>
   );
 
-  // Prefer keyhole expansion when present; fall back to page expansion.
-  const trayAction = onImageClick ?? onExpand;
+  // Mirror the keyhole button's click logic:
+  // - Keyhole present + fits completely → flash "already full size" hint
+  // - Keyhole present + expandable → expand keyhole image
+  // - No keyhole → fall back to page expansion
+  const trayAction = onImageClick
+    ? keyholeImageFits
+      ? handleAlreadyFullSize
+      : onImageClick
+    : onExpand;
 
   return (
     <div className="m-3">
@@ -1913,7 +1920,13 @@ export function EvidenceTray({
             "transition-opacity",
             borderClass,
           )}
-          aria-label={onImageClick ? "Click to expand verification image" : "Expand to full page"}
+          aria-label={
+            onImageClick
+              ? keyholeImageFits
+                ? "Verification image (already at full size)"
+                : "Click to expand verification image"
+              : "Expand to full page"
+          }
         >
           {content}
         </div>
@@ -3662,7 +3675,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               side={
                 popoverViewState === "expanded-page"
                   ? "bottom" // Always bottom for expanded — sideOffset positions it
-                  : popoverPosition === "bottom" ? "bottom" : "top"
+                  : popoverPosition === "bottom"
+                    ? "bottom"
+                    : "top"
               }
               sideOffset={expandedPageSideOffset}
               onPointerDownOutside={(e: Event) => e.preventDefault()}

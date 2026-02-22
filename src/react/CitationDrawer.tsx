@@ -48,11 +48,7 @@ import { FaviconImage } from "./VerificationLog.js";
  * Shows favicon (or letter avatar for documents), source name,
  * external link for URL sources, and citation count.
  */
-function SourceGroupHeader({
-  group,
-}: {
-  group: SourceCitationGroup;
-}) {
+function SourceGroupHeader({ group }: { group: SourceCitationGroup }) {
   const sourceName = group.sourceName || "Source";
   const firstCitation = group.citations[0]?.citation;
   const citationCount = group.citations.length;

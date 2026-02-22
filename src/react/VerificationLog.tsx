@@ -9,6 +9,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   DocumentIcon,
+  ExternalLinkIcon,
   GlobeIcon,
   MissIcon,
   SpinnerIcon,
@@ -17,6 +18,7 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
+import { isValidProofUrl } from "./urlUtils.js";
 
 import { cn, isUrlCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
@@ -104,9 +106,9 @@ export interface SourceContextHeaderProps {
    */
   onBack?: () => void;
   /**
-   * Validated proof URL to link to in the expanded view header.
-   * Only rendered when `onClose` is set (i.e., in expanded mode).
-   * Must be pre-validated — do not pass untrusted URLs.
+   * Proof URL to link to in the expanded view header.
+   * Rendered whenever a valid URL is provided.
+   * Validated internally via `isValidProofUrl()` — safe to pass untrusted input.
    */
   proofUrl?: string | null;
 }
@@ -317,6 +319,7 @@ export function SourceContextHeader({
   // but the pill also renders with a generic "Page" label for not_found citations where
   // verifiedPageNumber is null.
   const showPagePill = !!onExpand || !!onClose;
+  const validatedProofUrl = proofUrl ? isValidProofUrl(proofUrl) : null;
 
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
@@ -379,6 +382,20 @@ export function SourceContextHeader({
       </div>
       {/* Right: Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-2">
+        {validatedProofUrl && (
+          <a
+            href={validatedProofUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open proof in new tab"
+            className="shrink-0 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="size-4 block">
+              <ExternalLinkIcon />
+            </span>
+          </a>
+        )}
         {showPagePill && (
           <PagePill
             pageNumber={pageNumber ?? undefined}

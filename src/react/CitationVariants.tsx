@@ -353,11 +353,7 @@ export const SuperscriptCitation = forwardRef<HTMLSpanElement, SuperscriptCitati
           data-citation-id={citationKey}
           data-citation-instance={citationInstanceId}
           data-variant="superscript"
-          className={classNames(
-            "cursor-pointer font-medium transition-colors hover:underline",
-            statusClass,
-            className,
-          )}
+          className={classNames("cursor-pointer font-medium transition-colors hover:underline", statusClass, className)}
           style={{ fontSize: "0.65em", lineHeight: 0, position: "relative", top: "-0.65em", verticalAlign: "baseline" }}
           {...events}
           aria-label={`Citation ${displayText}`}

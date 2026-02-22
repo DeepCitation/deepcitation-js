@@ -486,7 +486,7 @@ describe("SourceContextHeader", () => {
   // ==========================================================================
 
   describe("Proof URL links", () => {
-    it("renders static page text when no onExpand and proof URL exists", () => {
+    it("does not render proof link when proofUrl prop is omitted (even if verification has proofUrl)", () => {
       const citation: Citation = {
         type: "document",
         attachmentId: "abc123",
@@ -504,10 +504,39 @@ describe("SourceContextHeader", () => {
         <SourceContextHeader citation={citation} verification={verification} />,
       );
 
-      // No external link — proof URLs are no longer rendered as links
+      // proofUrl prop not passed — no link rendered
       expect(queryByRole("link")).toBeNull();
       // Should show static page text instead
       expect(container.textContent).toContain("p.5");
+    });
+
+    it("renders proof link when valid proofUrl prop is passed", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 5,
+        lineIds: [12, 13],
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        label: "Document.pdf",
+        document: { verifiedPageNumber: 5 },
+      };
+
+      const { getByRole } = render(
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          proofUrl="https://api.deepcitation.com/proof/123"
+          onClose={() => {}}
+        />,
+      );
+
+      const link = getByRole("link", { name: /open proof in new tab/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "https://api.deepcitation.com/proof/123");
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
     });
 
     it("renders static text when proof URL is not available", () => {
@@ -566,7 +595,7 @@ describe("SourceContextHeader", () => {
       expect(queryByRole("link")).toBeNull();
     });
 
-    it("renders static page text for valid https proof URL from deepcitation.com (no external links)", () => {
+    it("does not render link when proofUrl prop is omitted even with deepcitation.com URL in verification", () => {
       const citation: Citation = {
         type: "document",
         attachmentId: "abc123",
@@ -583,10 +612,60 @@ describe("SourceContextHeader", () => {
         <SourceContextHeader citation={citation} verification={verification} />,
       );
 
-      // No external link — proof URLs are no longer rendered as links
+      // proofUrl prop not passed — no link rendered
       expect(queryByRole("link")).toBeNull();
       // Should show static page text
       expect(container.textContent).toContain("p.5");
+    });
+
+    it("blocks proof link when proofUrl prop contains javascript: protocol", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 5,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        label: "Document.pdf",
+        document: { verifiedPageNumber: 5 },
+      };
+
+      const { queryByRole } = render(
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          proofUrl="javascript:alert('XSS')"
+          onClose={() => {}}
+        />,
+      );
+
+      // Component-level validation blocks unsafe protocols
+      expect(queryByRole("link")).toBeNull();
+    });
+
+    it("blocks proof link when proofUrl prop contains untrusted domain", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 5,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        label: "Document.pdf",
+        document: { verifiedPageNumber: 5 },
+      };
+
+      const { queryByRole } = render(
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          proofUrl="https://evil.com/fake-proof"
+          onClose={() => {}}
+        />,
+      );
+
+      // Component-level validation blocks untrusted domains
+      expect(queryByRole("link")).toBeNull();
     });
 
     it("blocks proof URL from untrusted domain", () => {

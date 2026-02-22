@@ -1,41 +1,6 @@
 import { expect, test } from "@playwright/experimental-ct-react";
-import React, { useState } from "react";
-import { CitationDrawer } from "../../../src/react/CitationDrawer";
 import type { CitationDrawerItem } from "../../../src/react/CitationDrawer.types";
-import { groupCitationsBySource } from "../../../src/react/CitationDrawer.utils";
-import { CitationDrawerTrigger } from "../../../src/react/CitationDrawerTrigger";
-
-// =============================================================================
-// Test harness — wires trigger + drawer with shared props
-// =============================================================================
-
-function TriggerAndDrawer({
-  citations,
-  sourceLabelMap,
-}: {
-  citations: CitationDrawerItem[];
-  sourceLabelMap?: Record<string, string>;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const groups = groupCitationsBySource(citations, sourceLabelMap);
-
-  return (
-    <div data-testid="harness">
-      <CitationDrawerTrigger
-        citationGroups={groups}
-        onClick={() => setIsOpen(true)}
-        isOpen={isOpen}
-        sourceLabelMap={sourceLabelMap}
-      />
-      <CitationDrawer
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        citationGroups={groups}
-        sourceLabelMap={sourceLabelMap}
-      />
-    </div>
-  );
-}
+import { TriggerAndDrawer } from "../../../src/react/testing/TriggerAndDrawerHarness";
 
 // =============================================================================
 // Fixture data

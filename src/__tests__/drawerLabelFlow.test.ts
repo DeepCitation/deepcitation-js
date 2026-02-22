@@ -6,7 +6,6 @@
 import { describe, expect, it } from "@jest/globals";
 import type { CitationDrawerItem } from "../react/CitationDrawer.types";
 import {
-  computeStatusSummary,
   flattenCitations,
   groupCitationsBySource,
   lookupSourceLabel,

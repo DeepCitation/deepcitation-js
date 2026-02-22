@@ -455,10 +455,7 @@ export function useCitationDrawer(sourceLabelMap?: Record<string, string>) {
     setCitations(items);
   }, []);
 
-  const citationGroups = useMemo(
-    () => groupCitationsBySource(citations, sourceLabelMap),
-    [citations, sourceLabelMap],
-  );
+  const citationGroups = useMemo(() => groupCitationsBySource(citations, sourceLabelMap), [citations, sourceLabelMap]);
 
   return {
     isOpen,
