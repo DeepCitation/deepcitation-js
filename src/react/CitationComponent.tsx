@@ -2106,7 +2106,7 @@ export function InlineExpandedImage({
       )}
       style={
         zoomedWidth !== undefined
-          ? { maxWidth: zoomedWidth }
+          ? { maxWidth: Math.max(zoomedWidth, naturalWidth!) }
           : naturalWidth !== null
             ? { maxWidth: naturalWidth }
             : undefined
