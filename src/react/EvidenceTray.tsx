@@ -506,52 +506,6 @@ export function AnchorTextFocusedImage({
 }
 
 // =============================================================================
-// HUMANIZING MESSAGES (Issue #5)
-// =============================================================================
-
-/**
- * Get a conversational message for not-found or partial match states.
- * Uses the actual anchor text for context, truncating if needed.
- */
-export function getHumanizingMessage(
-  status: SearchStatus | null | undefined,
-  anchorText?: string,
-  expectedPage?: number,
-  foundPage?: number,
-): string | null {
-  if (!status) return null;
-
-  const MAX_ANCHOR_LENGTH = 30;
-  // Type guard: ensure anchorText is a string before using string methods
-  const safeAnchorText = typeof anchorText === "string" ? anchorText : null;
-  const displayText = safeAnchorText
-    ? safeAnchorText.length > MAX_ANCHOR_LENGTH
-      ? `"${safeAnchorText.slice(0, MAX_ANCHOR_LENGTH)}…"`
-      : `"${safeAnchorText}"`
-    : "this phrase";
-
-  switch (status) {
-    case "not_found":
-      return null; // Redundant — the red icon + "Not found" header already conveys this
-    case "found_on_other_page":
-      if (expectedPage && foundPage) {
-        return `Found ${displayText} on page ${foundPage} instead of page ${expectedPage}.`;
-      }
-      return `Found ${displayText} on a different page than expected.`;
-    case "found_on_other_line":
-      return `Found ${displayText} at a different position than expected.`;
-    case "partial_text_found":
-      return `Only part of ${displayText} was found.`;
-    case "first_word_found":
-      return `Only the beginning of ${displayText} was found.`;
-    case "found_anchor_text_only":
-      return `Found ${displayText}, but not the full surrounding context.`;
-    default:
-      return null;
-  }
-}
-
-// =============================================================================
 // EVIDENCE TRAY COMPONENTS
 // =============================================================================
 
@@ -849,7 +803,6 @@ export function InlineExpandedImage({
   // This ensures the initial-zoom effect re-fires once the container is measured.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const hasSetInitialZoom = useRef(false);
-  const hasScrolledToAnnotation = useRef(false);
 
   // Track container size via ResizeObserver (both width and height for fit-to-screen).
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
@@ -879,7 +832,6 @@ export function InlineExpandedImage({
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
     hasSetInitialZoom.current = false;
-    hasScrolledToAnnotation.current = false;
   }
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.
@@ -904,42 +856,33 @@ export function InlineExpandedImage({
     // Report zoomed dimensions so the popover sizes to the displayed image,
     // not the natural pixel width (which could be e.g. 1700px for a PDF page).
     onNaturalSize?.(Math.round(naturalWidth * fitZoom), Math.round(naturalHeight * fitZoom));
-  }, [fill, imageLoaded, naturalWidth, naturalHeight, containerSize, onNaturalSize]);
 
-  // Auto-scroll to annotation: after the fit-to-screen zoom is set, scroll the
-  // container so the phraseMatchDeepItem annotation is centered in view.
-  // Uses requestAnimationFrame to wait for the DOM to reflow at the new zoom level.
-  // Cleanup cancels the rAF to prevent stale callbacks during Activity reconnection.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref; verification/renderScale are read inside but don't need to re-trigger
-  useEffect(() => {
-    if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || !hasSetInitialZoom.current) return;
-    if (hasScrolledToAnnotation.current) return;
-
+    // Auto-scroll to annotation: after fit-to-screen zoom is computed, scroll
+    // the container so the phraseMatchDeepItem annotation is centered in view.
+    // Uses rAF to wait for the DOM to reflow at the new zoom level.
     const phraseItem = verification?.document?.phraseMatchDeepItem;
-    if (!phraseItem || !renderScale) return;
-
-    hasScrolledToAnnotation.current = true;
-
-    const rafId = requestAnimationFrame(() => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      const target = computeAnnotationScrollTarget(
-        phraseItem,
-        renderScale,
-        naturalWidth,
-        naturalHeight,
-        zoom,
-        container.clientWidth,
-        container.clientHeight,
-      );
-      if (target) {
-        container.scrollLeft = target.scrollLeft;
-        container.scrollTop = target.scrollTop;
-      }
-    });
-    return () => cancelAnimationFrame(rafId);
-  }, [fill, imageLoaded, naturalWidth, naturalHeight, zoom]);
+    if (phraseItem && renderScale) {
+      const effectiveZoom = fitZoom < 1 ? fitZoom : 1;
+      const rafId = requestAnimationFrame(() => {
+        const container = containerRef.current;
+        if (!container) return;
+        const target = computeAnnotationScrollTarget(
+          phraseItem,
+          renderScale,
+          naturalWidth,
+          naturalHeight,
+          effectiveZoom,
+          container.clientWidth,
+          container.clientHeight,
+        );
+        if (target) {
+          container.scrollLeft = target.scrollLeft;
+          container.scrollTop = target.scrollTop;
+        }
+      });
+      return () => cancelAnimationFrame(rafId);
+    }
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, containerSize, onNaturalSize]);
 
   // Clamp helper — shared by buttons, slider, pinch, and wheel.
   // Uses zoomFloor (not EXPANDED_ZOOM_MIN) so the lower bound respects the
@@ -1052,13 +995,14 @@ export function InlineExpandedImage({
   const showZoomControls = fill && imageLoaded && naturalWidth !== null;
 
   // Compute transform-origin from annotation position (fill mode only).
-  // This makes the fade+scale animation originate from the annotation location.
-  const annotationOrigin = useMemo(() => {
-    if (!fill || !renderScale || !naturalWidth || !naturalHeight) return null;
-    const phraseItem = verification?.document?.phraseMatchDeepItem;
-    if (!phraseItem) return null;
-    return computeAnnotationOriginPercent(phraseItem, renderScale, naturalWidth, naturalHeight);
-  }, [fill, renderScale, naturalWidth, naturalHeight, verification?.document?.phraseMatchDeepItem]);
+  // Inline computation (no useMemo) — computeAnnotationOriginPercent is pure
+  // arithmetic, cheaper than the overhead of a hook in this effect-heavy component.
+  const annotationPhraseItem =
+    fill && renderScale && naturalWidth && naturalHeight ? (verification?.document?.phraseMatchDeepItem ?? null) : null;
+  const annotationOrigin =
+    annotationPhraseItem && renderScale && naturalWidth && naturalHeight
+      ? computeAnnotationOriginPercent(annotationPhraseItem, renderScale, naturalWidth, naturalHeight)
+      : null;
 
   const footerEl = (
     <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">

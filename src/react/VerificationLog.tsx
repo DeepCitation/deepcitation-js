@@ -9,11 +9,12 @@ import {
   CheckIcon,
   ChevronRightIcon,
   DocumentIcon,
+  ExternalLinkIcon,
   GlobeIcon,
   MissIcon,
   SpinnerIcon,
   XCircleIcon,
-  XIcon
+  XIcon,
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
@@ -319,7 +320,6 @@ export function SourceContextHeader({
   // verifiedPageNumber is null.
   const showPagePill = !!onExpand || !!onClose;
   const validatedProofUrl = proofUrl ? isValidProofUrl(proofUrl) : null;
-
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
 
@@ -381,6 +381,20 @@ export function SourceContextHeader({
       </div>
       {/* Right: Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-2">
+        {validatedProofUrl && (
+          <a
+            href={validatedProofUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open proof in new tab"
+            className="shrink-0 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="size-3.5 block">
+              <ExternalLinkIcon />
+            </span>
+          </a>
+        )}
         {showPagePill && (
           <PagePill
             pageNumber={pageNumber ?? undefined}

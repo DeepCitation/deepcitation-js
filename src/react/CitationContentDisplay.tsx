@@ -1,17 +1,18 @@
 /**
  * Citation content display — variant rendering logic.
  *
- * Contains all variant-specific rendering (chip, superscript, text, badge,
- * linter, brackets) plus the utility functions they share.
+ * Renders variant-specific citation content (chip, superscript, text, badge,
+ * linter, brackets). Shared rendering utilities live in CitationContentDisplay.utils.ts.
  *
  * @packageDocumentation
  */
 
 import type React from "react";
 import type { CitationStatus } from "../types/citation.js";
+import { getStatusHoverClasses } from "./CitationContentDisplay.utils.js";
 import { CitationStatusIndicator, type CitationStatusIndicatorProps } from "./CitationStatusIndicator.js";
 import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
-import type { BaseCitationProps, CitationContent, CitationRenderProps, CitationVariant } from "./types.js";
+import type { CitationContent, CitationRenderProps, CitationVariant } from "./types.js";
 import { cn, isUrlCitation } from "./utils.js";
 
 // =============================================================================
@@ -25,106 +26,6 @@ import { cn, isUrlCitation } from "./utils.js";
 const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
   (e.target as HTMLImageElement).style.display = "none";
 };
-
-/** Variants that handle their own hover styling (don't need parent hover) */
-// biome-ignore lint/style/useComponentExportOnlyModules: utility constant exported alongside component
-export const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge", "linter", "superscript"]);
-
-/**
- * Get status-aware hover classes for contained hover styling.
- * Used by chip, superscript, and other variants that need hover contained within their bounds.
- *
- * @param isVerified - Whether the citation is verified
- * @param isPartialMatch - Whether it's a partial match
- * @param isMiss - Whether it's not found
- * @param shouldShowSpinner - Whether to show loading spinner
- * @param opacity - Opacity level for hover backgrounds:
- *   - 15 (default): Used for contained variants (chip, superscript) where hover is
- *     applied directly to the element. Higher opacity provides better visual feedback
- *     since the element itself is the hover target.
- *   - 10: Used for the outer trigger wrapper on variants without contained hover.
- *     Lower opacity is more subtle since the wrapper may extend beyond the visual element.
- * @returns Array of Tailwind class strings for hover states
- */
-// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
-export function getStatusHoverClasses(
-  isVerified: boolean,
-  isPartialMatch: boolean,
-  isMiss: boolean,
-  shouldShowSpinner: boolean,
-  opacity: 10 | 15 = 15,
-): (string | false)[] {
-  const opacitySuffix = opacity === 10 ? "/10" : "/15";
-  return [
-    isVerified &&
-      !isPartialMatch &&
-      !shouldShowSpinner &&
-      `hover:bg-green-600${opacitySuffix} dark:hover:bg-green-500${opacitySuffix}`,
-    isPartialMatch &&
-      !shouldShowSpinner &&
-      `hover:bg-amber-500${opacitySuffix} dark:hover:bg-amber-500${opacitySuffix}`,
-    isMiss && !shouldShowSpinner && `hover:bg-red-500${opacitySuffix} dark:hover:bg-red-400${opacitySuffix}`,
-    (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) && "hover:bg-gray-200 dark:hover:bg-gray-700",
-  ];
-}
-
-/**
- * Get the default content type based on variant.
- */
-// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
-export function getDefaultContent(variant: CitationVariant): CitationContent {
-  switch (variant) {
-    case "chip":
-    case "text":
-    case "brackets":
-    case "linter":
-      return "anchorText";
-    case "badge":
-      return "source";
-    default:
-      return "number";
-  }
-}
-
-/**
- * Strip leading/trailing brackets from text.
- * Handles cases where LLM output includes brackets in anchorText.
- */
-// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
-export function stripBrackets(text: string): string {
-  return text.replace(/^\[+\s*/, "").replace(/\s*\]+$/, "");
-}
-
-/**
- * Get display text based on content type and citation data.
- * Returns "1" as fallback if no citation number is available.
- */
-// biome-ignore lint/style/useComponentExportOnlyModules: utility function exported alongside component
-export function getDisplayText(
-  citation: BaseCitationProps["citation"],
-  content: CitationContent,
-  fallbackDisplay?: string | null,
-): string {
-  if (content === "indicator") {
-    return "";
-  }
-
-  if (content === "anchorText") {
-    const raw = citation.anchorText?.toString() || citation.citationNumber?.toString() || fallbackDisplay || "1";
-    return stripBrackets(raw);
-  }
-
-  if (content === "source") {
-    // Source content: show siteName or domain (URL citations only)
-    if (isUrlCitation(citation)) {
-      return citation.siteName || citation.domain || citation.anchorText?.toString() || "Source";
-    }
-    return citation.anchorText?.toString() || "Source";
-  }
-
-  // content === "number"
-  return citation.citationNumber?.toString() || "1";
-}
 
 // =============================================================================
 // CITATION CONTENT DISPLAY COMPONENT

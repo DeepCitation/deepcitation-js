@@ -1,13 +1,13 @@
 import React, { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CitationStatus } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
+import { CitationContentDisplay } from "./CitationContentDisplay.js";
 import {
-  CitationContentDisplay,
   getDefaultContent,
   getDisplayText,
   getStatusHoverClasses,
   VARIANTS_WITH_OWN_HOVER,
-} from "./CitationContentDisplay.js";
+} from "./CitationContentDisplay.utils.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
 import type { CitationStatusIndicatorProps, SpinnerStage } from "./CitationStatusIndicator.js";
 import { getStatusFromVerification, getStatusLabel } from "./citationStatus.js";
@@ -276,8 +276,8 @@ export interface CitationComponentProps extends BaseCitationProps {
 // CitationContentDisplay — imported from ./CitationContentDisplay.js
 
 // ExpandedImageSource, normalizeScreenshotSrc, resolveExpandedImage,
-// AnchorTextFocusedImage, EvidenceTray, InlineExpandedImage, SearchAnalysisSummary,
-// getHumanizingMessage — imported from ./EvidenceTray.js (canonical location)
+// AnchorTextFocusedImage, EvidenceTray, InlineExpandedImage, SearchAnalysisSummary
+// — imported from ./EvidenceTray.js (canonical location)
 
 // DefaultPopoverContent, PopoverViewState — imported from ./DefaultPopoverContent.js (canonical location)
 

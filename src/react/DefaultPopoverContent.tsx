@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CitationStatus } from "../types/citation.js";
+import type { SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { getStatusLabel } from "./citationStatus.js";
 import {
@@ -22,13 +23,7 @@ import {
   POPOVER_MORPH_EXPAND_MS,
   POPOVER_WIDTH,
 } from "./constants.js";
-import {
-  EvidenceTray,
-  getHumanizingMessage,
-  InlineExpandedImage,
-  normalizeScreenshotSrc,
-  resolveExpandedImage,
-} from "./EvidenceTray.js";
+import { EvidenceTray, InlineExpandedImage, normalizeScreenshotSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { SpinnerIcon } from "./icons.js";
@@ -37,7 +32,7 @@ import {
   getUrlAccessExplanation,
   mapSearchStatusToFetchStatus,
   mapUrlAccessStatusToFetchStatus,
-  UrlAccessExplanationSection,
+  type UrlAccessExplanation,
 } from "./urlAccessExplanation.js";
 import { isValidProofUrl } from "./urlUtils.js";
 import { cn, isUrlCitation } from "./utils.js";
@@ -88,6 +83,97 @@ export interface PopoverContentProps {
   onExpandedWidthChange?: (width: number | null) => void;
   /** Ref tracking which state preceded expanded-page, for correct Escape back-navigation. */
   prevBeforeExpandedPageRef?: React.MutableRefObject<"summary" | "expanded-evidence">;
+}
+
+// =============================================================================
+// PRIVATE HELPERS
+// =============================================================================
+
+/**
+ * Get a conversational message for not-found or partial match states.
+ * Uses the actual anchor text for context, truncating if needed.
+ */
+function getHumanizingMessage(
+  status: SearchStatus | null | undefined,
+  anchorText?: string,
+  expectedPage?: number,
+  foundPage?: number,
+): string | null {
+  if (!status) return null;
+
+  const MAX_ANCHOR_LENGTH = 30;
+  // Type guard: ensure anchorText is a string before using string methods
+  const safeAnchorText = typeof anchorText === "string" ? anchorText : null;
+  const displayText = safeAnchorText
+    ? safeAnchorText.length > MAX_ANCHOR_LENGTH
+      ? `"${safeAnchorText.slice(0, MAX_ANCHOR_LENGTH)}…"`
+      : `"${safeAnchorText}"`
+    : "this phrase";
+
+  switch (status) {
+    case "not_found":
+      return null; // Redundant — the red icon + "Not found" header already conveys this
+    case "found_on_other_page":
+      if (expectedPage && foundPage) {
+        return `Found ${displayText} on page ${foundPage} instead of page ${expectedPage}.`;
+      }
+      return `Found ${displayText} on a different page than expected.`;
+    case "found_on_other_line":
+      return `Found ${displayText} at a different position than expected.`;
+    case "partial_text_found":
+      return `Only part of ${displayText} was found.`;
+    case "first_word_found":
+      return `Only the beginning of ${displayText} was found.`;
+    case "found_anchor_text_only":
+      return `Found ${displayText}, but not the full surrounding context.`;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Renders a colored banner explaining why a URL could not be accessed.
+ * Amber background for blocked states (potentially resolvable), red for errors.
+ */
+function UrlAccessExplanationSection({ explanation }: { explanation: UrlAccessExplanation }) {
+  const isAmber = explanation.colorScheme === "amber";
+  return (
+    <div
+      className={cn(
+        "px-4 py-3 border-b",
+        isAmber
+          ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+          : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
+      )}
+      role="status"
+      aria-label={`${isAmber ? "Warning" : "Error"}: ${explanation.title}`}
+    >
+      <div
+        className={cn(
+          "text-sm font-medium mb-1 flex items-center gap-1.5",
+          isAmber ? "text-amber-800 dark:text-amber-200" : "text-red-800 dark:text-red-200",
+        )}
+      >
+        <span className="shrink-0 text-xs" aria-hidden="true">
+          {isAmber ? "\u26A0" : "\u2718"}
+        </span>
+        {explanation.title}
+      </div>
+      <p className={cn("text-xs", isAmber ? "text-amber-700 dark:text-amber-300" : "text-red-700 dark:text-red-300")}>
+        {explanation.description}
+      </p>
+      {explanation.suggestion && (
+        <p
+          className={cn(
+            "text-xs mt-1.5 opacity-80",
+            isAmber ? "text-amber-700 dark:text-amber-300" : "text-red-700 dark:text-red-300",
+          )}
+        >
+          {explanation.suggestion}
+        </p>
+      )}
+    </div>
+  );
 }
 
 // =============================================================================
