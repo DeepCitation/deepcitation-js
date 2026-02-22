@@ -3018,6 +3018,20 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       [ref],
     );
 
+    // For expanded-page mode, compute a sideOffset that positions the popover
+    // at 1rem from the viewport top. floating-ui's shift middleware only shifts
+    // on the main axis (horizontal for side="bottom"), not vertically. We use the
+    // offset middleware instead by computing the exact vertical offset needed.
+    const expandedPageSideOffset = useMemo(() => {
+      if (popoverViewState !== "expanded-page") return undefined;
+      const triggerRect = triggerRef.current?.getBoundingClientRect();
+      if (!triggerRect) return undefined;
+      const VIEWPORT_MARGIN = 16; // 1rem
+      // For side="bottom": popover.top = trigger.bottom + sideOffset
+      // We want popover.top = VIEWPORT_MARGIN
+      return VIEWPORT_MARGIN - triggerRect.bottom;
+    }, [popoverViewState]);
+
     const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
     const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
 
@@ -3645,7 +3659,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             <PopoverContent
               ref={setPopoverContentRef}
               id={popoverId}
-              side={popoverPosition === "bottom" ? "bottom" : "top"}
+              side={
+                popoverViewState === "expanded-page"
+                  ? "bottom" // Always bottom for expanded — sideOffset positions it
+                  : popoverPosition === "bottom" ? "bottom" : "top"
+              }
+              sideOffset={expandedPageSideOffset}
               onPointerDownOutside={(e: Event) => e.preventDefault()}
               onInteractOutside={(e: Event) => e.preventDefault()}
               style={
