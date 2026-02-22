@@ -10,8 +10,7 @@
  * @packageDocumentation
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SearchAttempt } from "../types/search.js";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CitationTimingEvent, TimingMetrics } from "../types/timing.js";
 import type { Verification } from "../types/verification.js";
 
@@ -74,9 +73,7 @@ export function getTtcTier(ms: number): "fast" | "normal" | "slow" {
  * @param verifications - Record of citationKey → Verification
  * @returns TimingMetrics, or null if no verifications have resolved
  */
-export function computeTimingMetrics(
-  verifications: Record<string, Verification>,
-): TimingMetrics | null {
+export function computeTimingMetrics(verifications: Record<string, Verification>): TimingMetrics | null {
   const entries = Object.values(verifications);
   if (entries.length === 0) return null;
 
@@ -148,7 +145,7 @@ export function useCitationTiming(
   const firstSeenAtRef = useRef<number | null>(null);
   const evidenceReadyFiredRef = useRef(false);
   const [ttcMs, setTtcMs] = useState<number | null>(null);
-  const [reviewDurationMs, setReviewDurationMs] = useState<number | null>(null);
+  const [_reviewDurationMs, _setReviewDurationMs] = useState<number | null>(null);
 
   // Stable callback ref to avoid re-triggering effects when consumer recreates the callback
   const onTimingEventRef = useRef(onTimingEvent);
@@ -163,14 +160,11 @@ export function useCitationTiming(
       timestamp: firstSeenAtRef.current,
       elapsedSinceSeenMs: null,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
-  }, []);
+  }, [citationKey]);
 
   // 2. When verification transitions to resolved: compute TtC, emit "evidence_ready"
   const hasResult =
-    verification?.status != null &&
-    verification.status !== "pending" &&
-    verification.status !== "loading";
+    verification?.status != null && verification.status !== "pending" && verification.status !== "loading";
 
   useEffect(() => {
     if (hasResult && !evidenceReadyFiredRef.current && firstSeenAtRef.current != null) {
@@ -191,19 +185,16 @@ export function useCitationTiming(
         verificationStatus: verification?.status ?? null,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to hasResult transition
-  }, [hasResult]);
+  }, [hasResult, citationKey, verification]);
 
-  return { timeToCertaintyMs: ttcMs, reviewDurationMs, firstSeenAtRef };
+  return { timeToCertaintyMs: ttcMs, reviewDurationMs: _reviewDurationMs, firstSeenAtRef };
 }
 
 /**
  * Hook that computes aggregate TtC metrics from a VerificationRecord.
  * Re-computes when verifications change (new results arrive).
  */
-export function useTtcMetrics(
-  verifications: Record<string, Verification> | null | undefined,
-): TimingMetrics | null {
+export function useTtcMetrics(verifications: Record<string, Verification> | null | undefined): TimingMetrics | null {
   return useMemo(() => {
     if (!verifications) return null;
     return computeTimingMetrics(verifications);

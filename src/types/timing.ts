@@ -41,12 +41,7 @@ export interface TimingMetrics {
  */
 export interface CitationTimingEvent {
   /** What happened */
-  event:
-    | "citation_seen"
-    | "evidence_ready"
-    | "popover_opened"
-    | "popover_closed"
-    | "citation_reviewed";
+  event: "citation_seen" | "evidence_ready" | "popover_opened" | "popover_closed" | "citation_reviewed";
   /** Unique key for this citation */
   citationKey: string;
   /** Wall-clock timestamp (ms epoch) */

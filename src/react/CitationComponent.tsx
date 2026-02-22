@@ -1,16 +1,4 @@
 import React, { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-
-// React 19.2+ Activity component for prefetching - falls back to Fragment if unavailable
-const Activity =
-  (
-    React as {
-      Activity?: React.ComponentType<{
-        mode: "visible" | "hidden";
-        children: React.ReactNode;
-      }>;
-    }
-  ).Activity ?? (({ children }: { mode: "visible" | "hidden"; children: React.ReactNode }) => <>{children}</>);
-
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { MatchedVariation, SearchAttempt, SearchStatus } from "../types/search.js";
@@ -46,9 +34,10 @@ import {
   POPOVER_WIDTH_VAR,
   SPINNER_TIMEOUT_MS,
   TOUCH_CLICK_DEBOUNCE_MS,
+  TTC_FAST_TEXT_STYLE,
+  TTC_TEXT_STYLE,
   VERIFIED_COLOR_STYLE,
 } from "./constants.js";
-import { TTC_FAST_TEXT_STYLE, TTC_TEXT_STYLE } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
@@ -59,6 +48,7 @@ import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
+import { formatTtc, getTtcTier, REVIEW_DWELL_THRESHOLD_MS, useCitationTiming } from "./timingUtils.js";
 import type {
   BaseCitationProps,
   CitationBehaviorActions,
@@ -73,9 +63,19 @@ import type {
   UrlFetchStatus,
 } from "./types.js";
 import { isValidProofUrl } from "./urlUtils.js";
-import { formatTtc, getTtcTier, REVIEW_DWELL_THRESHOLD_MS, useCitationTiming } from "./timingUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
 import { SourceContextHeader, StatusHeader, VerificationLogTimeline } from "./VerificationLog.js";
+
+// React 19.2+ Activity component for prefetching - falls back to Fragment if unavailable
+const Activity =
+  (
+    React as {
+      Activity?: React.ComponentType<{
+        mode: "visible" | "hidden";
+        children: React.ReactNode;
+      }>;
+    }
+  ).Activity ?? (({ children }: { mode: "visible" | "hidden"; children: React.ReactNode }) => <>{children}</>);
 
 // Re-export types for convenience
 export type {
@@ -1655,14 +1655,9 @@ function EvidenceTrayFooter({
   const dateStr = formatted?.display ?? "";
 
   // Format the review time receipt (retroactive — appears on next popover open after dwell ≥ 2s)
-  const reviewReceipt =
-    reviewDurationMs != null
-      ? `Reviewed ${formatTtc(reviewDurationMs)}`
-      : null;
+  const reviewReceipt = reviewDurationMs != null ? `Reviewed ${formatTtc(reviewDurationMs)}` : null;
   const reviewStyle =
-    reviewDurationMs != null && getTtcTier(reviewDurationMs) === "fast"
-      ? TTC_FAST_TEXT_STYLE
-      : TTC_TEXT_STYLE;
+    reviewDurationMs != null && getTtcTier(reviewDurationMs) === "fast" ? TTC_FAST_TEXT_STYLE : TTC_TEXT_STYLE;
 
   // Derive outcome label
   const isMiss = status === "not_found";
@@ -2931,51 +2926,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       setExpandedImageWidth(null);
     }, []);
 
-    // ========== Popover Telemetry ==========
-    // Track popover open/close for TtC telemetry events
-    useEffect(() => {
-      if (isHovering && firstSeenAtRef.current != null) {
-        popoverOpenedAtRef.current = Date.now();
-        onTimingEventRef.current?.({
-          event: "popover_opened",
-          citationKey,
-          timestamp: popoverOpenedAtRef.current,
-          elapsedSinceSeenMs: popoverOpenedAtRef.current - firstSeenAtRef.current,
-          verificationStatus: verification?.status ?? null,
-        });
-      } else if (!isHovering && popoverOpenedAtRef.current != null) {
-        const now = Date.now();
-        const dwellMs = now - popoverOpenedAtRef.current;
-
-        onTimingEventRef.current?.({
-          event: "popover_closed",
-          citationKey,
-          timestamp: now,
-          elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
-          popoverDurationMs: dwellMs,
-          verificationStatus: verification?.status ?? null,
-        });
-
-        // Dwell threshold: if user spent ≥2s AND hasn't already been marked reviewed
-        if (dwellMs >= REVIEW_DWELL_THRESHOLD_MS && !reviewedRef.current) {
-          reviewedRef.current = true;
-          setReviewDurationMs(dwellMs);
-          onTimingEventRef.current?.({
-            event: "citation_reviewed",
-            citationKey,
-            timestamp: now,
-            elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
-            popoverDurationMs: dwellMs,
-            verificationStatus: verification?.status ?? null,
-            userTtcMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : undefined,
-          });
-        }
-
-        popoverOpenedAtRef.current = null;
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally tracking isHovering transitions
-    }, [isHovering]);
-
     // Track if popover was already open before current interaction (for mobile/lazy mode).
     // Lifecycle:
     // 1. Set in handleTouchStart to capture isHovering state BEFORE the touch triggers any changes
@@ -3038,7 +2988,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
 
     // ========== TtC Timing ==========
-    const { timeToCertaintyMs, firstSeenAtRef } = useCitationTiming(citationKey, verification, onTimingEvent);
+    const { firstSeenAtRef } = useCitationTiming(citationKey, verification, onTimingEvent);
     const popoverOpenedAtRef = useRef<number | null>(null);
     const reviewedRef = useRef(false);
     const [reviewDurationMs, setReviewDurationMs] = useState<number | null>(null);
@@ -3046,6 +2996,50 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Stable ref for onTimingEvent to avoid re-triggering effects
     const onTimingEventRef = useRef(onTimingEvent);
     onTimingEventRef.current = onTimingEvent;
+
+    // ========== Popover Telemetry ==========
+    // Track popover open/close for TtC telemetry events
+    useEffect(() => {
+      if (isHovering && firstSeenAtRef.current != null) {
+        popoverOpenedAtRef.current = Date.now();
+        onTimingEventRef.current?.({
+          event: "popover_opened",
+          citationKey,
+          timestamp: popoverOpenedAtRef.current,
+          elapsedSinceSeenMs: popoverOpenedAtRef.current - firstSeenAtRef.current,
+          verificationStatus: verification?.status ?? null,
+        });
+      } else if (!isHovering && popoverOpenedAtRef.current != null) {
+        const now = Date.now();
+        const dwellMs = now - popoverOpenedAtRef.current;
+
+        onTimingEventRef.current?.({
+          event: "popover_closed",
+          citationKey,
+          timestamp: now,
+          elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
+          popoverDurationMs: dwellMs,
+          verificationStatus: verification?.status ?? null,
+        });
+
+        // Dwell threshold: if user spent ≥2s AND hasn't already been marked reviewed
+        if (dwellMs >= REVIEW_DWELL_THRESHOLD_MS && !reviewedRef.current) {
+          reviewedRef.current = true;
+          setReviewDurationMs(dwellMs);
+          onTimingEventRef.current?.({
+            event: "citation_reviewed",
+            citationKey,
+            timestamp: now,
+            elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
+            popoverDurationMs: dwellMs,
+            verificationStatus: verification?.status ?? null,
+            userTtcMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : undefined,
+          });
+        }
+
+        popoverOpenedAtRef.current = null;
+      }
+    }, [isHovering, citationKey, firstSeenAtRef, verification]);
 
     // Derive status from verification object
     const status = useMemo(() => getStatusFromVerification(verification), [verification]);
