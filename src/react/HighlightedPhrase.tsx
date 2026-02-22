@@ -1,12 +1,5 @@
-import { safeSplit } from "../utils/regexSafety.js";
 import { ANCHOR_HIGHLIGHT_STYLE, MIN_WORD_DIFFERENCE } from "./constants.js";
-
-/** Count whitespace-delimited words in a string. */
-function wordCount(s: string): number {
-  const trimmed = s.trim();
-  if (trimmed.length === 0) return 0;
-  return safeSplit(trimmed, /\s+/).length;
-}
+import { wordCount } from "./overlayGeometry.js";
 
 /**
  * Renders fullPhrase with optional anchorText highlighted using the same

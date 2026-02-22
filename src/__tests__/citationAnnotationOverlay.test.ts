@@ -1,10 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { isValidOverlayGeometry, toPercentRect, wordCount } from "../react/overlayGeometry";
 import type { DeepTextItem } from "../types/boxes";
-import {
-  isValidOverlayGeometry,
-  toPercentRect,
-  wordCount,
-} from "../react/CitationAnnotationOverlay";
 
 describe("CitationAnnotationOverlay utilities", () => {
   describe("wordCount", () => {
@@ -88,16 +84,13 @@ describe("CitationAnnotationOverlay utilities", () => {
     }
 
     it("converts valid coordinates to percentage strings", () => {
-      // PDF coords: x=100, y=600 (bottom-up), w=200, h=50
-      // Image coords: imgX=200, imgY=800-1200=-400 → clamped to 0, imgW=400, imgH=100
-      // Actually, let's use simpler coords:
       // x=50, y=400 (PDF bottom-up), w=100, h=25
       // imgX = 50*2 = 100, imgY = 800 - 400*2 = 0, imgW = 100*2 = 200, imgH = 25*2 = 50
       const result = toPercentRect(makeItem(50, 400, 100, 25), scale, imgW, imgH);
       expect(result).toEqual({
-        left: "10%",   // 100/1000
-        top: "0%",     // 0/800
-        width: "20%",  // 200/1000
+        left: "10%", // 100/1000
+        top: "0%", // 0/800
+        width: "20%", // 200/1000
         height: "6.25%", // 50/800
       });
     });
@@ -114,15 +107,15 @@ describe("CitationAnnotationOverlay utilities", () => {
       // x=-50 → imgX = -100 → clamped to 0
       const result = toPercentRect(makeItem(-50, 400, 100, 25), scale, imgW, imgH);
       expect(result).not.toBeNull();
-      expect(result!.left).toBe("0%");
+      expect(result?.left).toBe("0%");
     });
 
     it("clamps coordinates that exceed image bounds", () => {
       // x=450, w=200 → imgX=900, imgRight=1300 → clamped to 1000
       const result = toPercentRect(makeItem(450, 400, 200, 25), scale, imgW, imgH);
       expect(result).not.toBeNull();
-      expect(result!.left).toBe("90%");  // 900/1000
-      expect(result!.width).toBe("10%"); // (1000-900)/1000, clamped right edge
+      expect(result?.left).toBe("90%"); // 900/1000
+      expect(result?.width).toBe("10%"); // (1000-900)/1000, clamped right edge
     });
 
     it("produces zero-width rect when fully out of bounds", () => {
@@ -131,7 +124,7 @@ describe("CitationAnnotationOverlay utilities", () => {
       // width = 1000-1000 = 0
       const result = toPercentRect(makeItem(600, 400, 100, 25), scale, imgW, imgH);
       expect(result).not.toBeNull();
-      expect(result!.width).toBe("0%");
+      expect(result?.width).toBe("0%");
     });
   });
 });
