@@ -118,8 +118,6 @@ export function computeTimingMetrics(verifications: Record<string, Verification>
 export interface CitationTimingResult {
   /** System TtC: time from component mount to verification resolution (ms) */
   timeToCertaintyMs: number | null;
-  /** User review duration from the first dwell-qualified popover close (ms) */
-  reviewDurationMs: number | null;
   /** Ref to the firstSeenAt timestamp (exposed for popover telemetry in CitationComponent) */
   firstSeenAtRef: React.RefObject<number | null>;
 }
@@ -143,7 +141,6 @@ export function useCitationTiming(
   const firstSeenAtRef = useRef<number | null>(null);
   const evidenceReadyFiredRef = useRef(false);
   const [ttcMs, setTtcMs] = useState<number | null>(null);
-  const [_reviewDurationMs, _setReviewDurationMs] = useState<number | null>(null);
 
   // Stable callback ref to avoid re-triggering effects when consumer recreates the callback
   const onTimingEventRef = useRef(onTimingEvent);
@@ -185,7 +182,7 @@ export function useCitationTiming(
     }
   }, [hasResult, citationKey, verification]);
 
-  return { timeToCertaintyMs: ttcMs, reviewDurationMs: _reviewDurationMs, firstSeenAtRef };
+  return { timeToCertaintyMs: ttcMs, firstSeenAtRef };
 }
 
 /**

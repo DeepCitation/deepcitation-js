@@ -34,8 +34,6 @@ import {
   POPOVER_WIDTH_VAR,
   SPINNER_TIMEOUT_MS,
   TOUCH_CLICK_DEBOUNCE_MS,
-  TTC_FAST_TEXT_STYLE,
-  TTC_TEXT_STYLE,
   VERIFIED_COLOR_STYLE,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
@@ -48,7 +46,7 @@ import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
-import { formatTtc, getTtcTier, REVIEW_DWELL_THRESHOLD_MS, useCitationTiming } from "./timingUtils.js";
+import { REVIEW_DWELL_THRESHOLD_MS, useCitationTiming } from "./timingUtils.js";
 import type {
   BaseCitationProps,
   CitationBehaviorActions,
@@ -1652,25 +1650,17 @@ function EvidenceTrayFooter({
   searchAttempts,
   verifiedAt,
   showExpandHint,
-  reviewDurationMs,
   showFullSizeFlash,
 }: {
   status?: SearchStatus | null;
   searchAttempts?: SearchAttempt[];
   verifiedAt?: Date | string | null;
   showExpandHint?: boolean;
-  /** User review duration (ms). When provided, shows retroactive receipt: "Reviewed 5.2s" */
-  reviewDurationMs?: number | null;
   /** Briefly true when the user clicks an already-full-size keyhole image. */
   showFullSizeFlash?: boolean;
 }) {
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
-
-  // Format the review time receipt (retroactive — appears on next popover open after dwell ≥ 2s)
-  const reviewReceipt = reviewDurationMs != null ? `Reviewed ${formatTtc(reviewDurationMs)}` : null;
-  const reviewStyle =
-    reviewDurationMs != null && getTtcTier(reviewDurationMs) === "fast" ? TTC_FAST_TEXT_STYLE : TTC_TEXT_STYLE;
 
   // Derive outcome label
   const isMiss = status === "not_found";
@@ -1724,11 +1714,7 @@ function EvidenceTrayFooter({
           </span>
         ) : null}
       </span>
-      <span>
-        {reviewReceipt && <span style={reviewStyle}>{reviewReceipt}</span>}
-        {reviewReceipt && dateStr && " · "}
-        {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
-      </span>
+      {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
     </div>
   );
 }
@@ -1832,15 +1818,12 @@ export function EvidenceTray({
   onExpand,
   onImageClick,
   proofImageSrc,
-  reviewDurationMs,
 }: {
   verification: Verification | null;
   status: CitationStatus;
   onExpand?: () => void;
   onImageClick?: () => void;
   proofImageSrc?: string;
-  /** User review duration (ms) for retroactive TtC receipt display */
-  reviewDurationMs?: number | null;
 }) {
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const isMiss = status.isMiss;
@@ -1894,7 +1877,6 @@ export function EvidenceTray({
           searchAttempts={searchAttempts}
           verifiedAt={verification?.verifiedAt}
           showExpandHint={!!onImageClick && !keyholeImageFits}
-          reviewDurationMs={reviewDurationMs}
           showFullSizeFlash={showFullSizeFlash}
         />
       )}
@@ -1903,22 +1885,25 @@ export function EvidenceTray({
     </>
   );
 
+  // Prefer keyhole expansion when present; fall back to page expansion.
+  const trayAction = onImageClick ?? onExpand;
+
   return (
     <div className="m-3">
-      {onExpand ? (
+      {trayAction ? (
         /* Interactive: clickable with hover CTA */
         <div
           role="button"
           tabIndex={0}
           onClick={e => {
             e.stopPropagation();
-            onExpand();
+            trayAction();
           }}
           onKeyDown={e => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              onExpand();
+              trayAction();
             }
           }}
           className={cn(
@@ -1926,7 +1911,7 @@ export function EvidenceTray({
             "transition-opacity",
             borderClass,
           )}
-          aria-label="Expand for details"
+          aria-label={onImageClick ? "Click to expand verification image" : "Expand to full page"}
         >
           {content}
         </div>
@@ -1986,6 +1971,11 @@ export function InlineExpandedImage({
   // Ref mirror of zoom for touch event handlers (avoids stale closures in pinch gesture)
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+  // Dynamic zoom floor: on narrow viewports the fit-to-screen zoom may be below
+  // EXPANDED_ZOOM_MIN (e.g. 29% for a 1700px image on a 550px viewport).
+  // This floor feeds into the slider min, zoom-out disabled check, and clampZoom
+  // so the user can't zoom below the level that fits the viewport width.
+  const [zoomFloor, setZoomFloor] = useState(EXPANDED_ZOOM_MIN);
   // Container size as state (not ref) so that ResizeObserver updates trigger re-renders.
   // This ensures the initial-zoom effect re-fires once the container is measured.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
@@ -2017,26 +2007,38 @@ export function InlineExpandedImage({
     setNaturalWidth(null);
     setNaturalHeight(null);
     setZoom(1);
+    setZoomFloor(EXPANDED_ZOOM_MIN);
     hasSetInitialZoom.current = false;
   }
 
-  // Default to fit-to-screen zoom after image loads so the entire page is visible
-  // without scrolling. Users can then zoom in via slider, Ctrl+wheel, or pinch.
-  // containerSize is state (not a ref) so this effect re-fires once ResizeObserver
-  // has measured the container — no fragile timing dependency on render order.
+  // Fit-to-screen: scale the page image to fit the available width on initial load.
+  // Uses the VIEWPORT width (minus popover margins + shell padding) as the reference
+  // rather than the current container — the container still reflects the previous
+  // evidence-width popover and will morph after we report the zoomed dimensions.
+  // Height may overflow; the scroll container handles vertical panning (matching the
+  // existing behaviour at 50 % zoom on wide screens where vertical scroll is expected).
   useEffect(() => {
     if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || hasSetInitialZoom.current) return;
     if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;
     hasSetInitialZoom.current = true;
-    // Fit to screen: scale so entire page fits in the container
-    const fit = Math.min(containerSize.width / naturalWidth, containerSize.height / naturalHeight);
-    if (fit < 1) setZoom(Math.max(EXPANDED_ZOOM_MIN, fit));
-  }, [fill, imageLoaded, naturalWidth, naturalHeight, containerSize]);
+    // Max image width the popover can provide: viewport - 2rem outer margin - shell px.
+    const maxImageWidth = typeof window !== "undefined"
+      ? window.innerWidth - 32 - EXPANDED_IMAGE_SHELL_PX
+      : containerSize.width;
+    const fitZoom = Math.min(1, Math.max(0.1, maxImageWidth / naturalWidth));
+    if (fitZoom < 1) setZoom(fitZoom);
+    setZoomFloor(Math.min(EXPANDED_ZOOM_MIN, fitZoom));
+    // Report zoomed dimensions so the popover sizes to the displayed image,
+    // not the natural pixel width (which could be e.g. 1700px for a PDF page).
+    onNaturalSize?.(Math.round(naturalWidth * fitZoom), Math.round(naturalHeight * fitZoom));
+  }, [fill, imageLoaded, naturalWidth, naturalHeight, containerSize, onNaturalSize]);
 
-  // Clamp helper — shared by buttons, slider, pinch, and wheel
+  // Clamp helper — shared by buttons, slider, pinch, and wheel.
+  // Uses zoomFloor (not EXPANDED_ZOOM_MIN) so the lower bound respects the
+  // fit-to-screen zoom on narrow viewports where it may be < 50%.
   const clampZoom = useCallback((z: number) => {
-    return Math.max(EXPANDED_ZOOM_MIN, Math.min(EXPANDED_ZOOM_MAX, Math.round(z * 100) / 100));
-  }, []);
+    return Math.max(zoomFloor, Math.min(EXPANDED_ZOOM_MAX, Math.round(z * 100) / 100));
+  }, [zoomFloor]);
 
   const handleZoomIn = useCallback(() => {
     setZoom(z => clampZoom(z + EXPANDED_ZOOM_STEP));
@@ -2231,7 +2233,10 @@ export function InlineExpandedImage({
                   setImageLoaded(true);
                   setNaturalWidth(w);
                   setNaturalHeight(h);
-                  onNaturalSize?.(w, h);
+                  // In fill mode, defer reporting to the fit-to-screen effect so the
+                  // popover gets zoomed (displayed) dimensions, not the natural pixel
+                  // width which would make the popover expand to nearly full viewport.
+                  if (!fill) onNaturalSize?.(w, h);
                 }}
                 draggable={false}
               />
@@ -2279,7 +2284,7 @@ export function InlineExpandedImage({
                   e.stopPropagation();
                   handleZoomOut();
                 }}
-                disabled={zoom <= EXPANDED_ZOOM_MIN}
+                disabled={zoom <= zoomFloor}
                 className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
                 aria-label="Zoom out"
               >
@@ -2290,7 +2295,7 @@ export function InlineExpandedImage({
               {/* Range slider — draggable zoom control */}
               <input
                 type="range"
-                min={EXPANDED_ZOOM_MIN * 100}
+                min={Math.round(zoomFloor * 100)}
                 max={EXPANDED_ZOOM_MAX * 100}
                 step={5}
                 value={Math.round(zoom * 100)}
@@ -2382,8 +2387,6 @@ interface PopoverContentProps {
   expandedImageSrcOverride?: string | null;
   /** Reports the expanded image's natural width (or null on collapse) so the parent can size PopoverContent. */
   onExpandedWidthChange?: (width: number | null) => void;
-  /** User review duration (ms) for retroactive TtC receipt in EvidenceTrayFooter */
-  reviewDurationMs?: number | null;
 }
 
 function DefaultPopoverContent({
@@ -2398,7 +2401,6 @@ function DefaultPopoverContent({
   onViewStateChange,
   expandedImageSrcOverride,
   onExpandedWidthChange,
-  reviewDurationMs,
 }: PopoverContentProps) {
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
@@ -2418,9 +2420,7 @@ function DefaultPopoverContent({
 
   // Suppress page expand when page image dimensions are known and already fit within
   // the evidence view constraints (≤480px wide, ≤600px tall) — expanding adds no value.
-  const pageFitsInEvidence =
-    expandedImage?.dimensions && expandedImage.dimensions.width <= 480 && expandedImage.dimensions.height <= 600;
-  const canExpandToPage = !!expandedImage && !pageFitsInEvidence;
+  const canExpandToPage = !!expandedImage;
 
   // Track the natural width of the currently displayed expanded image.
   // Pre-set from known dimensions when entering an expanded state; confirmed by
@@ -2443,15 +2443,12 @@ function DefaultPopoverContent({
   useEffect(() => {
     if (viewState === "summary") {
       setWidth(null);
-    } else if (viewState === "expanded-page" && expandedImage?.dimensions?.width) {
-      setWidth(expandedImage.dimensions.width);
     } else if (viewState === "expanded-evidence") {
       const w = verification?.document?.verificationImageDimensions?.width;
       if (w) setWidth(w);
     }
   }, [
     viewState,
-    expandedImage?.dimensions?.width,
     verification?.document?.verificationImageDimensions?.width,
     setWidth,
   ]);
@@ -2672,7 +2669,7 @@ function DefaultPopoverContent({
               status={status}
               onExpand={canExpandToPage ? handleExpand : undefined}
               onImageClick={handleKeyholeClick}
-              reviewDurationMs={reviewDurationMs}
+
             />
           )}
         </div>
@@ -2776,7 +2773,7 @@ function DefaultPopoverContent({
               onExpand={canExpandToPage ? handleExpand : undefined}
               onImageClick={handleKeyholeClick}
               proofImageSrc={expandedImage?.src}
-              reviewDurationMs={reviewDurationMs}
+
             />
           ) : /* Fallback for miss without keyhole image: search analysis + optional page thumbnail */
           isMiss && (verification?.searchAttempts?.length || canExpandToPage) && verification ? (
@@ -2785,7 +2782,7 @@ function DefaultPopoverContent({
               status={status}
               onExpand={canExpandToPage ? handleExpand : undefined}
               proofImageSrc={expandedImage?.src}
-              reviewDurationMs={reviewDurationMs}
+
             />
           ) : null}
         </div>
@@ -3058,7 +3055,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const { firstSeenAtRef } = useCitationTiming(citationKey, verification, onTimingEvent);
     const popoverOpenedAtRef = useRef<number | null>(null);
     const reviewedRef = useRef(false);
-    const [reviewDurationMs, setReviewDurationMs] = useState<number | null>(null);
 
     // Stable ref for onTimingEvent to avoid re-triggering effects
     const onTimingEventRef = useRef(onTimingEvent);
@@ -3092,7 +3088,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         // Dwell threshold: if user spent ≥2s AND hasn't already been marked reviewed
         if (dwellMs >= REVIEW_DWELL_THRESHOLD_MS && !reviewedRef.current) {
           reviewedRef.current = true;
-          setReviewDurationMs(dwellMs);
           onTimingEventRef.current?.({
             event: "citation_reviewed",
             citationKey,
@@ -3629,7 +3624,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             onViewStateChange={setPopoverViewState}
             expandedImageSrcOverride={customExpandedSrc}
             onExpandedWidthChange={setExpandedImageWidth}
-            reviewDurationMs={reviewDurationMs}
           />
         </CitationErrorBoundary>
       );
