@@ -611,7 +611,7 @@ const DotIndicator = ({
 }) => (
   <span
     className={cn(
-      "inline-block ml-1 rounded-full [text-decoration:none] [vertical-align:0.1em]",
+      "inline-block ml-0.5 rounded-full [text-decoration:none] [vertical-align:0.1em]",
       DOT_COLORS[color],
       pulse && "animate-pulse",
     )}
