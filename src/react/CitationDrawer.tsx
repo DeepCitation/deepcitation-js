@@ -29,6 +29,7 @@ import {
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
+import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ExternalLinkIcon } from "./icons.js";
 import { sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";
@@ -206,6 +207,8 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     }
   }, [defaultExpanded]);
 
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   const anchorText = citation.anchorText?.toString();
   const fullPhrase = citation.fullPhrase;
 
@@ -368,7 +371,9 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
         className="grid transition-[grid-template-rows] duration-150"
         style={{
           gridTemplateRows: isExpanded ? "1fr" : "0fr",
-          transitionTimingFunction: isExpanded ? EASE_EXPAND : EASE_COLLAPSE,
+          ...(prefersReducedMotion
+            ? { transitionDuration: "0ms" }
+            : { transitionTimingFunction: isExpanded ? EASE_EXPAND : EASE_COLLAPSE }),
         }}
       >
         <div className="overflow-hidden" style={{ minHeight: 0 }}>

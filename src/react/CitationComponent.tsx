@@ -52,6 +52,7 @@ import { formatCaptureDate } from "./dateUtils.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
+import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { CheckIcon, SpinnerIcon, WarningIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
@@ -129,7 +130,14 @@ const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
 /** Extra px beyond image natural width for the expanded popover shell (mx-3 margins + borders). */
 const EXPANDED_IMAGE_SHELL_PX = 32;
 
-/** Tolerance factor for coordinate scaling sanity checks (5% overflow for rounding errors) */
+/**
+ * Tolerance factor for coordinate scaling sanity checks.
+ * PDF text coordinates are extracted at a different resolution than the proof image,
+ * so converting between coordinate spaces introduces floating-point rounding errors.
+ * A 5% tolerance (1.05×) absorbs these rounding differences — empirically sufficient
+ * to avoid false rejections while still catching genuinely out-of-bounds coordinates
+ * that would indicate a dimension mismatch between the PDF and proof image.
+ */
 const SCALING_TOLERANCE = 1.05;
 
 // =============================================================================
@@ -2363,6 +2371,17 @@ function DefaultPopoverContent({
     [setWidth],
   );
 
+  // Skip morph animations when the user prefers reduced motion (OS accessibility setting).
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  /** Build the morph transition string, respecting prefers-reduced-motion. */
+  const morphTransition = (isExpanded: boolean): string => {
+    if (prefersReducedMotion) return "none";
+    return isExpanded
+      ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
+      : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`;
+  };
+
   // Tracks which state we entered expanded-page from, so onCollapse can return there.
   // "expanded-evidence" → expanded-page → back: returns to expanded-evidence (no InlineExpandedImage remount, no animation).
   // "summary" → expanded-page → back: returns to summary.
@@ -2497,9 +2516,7 @@ function DefaultPopoverContent({
                 : "calc(100dvw - 2rem)"
               : POPOVER_WIDTH,
             maxWidth: "100%",
-            transition: isExpanded
-              ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
-              : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`,
+            transition: morphTransition(isExpanded),
             // Full-page only: flex column layout with inherited maxHeight from PopoverContent.
             // No forced height — the popover sizes to content, capped by the viewport boundary.
             // Small images keep the popover compact; large images grow to the maxHeight cap.
@@ -2588,9 +2605,7 @@ function DefaultPopoverContent({
                 : "calc(100dvw - 2rem)"
               : POPOVER_WIDTH,
             maxWidth: "100%",
-            transition: isExpanded
-              ? `width ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}, height ${POPOVER_MORPH_EXPAND_MS}ms ${EASE_EXPAND}`
-              : `width ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}, height ${POPOVER_MORPH_COLLAPSE_MS}ms ${EASE_COLLAPSE}`,
+            transition: morphTransition(isExpanded),
             ...(isFullPage && {
               display: "flex",
               flexDirection: "column" as const,

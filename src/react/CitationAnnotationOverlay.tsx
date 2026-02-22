@@ -10,10 +10,41 @@ import {
   SPOTLIGHT_OVERLAY_COLOR,
 } from "./constants.js";
 
+/** Maximum input length for wordCount to prevent excessive memory use from split(). */
+const MAX_WORD_COUNT_INPUT_LENGTH = 10_000;
+
 /** Count whitespace-delimited words in a string. */
 function wordCount(s: string): number {
   const trimmed = s.trim();
-  return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
+  if (trimmed.length === 0) return 0;
+  if (trimmed.length > MAX_WORD_COUNT_INPUT_LENGTH) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+/** Clamp a number to the range [min, max]. */
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(value, max));
+}
+
+/**
+ * Validates that render scale and image dimensions are positive finite numbers.
+ * Returns false if any value would cause division by zero or NaN propagation.
+ */
+function isValidOverlayGeometry(
+  renderScale: { x: number; y: number },
+  imageNaturalWidth: number,
+  imageNaturalHeight: number,
+): boolean {
+  return (
+    Number.isFinite(renderScale.x) &&
+    Number.isFinite(renderScale.y) &&
+    renderScale.x > 0 &&
+    renderScale.y > 0 &&
+    Number.isFinite(imageNaturalWidth) &&
+    Number.isFinite(imageNaturalHeight) &&
+    imageNaturalWidth > 0 &&
+    imageNaturalHeight > 0
+  );
 }
 
 /**
@@ -22,17 +53,35 @@ function wordCount(s: string): number {
  *
  * PDF y-axis is bottom-up; image y-axis is top-down, so we flip:
  *   imageY = imageNaturalHeight − (item.y × renderScale.y)
+ *
+ * All outputs are clamped to [0, 100]% to prevent overlays from bleeding
+ * outside the image bounds due to rounding errors in PDF coordinates.
  */
 function toPercentRect(
   item: DeepTextItem,
   renderScale: { x: number; y: number },
   imageNaturalWidth: number,
   imageNaturalHeight: number,
-): { left: string; top: string; width: string; height: string } {
-  const imgX = item.x * renderScale.x;
-  const imgY = imageNaturalHeight - item.y * renderScale.y;
-  const imgW = item.width * renderScale.x;
-  const imgH = item.height * renderScale.y;
+): { left: string; top: string; width: string; height: string } | null {
+  if (!isValidOverlayGeometry(renderScale, imageNaturalWidth, imageNaturalHeight)) {
+    return null;
+  }
+
+  // Clamp edges independently so negative PDF coords don't shift the origin
+  // while leaving the far edge unbounded.
+  const rawX = item.x * renderScale.x;
+  const rawY = imageNaturalHeight - item.y * renderScale.y;
+  const rawW = item.width * renderScale.x;
+  const rawH = item.height * renderScale.y;
+
+  const imgX = clamp(rawX, 0, imageNaturalWidth);
+  const imgRight = clamp(rawX + rawW, 0, imageNaturalWidth);
+  const imgY = clamp(rawY, 0, imageNaturalHeight);
+  const imgBottom = clamp(rawY + rawH, 0, imageNaturalHeight);
+
+  const imgW = imgRight - imgX;
+  const imgH = imgBottom - imgY;
+
   return {
     left: `${(imgX / imageNaturalWidth) * 100}%`,
     top: `${(imgY / imageNaturalHeight) * 100}%`,
@@ -68,6 +117,9 @@ export function CitationAnnotationOverlay({
   fullPhrase?: string | null;
 }) {
   const rect = toPercentRect(phraseMatchDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight);
+  // Bail out if geometry is invalid (zero dimensions, NaN, Infinity, etc.)
+  if (!rect) return null;
+
   const bracketColor = highlightColor === "amber" ? CITATION_BRACKET_AMBER : CITATION_BRACKET_BLUE;
 
   // Compute pixel height for bracket width calculation
@@ -130,16 +182,21 @@ export function CitationAnnotationOverlay({
       />
 
       {/* Anchor text highlight (amber background) */}
-      {showAnchor && (
-        <div
-          style={{
-            position: "absolute",
-            ...toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight),
-            backgroundColor: ANCHOR_HIGHLIGHT_COLOR,
-            ...NONE,
-          }}
-        />
-      )}
+      {showAnchor &&
+        (() => {
+          const anchorRect = toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight);
+          if (!anchorRect) return null;
+          return (
+            <div
+              style={{
+                position: "absolute",
+                ...anchorRect,
+                backgroundColor: ANCHOR_HIGHLIGHT_COLOR,
+                ...NONE,
+              }}
+            />
+          );
+        })()}
     </div>
   );
 }
