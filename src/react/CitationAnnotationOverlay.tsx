@@ -9,37 +9,7 @@ import {
   MIN_WORD_DIFFERENCE,
   SPOTLIGHT_OVERLAY_COLOR,
 } from "./constants.js";
-
-/** Count whitespace-delimited words in a string. */
-function wordCount(s: string): number {
-  const trimmed = s.trim();
-  return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
-}
-
-/**
- * Converts a DeepTextItem (PDF coords) to percentage-based CSS position
- * relative to the image's natural dimensions.
- *
- * PDF y-axis is bottom-up; image y-axis is top-down, so we flip:
- *   imageY = imageNaturalHeight − (item.y × renderScale.y)
- */
-function toPercentRect(
-  item: DeepTextItem,
-  renderScale: { x: number; y: number },
-  imageNaturalWidth: number,
-  imageNaturalHeight: number,
-): { left: string; top: string; width: string; height: string } {
-  const imgX = item.x * renderScale.x;
-  const imgY = imageNaturalHeight - item.y * renderScale.y;
-  const imgW = item.width * renderScale.x;
-  const imgH = item.height * renderScale.y;
-  return {
-    left: `${(imgX / imageNaturalWidth) * 100}%`,
-    top: `${(imgY / imageNaturalHeight) * 100}%`,
-    width: `${(imgW / imageNaturalWidth) * 100}%`,
-    height: `${(imgH / imageNaturalHeight) * 100}%`,
-  };
-}
+import { toPercentRect, wordCount } from "./overlayGeometry.js";
 
 const NONE: React.CSSProperties = { pointerEvents: "none" };
 
@@ -68,6 +38,9 @@ export function CitationAnnotationOverlay({
   fullPhrase?: string | null;
 }) {
   const rect = toPercentRect(phraseMatchDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight);
+  // Bail out if geometry is invalid (zero dimensions, NaN, Infinity, etc.)
+  if (!rect) return null;
+
   const bracketColor = highlightColor === "amber" ? CITATION_BRACKET_AMBER : CITATION_BRACKET_BLUE;
 
   // Compute pixel height for bracket width calculation
@@ -81,6 +54,10 @@ export function CitationAnnotationOverlay({
     fullPhrase &&
     anchorTextDeepItem.text?.toLowerCase() !== phraseMatchDeepItem.text?.toLowerCase() &&
     wordCount(fullPhrase) - wordCount(anchorText) >= MIN_WORD_DIFFERENCE;
+
+  const anchorRect = showAnchor
+    ? toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight)
+    : null;
 
   return (
     <div
@@ -130,11 +107,11 @@ export function CitationAnnotationOverlay({
       />
 
       {/* Anchor text highlight (amber background) */}
-      {showAnchor && (
+      {anchorRect && (
         <div
           style={{
             position: "absolute",
-            ...toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight),
+            ...anchorRect,
             backgroundColor: ANCHOR_HIGHLIGHT_COLOR,
             ...NONE,
           }}

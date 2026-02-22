@@ -158,12 +158,22 @@ export function useDragToPan(options: { direction?: "x" | "xy" } = {}): {
     updateScrollState();
   }, [updateScrollState]);
 
+  // Stable ref to finishDrag so the global mouseup listener doesn't need to
+  // re-attach every time finishDrag gets a new identity (which happens when
+  // updateScrollState changes). Without this, each render cycle would
+  // remove + re-add the document-level listener.
+  const finishDragRef = useRef(finishDrag);
+  useEffect(() => {
+    finishDragRef.current = finishDrag;
+  }, [finishDrag]);
+
   // Global mouseup catches releases outside the container (image drags, mouse leaving window, etc.)
   // Without this, isPressed stays true and any future mousemove causes phantom panning.
   useEffect(() => {
-    document.addEventListener("mouseup", finishDrag);
-    return () => document.removeEventListener("mouseup", finishDrag);
-  }, [finishDrag]);
+    const handler = () => finishDragRef.current();
+    document.addEventListener("mouseup", handler);
+    return () => document.removeEventListener("mouseup", handler);
+  }, []);
 
   const onMouseUp = finishDrag;
   const onMouseLeave = finishDrag;
