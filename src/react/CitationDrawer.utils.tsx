@@ -2,6 +2,7 @@ import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
+import { isPartialSearchStatus } from "./citationStatus.js";
 // Import icon components for JSX rendering in getStatusInfo
 import {
   CheckIcon as CheckIconComponent,
@@ -10,11 +11,90 @@ import {
 } from "./icons.js";
 import { isUrlCitation } from "./utils.js";
 
+// =========
+// Utilities: sourceLabelMap lookup
+// =========
+
+/**
+ * Look up a friendly display label from the sourceLabelMap for a citation.
+ * Tries citation.attachmentId first, then citation.url.
+ */
+export function lookupSourceLabel(
+  citation: { attachmentId?: string; url?: string } | undefined,
+  sourceLabelMap: Record<string, string> | undefined,
+): string | undefined {
+  if (!sourceLabelMap || !citation) return undefined;
+  if (citation.attachmentId && sourceLabelMap[citation.attachmentId]) {
+    return sourceLabelMap[citation.attachmentId];
+  }
+  if (citation.url && sourceLabelMap[citation.url]) {
+    return sourceLabelMap[citation.url];
+  }
+  return undefined;
+}
+
+/**
+ * Resolve source labels for an array of citation groups.
+ * Returns new group objects with `sourceName` set to the resolved label
+ * (from sourceLabelMap) when available, or the original sourceName otherwise.
+ * No-ops when map is undefined/empty.
+ */
+export function resolveGroupLabels(
+  groups: SourceCitationGroup[],
+  sourceLabelMap: Record<string, string> | undefined,
+): SourceCitationGroup[] {
+  if (!sourceLabelMap || Object.keys(sourceLabelMap).length === 0) return groups;
+  return groups.map(group => {
+    const firstCitation = group.citations[0]?.citation;
+    const labelOverride = lookupSourceLabel(firstCitation, sourceLabelMap);
+    if (!labelOverride) return group;
+    return { ...group, sourceName: labelOverride };
+  });
+}
+
+/**
+ * Get the primary source name from citation groups.
+ * Uses the first group's sourceName, truncated to 25 chars.
+ * Falls back to "Source" if empty.
+ *
+ * This is the canonical source name computation used by both
+ * CitationDrawerTrigger and DrawerSourceHeading. The heading renders
+ * the "+N" overflow separately in a styled span, so this function
+ * returns only the primary name (no overflow suffix).
+ */
+export function getPrimarySourceName(citationGroups: SourceCitationGroup[]): string {
+  if (citationGroups.length === 0) return "Sources";
+  const firstName = citationGroups[0].sourceName?.trim() || "Source";
+  return firstName.length > 25 ? `${firstName.slice(0, 25)}...` : firstName;
+}
+
+/**
+ * Generate a smart default label from citation groups.
+ * 1 group → show source name; 2+ groups → "firstName +N"; truncate names > 25 chars.
+ *
+ * Used by CitationDrawerTrigger for the single-line label text.
+ * The drawer heading uses getPrimarySourceName() directly since it renders
+ * the "+N" overflow count in a separate styled element.
+ */
+export function generateDefaultLabel(citationGroups: SourceCitationGroup[]): string {
+  const name = getPrimarySourceName(citationGroups);
+  if (citationGroups.length <= 1) return name;
+  return `${name} +${citationGroups.length - 1}`;
+}
+
 /**
  * Groups citations by their source domain/name.
  * Returns an array of SourceCitationGroup objects.
+ *
+ * @param citations - Array of citation items to group
+ * @param sourceLabelMap - Optional map of attachmentId/URL to friendly display label.
+ *   When provided, group sourceName values are pre-resolved so downstream components
+ *   never need to call lookupSourceLabel().
  */
-export function groupCitationsBySource(citations: CitationDrawerItem[]): SourceCitationGroup[] {
+export function groupCitationsBySource(
+  citations: CitationDrawerItem[],
+  sourceLabelMap?: Record<string, string>,
+): SourceCitationGroup[] {
   const groups = new Map<string, CitationDrawerItem[]>();
 
   for (const item of citations) {
@@ -31,7 +111,7 @@ export function groupCitationsBySource(citations: CitationDrawerItem[]): SourceC
   }
 
   // Convert map to array of SourceCitationGroup
-  return Array.from(groups.entries()).map(([_key, items]) => {
+  const result = Array.from(groups.entries()).map(([_key, items]) => {
     const firstCitation = items[0].citation;
     const firstVerification = items[0].verification;
     return {
@@ -48,6 +128,7 @@ export function groupCitationsBySource(citations: CitationDrawerItem[]): SourceC
       additionalCount: items.length - 1,
     };
   });
+  return resolveGroupLabels(result, sourceLabelMap);
 }
 
 /**
@@ -80,11 +161,7 @@ export function getStatusInfo(
 } {
   const status = verification?.status;
 
-  const isPartial =
-    status === "partial_text_found" ||
-    status === "found_on_other_page" ||
-    status === "found_on_other_line" ||
-    status === "first_word_found";
+  const isPartial = isPartialSearchStatus(status);
 
   if (indicatorVariant === "dot") {
     if (!status || status === "pending" || status === "loading") {
@@ -165,13 +242,7 @@ export function getStatusPriority(verification: Verification | null): number {
   if (!status || status === "pending" || status === "loading") return 2;
   if (status === "not_found") return 4;
 
-  const isPartial =
-    status === "partial_text_found" ||
-    status === "found_on_other_page" ||
-    status === "found_on_other_line" ||
-    status === "first_word_found";
-
-  if (isPartial) return 3;
+  if (isPartialSearchStatus(status)) return 3;
 
   return 1; // verified
 }
@@ -345,7 +416,7 @@ export function groupCitationsByStatus(groups: SourceCitationGroup[]): StatusSec
  * />
  * ```
  */
-export function useCitationDrawer() {
+export function useCitationDrawer(sourceLabelMap?: Record<string, string>) {
   const [isOpen, setIsOpen] = useState(false);
   const [citations, setCitations] = useState<CitationDrawerItem[]>([]);
 
@@ -375,7 +446,7 @@ export function useCitationDrawer() {
     setCitations(items);
   }, []);
 
-  const citationGroups = useMemo(() => groupCitationsBySource(citations), [citations]);
+  const citationGroups = useMemo(() => groupCitationsBySource(citations, sourceLabelMap), [citations, sourceLabelMap]);
 
   return {
     isOpen,

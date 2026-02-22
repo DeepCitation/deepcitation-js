@@ -4,7 +4,13 @@ import type React from "react";
 import { CitationComponent } from "../react/CitationComponent";
 import { CitationDrawer, CitationDrawerItemComponent } from "../react/CitationDrawer";
 import type { CitationDrawerItem, SourceCitationGroup } from "../react/CitationDrawer.types";
-import { getStatusPriority, groupCitationsBySource, useCitationDrawer } from "../react/CitationDrawer.utils";
+import {
+  getStatusPriority,
+  groupCitationsBySource,
+  lookupSourceLabel,
+  resolveGroupLabels,
+  useCitationDrawer,
+} from "../react/CitationDrawer.utils";
 import { CitationDrawerTrigger } from "../react/CitationDrawerTrigger";
 import type { Citation } from "../types/citation";
 import type { Verification } from "../types/verification";
@@ -784,7 +790,6 @@ describe("useCitationDrawer", () => {
 describe("getStatusPriority", () => {
   it("returns 1 for verified statuses", () => {
     expect(getStatusPriority({ status: "found" })).toBe(1);
-    expect(getStatusPriority({ status: "found_anchor_text_only" })).toBe(1);
     expect(getStatusPriority({ status: "found_phrase_missed_anchor_text" })).toBe(1);
   });
 
@@ -799,6 +804,7 @@ describe("getStatusPriority", () => {
     expect(getStatusPriority({ status: "found_on_other_page" })).toBe(3);
     expect(getStatusPriority({ status: "found_on_other_line" })).toBe(3);
     expect(getStatusPriority({ status: "first_word_found" })).toBe(3);
+    expect(getStatusPriority({ status: "found_anchor_text_only" })).toBe(3);
   });
 
   it("returns 4 for not_found status", () => {
@@ -1047,5 +1053,155 @@ describe("CitationDrawerTrigger", () => {
     // Should not render proof image for invalid URL
     const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
     expect(proofButton).not.toBeInTheDocument();
+  });
+});
+
+// =========
+// lookupSourceLabel
+// =========
+
+describe("lookupSourceLabel", () => {
+  it("returns undefined when sourceLabelMap is undefined", () => {
+    expect(lookupSourceLabel({ attachmentId: "doc1" }, undefined)).toBeUndefined();
+  });
+
+  it("returns undefined when citation is undefined", () => {
+    expect(lookupSourceLabel(undefined, { doc1: "My Document" })).toBeUndefined();
+  });
+
+  it("matches by attachmentId", () => {
+    const map = { "att-123": "Annual Report" };
+    expect(lookupSourceLabel({ attachmentId: "att-123" }, map)).toBe("Annual Report");
+  });
+
+  it("matches by url when attachmentId is absent", () => {
+    const map = { "https://example.com/page": "Example Page" };
+    expect(lookupSourceLabel({ url: "https://example.com/page" }, map)).toBe("Example Page");
+  });
+
+  it("prefers attachmentId over url", () => {
+    const map = {
+      "att-123": "From Attachment",
+      "https://example.com": "From URL",
+    };
+    expect(lookupSourceLabel({ attachmentId: "att-123", url: "https://example.com" }, map)).toBe("From Attachment");
+  });
+
+  it("returns undefined when neither key matches", () => {
+    const map = { "other-id": "Other" };
+    expect(lookupSourceLabel({ attachmentId: "att-123", url: "https://example.com" }, map)).toBeUndefined();
+  });
+});
+
+// =========
+// resolveGroupLabels
+// =========
+
+describe("resolveGroupLabels", () => {
+  const makeGroup = (sourceName: string, citation: Partial<CitationDrawerItem["citation"]>): SourceCitationGroup => ({
+    sourceName,
+    citations: [
+      {
+        citationKey: "k1",
+        citation: { type: "document" as const, attachmentId: "doc1", ...citation },
+        verification: null,
+      },
+    ],
+    additionalCount: 0,
+  });
+
+  it("returns same array when sourceLabelMap is undefined", () => {
+    const groups = [makeGroup("Original", {})];
+    const result = resolveGroupLabels(groups, undefined);
+    expect(result).toBe(groups); // reference equality — no-op
+  });
+
+  it("returns same array when sourceLabelMap is empty", () => {
+    const groups = [makeGroup("Original", {})];
+    const result = resolveGroupLabels(groups, {});
+    expect(result).toBe(groups);
+  });
+
+  it("resolves sourceName from attachmentId match", () => {
+    const groups = [makeGroup("raw-doc-name", { attachmentId: "doc1" })];
+    const result = resolveGroupLabels(groups, { doc1: "Friendly Name" });
+    expect(result[0].sourceName).toBe("Friendly Name");
+  });
+
+  it("resolves sourceName from url match", () => {
+    const groups = [
+      makeGroup("example.com", {
+        type: "url",
+        url: "https://example.com/page",
+      } as CitationDrawerItem["citation"]),
+    ];
+    const result = resolveGroupLabels(groups, { "https://example.com/page": "Example Site" });
+    expect(result[0].sourceName).toBe("Example Site");
+  });
+
+  it("preserves sourceName when no match found", () => {
+    const groups = [makeGroup("Untouched", { attachmentId: "no-match" })];
+    const result = resolveGroupLabels(groups, { "other-id": "Other Label" });
+    expect(result[0].sourceName).toBe("Untouched");
+  });
+
+  it("does not mutate original group objects", () => {
+    const groups = [makeGroup("Original", { attachmentId: "doc1" })];
+    resolveGroupLabels(groups, { doc1: "Resolved" });
+    expect(groups[0].sourceName).toBe("Original");
+  });
+});
+
+// =========
+// groupCitationsBySource with sourceLabelMap
+// =========
+
+describe("groupCitationsBySource with sourceLabelMap", () => {
+  it("resolves source names when sourceLabelMap is provided", () => {
+    const citations: CitationDrawerItem[] = [
+      {
+        citationKey: "1",
+        citation: {
+          type: "document" as const,
+          attachmentId: "att-123",
+          anchorText: "test text",
+        },
+        verification: { status: "found", label: "raw-filename.pdf" },
+      },
+    ];
+
+    const groups = groupCitationsBySource(citations, { "att-123": "Annual Report 2024" });
+    expect(groups[0].sourceName).toBe("Annual Report 2024");
+  });
+
+  it("falls back to default name when no match in sourceLabelMap", () => {
+    const citations: CitationDrawerItem[] = [
+      {
+        citationKey: "1",
+        citation: {
+          type: "url" as const,
+          siteName: "Wikipedia",
+          domain: "wikipedia.org",
+          anchorText: "test",
+        },
+        verification: null,
+      },
+    ];
+
+    const groups = groupCitationsBySource(citations, { "unrelated-key": "Unrelated" });
+    expect(groups[0].sourceName).toBe("Wikipedia");
+  });
+
+  it("works without sourceLabelMap (backward compatible)", () => {
+    const citations: CitationDrawerItem[] = [
+      {
+        citationKey: "1",
+        citation: { type: "url" as const, siteName: "Test", domain: "test.com" },
+        verification: null,
+      },
+    ];
+
+    const groups = groupCitationsBySource(citations);
+    expect(groups[0].sourceName).toBe("Test");
   });
 });

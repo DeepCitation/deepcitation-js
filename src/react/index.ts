@@ -18,9 +18,7 @@ export {
   CitationComponent,
   type CitationComponentProps,
   type CitationVariant,
-  type ExpandedImageSource,
   MemoizedCitationComponent,
-  resolveExpandedImage,
 } from "./CitationComponent.js";
 // Citation Drawer (ChatGPT-style bottom sheet)
 export {
@@ -32,7 +30,11 @@ export {
 // are NOT re-exported per CLAUDE.md — import directly from CitationDrawer.utils.js.
 export type { StatusCategory, StatusSection } from "./CitationDrawer.utils.js";
 export {
+  generateDefaultLabel,
+  getPrimarySourceName,
   groupCitationsBySource,
+  lookupSourceLabel,
+  resolveGroupLabels,
   useCitationDrawer,
 } from "./CitationDrawer.utils.js";
 // Citation Drawer Trigger (compact summary bar)
@@ -88,6 +90,7 @@ export {
   Z_INDEX_OVERLAY_DEFAULT,
   Z_INDEX_POPOVER_VAR,
 } from "./constants.js";
+export { type ExpandedImageSource, resolveExpandedImage } from "./EvidenceTray.js";
 // Accessibility Hooks
 export { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 // Icons

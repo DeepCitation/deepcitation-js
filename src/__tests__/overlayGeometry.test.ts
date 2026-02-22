@@ -1,0 +1,166 @@
+import { describe, expect, test } from "@jest/globals";
+import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "../react/overlayGeometry";
+
+// Helper: a standard annotation item and rendering context for tests.
+// Represents text near the center of a 1000×1400 PDF page rendered to a
+// 2000×2800 image (renderScale = 2× in both axes).
+const RENDER_SCALE = { x: 2, y: 2 };
+const IMAGE_W = 2000;
+const IMAGE_H = 2800;
+
+// PDF coords: x=200, y=1000 (bottom-up), width=300, height=20
+// Image coords after y-flip: pixelX=400, pixelY=2800-2000=800, pixelW=600, pixelH=40
+// Center: (700, 820)
+const ITEM = { x: 200, y: 1000, width: 300, height: 20 };
+
+// =========================================================================
+// computeAnnotationScrollTarget
+// =========================================================================
+
+describe("computeAnnotationScrollTarget", () => {
+  test("centers annotation in viewport (standard case)", () => {
+    const containerW = 800;
+    const containerH = 600;
+    const zoom = 0.5;
+
+    // Zoomed center: (700 * 0.5, 820 * 0.5) = (350, 410)
+    // Raw scroll: (350 - 400, 410 - 300) = (-50, 110)
+    // Max scroll: (2000*0.5 - 800, 2800*0.5 - 600) = (200, 800)
+    // Clamped: (0, 110)
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, zoom, containerW, containerH);
+    expect(result).not.toBeNull();
+    expect(result?.scrollLeft).toBe(0); // clamped from -50
+    expect(result?.scrollTop).toBe(110);
+  });
+
+  test("clamps to 0 when annotation is near top-left", () => {
+    // Item at top-left of image: PDF coords (0, 1400) → image (0, 0)
+    const topLeftItem = { x: 0, y: 1400, width: 50, height: 10 };
+    const result = computeAnnotationScrollTarget(topLeftItem, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 600);
+    expect(result).not.toBeNull();
+    expect(result?.scrollLeft).toBe(0);
+    expect(result?.scrollTop).toBe(0);
+  });
+
+  test("clamps to max scroll when annotation is near bottom-right", () => {
+    // Item at bottom-right: PDF coords (900, 10) → image (1800, 2780)
+    const bottomRightItem = { x: 900, y: 10, width: 100, height: 10 };
+    const zoom = 1;
+    const containerW = 800;
+    const containerH = 600;
+
+    const result = computeAnnotationScrollTarget(
+      bottomRightItem,
+      RENDER_SCALE,
+      IMAGE_W,
+      IMAGE_H,
+      zoom,
+      containerW,
+      containerH,
+    );
+    expect(result).not.toBeNull();
+    // Max scroll: (2000 - 800, 2800 - 600) = (1200, 2200)
+    expect(result?.scrollLeft).toBe(1200);
+    expect(result?.scrollTop).toBe(2200);
+  });
+
+  test("returns null for zero renderScale", () => {
+    const result = computeAnnotationScrollTarget(ITEM, { x: 0, y: 2 }, IMAGE_W, IMAGE_H, 1, 800, 600);
+    expect(result).toBeNull();
+  });
+
+  test("returns null for zero zoom", () => {
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 0, 800, 600);
+    expect(result).toBeNull();
+  });
+
+  test("returns null for negative zoom", () => {
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, -1, 800, 600);
+    expect(result).toBeNull();
+  });
+
+  test("returns null for zero container dimensions", () => {
+    expect(computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 0, 600)).toBeNull();
+    expect(computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 0)).toBeNull();
+  });
+
+  test("returns null for NaN inputs", () => {
+    expect(computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, NaN, 800, 600)).toBeNull();
+    expect(computeAnnotationScrollTarget(ITEM, { x: NaN, y: 2 }, IMAGE_W, IMAGE_H, 1, 800, 600)).toBeNull();
+    expect(computeAnnotationScrollTarget(ITEM, RENDER_SCALE, NaN, IMAGE_H, 1, 800, 600)).toBeNull();
+  });
+
+  test("returns null for Infinity inputs", () => {
+    expect(computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, Infinity, 800, 600)).toBeNull();
+  });
+
+  test("no-op when image fits entirely in container (scroll = 0,0)", () => {
+    // Container is larger than image × zoom → maxScroll = 0 in both axes
+    const result = computeAnnotationScrollTarget(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H, 0.1, 2000, 2000);
+    expect(result).not.toBeNull();
+    expect(result?.scrollLeft).toBe(0);
+    expect(result?.scrollTop).toBe(0);
+  });
+
+  test("handles PDF y-axis flip correctly", () => {
+    // Item at PDF y=1400 (top of page) → imageY = 2800 - 2800 = 0 (top of image)
+    const topItem = { x: 500, y: 1400, width: 100, height: 10 };
+    const result = computeAnnotationScrollTarget(topItem, RENDER_SCALE, IMAGE_W, IMAGE_H, 1, 800, 600);
+    expect(result).not.toBeNull();
+    // imageY = 2800 - 1400*2 = 0, center = 0 + 20/2 = 10
+    // scrollTop = 10 - 300 = -290, clamped to 0
+    expect(result?.scrollTop).toBe(0);
+  });
+});
+
+// =========================================================================
+// computeAnnotationOriginPercent
+// =========================================================================
+
+describe("computeAnnotationOriginPercent", () => {
+  test("returns correct center percentages", () => {
+    // Center in image coords: (700, 820) out of (2000, 2800)
+    // → xPercent = 35%, yPercent ≈ 29.29%
+    const result = computeAnnotationOriginPercent(ITEM, RENDER_SCALE, IMAGE_W, IMAGE_H);
+    expect(result).not.toBeNull();
+    expect(result?.xPercent).toBeCloseTo(35, 5);
+    expect(result?.yPercent).toBeCloseTo(29.2857, 2);
+  });
+
+  test("clamps to 0-100 range for items at edges", () => {
+    // Item at very bottom-right of image
+    const edgeItem = { x: 990, y: 5, width: 100, height: 10 };
+    const result = computeAnnotationOriginPercent(edgeItem, RENDER_SCALE, IMAGE_W, IMAGE_H);
+    expect(result).not.toBeNull();
+    expect(result?.xPercent).toBeLessThanOrEqual(100);
+    expect(result?.yPercent).toBeLessThanOrEqual(100);
+    expect(result?.xPercent).toBeGreaterThanOrEqual(0);
+    expect(result?.yPercent).toBeGreaterThanOrEqual(0);
+  });
+
+  test("returns null for zero renderScale", () => {
+    expect(computeAnnotationOriginPercent(ITEM, { x: 0, y: 2 }, IMAGE_W, IMAGE_H)).toBeNull();
+  });
+
+  test("returns null for zero image dimensions", () => {
+    expect(computeAnnotationOriginPercent(ITEM, RENDER_SCALE, 0, IMAGE_H)).toBeNull();
+    expect(computeAnnotationOriginPercent(ITEM, RENDER_SCALE, IMAGE_W, 0)).toBeNull();
+  });
+
+  test("returns null for NaN renderScale", () => {
+    expect(computeAnnotationOriginPercent(ITEM, { x: NaN, y: 2 }, IMAGE_W, IMAGE_H)).toBeNull();
+  });
+
+  test("center point at 50%/50% for centered annotation", () => {
+    // Item centered exactly in the middle of the image
+    // Image is 1000×1000, renderScale 1×1
+    // PDF coords: x=400, y=550 (bottom-up), width=200, height=100
+    // imageX = 400, imageY = 1000 - 550 = 450, w=200, h=100
+    // center = (500, 500) → 50%, 50%
+    const centeredItem = { x: 400, y: 550, width: 200, height: 100 };
+    const result = computeAnnotationOriginPercent(centeredItem, { x: 1, y: 1 }, 1000, 1000);
+    expect(result).not.toBeNull();
+    expect(result?.xPercent).toBeCloseTo(50, 5);
+    expect(result?.yPercent).toBeCloseTo(50, 5);
+  });
+});

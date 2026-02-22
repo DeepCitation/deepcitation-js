@@ -18,6 +18,7 @@ import {
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
+import { isValidProofUrl } from "./urlUtils.js";
 
 import { cn, isUrlCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
@@ -105,9 +106,9 @@ export interface SourceContextHeaderProps {
    */
   onBack?: () => void;
   /**
-   * Validated proof URL to link to in the expanded view header.
-   * Only rendered when `onClose` is set (i.e., in expanded mode).
-   * Must be pre-validated — do not pass untrusted URLs.
+   * Proof URL to link to in the expanded view header.
+   * Rendered whenever a valid URL is provided.
+   * Validated internally via `isValidProofUrl()` — safe to pass untrusted input.
    */
   proofUrl?: string | null;
 }
@@ -198,8 +199,8 @@ export function FaviconImage({
 // =============================================================================
 
 interface PagePillProps {
-  /** Page number to display */
-  pageNumber: number;
+  /** Page number to display. When 0 or undefined, a generic "Page" label is shown. */
+  pageNumber?: number;
   /** Status color scheme for the pill */
   colorScheme: "green" | "amber" | "red" | "gray";
   /** Callback when clicked (triggers expansion) — shows chevron-right */
@@ -223,8 +224,11 @@ const PAGE_PILL_COLORS = {
  * - With `onClose`: shows X icon with blue "active" styling, triggers close/back
  */
 export function PagePill({ pageNumber, colorScheme, onClick, onClose }: PagePillProps) {
-  if (pageNumber <= 0) return null;
+  const hasPage = pageNumber !== undefined && pageNumber > 0;
+  // Need either a page number to display or an action to perform
+  if (!hasPage && !onClick && !onClose) return null;
 
+  const label = hasPage ? `p.${pageNumber}` : "Page";
   const colorClasses = PAGE_PILL_COLORS[colorScheme];
 
   // Active/expanded state: entire pill is a button to close, shows X instead of chevron
@@ -237,10 +241,10 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose }: PagePill
           onClose();
         }}
         className="relative inline-flex items-center gap-0.5 px-2 py-1 text-xs font-medium rounded border cursor-pointer transition-colors bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40 after:content-[''] after:absolute after:inset-x-[-8px] after:inset-y-[-14px]"
-        aria-label={`Close page ${pageNumber} view`}
+        aria-label={hasPage ? `Close page ${pageNumber} view` : "Close page view"}
         title="Close expanded view (Esc)"
       >
-        <span>p.{pageNumber}</span>
+        <span>{label}</span>
         <span className="size-3">
           <XIcon />
         </span>
@@ -253,7 +257,7 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose }: PagePill
       <span
         className={cn("inline-flex items-center gap-0.5 px-2 py-1 text-xs font-medium rounded border", colorClasses)}
       >
-        p.{pageNumber}
+        {label}
       </span>
     );
   }
@@ -271,9 +275,9 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose }: PagePill
         "after:content-[''] after:absolute after:inset-x-[-8px] after:inset-y-[-14px]",
         colorClasses,
       )}
-      aria-label={`Expand to full page ${pageNumber}`}
+      aria-label={hasPage ? `Expand to full page ${pageNumber}` : "Expand to full page"}
     >
-      <span>p.{pageNumber}</span>
+      <span>{label}</span>
       <span className="size-3">
         <ChevronRightIcon />
       </span>
@@ -311,9 +315,11 @@ export function SourceContextHeader({
   const lineIds = verification?.document?.verifiedLineIds ?? (isUrl ? undefined : citation.lineIds);
   const pageLineText = formatPageLineText(pageNumber, lineIds);
   const colorScheme = getStatusColorScheme(status);
-  // Show page pill when there's an expand action (summary view) or when in expanded view (informational)
-  const showPagePill = (!!onExpand || !!onClose) && !!pageNumber && pageNumber > 0;
-
+  // Show page pill when there's an expand/close action. Page number is shown when available
+  // but the pill also renders with a generic "Page" label for not_found citations where
+  // verifiedPageNumber is null.
+  const showPagePill = !!onExpand || !!onClose;
+  const validatedProofUrl = proofUrl ? isValidProofUrl(proofUrl) : null;
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
 
@@ -375,15 +381,14 @@ export function SourceContextHeader({
       </div>
       {/* Right: Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-2">
-        {proofUrl && onClose && (
+        {validatedProofUrl && (
           <a
-            href={proofUrl}
+            href={validatedProofUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
             aria-label="Open proof in new tab"
             className="shrink-0 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
-            title="Open proof in new tab"
+            onClick={e => e.stopPropagation()}
           >
             <span className="size-3.5 block">
               <ExternalLinkIcon />
@@ -391,7 +396,12 @@ export function SourceContextHeader({
           </a>
         )}
         {showPagePill && (
-          <PagePill pageNumber={pageNumber} colorScheme={colorScheme} onClick={onExpand} onClose={onClose} />
+          <PagePill
+            pageNumber={pageNumber ?? undefined}
+            colorScheme={colorScheme}
+            onClick={onExpand}
+            onClose={onClose}
+          />
         )}
         {!showPagePill && pageLineText && (
           <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0 uppercase tracking-wide">

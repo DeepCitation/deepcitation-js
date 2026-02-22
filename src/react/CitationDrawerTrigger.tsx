@@ -3,7 +3,7 @@ import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, u
 import type { Verification } from "../types/verification.js";
 import type { SourceCitationGroup } from "./CitationDrawer.types.js";
 import type { FlatCitationItem } from "./CitationDrawer.utils.js";
-import { flattenCitations, getStatusInfo } from "./CitationDrawer.utils.js";
+import { flattenCitations, generateDefaultLabel, getStatusInfo, resolveGroupLabels } from "./CitationDrawer.utils.js";
 import { isValidProofImageSrc, TOOLTIP_HIDE_DELAY_MS, TTC_TEXT_STYLE } from "./constants.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { formatTtc } from "./timingUtils.js";
@@ -96,18 +96,6 @@ function getTitleForCitation(flatItem: FlatCitationItem): string {
     return `${flatItem.sourceName}: ${preview} — ${statusLabel}`;
   }
   return `${flatItem.sourceName} — ${statusLabel}`;
-}
-
-/**
- * Generate a smart default label from citation groups.
- * 1 group → show source name; 2+ groups → "firstName +N"; truncate names > 25 chars.
- */
-function generateDefaultLabel(citationGroups: SourceCitationGroup[]): string {
-  if (citationGroups.length === 0) return "Sources";
-  const firstName = citationGroups[0].sourceName?.trim() || "Source";
-  const truncated = firstName.length > 25 ? `${firstName.slice(0, 25)}...` : firstName;
-  if (citationGroups.length === 1) return truncated;
-  return `${truncated} +${citationGroups.length - 1}`;
 }
 
 // =========
@@ -382,6 +370,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
       maxIcons = 5,
       showProofThumbnails = true,
       indicatorVariant = "icon",
+      sourceLabelMap,
       timingMetrics,
     },
     ref,
@@ -391,10 +380,16 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
     const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const isTouchDevice = useIsTouchDevice();
 
-    const displayLabel = label ?? generateDefaultLabel(citationGroups);
+    // Resolve source labels once — all downstream reads of group.sourceName are pre-resolved
+    const resolvedGroups = useMemo(
+      () => resolveGroupLabels(citationGroups, sourceLabelMap),
+      [citationGroups, sourceLabelMap],
+    );
+
+    const displayLabel = label ?? generateDefaultLabel(resolvedGroups);
 
     // Flatten citation groups into individual items for per-citation icons
-    const flatCitations = useMemo(() => flattenCitations(citationGroups), [citationGroups]);
+    const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
 
     // On touch devices, skip the hover-spread animation — tap goes straight to drawer
     const handleMouseEnter = useCallback(() => {

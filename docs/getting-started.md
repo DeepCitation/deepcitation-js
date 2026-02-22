@@ -15,9 +15,9 @@ Learn how to install and integrate DeepCitation into your application.
 ## How DeepCitation Works
 
 {: .note }
-DeepCitation works in 4 simple steps: prepare files, wrap prompts, verify citations, and display results.
+DeepCitation works in 4 simple steps: prepare attachments, wrap prompts, verify citations, and display results.
 
-### Step 1: Pre-Prompt - Prepare Files
+### Step 1: Pre-Prompt - Prepare Attachments
 
 Upload source documents to extract text with line IDs for your LLM prompt.
 

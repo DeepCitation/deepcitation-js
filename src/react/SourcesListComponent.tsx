@@ -1,19 +1,12 @@
 import type React from "react";
 import { forwardRef, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { getPortalContainer } from "./constants.js";
+import { getPortalContainer, TTC_TEXT_STYLE } from "./constants.js";
 import { detectSourceType, getFaviconUrl, getPlatformName } from "./SourcesListComponent.utils.js";
 import { formatTtc } from "./timingUtils.js";
 import type { SourcesListItemProps, SourcesListProps, SourcesTriggerProps } from "./types.js";
 import { extractDomain, safeWindowOpen } from "./urlUtils.js";
 import { classNames } from "./utils.js";
-
-/** Inline style for TtC display on source items — muted, tabular-nums */
-const TTC_TEXT_STYLE_ITEM: React.CSSProperties = {
-  fontSize: "10px",
-  fontVariantNumeric: "tabular-nums",
-  letterSpacing: "0.02em",
-};
 
 /**
  * Module-level handlers for hiding broken favicon images.
@@ -249,7 +242,7 @@ export const SourcesListItem = forwardRef<HTMLDivElement, SourcesListItemProps>(
 
         {/* TtC indicator */}
         {ttcMs != null && (
-          <span className="shrink-0 text-gray-400 dark:text-gray-500 mt-1" style={TTC_TEXT_STYLE_ITEM}>
+          <span className="shrink-0 text-gray-400 dark:text-gray-500 mt-1" style={TTC_TEXT_STYLE}>
             {formatTtc(ttcMs)}
           </span>
         )}
@@ -372,7 +365,7 @@ const SourcesListHeader = ({
       </h2>
       {/* Aggregate TtC or spacer for centering */}
       {timingMetrics && timingMetrics.resolvedCount > 0 ? (
-        <span className="text-gray-400 dark:text-gray-500 shrink-0" style={TTC_TEXT_STYLE_ITEM}>
+        <span className="text-gray-400 dark:text-gray-500 shrink-0" style={TTC_TEXT_STYLE}>
           avg rev {formatTtc(timingMetrics.avgTtcMs)}
         </span>
       ) : (

@@ -14,7 +14,7 @@
  *
  * @see https://react.dev/blog/2025/10/01/react-19-2
  */
-import React, { memo } from "react";
+import { memo, type ReactNode } from "react";
 
 // Re-export utilities from prefetchCache for backward compatibility
 export {
@@ -23,16 +23,9 @@ export {
   usePrefetchImage,
 } from "./prefetchCache.js";
 
-// React 19.2+ Activity component for prefetching - falls back to Fragment if unavailable
-const Activity =
-  (
-    React as {
-      Activity?: React.ComponentType<{
-        mode: "visible" | "hidden";
-        children: React.ReactNode;
-      }>;
-    }
-  ).Activity ?? (({ children }: { mode: "visible" | "hidden"; children: React.ReactNode }) => <>{children}</>);
+// React 19.2's Activity component is disabled — see DefaultPopoverContent.tsx
+// for the full explanation of the fiber effect linked-list corruption bug.
+const Activity = ({ children }: { mode: "visible" | "hidden"; children: ReactNode }) => <>{children}</>;
 
 interface PrefetchedPopoverImageProps {
   /** Whether the popover (and image) should be visible */

@@ -76,3 +76,84 @@ export function toPercentRect(
     height: `${(imgH / imageNaturalHeight) * 100}%`,
   };
 }
+
+/**
+ * Computes the scroll position needed to center a PDF annotation in a
+ * scrollable container. Uses the same coordinate transform as `toPercentRect()`
+ * (PDF y-axis flip), then applies zoom and centers in the container viewport.
+ *
+ * Returns `null` for invalid inputs (zero dimensions, non-finite values, or
+ * zero/negative zoom).
+ */
+export function computeAnnotationScrollTarget(
+  item: DeepTextItem,
+  renderScale: { x: number; y: number },
+  imageNaturalWidth: number,
+  imageNaturalHeight: number,
+  zoom: number,
+  containerWidth: number,
+  containerHeight: number,
+): { scrollLeft: number; scrollTop: number } | null {
+  if (!isValidOverlayGeometry(renderScale, imageNaturalWidth, imageNaturalHeight)) {
+    return null;
+  }
+  if (!Number.isFinite(zoom) || zoom <= 0) return null;
+  if (!Number.isFinite(containerWidth) || !Number.isFinite(containerHeight)) return null;
+  if (containerWidth <= 0 || containerHeight <= 0) return null;
+
+  // Convert PDF coords to image pixel coords (same math as toPercentRect)
+  const pixelX = item.x * renderScale.x;
+  const pixelY = imageNaturalHeight - item.y * renderScale.y;
+  const pixelW = item.width * renderScale.x;
+  const pixelH = item.height * renderScale.y;
+
+  // Center of the annotation in zoomed pixel space
+  const zoomedCenterX = (pixelX + pixelW / 2) * zoom;
+  const zoomedCenterY = (pixelY + pixelH / 2) * zoom;
+
+  // Scroll to center the annotation in the container viewport
+  const rawScrollLeft = zoomedCenterX - containerWidth / 2;
+  const rawScrollTop = zoomedCenterY - containerHeight / 2;
+
+  // Clamp to valid scroll range
+  const maxScrollLeft = Math.max(0, imageNaturalWidth * zoom - containerWidth);
+  const maxScrollTop = Math.max(0, imageNaturalHeight * zoom - containerHeight);
+
+  return {
+    scrollLeft: clamp(rawScrollLeft, 0, maxScrollLeft),
+    scrollTop: clamp(rawScrollTop, 0, maxScrollTop),
+  };
+}
+
+/**
+ * Computes the annotation's center position as percentages of the image
+ * dimensions. Used as CSS `transform-origin` so scale animations originate
+ * from the annotation location.
+ *
+ * Returns `null` for invalid inputs.
+ */
+export function computeAnnotationOriginPercent(
+  item: DeepTextItem,
+  renderScale: { x: number; y: number },
+  imageNaturalWidth: number,
+  imageNaturalHeight: number,
+): { xPercent: number; yPercent: number } | null {
+  if (!isValidOverlayGeometry(renderScale, imageNaturalWidth, imageNaturalHeight)) {
+    return null;
+  }
+
+  // Convert PDF coords to image pixel coords (same math as toPercentRect)
+  const pixelX = item.x * renderScale.x;
+  const pixelY = imageNaturalHeight - item.y * renderScale.y;
+  const pixelW = item.width * renderScale.x;
+  const pixelH = item.height * renderScale.y;
+
+  // Center of the annotation as a percentage of image dimensions
+  const centerX = pixelX + pixelW / 2;
+  const centerY = pixelY + pixelH / 2;
+
+  return {
+    xPercent: clamp((centerX / imageNaturalWidth) * 100, 0, 100),
+    yPercent: clamp((centerY / imageNaturalHeight) * 100, 0, 100),
+  };
+}

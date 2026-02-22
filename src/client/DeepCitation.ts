@@ -479,7 +479,7 @@ export class DeepCitation {
 
   /**
    * Upload multiple files for citation verification and get structured content.
-   * This is the recommended way to prepare files for LLM prompts.
+   * This is the recommended way to prepare attachments for LLM prompts.
    *
    * @param files - Array of files to upload with optional filenames and attachmentIds
    * @returns Object containing fileDataParts for verification and deepTextPromptPortion for LLM

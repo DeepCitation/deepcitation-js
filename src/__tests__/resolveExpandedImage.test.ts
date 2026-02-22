@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from "@jest/globals";
-import { resolveExpandedImage } from "../react/CitationComponent";
+import { resolveExpandedImage } from "../react/EvidenceTray";
 import type { Verification } from "../types/verification";
 
 // Representative image URLs for tests

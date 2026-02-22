@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CitationStatus } from "../types/citation.js";
-import { EvidenceTray, InlineExpandedImage } from "./CitationComponent.js";
 import type {
   CitationDrawerItem,
   CitationDrawerItemProps,
@@ -11,8 +10,10 @@ import type {
 import {
   computeStatusSummary,
   flattenCitations,
+  generateDefaultLabel,
   getItemStatusCategory,
   getStatusInfo,
+  resolveGroupLabels,
   STATUS_DISPLAY_MAP,
   sortGroupsByWorstStatus,
 } from "./CitationDrawer.utils.js";
@@ -27,38 +28,54 @@ import {
   Z_INDEX_DRAWER_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
-import { formatCaptureDate } from "./dateUtils.js";
+import { EvidenceTray, InlineExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ExternalLinkIcon } from "./icons.js";
 import { sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";
-import { FaviconImage, PagePill } from "./VerificationLog.js";
-
-// =========
-// Utilities: sourceLabelMap lookup
-// =========
-
-/**
- * Look up a friendly display label from the sourceLabelMap for a citation.
- * Tries citation.attachmentId first, then citation.url.
- */
-function lookupSourceLabel(
-  citation: { attachmentId?: string; url?: string } | undefined,
-  sourceLabelMap: Record<string, string> | undefined,
-): string | undefined {
-  if (!sourceLabelMap || !citation) return undefined;
-  if (citation.attachmentId && sourceLabelMap[citation.attachmentId]) {
-    return sourceLabelMap[citation.attachmentId];
-  }
-  if (citation.url && sourceLabelMap[citation.url]) {
-    return sourceLabelMap[citation.url];
-  }
-  return undefined;
-}
+import { FaviconImage } from "./VerificationLog.js";
 
 // HighlightedPhrase — imported from ./HighlightedPhrase.js (canonical location)
-// EvidenceTray, InlineExpandedImage — imported from ./CitationComponent.js (canonical location)
+// EvidenceTray, InlineExpandedImage — imported from ./EvidenceTray.js (canonical location)
+
+// =========
+// Internal escape-navigation context — NOT exported
+// =========
+
+interface DrawerEscapeCtx {
+  /** Increment signals all items to collapse their inline (full-page) image */
+  collapseInlineSignal: number;
+  /** Increment signals all items to collapse their expanded evidence tray */
+  collapseExpandedSignal: number;
+  /** Items call this whenever their expanded/inline state changes */
+  onSubstateChange: (key: string, isExpanded: boolean, hasInline: boolean) => void;
+}
+
+const DrawerEscapeContext = React.createContext<DrawerEscapeCtx | null>(null);
+
+// =========
+// Page-number helpers for drawer header
+// =========
+
+function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
+  const pages = new Set<number>();
+  for (const group of groups) {
+    for (const { citation, verification } of group.citations) {
+      const page =
+        (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
+      if (page != null && page > 0) pages.add(page);
+    }
+  }
+  return Array.from(pages).sort((a, b) => a - b);
+}
+
+function formatDrawerPageNumbers(pages: number[]): string | null {
+  if (pages.length === 0) return null;
+  if (pages.length === 1) return `p.${pages[0]}`;
+  if (pages.length <= 3) return `p.${pages.join(", ")}`;
+  return `p.${pages[0]}\u2013${pages[pages.length - 1]}`;
+}
 
 // =========
 // SourceGroupHeader
@@ -69,16 +86,9 @@ function lookupSourceLabel(
  * Shows favicon (or letter avatar for documents), source name,
  * external link for URL sources, and citation count.
  */
-function SourceGroupHeader({
-  group,
-  sourceLabelMap,
-}: {
-  group: SourceCitationGroup;
-  sourceLabelMap?: Record<string, string>;
-}) {
+function SourceGroupHeader({ group }: { group: SourceCitationGroup }) {
+  const sourceName = group.sourceName || "Source";
   const firstCitation = group.citations[0]?.citation;
-  const labelOverride = lookupSourceLabel(firstCitation, sourceLabelMap);
-  const sourceName = labelOverride || group.sourceName || "Source";
   const citationCount = group.citations.length;
   const isUrlSource = !!group.sourceDomain;
 
@@ -139,36 +149,6 @@ function SourceGroupHeader({
 }
 
 // =========
-// Utilities
-// =========
-
-/**
- * Format a verification date for display.
- * Recent dates show relative time; older dates show short absolute format.
- */
-function formatCheckedDate(date: Date | string | null | undefined): string | null {
-  if (!date) return null;
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return null;
-
-  const now = Date.now();
-  const diffMs = now - d.getTime();
-  if (diffMs < 0) return null; // future date
-
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-
-  const diffDays = Math.floor(diffHr / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
-// =========
 // CitationDrawerItemComponent
 // =========
 
@@ -184,13 +164,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   item,
   isLast = false,
   onClick,
-  onReadMore: _onReadMore, // kept in signature for backward compat; not rendered
   className,
   indicatorVariant = "icon",
-  hideSourceName: _hideSourceName, // no longer used — header is always fullPhrase
   defaultExpanded = false,
   style,
-  sourceLabelMap: _sourceLabelMap, // no longer used in summary row
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
   const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
@@ -198,6 +175,39 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const [wasAutoExpanded, setWasAutoExpanded] = useState(defaultExpanded);
   // Tracks the src shown in InlineExpandedImage (null = show EvidenceTray)
   const [inlineExpandedSrc, setInlineExpandedSrc] = useState<string | null>(null);
+
+  // Escape navigation context — null when rendered outside CitationDrawer
+  const escCtx = React.useContext(DrawerEscapeContext);
+  const collapseInlineSignal = escCtx?.collapseInlineSignal ?? 0;
+  const collapseExpandedSignal = escCtx?.collapseExpandedSignal ?? 0;
+  const onSubstateChange = escCtx?.onSubstateChange;
+
+  // Track which signals we have already acted on to avoid false-triggers on mount
+  const seenInlineSignalRef = useRef(0);
+  const seenExpandedSignalRef = useRef(0);
+
+  // Collapse inline image when parent sends the signal
+  useEffect(() => {
+    if (collapseInlineSignal > seenInlineSignalRef.current) {
+      seenInlineSignalRef.current = collapseInlineSignal;
+      setInlineExpandedSrc(null);
+    }
+  }, [collapseInlineSignal]);
+
+  // Collapse expanded tray when parent sends the signal
+  useEffect(() => {
+    if (collapseExpandedSignal > seenExpandedSignalRef.current) {
+      seenExpandedSignalRef.current = collapseExpandedSignal;
+      setIsExpanded(false);
+      setInlineExpandedSrc(null);
+    }
+  }, [collapseExpandedSignal]);
+
+  // Report substate to parent so the escape handler knows what to collapse next
+  const citationKey = item.citationKey;
+  useEffect(() => {
+    onSubstateChange?.(citationKey, isExpanded, !!inlineExpandedSrc);
+  }, [isExpanded, inlineExpandedSrc, citationKey, onSubstateChange]);
 
   // Sync expanded state when defaultExpanded changes from false → true
   useEffect(() => {
@@ -211,10 +221,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
   const anchorText = citation.anchorText?.toString();
   const fullPhrase = citation.fullPhrase;
-
-  // Page number for document citations
-  const pageNumber =
-    (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
 
   // Proof image — evidence source for EvidenceTray and InlineExpandedImage
   const rawProofImageDoc = verification?.document?.verificationImageSrc;
@@ -232,7 +238,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const statusCategory = getItemStatusCategory(item);
   const isPending = statusCategory === "pending";
   const isNotFound = statusCategory === "notFound";
-  const isVerified = statusCategory === "verified";
   const statusBorderColor = STATUS_DISPLAY_MAP[statusCategory].borderColor;
 
   // CitationStatus shape required by EvidenceTray
@@ -245,14 +250,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     }),
     [statusCategory],
   );
-
-  // Verification date
-  const checkedDate = formatCheckedDate(verification?.verifiedAt ?? verification?.url?.crawledAt);
-
-  // Crawl date for URL citations
-  const isDocument = citation.type === "document" || (!citation.type && citation.attachmentId);
-  const formattedCrawlDate =
-    !isDocument && verification?.url?.crawledAt ? formatCaptureDate(verification.url.crawledAt) : null;
 
   // Source URL for "open page" link (URL citations only)
   const sourceUrl = citation.type === "url" && citation.url ? sanitizeUrl(citation.url) : null;
@@ -276,8 +273,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
         "cursor-pointer transition-colors border-l-[3px] animate-in fade-in-0 slide-in-from-bottom-1 duration-200 fill-mode-backwards",
         !isLast && "border-b border-gray-200 dark:border-gray-700",
         isExpanded ? statusBorderColor : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
-        // Mute verified items to draw attention to problems
-        isVerified && !isExpanded && "opacity-75",
         className,
       )}
       style={style}
@@ -313,40 +308,13 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
           {/* Header: fullPhrase with anchorText highlighted */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-1.5 flex-wrap">
-              <div
-                className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2 flex-1 min-w-0"
-                title={fullPhrase || anchorText}
-              >
-                <HighlightedPhrase
-                  fullPhrase={fullPhrase || anchorText || ""}
-                  anchorText={anchorText}
-                  isMiss={isNotFound}
-                />
-              </div>
-              {pageNumber != null && pageNumber > 0 && (
-                <PagePill
-                  pageNumber={pageNumber}
-                  colorScheme={
-                    statusCategory === "verified"
-                      ? "green"
-                      : statusCategory === "partial"
-                        ? "amber"
-                        : statusCategory === "notFound"
-                          ? "red"
-                          : "gray"
-                  }
-                />
-              )}
-              {checkedDate && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">{checkedDate}</span>
-              )}
+            <div className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2" title={fullPhrase || anchorText}>
+              <HighlightedPhrase
+                fullPhrase={fullPhrase || anchorText || ""}
+                anchorText={anchorText}
+                isMiss={isNotFound}
+              />
             </div>
-            {formattedCrawlDate && (
-              <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500" title={formattedCrawlDate.tooltip}>
-                Retrieved {formattedCrawlDate.display}
-              </p>
-            )}
           </div>
 
           {/* Expand/collapse chevron */}
@@ -440,19 +408,17 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 // =========
 
 /**
- * Compact row for groups with exactly 1 citation.
+ * Compact row for groups with exactly 1 citation (multi-source drawers only).
  * Merges group header and citation item into one line:
- * [favicon/letter] Source Name · status-icon · "anchor text" · p.N
+ * [favicon/letter] Source Name · status-icon · "anchor text"
  */
 function CompactSingleCitationRow({
   group,
-  sourceLabelMap,
   isLast = false,
   onClick,
   indicatorVariant = "icon",
 }: {
   group: SourceCitationGroup;
-  sourceLabelMap?: Record<string, string>;
   isLast?: boolean;
   onClick?: (item: CitationDrawerItem) => void;
   indicatorVariant?: "icon" | "dot";
@@ -462,15 +428,11 @@ function CompactSingleCitationRow({
   const statusInfo = getStatusInfo(verification, indicatorVariant);
   const isPending = !verification?.status || verification.status === "pending" || verification.status === "loading";
 
-  const labelOverride = lookupSourceLabel(citation, sourceLabelMap);
-  const sourceName = labelOverride || group.sourceName || "Source";
+  const sourceName = group.sourceName || "Source";
   const isUrlSource = !!group.sourceDomain;
 
   const anchorText = citation.anchorText?.toString() || citation.fullPhrase;
   const displayText = anchorText || null;
-
-  const pageNumber =
-    (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
 
   const handleClick = useCallback(() => onClick?.(item), [item, onClick]);
 
@@ -527,11 +489,6 @@ function CompactSingleCitationRow({
           {displayText}
         </span>
       )}
-
-      {/* Page number */}
-      {pageNumber != null && pageNumber > 0 && (
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">p.{pageNumber}</span>
-      )}
     </div>
   );
 }
@@ -546,10 +503,10 @@ interface DrawerSourceGroupProps {
   isLastGroup: boolean;
   staggerOffset: number;
   onCitationClick?: (item: CitationDrawerItem) => void;
-  onReadMore?: (item: CitationDrawerItem) => void;
   indicatorVariant: "icon" | "dot";
-  sourceLabelMap?: Record<string, string>;
   renderCitationItem?: (item: CitationDrawerItem) => React.ReactNode;
+  /** When true, the drawer header already identifies the source — omit group headers and source names */
+  isSingleGroup?: boolean;
 }
 
 function DrawerSourceGroup({
@@ -558,14 +515,51 @@ function DrawerSourceGroup({
   isLastGroup,
   staggerOffset,
   onCitationClick,
-  onReadMore,
   indicatorVariant,
-  sourceLabelMap,
   renderCitationItem,
+  isSingleGroup = false,
 }: DrawerSourceGroupProps) {
   const key = `${group.sourceDomain ?? group.sourceName}-${groupIndex}`;
 
-  // Single-citation groups: render as one compact row (no header + item split)
+  // Single-group drawer: header already identifies the source, render items directly
+  if (isSingleGroup) {
+    if (group.citations.length === 1 && !renderCitationItem) {
+      // Single citation: expandable item without source identity in the row
+      const item = group.citations[0];
+      return (
+        <CitationDrawerItemComponent
+          key={key}
+          item={item}
+          isLast={isLastGroup}
+          onClick={onCitationClick}
+          indicatorVariant={indicatorVariant}
+        />
+      );
+    }
+
+    // Multiple citations: flat expandable list, no group header
+    return (
+      <div key={key}>
+        {group.citations.map((item, index) => {
+          const delay = Math.min((staggerOffset + index) * 35, 200);
+          return renderCitationItem ? (
+            <React.Fragment key={item.citationKey}>{renderCitationItem(item)}</React.Fragment>
+          ) : (
+            <CitationDrawerItemComponent
+              key={item.citationKey}
+              item={item}
+              isLast={isLastGroup && index === group.citations.length - 1}
+              onClick={onCitationClick}
+              indicatorVariant={indicatorVariant}
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Multi-source drawer: single-citation groups as compact merged row (no header+item split)
   if (group.citations.length === 1 && !renderCitationItem) {
     return (
       <CompactSingleCitationRow
@@ -581,10 +575,10 @@ function DrawerSourceGroup({
   // Multi-citation groups: header + items
   return (
     <div key={key}>
-      <SourceGroupHeader group={group} sourceLabelMap={sourceLabelMap} />
+      <SourceGroupHeader group={group} />
       <div>
         {group.citations.map((item, index) => {
-          const delay = (staggerOffset + index) * 35;
+          const delay = Math.min((staggerOffset + index) * 35, 200);
           return renderCitationItem ? (
             <React.Fragment key={item.citationKey}>{renderCitationItem(item)}</React.Fragment>
           ) : (
@@ -593,10 +587,7 @@ function DrawerSourceGroup({
               item={item}
               isLast={isLastGroup && index === group.citations.length - 1}
               onClick={onCitationClick}
-              onReadMore={onReadMore}
               indicatorVariant={indicatorVariant}
-              hideSourceName
-              sourceLabelMap={sourceLabelMap}
               style={{ animationDelay: `${delay}ms` }}
             />
           );
@@ -611,17 +602,18 @@ function DrawerSourceGroup({
 // =========
 
 /**
- * Replaces the generic title text in the drawer header with the same source
- * identification as CitationDrawerTrigger's label: favicon (or letter avatar)
- * + source name, with "+N" overflow for multiple sources.
+ * Drawer header source label — renders the same text as CitationDrawerTrigger
+ * (favicon/letter avatar + generateDefaultLabel output) so heading and trigger
+ * always agree regardless of how sourceName is set.
  */
 function DrawerSourceHeading({
   citationGroups,
-  sourceLabelMap,
+  label,
   fallbackTitle,
 }: {
   citationGroups: SourceCitationGroup[];
-  sourceLabelMap?: Record<string, string>;
+  /** Explicit label override — same as CitationDrawerTrigger's `label` prop */
+  label?: string;
   fallbackTitle: string;
 }) {
   if (citationGroups.length === 0) {
@@ -629,11 +621,10 @@ function DrawerSourceHeading({
   }
 
   const firstGroup = citationGroups[0];
-  const firstCitation = firstGroup.citations[0]?.citation;
-  const labelOverride = lookupSourceLabel(firstCitation, sourceLabelMap);
-  const primaryName = labelOverride || firstGroup.sourceName || fallbackTitle;
+  // Use the exact same label as CitationDrawerTrigger — generateDefaultLabel handles
+  // truncation and "+N" overflow in one place, ensuring heading and trigger always match.
+  const displayLabel = label?.trim() || generateDefaultLabel(citationGroups);
   const isUrlSource = !!firstGroup.sourceDomain;
-  const overflowCount = citationGroups.length - 1;
 
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -643,24 +634,19 @@ function DrawerSourceHeading({
           <FaviconImage
             faviconUrl={firstGroup.sourceFavicon || null}
             domain={firstGroup.sourceDomain || null}
-            alt={primaryName}
+            alt={displayLabel}
           />
         ) : (
           <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
             <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
-              {primaryName.charAt(0).toUpperCase()}
+              {displayLabel.charAt(0).toUpperCase()}
             </span>
           </div>
         )}
       </div>
 
-      {/* Source name with overflow count */}
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-        {primaryName}
-        {overflowCount > 0 && (
-          <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal text-sm">+{overflowCount}</span>
-        )}
-      </h2>
+      {/* Source label — identical text to CitationDrawerTrigger */}
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{displayLabel}</h2>
     </div>
   );
 }
@@ -691,34 +677,76 @@ export function CitationDrawer({
   onClose,
   citationGroups,
   title = "Citations",
+  label,
   // showMoreSection and maxVisibleItems are deprecated — accepted but ignored
   showMoreSection: _showMoreSection,
   maxVisibleItems: _maxVisibleItems,
   onCitationClick,
-  onReadMore,
+  onReadMore: _onReadMore,
   className,
   position = "bottom",
   renderCitationItem,
   indicatorVariant = "icon",
   sourceLabelMap,
 }: CitationDrawerProps): React.ReactNode {
+  // Resolve source labels once at the top — all downstream components read group.sourceName directly
+  const resolvedGroups = useMemo(
+    () => resolveGroupLabels(citationGroups, sourceLabelMap),
+    [citationGroups, sourceLabelMap],
+  );
+
   // Status summary for header and progress bar
-  const summary = useMemo(() => computeStatusSummary(citationGroups), [citationGroups]);
+  const summary = useMemo(() => computeStatusSummary(resolvedGroups), [resolvedGroups]);
 
   // Sorted groups for display
-  const sortedGroups = useMemo(() => sortGroupsByWorstStatus(citationGroups), [citationGroups]);
+  const sortedGroups = useMemo(() => sortGroupsByWorstStatus(resolvedGroups), [resolvedGroups]);
 
   // Flatten all citations for total count and header icons
   const totalCitations = summary.total;
-  const flatCitations = useMemo(() => flattenCitations(citationGroups), [citationGroups]);
+  const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
 
-  // Handle escape key
+  // Page numbers for header — computed from all groups, shown top-right
+  const drawerPageLabel = useMemo(() => {
+    const pages = computeUniquePageNumbers(sortedGroups);
+    return formatDrawerPageNumbers(pages);
+  }, [sortedGroups]);
+
+  // Escape navigation — tracks substate (expanded items, inline images) to step back
+  const [collapseInlineSignal, setCollapseInlineSignal] = useState(0);
+  const [collapseExpandedSignal, setCollapseExpandedSignal] = useState(0);
+  const expandedKeysRef = useRef(new Set<string>());
+  const inlineKeysRef = useRef(new Set<string>());
+
+  const onSubstateChange = useCallback((key: string, isExpanded: boolean, hasInline: boolean) => {
+    if (isExpanded) expandedKeysRef.current.add(key);
+    else expandedKeysRef.current.delete(key);
+    if (hasInline) inlineKeysRef.current.add(key);
+    else inlineKeysRef.current.delete(key);
+  }, []);
+
+  const escCtxValue = useMemo<DrawerEscapeCtx>(
+    () => ({ collapseInlineSignal, collapseExpandedSignal, onSubstateChange }),
+    [collapseInlineSignal, collapseExpandedSignal, onSubstateChange],
+  );
+
+  // Escape key: step back through navigation levels instead of always closing
   React.useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        if (inlineKeysRef.current.size > 0) {
+          // Level 3 → Level 2: collapse inline full-page images
+          setCollapseInlineSignal(s => s + 1);
+          inlineKeysRef.current.clear();
+        } else if (expandedKeysRef.current.size > 0) {
+          // Level 2 → Level 1: collapse expanded evidence trays
+          setCollapseExpandedSignal(s => s + 1);
+          expandedKeysRef.current.clear();
+        } else {
+          // Level 1 → closed: close the drawer
+          onClose();
+        }
       }
     };
 
@@ -741,6 +769,8 @@ export function CitationDrawer({
     }
     return acc;
   }, []);
+
+  const isSingleGroup = sortedGroups.length === 1;
 
   const drawerContent = (
     <>
@@ -777,11 +807,7 @@ export function CitationDrawer({
         <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <DrawerSourceHeading
-                citationGroups={citationGroups}
-                sourceLabelMap={sourceLabelMap}
-                fallbackTitle={title}
-              />
+              <DrawerSourceHeading citationGroups={resolvedGroups} label={label} fallbackTitle={title} />
               {totalCitations > 0 && (
                 <div className="mt-0.5">
                   <StackedStatusIcons
@@ -798,6 +824,11 @@ export function CitationDrawer({
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {drawerPageLabel && (
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0 uppercase tracking-wide">
+                  {drawerPageLabel}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={onClose}
@@ -819,26 +850,27 @@ export function CitationDrawer({
         </div>
 
         {/* Citation list */}
-        <div className="flex-1 overflow-y-auto">
-          {totalCitations === 0 ? (
-            <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No citations to display</div>
-          ) : (
-            sortedGroups.map((group, groupIndex) => (
-              <DrawerSourceGroup
-                key={`${group.sourceDomain ?? group.sourceName}-${groupIndex}`}
-                group={group}
-                groupIndex={groupIndex}
-                isLastGroup={groupIndex === sortedGroups.length - 1}
-                staggerOffset={staggerOffsets[groupIndex] ?? 0}
-                onCitationClick={onCitationClick}
-                onReadMore={onReadMore}
-                indicatorVariant={indicatorVariant}
-                sourceLabelMap={sourceLabelMap}
-                renderCitationItem={renderCitationItem}
-              />
-            ))
-          )}
-        </div>
+        <DrawerEscapeContext.Provider value={escCtxValue}>
+          <div className="flex-1 overflow-y-auto">
+            {totalCitations === 0 ? (
+              <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No citations to display</div>
+            ) : (
+              sortedGroups.map((group, groupIndex) => (
+                <DrawerSourceGroup
+                  key={`${group.sourceDomain ?? group.sourceName}-${groupIndex}`}
+                  group={group}
+                  groupIndex={groupIndex}
+                  isLastGroup={groupIndex === sortedGroups.length - 1}
+                  staggerOffset={staggerOffsets[groupIndex] ?? 0}
+                  onCitationClick={onCitationClick}
+                  indicatorVariant={indicatorVariant}
+                  renderCitationItem={renderCitationItem}
+                  isSingleGroup={isSingleGroup}
+                />
+              ))
+            )}
+          </div>
+        </DrawerEscapeContext.Provider>
       </div>
     </>
   );

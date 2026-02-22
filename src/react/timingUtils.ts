@@ -45,6 +45,7 @@ export const REVIEW_DWELL_THRESHOLD_MS = 2000;
  * - >= 60000ms:    ">60s"
  */
 export function formatTtc(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "instant";
   if (ms < TTC_INSTANT_THRESHOLD_MS) return "instant";
   if (ms >= TTC_MAX_DISPLAY_MS) return ">60s";
   if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -118,10 +119,8 @@ export function computeTimingMetrics(verifications: Record<string, Verification>
 export interface CitationTimingResult {
   /** System TtC: time from component mount to verification resolution (ms) */
   timeToCertaintyMs: number | null;
-  /** User review duration from the first dwell-qualified popover close (ms) */
-  reviewDurationMs: number | null;
   /** Ref to the firstSeenAt timestamp (exposed for popover telemetry in CitationComponent) */
-  firstSeenAtRef: React.RefObject<number | null>;
+  firstSeenAtRef: React.MutableRefObject<number | null>;
 }
 
 /**
@@ -143,15 +142,15 @@ export function useCitationTiming(
   const firstSeenAtRef = useRef<number | null>(null);
   const evidenceReadyFiredRef = useRef(false);
   const [ttcMs, setTtcMs] = useState<number | null>(null);
-  const [_reviewDurationMs, _setReviewDurationMs] = useState<number | null>(null);
 
   // Stable callback ref to avoid re-triggering effects when consumer recreates the callback
   const onTimingEventRef = useRef(onTimingEvent);
   onTimingEventRef.current = onTimingEvent;
 
-  // 1. On mount: record firstSeenAt, emit "citation_seen"
+  // 1. On mount (or citationKey change): record firstSeenAt, reset evidenceReadyFired, emit "citation_seen"
   useEffect(() => {
     firstSeenAtRef.current = Date.now();
+    evidenceReadyFiredRef.current = false;
     onTimingEventRef.current?.({
       event: "citation_seen",
       citationKey,
@@ -171,9 +170,6 @@ export function useCitationTiming(
       const computed = Math.max(0, now - firstSeenAtRef.current);
       setTtcMs(computed);
 
-      // Stamp on the verification object (mutation-safe per codebase pattern)
-      if (verification) verification.timeToCertaintyMs = computed;
-
       onTimingEventRef.current?.({
         event: "evidence_ready",
         citationKey,
@@ -185,7 +181,7 @@ export function useCitationTiming(
     }
   }, [hasResult, citationKey, verification]);
 
-  return { timeToCertaintyMs: ttcMs, reviewDurationMs: _reviewDurationMs, firstSeenAtRef };
+  return { timeToCertaintyMs: ttcMs, firstSeenAtRef };
 }
 
 /**

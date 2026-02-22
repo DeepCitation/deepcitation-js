@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "bun:test";
-import { normalizeScreenshotSrc } from "../react/CitationComponent";
+import { normalizeScreenshotSrc } from "../react/EvidenceTray";
 
 describe("normalizeScreenshotSrc", () => {
   describe("Valid inputs", () => {

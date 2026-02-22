@@ -121,6 +121,10 @@ export const PENDING_COLOR_DEFAULT = "#9ca3af";
 export const POPOVER_WIDTH_VAR = "--dc-popover-width";
 /** Default popover width */
 export const POPOVER_WIDTH_DEFAULT = "480px";
+/** Resolved popover width CSS value. Customizable via `--dc-popover-width`. */
+export const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
+/** Extra px beyond image natural width for the expanded popover shell (mx-3 margins + borders). */
+export const EXPANDED_IMAGE_SHELL_PX = 32;
 /** Default max width for verification images (responsive with fallback) */
 export const VERIFICATION_IMAGE_MAX_WIDTH = "min(70vw, 480px)";
 /** Default max height for verification images (responsive with fallback) */
@@ -527,6 +531,12 @@ export const TOUCH_CLICK_DEBOUNCE_MS = 100;
  * Used for copy-to-clipboard feedback in various components.
  */
 export const COPY_FEEDBACK_DURATION_MS = 2000;
+
+/**
+ * Duration in ms that footer hints (e.g. "Click to expand") remain bold/dark
+ * before transitioning to muted gray. Used by FooterHint component.
+ */
+export const FOOTER_HINT_DURATION_MS = 2000;
 
 /** Auto-hide spinner after this duration if verification is still pending. */
 export const SPINNER_TIMEOUT_MS = 5000;
