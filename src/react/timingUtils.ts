@@ -103,9 +103,7 @@ export function computeTimingMetrics(verifications: Record<string, Verification>
     minTtcMs: ttcValues[0],
     maxTtcMs: ttcValues[ttcValues.length - 1],
     medianTtcMs:
-      ttcValues.length % 2 === 0
-        ? (ttcValues[medianIdx - 1] + ttcValues[medianIdx]) / 2
-        : ttcValues[medianIdx],
+      ttcValues.length % 2 === 0 ? (ttcValues[medianIdx - 1] + ttcValues[medianIdx]) / 2 : ttcValues[medianIdx],
     resolvedCount: ttcValues.length,
     totalCount: entries.length,
     totalSearchDurationMs,

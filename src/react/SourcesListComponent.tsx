@@ -335,7 +335,13 @@ interface SourcesListHeaderProps {
   timingMetrics?: import("../types/timing.js").TimingMetrics | null;
 }
 
-const SourcesListHeader = ({ header: headerConfig = {}, sources, variant, handleClose, timingMetrics }: SourcesListHeaderProps) => {
+const SourcesListHeader = ({
+  header: headerConfig = {},
+  sources,
+  variant,
+  handleClose,
+  timingMetrics,
+}: SourcesListHeaderProps) => {
   const { title = "Sources", showCloseButton = true, showCount = true, renderHeader: customRender } = headerConfig;
 
   if (customRender) {
@@ -575,7 +581,13 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
     );
 
     const headerElement = (
-      <SourcesListHeader header={header} sources={sources} variant={variant} handleClose={handleClose} timingMetrics={timingMetrics} />
+      <SourcesListHeader
+        header={header}
+        sources={sources}
+        variant={variant}
+        handleClose={handleClose}
+        timingMetrics={timingMetrics}
+      />
     );
 
     // Render list content
