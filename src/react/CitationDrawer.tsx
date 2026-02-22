@@ -13,6 +13,7 @@ import {
   flattenCitations,
   getItemStatusCategory,
   getStatusInfo,
+  resolveGroupLabels,
   STATUS_DISPLAY_MAP,
   sortGroupsByWorstStatus,
 } from "./CitationDrawer.utils.js";
@@ -34,28 +35,6 @@ import { sanitizeUrl } from "./urlUtils.js";
 import { cn } from "./utils.js";
 import { FaviconImage } from "./VerificationLog.js";
 
-// =========
-// Utilities: sourceLabelMap lookup
-// =========
-
-/**
- * Look up a friendly display label from the sourceLabelMap for a citation.
- * Tries citation.attachmentId first, then citation.url.
- */
-function lookupSourceLabel(
-  citation: { attachmentId?: string; url?: string } | undefined,
-  sourceLabelMap: Record<string, string> | undefined,
-): string | undefined {
-  if (!sourceLabelMap || !citation) return undefined;
-  if (citation.attachmentId && sourceLabelMap[citation.attachmentId]) {
-    return sourceLabelMap[citation.attachmentId];
-  }
-  if (citation.url && sourceLabelMap[citation.url]) {
-    return sourceLabelMap[citation.url];
-  }
-  return undefined;
-}
-
 // HighlightedPhrase — imported from ./HighlightedPhrase.js (canonical location)
 // EvidenceTray, InlineExpandedImage — imported from ./CitationComponent.js (canonical location)
 
@@ -70,14 +49,11 @@ function lookupSourceLabel(
  */
 function SourceGroupHeader({
   group,
-  sourceLabelMap,
 }: {
   group: SourceCitationGroup;
-  sourceLabelMap?: Record<string, string>;
 }) {
+  const sourceName = group.sourceName || "Source";
   const firstCitation = group.citations[0]?.citation;
-  const labelOverride = lookupSourceLabel(firstCitation, sourceLabelMap);
-  const sourceName = labelOverride || group.sourceName || "Source";
   const citationCount = group.citations.length;
   const isUrlSource = !!group.sourceDomain;
 
@@ -382,13 +358,11 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
  */
 function CompactSingleCitationRow({
   group,
-  sourceLabelMap,
   isLast = false,
   onClick,
   indicatorVariant = "icon",
 }: {
   group: SourceCitationGroup;
-  sourceLabelMap?: Record<string, string>;
   isLast?: boolean;
   onClick?: (item: CitationDrawerItem) => void;
   indicatorVariant?: "icon" | "dot";
@@ -398,8 +372,7 @@ function CompactSingleCitationRow({
   const statusInfo = getStatusInfo(verification, indicatorVariant);
   const isPending = !verification?.status || verification.status === "pending" || verification.status === "loading";
 
-  const labelOverride = lookupSourceLabel(citation, sourceLabelMap);
-  const sourceName = labelOverride || group.sourceName || "Source";
+  const sourceName = group.sourceName || "Source";
   const isUrlSource = !!group.sourceDomain;
 
   const anchorText = citation.anchorText?.toString() || citation.fullPhrase;
@@ -483,7 +456,6 @@ interface DrawerSourceGroupProps {
   staggerOffset: number;
   onCitationClick?: (item: CitationDrawerItem) => void;
   indicatorVariant: "icon" | "dot";
-  sourceLabelMap?: Record<string, string>;
   renderCitationItem?: (item: CitationDrawerItem) => React.ReactNode;
 }
 
@@ -494,7 +466,6 @@ function DrawerSourceGroup({
   staggerOffset,
   onCitationClick,
   indicatorVariant,
-  sourceLabelMap,
   renderCitationItem,
 }: DrawerSourceGroupProps) {
   const key = `${group.sourceDomain ?? group.sourceName}-${groupIndex}`;
@@ -515,7 +486,7 @@ function DrawerSourceGroup({
   // Multi-citation groups: header + items
   return (
     <div key={key}>
-      <SourceGroupHeader group={group} sourceLabelMap={sourceLabelMap} />
+      <SourceGroupHeader group={group} />
       <div>
         {group.citations.map((item, index) => {
           const delay = Math.min((staggerOffset + index) * 35, 200);
@@ -550,24 +521,19 @@ function DrawerSourceHeading({
   citationGroups,
   label,
   fallbackTitle,
-  sourceLabelMap,
 }: {
   citationGroups: SourceCitationGroup[];
   /** Explicit label override — same as CitationDrawerTrigger's `label` prop */
   label?: string;
   fallbackTitle: string;
-  /** Map of attachmentId/URL to friendly display label (same as group headers use) */
-  sourceLabelMap?: Record<string, string>;
 }) {
   if (citationGroups.length === 0) {
     return <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{fallbackTitle}</h2>;
   }
 
   const firstGroup = citationGroups[0];
-  const firstCitation = firstGroup.citations[0]?.citation;
-  const labelFromMap = lookupSourceLabel(firstCitation, sourceLabelMap);
-  // Mirror CitationDrawerTrigger: label prop wins, then sourceLabelMap, then group.sourceName, then fallback
-  const primaryName = label?.trim() || labelFromMap || firstGroup.sourceName?.trim() || fallbackTitle;
+  // label prop wins, then group.sourceName (pre-resolved via resolveGroupLabels), then fallback
+  const primaryName = label?.trim() || firstGroup.sourceName?.trim() || fallbackTitle;
   const isUrlSource = !!firstGroup.sourceDomain;
   const overflowCount = citationGroups.length - 1;
 
@@ -639,15 +605,21 @@ export function CitationDrawer({
   indicatorVariant = "icon",
   sourceLabelMap,
 }: CitationDrawerProps): React.ReactNode {
+  // Resolve source labels once at the top — all downstream components read group.sourceName directly
+  const resolvedGroups = useMemo(
+    () => resolveGroupLabels(citationGroups, sourceLabelMap),
+    [citationGroups, sourceLabelMap],
+  );
+
   // Status summary for header and progress bar
-  const summary = useMemo(() => computeStatusSummary(citationGroups), [citationGroups]);
+  const summary = useMemo(() => computeStatusSummary(resolvedGroups), [resolvedGroups]);
 
   // Sorted groups for display
-  const sortedGroups = useMemo(() => sortGroupsByWorstStatus(citationGroups), [citationGroups]);
+  const sortedGroups = useMemo(() => sortGroupsByWorstStatus(resolvedGroups), [resolvedGroups]);
 
   // Flatten all citations for total count and header icons
   const totalCitations = summary.total;
-  const flatCitations = useMemo(() => flattenCitations(citationGroups), [citationGroups]);
+  const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
 
   // Handle escape key
   React.useEffect(() => {
@@ -714,7 +686,7 @@ export function CitationDrawer({
         <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <DrawerSourceHeading citationGroups={citationGroups} label={label} fallbackTitle={title} sourceLabelMap={sourceLabelMap} />
+              <DrawerSourceHeading citationGroups={resolvedGroups} label={label} fallbackTitle={title} />
               {totalCitations > 0 && (
                 <div className="mt-0.5">
                   <StackedStatusIcons
@@ -765,7 +737,6 @@ export function CitationDrawer({
                 staggerOffset={staggerOffsets[groupIndex] ?? 0}
                 onCitationClick={onCitationClick}
                 indicatorVariant={indicatorVariant}
-                sourceLabelMap={sourceLabelMap}
                 renderCitationItem={renderCitationItem}
               />
             ))

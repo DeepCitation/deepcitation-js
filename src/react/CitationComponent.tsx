@@ -809,10 +809,11 @@ const CitationContentDisplay = ({
         {anchorTextDisplay && <span className="font-normal">{anchorTextDisplay}</span>}
         <sup
           className={cn(
-            "text-xs font-medium transition-colors inline-flex items-baseline px-0.5 rounded",
+            "font-medium transition-colors px-0.5 rounded",
             supStatusClasses,
             ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner),
           )}
+          style={{ fontSize: "0.65em", lineHeight: 0, position: "relative", top: "-0.65em", verticalAlign: "baseline" }}
         >
           [<span>{citationNumber}</span>
           {indicator}]
@@ -2024,10 +2025,9 @@ export function InlineExpandedImage({
     const maxImageWidth =
       typeof window !== "undefined" ? window.innerWidth - 32 - EXPANDED_IMAGE_SHELL_PX : containerSize.width;
     const fitZoomW = maxImageWidth / naturalWidth;
-    // Max image height: the flex-allocated container height (already subtracts header
-    // zones, margins, and popover chrome from the viewport-based maxHeight).
-    const fitZoomH = containerSize.height / naturalHeight;
-    const fitZoom = Math.min(1, Math.max(0.1, Math.min(fitZoomW, fitZoomH)));
+    // Width-only zoom: fill the popover horizontally; tall images scroll vertically
+    // inside the overflow-auto container (same pattern as keyhole's horizontal scroll).
+    const fitZoom = Math.min(1, Math.max(0.1, fitZoomW));
     if (fitZoom < 1) setZoom(fitZoom);
     setZoomFloor(Math.min(EXPANDED_ZOOM_MIN, fitZoom));
     // Report zoomed dimensions so the popover sizes to the displayed image,
@@ -2605,18 +2605,17 @@ function DefaultPopoverContent({
           style={{
             width: isExpanded
               ? expandedNaturalWidth !== null
-                ? `min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                ? `max(${POPOVER_WIDTH}, min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
                 : "calc(100dvw - 2rem)"
               : POPOVER_WIDTH,
             maxWidth: "100%",
             transition: morphTransition(isExpanded),
-            // Full-page only: flex column layout with inherited maxHeight from PopoverContent.
-            // No forced height — the popover sizes to content, capped by the viewport boundary.
-            // Small images keep the popover compact; large images grow to the maxHeight cap.
+            // Full-page only: flex column layout. height: 100% propagates the
+            // definite height from PopoverContent so flex-1 children can fill it.
             ...(isFullPage && {
               display: "flex",
               flexDirection: "column" as const,
-              maxHeight: "inherit",
+              height: "100%",
               overflowY: "hidden" as const,
             }),
           }}
@@ -2694,7 +2693,7 @@ function DefaultPopoverContent({
           style={{
             width: isExpanded
               ? expandedNaturalWidth !== null
-                ? `min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                ? `max(${POPOVER_WIDTH}, min(${expandedNaturalWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
                 : "calc(100dvw - 2rem)"
               : POPOVER_WIDTH,
             maxWidth: "100%",
@@ -2702,7 +2701,7 @@ function DefaultPopoverContent({
             ...(isFullPage && {
               display: "flex",
               flexDirection: "column" as const,
-              maxHeight: "inherit",
+              height: "100%",
               overflowY: "hidden" as const,
             }),
           }}
@@ -3655,13 +3654,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       maxWidth: "calc(100dvw - 2rem)",
                       width:
                         expandedImageWidth !== null
-                          ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                          ? `max(${POPOVER_WIDTH}, min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
                           : "calc(100dvw - 2rem)",
-                      // No forced height — popover sizes to content, capped by maxHeight.
-                      // Small images → compact popover. Large images → grows to boundary.
-                      // Override Popover.tsx's default maxHeight (which uses
-                      // --radix-popover-content-available-height, only measuring space
-                      // on ONE side of the trigger) to allow filling the full viewport.
+                      // Explicit height gives the flex chain a definite reference size
+                      // so flex-1 min-h-0 children can grow into available space.
+                      // The shift middleware repositions the popover within viewport bounds.
+                      height: "calc(100dvh - 2rem)",
                       maxHeight: "calc(100dvh - 2rem)",
                       // The inner InlineExpandedImage handles its own scrolling (with hidden
                       // scrollbars). Override PopoverContent's default overflow-y-auto to
@@ -3673,7 +3671,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                         maxWidth: "calc(100dvw - 2rem)",
                         width:
                           expandedImageWidth !== null
-                            ? `min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem))`
+                            ? `max(${POPOVER_WIDTH}, min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
                             : "calc(100dvw - 2rem)",
                       }
                     : undefined

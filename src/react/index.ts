@@ -33,6 +33,8 @@ export {
 export type { StatusCategory, StatusSection } from "./CitationDrawer.utils.js";
 export {
   groupCitationsBySource,
+  lookupSourceLabel,
+  resolveGroupLabels,
   useCitationDrawer,
 } from "./CitationDrawer.utils.js";
 // Citation Drawer Trigger (compact summary bar)

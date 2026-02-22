@@ -177,6 +177,8 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `REVIEW_DWELL_THRESHOLD_MS` | `src/react/timingUtils.ts` | Popover dwell threshold (2s) for review detection |
 | `TTC_TEXT_STYLE` | `src/react/constants.ts` | Muted TtC display style (tabular-nums) |
 | `TTC_FAST_TEXT_STYLE` | `src/react/constants.ts` | Green-tinted TtC style for fast reviews |
+| `lookupSourceLabel()` | `src/react/CitationDrawer.utils.tsx` | Source label map lookup for citations |
+| `resolveGroupLabels()` | `src/react/CitationDrawer.utils.tsx` | Pre-resolve source labels for citation groups |
 | `wordCount()` | `src/react/overlayGeometry.ts` | Safe word counting with size limits |
 | `toPercentRect()` | `src/react/overlayGeometry.ts` | PDF to CSS coordinate conversion |
 | `isValidOverlayGeometry()` | `src/react/overlayGeometry.ts` | Geometry validation |

@@ -668,4 +668,5 @@ export interface SourceChipProps {
  */
 export type GroupCitationsBySource = (
   citations: import("./CitationDrawer.types.js").CitationDrawerItem[],
+  sourceLabelMap?: Record<string, string>,
 ) => import("./CitationDrawer.types.js").SourceCitationGroup[];

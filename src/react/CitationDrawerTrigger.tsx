@@ -3,7 +3,7 @@ import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, u
 import type { Verification } from "../types/verification.js";
 import type { SourceCitationGroup } from "./CitationDrawer.types.js";
 import type { FlatCitationItem } from "./CitationDrawer.utils.js";
-import { flattenCitations, getStatusInfo } from "./CitationDrawer.utils.js";
+import { flattenCitations, getStatusInfo, resolveGroupLabels } from "./CitationDrawer.utils.js";
 import { isValidProofImageSrc, TOOLTIP_HIDE_DELAY_MS, TTC_TEXT_STYLE } from "./constants.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { formatTtc } from "./timingUtils.js";
@@ -382,6 +382,7 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
       maxIcons = 5,
       showProofThumbnails = true,
       indicatorVariant = "icon",
+      sourceLabelMap,
       timingMetrics,
     },
     ref,
@@ -391,10 +392,16 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
     const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const isTouchDevice = useIsTouchDevice();
 
-    const displayLabel = label ?? generateDefaultLabel(citationGroups);
+    // Resolve source labels once — all downstream reads of group.sourceName are pre-resolved
+    const resolvedGroups = useMemo(
+      () => resolveGroupLabels(citationGroups, sourceLabelMap),
+      [citationGroups, sourceLabelMap],
+    );
+
+    const displayLabel = label ?? generateDefaultLabel(resolvedGroups);
 
     // Flatten citation groups into individual items for per-citation icons
-    const flatCitations = useMemo(() => flattenCitations(citationGroups), [citationGroups]);
+    const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
 
     // On touch devices, skip the hover-spread animation — tap goes straight to drawer
     const handleMouseEnter = useCallback(() => {
