@@ -1,5 +1,6 @@
 import type React from "react";
 import type { DeepTextItem } from "../types/boxes.js";
+import { safeSplit } from "../utils/regexSafety.js";
 import {
   ANCHOR_HIGHLIGHT_COLOR,
   CITATION_BRACKET_AMBER,
@@ -10,15 +11,11 @@ import {
   SPOTLIGHT_OVERLAY_COLOR,
 } from "./constants.js";
 
-/** Maximum input length for wordCount to prevent excessive memory use from split(). */
-const MAX_WORD_COUNT_INPUT_LENGTH = 10_000;
-
-/** Count whitespace-delimited words in a string. */
-function wordCount(s: string): number {
+/** @internal Exported for testing. Count whitespace-delimited words in a string. */
+export function wordCount(s: string): number {
   const trimmed = s.trim();
   if (trimmed.length === 0) return 0;
-  if (trimmed.length > MAX_WORD_COUNT_INPUT_LENGTH) return 0;
-  return trimmed.split(/\s+/).length;
+  return safeSplit(trimmed, /\s+/).length;
 }
 
 /** Clamp a number to the range [min, max]. */
@@ -27,10 +24,11 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
+ * @internal Exported for testing.
  * Validates that render scale and image dimensions are positive finite numbers.
  * Returns false if any value would cause division by zero or NaN propagation.
  */
-function isValidOverlayGeometry(
+export function isValidOverlayGeometry(
   renderScale: { x: number; y: number },
   imageNaturalWidth: number,
   imageNaturalHeight: number,
@@ -57,7 +55,8 @@ function isValidOverlayGeometry(
  * All outputs are clamped to [0, 100]% to prevent overlays from bleeding
  * outside the image bounds due to rounding errors in PDF coordinates.
  */
-function toPercentRect(
+/** @internal Exported for testing. */
+export function toPercentRect(
   item: DeepTextItem,
   renderScale: { x: number; y: number },
   imageNaturalWidth: number,
@@ -134,6 +133,10 @@ export function CitationAnnotationOverlay({
     anchorTextDeepItem.text?.toLowerCase() !== phraseMatchDeepItem.text?.toLowerCase() &&
     wordCount(fullPhrase) - wordCount(anchorText) >= MIN_WORD_DIFFERENCE;
 
+  const anchorRect = showAnchor
+    ? toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight)
+    : null;
+
   return (
     <div
       style={{
@@ -182,21 +185,16 @@ export function CitationAnnotationOverlay({
       />
 
       {/* Anchor text highlight (amber background) */}
-      {showAnchor &&
-        (() => {
-          const anchorRect = toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight);
-          if (!anchorRect) return null;
-          return (
-            <div
-              style={{
-                position: "absolute",
-                ...anchorRect,
-                backgroundColor: ANCHOR_HIGHLIGHT_COLOR,
-                ...NONE,
-              }}
-            />
-          );
-        })()}
+      {anchorRect && (
+        <div
+          style={{
+            position: "absolute",
+            ...anchorRect,
+            backgroundColor: ANCHOR_HIGHLIGHT_COLOR,
+            ...NONE,
+          }}
+        />
+      )}
     </div>
   );
 }

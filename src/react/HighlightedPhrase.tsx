@@ -1,14 +1,11 @@
+import { safeSplit } from "../utils/regexSafety.js";
 import { ANCHOR_HIGHLIGHT_STYLE, MIN_WORD_DIFFERENCE } from "./constants.js";
-
-/** Maximum input length for wordCount to prevent excessive memory use from split(). */
-const MAX_WORD_COUNT_INPUT_LENGTH = 10_000;
 
 /** Count whitespace-delimited words in a string. */
 function wordCount(s: string): number {
   const trimmed = s.trim();
   if (trimmed.length === 0) return 0;
-  if (trimmed.length > MAX_WORD_COUNT_INPUT_LENGTH) return 0;
-  return trimmed.split(/\s+/).length;
+  return safeSplit(trimmed, /\s+/).length;
 }
 
 /**
