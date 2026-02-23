@@ -1050,23 +1050,17 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         </CitationErrorBoundary>
       );
 
-      // Pre-render the image content in hidden mode when we have an image
-      // but the user isn't hovering yet. This uses React 19.2's Activity
-      // component to prefetch and decode the image before it's needed.
-      const prefetchElement =
-        hasImage && !isHovering && !renderPopoverContent ? (
-          <CitationErrorBoundary>
-            <DefaultPopoverContent
-              citation={citation}
-              verification={verification ?? null}
-              status={status}
-              isLoading={false}
-              isVisible={false}
-              sourceLabel={sourceLabel}
-              indicatorVariant={indicatorVariant}
-            />
-          </CitationErrorBoundary>
-        ) : null;
+      // Image prefetching is handled imperatively inside DefaultPopoverContent
+      // via `new Image().src` (see DefaultPopoverContent.tsx).
+      //
+      // Previous approaches that caused React 19 crashes:
+      // 1. Rendering a hidden DefaultPopoverContent (prefetchElement) alongside
+      //    the visible one — simultaneous unmount + mount corrupted the fiber
+      //    effect linked list ("Cannot read properties of undefined ('destroy')").
+      // 2. Wrapping portal content in DeferredMount (two-phase mount via
+      //    useLayoutEffect) — the deferred fiber creation during portal mount
+      //    caused hook-order violations when React tried to reconcile the
+      //    portal's fiber tree across renders.
 
       return (
         <>
@@ -1077,8 +1071,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               {statusDescription}
             </span>
           )}
-          {/* Hidden prefetch layer - pre-renders image content using Activity */}
-          {prefetchElement}
           <Popover
             open={isHovering}
             onOpenChange={open => {

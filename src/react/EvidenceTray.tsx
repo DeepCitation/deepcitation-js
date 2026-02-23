@@ -659,16 +659,18 @@ export function EvidenceTray({
   // Shared inner content
   const content = (
     <>
-      {/* Content: image or search analysis */}
+      {/* Content: image or search analysis.
+          Keys prevent React from reusing fibers across component-type swaps. */}
       {hasImage && verification ? (
         <AnchorTextFocusedImage
+          key="keyhole"
           verification={verification}
           onImageClick={onImageClick}
           onFitStateChange={setKeyholeImageFits}
           onAlreadyFullSize={handleAlreadyFullSize}
         />
       ) : isMiss && searchAttempts.length > 0 ? (
-        <>
+        <div key="miss-analysis">
           {isValidProofImageSrc(proofImageSrc) && (
             <div className="overflow-hidden" style={{ height: MISS_TRAY_THUMBNAIL_HEIGHT }}>
               <img
@@ -680,7 +682,7 @@ export function EvidenceTray({
             </div>
           )}
           <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
-        </>
+        </div>
       ) : null}
 
       {/* Footer: outcome + date (skip for miss — compressed summary has this info) */}
@@ -860,14 +862,11 @@ export function InlineExpandedImage({
     // Auto-scroll to annotation: after fit-to-screen zoom is computed, scroll
     // the container so the phraseMatchDeepItem annotation is centered in view.
     // Uses rAF to wait for the DOM to reflow at the new zoom level.
-    // Fire-and-forget (no cleanup return) — the containerRef null-guard prevents
-    // stale writes, and returning a conditional cleanup would change this effect's
-    // destroy behavior across renders, which can trigger a React 19 Activity bug
-    // during simultaneous mode transitions and parent unmounts.
+    let rafId: number | undefined;
     const phraseItem = verification?.document?.phraseMatchDeepItem;
     if (phraseItem && renderScale) {
       const effectiveZoom = fitZoom < 1 ? fitZoom : 1;
-      requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
         const container = containerRef.current;
         if (!container) return;
         const target = computeAnnotationScrollTarget(
@@ -885,6 +884,9 @@ export function InlineExpandedImage({
         }
       });
     }
+    return () => {
+      if (rafId !== undefined) cancelAnimationFrame(rafId);
+    };
   }, [
     fill,
     imageLoaded,
@@ -1030,7 +1032,7 @@ export function InlineExpandedImage({
   return (
     <div
       ref={outerRef}
-      className={cn("mx-3 mb-3 animate-in fade-in-0 duration-150", fill && "flex-1 min-h-0 flex flex-col")}
+      className={cn("relative mx-3 mb-3 animate-in fade-in-0 duration-150", fill && "flex-1 min-h-0 flex flex-col")}
       style={
         fill
           ? undefined // fill mode: container fills popover width, image scrolls inside

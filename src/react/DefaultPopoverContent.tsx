@@ -44,7 +44,8 @@ import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
 // "Cannot read/set properties of undefined (reading/setting 'destroy')" inside
 // commitHookEffectListMount/Unmount → reconnectPassiveEffects.
 // Using a Fragment pass-through preserves identical render output without the
-// unstable Activity lifecycle. Image prefetching is handled by usePrefetchImage.
+// unstable Activity lifecycle. Image prefetching is handled imperatively
+// via `new Image().src` in the useEffect at line ~297.
 const Activity = ({ children }: { mode: "visible" | "hidden"; children: ReactNode }) => <>{children}</>;
 
 // =============================================================================
@@ -432,9 +433,13 @@ export function DefaultPopoverContent({
             </div>
           )}
 
-          {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray */}
+          {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray.
+              Keys ensure React creates fresh fibers when swapping between different
+              component types at this position, preventing hook-order violations from
+              stale fiber reuse during portal reconciliation. */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage
+              key="expanded-evidence"
               src={evidenceSrc}
               onCollapse={() => onViewStateChange?.("summary")}
               verification={verification}
@@ -443,6 +448,7 @@ export function DefaultPopoverContent({
             />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
             <InlineExpandedImage
+              key="expanded-page"
               src={expandedImage.src}
               onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
               verification={verification}
@@ -453,6 +459,7 @@ export function DefaultPopoverContent({
             />
           ) : (
             <EvidenceTray
+              key="tray"
               verification={verification}
               status={status}
               onExpand={canExpandToPage ? handleExpand : undefined}
@@ -534,9 +541,11 @@ export function DefaultPopoverContent({
           )}
 
           {/* Zone 3: Expanded keyhole image OR expanded page OR normal evidence tray.
-              Same structure as the success block — page view does not depend on status. */}
+              Same structure as the success block — page view does not depend on status.
+              Keys ensure clean fiber lifecycle during component-type swaps. */}
           {viewState === "expanded-evidence" && evidenceSrc ? (
             <InlineExpandedImage
+              key="expanded-evidence"
               src={evidenceSrc}
               onCollapse={() => onViewStateChange?.("summary")}
               verification={verification}
@@ -545,6 +554,7 @@ export function DefaultPopoverContent({
             />
           ) : viewState === "expanded-page" && expandedImage?.src ? (
             <InlineExpandedImage
+              key="expanded-page"
               src={expandedImage.src}
               onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
               verification={verification}
@@ -555,6 +565,7 @@ export function DefaultPopoverContent({
             />
           ) : hasImage && verification ? (
             <EvidenceTray
+              key="tray"
               verification={verification}
               status={status}
               onExpand={canExpandToPage ? handleExpand : undefined}
@@ -564,6 +575,7 @@ export function DefaultPopoverContent({
           ) : /* Fallback for miss without keyhole image: search analysis + optional page thumbnail */
           isMiss && (verification?.searchAttempts?.length || canExpandToPage) && verification ? (
             <EvidenceTray
+              key="tray"
               verification={verification}
               status={status}
               onExpand={canExpandToPage ? handleExpand : undefined}
