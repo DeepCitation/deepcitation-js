@@ -16,7 +16,7 @@ export interface UseCitationEventsResult {
   onMouseLeave: (() => void) | undefined;
   onMouseDown: (e: MouseEvent<HTMLElement>) => void;
   onClick: (e: MouseEvent) => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLSpanElement>) => void;
 }
 
 /**
@@ -54,14 +54,12 @@ export function useCitationEvents(
   }, [eventHandlers, citation, citationKey]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLElement>) => {
+    (e: React.KeyboardEvent<HTMLSpanElement>) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         e.stopPropagation();
-        // Safe cast: onClick handler expects MouseEvent but only uses common Event properties
-        // (target, preventDefault, stopPropagation) that exist on both KeyboardEvent and MouseEvent.
-        // The handler doesn't access mouse-specific properties like clientX/clientY.
-        eventHandlers?.onClick?.(citation, citationKey, e as unknown as MouseEvent<HTMLSpanElement>);
+        // CitationEventHandlers.onClick accepts MouseEvent | TouchEvent | KeyboardEvent
+        eventHandlers?.onClick?.(citation, citationKey, e);
       }
     },
     [eventHandlers, citation, citationKey],

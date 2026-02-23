@@ -57,6 +57,15 @@ export function useCitationTelemetry({
   const [spinnerStage, setSpinnerStage] = useState<SpinnerStage>("active");
   const spinnerTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // Spinner staging: schedule "slow" and "stale" transitions when loading.
+  //
+  // Timeout cleanup happens in TWO places for correctness:
+  //   1. At the TOP of the effect body — clears the *previous* render's timeouts
+  //      before scheduling new ones (handles dependency-change re-runs).
+  //   2. In the RETURN cleanup — clears *this* render's timeouts on unmount or
+  //      before the next effect execution.
+  // Together, this ensures no leaked timeouts regardless of whether the effect
+  // re-fires (deps changed) or the component unmounts.
   useEffect(() => {
     for (const t of spinnerTimeoutsRef.current) clearTimeout(t);
     spinnerTimeoutsRef.current = [];

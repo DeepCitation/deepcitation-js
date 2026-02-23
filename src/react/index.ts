@@ -99,19 +99,18 @@ export {
   Z_INDEX_OVERLAY_DEFAULT,
   Z_INDEX_POPOVER_VAR,
 } from "./constants.js";
-// Evidence types only — import resolveExpandedImage directly from ./EvidenceTray.js
-export type { ExpandedImageSource } from "./EvidenceTray.js";
-export { resolveExpandedImage } from "./EvidenceTray.js";
-// Hook types only — import hook functions directly from their canonical files in ./hooks/
+// Evidence utilities
+export { type ExpandedImageSource, resolveExpandedImage } from "./EvidenceTray.js";
+// Hook types — import hook functions directly from their canonical files in ./hooks/
 export type { AnimationPhase, UseAnimationStateOptions, UseAnimationStateResult } from "./hooks/useAnimationState.js";
 export type { UseCitationDataResult } from "./hooks/useCitationData.js";
 export type { UseCitationEventsResult } from "./hooks/useCitationEvents.js";
 export type { UseCitationTelemetryOptions, UseCitationTelemetryResult } from "./hooks/useCitationTelemetry.js";
 export type { UsePopoverDismissOptions } from "./hooks/usePopoverDismiss.js";
 export type { UsePopoverPositionOptions, UsePopoverPositionResult } from "./hooks/usePopoverPosition.js";
-export type { UseZoomControlsOptions, UseZoomControlsResult } from "./hooks/useZoomControls.js";
 // Accessibility Hooks
 export { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
+export type { UseZoomControlsOptions, UseZoomControlsResult } from "./hooks/useZoomControls.js";
 // Icons
 export {
   CheckIcon,

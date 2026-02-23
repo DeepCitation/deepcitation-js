@@ -51,6 +51,11 @@ export function useAnimationState(
   const [phase, setPhase] = useState<AnimationPhase>("idle");
   const [isMounted, setIsMounted] = useState(isActive);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track isMounted via ref so the effect can read the latest value without
+  // adding it to the dependency array (which would cause an infinite loop
+  // since the effect itself calls setIsMounted).
+  const isMountedRef = useRef(isMounted);
+  isMountedRef.current = isMounted;
 
   useEffect(() => {
     if (timeoutRef.current) {
@@ -65,7 +70,7 @@ export function useAnimationState(
         setPhase("idle");
         timeoutRef.current = null;
       }, enterMs);
-    } else if (isMounted) {
+    } else if (isMountedRef.current) {
       setPhase("exit");
       timeoutRef.current = setTimeout(() => {
         setPhase("idle");
@@ -80,7 +85,7 @@ export function useAnimationState(
         timeoutRef.current = null;
       }
     };
-  }, [isActive, enterMs, exitMs]); // eslint-disable-line react-hooks/exhaustive-deps -- isMounted is tracked internally
+  }, [isActive, enterMs, exitMs]);
 
   return {
     isMounted,

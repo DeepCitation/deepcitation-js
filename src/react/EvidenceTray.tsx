@@ -81,8 +81,13 @@ export function normalizeScreenshotSrc(raw: string): string {
     return raw;
   }
 
-  // Validate base64 format (basic check - should only contain valid base64 chars + max 2 padding chars)
-  // This prevents injection of malicious strings that would bypass isValidProofImageSrc()
+  // Partial base64 validation: check only the first 100 chars for valid base64 alphabet.
+  // Full validation of the entire string is unnecessary because:
+  //   1. The result is always passed through isValidProofImageSrc() which blocks SVG data
+  //      URIs, javascript: URIs, and untrusted hosts (defense-in-depth).
+  //   2. Invalid base64 after the first 100 chars will simply produce a broken image, not
+  //      a security issue — the data: URI prefix is fixed to "image/jpeg".
+  //   3. Screenshot base64 strings can be 100KB+; full regex validation would risk ReDoS.
   if (!/^[A-Za-z0-9+/]+(={0,2})?$/.test(raw.slice(0, 100))) {
     throw new Error("normalizeScreenshotSrc: Invalid base64 format detected");
   }

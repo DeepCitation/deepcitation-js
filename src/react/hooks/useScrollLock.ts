@@ -38,6 +38,22 @@ function releaseScrollLock() {
 }
 
 /**
+ * Reset scroll lock state. **Test-only** — call in `afterEach` to prevent
+ * leaked scroll locks from polluting subsequent tests.
+ *
+ * @internal
+ */
+export function resetScrollLockForTesting(): void {
+  if (scrollLockCount > 0 && typeof document !== "undefined") {
+    document.body.style.overflow = scrollLockOriginalOverflow;
+    document.body.style.paddingRight = scrollLockOriginalPaddingRight;
+  }
+  scrollLockCount = 0;
+  scrollLockOriginalOverflow = "";
+  scrollLockOriginalPaddingRight = "";
+}
+
+/**
  * Lock body scroll when `isLocked` is true.
  *
  * Uses ref-counting so overlapping popover instances don't
