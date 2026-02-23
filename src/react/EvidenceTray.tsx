@@ -1042,11 +1042,11 @@ export function InlineExpandedImage({
       style={
         fill
           ? undefined // fill mode: container fills popover width, image scrolls inside
-          : zoomedWidth 
-            ? sliderLockWidth 
+          : zoomedWidth
+            ? sliderLockWidth
               ? { width: sliderLockWidth, minWidth: sliderLockWidth, maxWidth: sliderLockWidth }
               : { maxWidth: zoomedWidth }
-            : naturalWidth 
+            : naturalWidth
               ? { maxWidth: naturalWidth }
               : undefined
       }

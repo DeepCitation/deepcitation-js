@@ -8,7 +8,7 @@
  * @packageDocumentation
  */
 
-import { type RefObject, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
@@ -280,9 +280,7 @@ function EvidenceZone({
 }) {
   return (
     <>
-      <div style={viewState !== "summary" ? { display: "none" } : undefined}>
-        {summaryContent}
-      </div>
+      <div style={viewState !== "summary" ? { display: "none" } : undefined}>{summaryContent}</div>
       {evidenceSrc && (
         <div style={viewState !== "expanded-evidence" ? { display: "none" } : undefined}>
           <InlineExpandedImage

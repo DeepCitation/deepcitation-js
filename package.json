@@ -1,6 +1,6 @@
 {
   "name": "deepcitation",
-  "version": "1.1.53",
+  "version": "0.1.0",
   "description": "DeepCitation JavaScript SDK for deterministic AI citation verification",
   "type": "module",
   "private": false,

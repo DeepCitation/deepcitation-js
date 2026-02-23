@@ -549,8 +549,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       // Compute sideOffset so the popover lands 1rem from viewport top in expanded-page mode.
       // For side="bottom": popover.top = trigger.bottom + sideOffset → target VIEWPORT_MARGIN.
       const VIEWPORT_MARGIN = 16; // 1rem
-      const triggerRect =
-        popoverViewState === "expanded-page" ? triggerRef.current?.getBoundingClientRect() : null;
+      const triggerRect = popoverViewState === "expanded-page" ? triggerRef.current?.getBoundingClientRect() : null;
       setExpandedPageSideOffset(triggerRect ? VIEWPORT_MARGIN - triggerRect.bottom : undefined);
     }, [popoverViewState]);
 
@@ -1039,8 +1038,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         isLoading ||
         // Miss state (show what was searched)
         isMiss);
-
-    const hasImage = !!resolvedImageSrc;
 
     // Shared trigger element props
     // All variants use status-aware hover colors (green/amber/red/gray)
