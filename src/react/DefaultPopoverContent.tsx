@@ -278,37 +278,38 @@ function EvidenceZone({
   verification: Verification | null;
   summaryContent: ReactNode;
 }) {
+  // Both InlineExpandedImage instances are always rendered (never conditionally mounted).
+  // Inactive views are hidden with display:none. This keeps the hook tree stable across
+  // viewState transitions — React 19 corrupts the fiber effect linked list when components
+  // with hooks are conditionally mounted/unmounted inside a Radix portal.
+  // InlineExpandedImage accepts src=null and renders a minimal anchor in that case.
   return (
     <>
       <div style={viewState !== "summary" ? { display: "none" } : undefined}>{summaryContent}</div>
-      {evidenceSrc && (
-        <div style={viewState !== "expanded-evidence" ? { display: "none" } : undefined}>
-          <InlineExpandedImage
-            src={evidenceSrc}
-            onCollapse={() => onViewStateChange?.("summary")}
-            verification={verification}
-            onNaturalSize={handleExpandedImageLoad}
-          />
-        </div>
-      )}
-      {expandedImage?.src && (
-        // flex-1 min-h-0 flex flex-col: propagates the bounded height from the flex-column
-        // PopoverLayoutShell so InlineExpandedImage's own flex-1 min-h-0 can take effect.
-        // display:none on inactive view (style overrides the flex classes when hidden).
-        <div
-          className="flex-1 min-h-0 flex flex-col"
-          style={viewState !== "expanded-page" ? { display: "none" } : undefined}
-        >
-          <InlineExpandedImage
-            src={expandedImage.src}
-            onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
-            verification={verification}
-            fill
-            onNaturalSize={handleExpandedImageLoad}
-            renderScale={expandedImage.renderScale}
-          />
-        </div>
-      )}
+      <div style={viewState !== "expanded-evidence" ? { display: "none" } : undefined}>
+        <InlineExpandedImage
+          src={evidenceSrc}
+          onCollapse={() => onViewStateChange?.("summary")}
+          verification={verification}
+          onNaturalSize={handleExpandedImageLoad}
+        />
+      </div>
+      {/* flex-1 min-h-0 flex flex-col: propagates the bounded height from the flex-column
+          PopoverLayoutShell so InlineExpandedImage's own flex-1 min-h-0 can take effect.
+          display:none on inactive view (style overrides the flex classes when hidden). */}
+      <div
+        className="flex-1 min-h-0 flex flex-col"
+        style={viewState !== "expanded-page" ? { display: "none" } : undefined}
+      >
+        <InlineExpandedImage
+          src={expandedImage?.src ?? null}
+          onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
+          verification={verification}
+          fill
+          onNaturalSize={handleExpandedImageLoad}
+          renderScale={expandedImage?.renderScale}
+        />
+      </div>
     </>
   );
 }

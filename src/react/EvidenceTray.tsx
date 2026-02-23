@@ -783,7 +783,7 @@ export function InlineExpandedImage({
   onNaturalSize,
   renderScale,
 }: {
-  src: string;
+  src: string | null;
   onCollapse: () => void;
   verification?: Verification | null;
   /** When true, the component expands to fill its flex parent (for use inside flex-column containers). */
@@ -1006,6 +1006,13 @@ export function InlineExpandedImage({
     document.addEventListener("pointerup", unlock, { once: true });
     return () => document.removeEventListener("pointerup", unlock);
   }, [sliderLockWidth]);
+
+  // All hooks have run above. When src is null the component is always-mounted but
+  // inactive — render a minimal anchor so containerRef stays in the DOM without
+  // painting any UI. Keeping InlineExpandedImage unconditionally in the fiber tree
+  // prevents React 19 from corrupting its effect linked list when the parent portal
+  // closes at the same time verification arrives and makes src non-null.
+  if (!src) return <div ref={containerRef} />;
 
   const searchAttempts = verification?.searchAttempts ?? [];
   const outcomeLabel = deriveOutcomeLabel(verification?.status, searchAttempts);
