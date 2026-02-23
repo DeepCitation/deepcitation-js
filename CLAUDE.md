@@ -55,21 +55,35 @@ src/
 │   ├── citationPrompts.ts
 │   └── promptCompression.ts
 ├── react/
-│   ├── index.ts
-│   ├── CitationComponent.tsx       # Main component, error boundary, popover wiring
+│   ├── index.ts              # Public API types + consumer-facing exports
+│   ├── CitationComponent.tsx       # Main component, popover wiring
 │   ├── CitationContentDisplay.tsx  # Variant rendering (chip, superscript, badge, etc.)
+│   ├── CitationErrorBoundary.tsx   # Error boundary for citation components
 │   ├── CitationStatusIndicator.tsx # Status indicators (verified/partial/miss/pending dots & icons)
 │   ├── CitationVariants.tsx        # useCitationEvents(), StatusIndicators
 │   ├── DefaultPopoverContent.tsx   # Three-zone popover content (success/partial/miss)
-│   ├── EvidenceTray.tsx            # Evidence display, keyhole viewer, expanded page
+│   ├── EvidenceTray.tsx            # Evidence display, keyhole viewer
+│   ├── InlineExpandedImage.tsx     # Expanded page image viewer with zoom
+│   ├── SearchAnalysisSummary.tsx   # Search attempt display
 │   ├── SourcesListComponent.tsx
 │   ├── UrlCitationComponent.tsx
 │   ├── citationStatus.ts          # Status derivation, isPartialSearchStatus(), getTrustLevel()
+│   ├── citationVariants.cva.ts    # Variant class resolvers, status styles
 │   ├── constants.ts      # MISS_WAVY_UNDERLINE_STYLE, DOT_INDICATOR_*_STYLE, isValidProofImageSrc(), getPortalContainer()
+│   ├── imageUtils.ts     # handleImageError() — shared image error handler
 │   ├── outcomeLabel.ts            # deriveOutcomeLabel() — shared outcome label logic
 │   ├── urlAccessExplanation.ts    # URL access failure mapping (getUrlAccessExplanation)
 │   ├── HighlightedPhrase.tsx # HighlightedPhrase — CANONICAL LOCATION
 │   ├── dateUtils.ts      # formatCaptureDate()
+│   ├── hooks/             # Extracted hooks (import directly, not via index.ts)
+│   │   ├── useScrollLock.ts         # Ref-counted body scroll lock
+│   │   ├── usePopoverDismiss.ts     # Platform-aware outside-click dismiss
+│   │   ├── usePopoverPosition.ts    # Expanded-page side offset calculation
+│   │   ├── useCitationTelemetry.ts  # Popover timing + spinner staging
+│   │   ├── useZoomControls.ts       # Zoom state with clamping and steps
+│   │   ├── useCitationData.ts       # Citation key, instance ID, status
+│   │   ├── useCitationEvents.ts     # Click/hover/keyboard event handlers
+│   │   └── useAnimationState.ts     # Enter/exit animation lifecycle
 │   └── utils.ts          # generateCitationKey() — CANONICAL LOCATION
 ├── markdown/
 │   ├── renderMarkdown.ts
@@ -182,6 +196,9 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `useCitationTiming()` | `src/react/timingUtils.ts` | Core citation lifecycle timing hook |
 | `useTtcMetrics()` | `src/react/timingUtils.ts` | Memoized aggregate metrics hook |
 | `REVIEW_DWELL_THRESHOLD_MS` | `src/react/timingUtils.ts` | Popover dwell threshold (2s) for review detection |
+| `TTC_INSTANT_THRESHOLD_MS` | `src/react/timingUtils.ts` | Below-threshold = "instant" (100ms) |
+| `TTC_SLOW_THRESHOLD_MS` | `src/react/timingUtils.ts` | Slow tier boundary (10s) |
+| `TTC_MAX_DISPLAY_MS` | `src/react/timingUtils.ts` | Display cap (">60s") |
 | `TTC_TEXT_STYLE` | `src/react/constants.ts` | Muted TtC display style (tabular-nums) |
 | `TTC_FAST_TEXT_STYLE` | `src/react/constants.ts` | Green-tinted TtC style for fast reviews |
 | `getPrimarySourceName()` | `src/react/CitationDrawer.utils.tsx` | Primary source name (truncated, no +N) for heading/trigger |
@@ -199,12 +216,30 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `normalizeScreenshotSrc()` | `src/react/EvidenceTray.tsx` | Screenshot data URI normalization + validation |
 | `resolveExpandedImage()` | `src/react/EvidenceTray.tsx` | Resolve best image source for expanded view |
 | `EvidenceTray` | `src/react/EvidenceTray.tsx` | Evidence display with keyhole viewer |
-| `InlineExpandedImage` | `src/react/EvidenceTray.tsx` | Expanded page image viewer with zoom |
+| `InlineExpandedImage` | `src/react/InlineExpandedImage.tsx` | Expanded page image viewer with zoom |
 | `DefaultPopoverContent` | `src/react/DefaultPopoverContent.tsx` | Three-zone popover layout (success/partial/miss) |
 | `CitationStatusIndicator` | `src/react/CitationStatusIndicator.tsx` | Unified status indicator component |
 | `CitationContentDisplay` | `src/react/CitationContentDisplay.tsx` | Variant rendering (chip, superscript, badge, etc.) |
 | `getUrlAccessExplanation()` | `src/react/urlAccessExplanation.ts` | URL access failure explanation mapping |
 | `UrlAccessExplanationSection` | `src/react/DefaultPopoverContent.tsx` | URL access failure display component (private) |
+| `CitationErrorBoundary` | `src/react/CitationErrorBoundary.tsx` | Error boundary for citation components |
+| `SearchAnalysisSummary` | `src/react/SearchAnalysisSummary.tsx` | Search attempt display component |
+| `citationContainerVariants()` | `src/react/citationVariants.cva.ts` | Variant → container class resolver |
+| `citationHoverVariants()` | `src/react/citationVariants.cva.ts` | Status + opacity → hover class resolver |
+| `LINTER_STYLES` | `src/react/citationVariants.cva.ts` | Linter underline CSS by status |
+| `LINTER_HOVER_CLASSES` | `src/react/citationVariants.cva.ts` | Linter hover classes by status |
+| `BADGE_HOVER_CLASSES` | `src/react/citationVariants.cva.ts` | Badge hover classes by status |
+| `resolveStatusKey()` | `src/react/citationVariants.cva.ts` | Boolean flags → status key |
+| `SUPERSCRIPT_STYLE` | `src/react/citationVariants.cva.ts` | Superscript inline styles |
+| `handleImageError()` | `src/react/imageUtils.ts` | Shared image error handler |
+| `useScrollLock()` | `src/react/hooks/useScrollLock.ts` | Ref-counted body scroll lock |
+| `usePopoverDismiss()` | `src/react/hooks/usePopoverDismiss.ts` | Platform-aware outside-click dismiss |
+| `usePopoverPosition()` | `src/react/hooks/usePopoverPosition.ts` | Expanded-page side offset calculation |
+| `useCitationTelemetry()` | `src/react/hooks/useCitationTelemetry.ts` | Popover timing + spinner staging |
+| `useZoomControls()` | `src/react/hooks/useZoomControls.ts` | Zoom state with clamping and steps |
+| `useCitationData()` | `src/react/hooks/useCitationData.ts` | Citation key, instance ID, status derivation |
+| `useCitationEvents()` | `src/react/hooks/useCitationEvents.ts` | Click/hover/keyboard event handlers |
+| `useAnimationState()` | `src/react/hooks/useAnimationState.ts` | Enter/exit animation lifecycle |
 
 ### Example
 

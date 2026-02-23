@@ -549,8 +549,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       // Compute sideOffset so the popover lands 1rem from viewport top in expanded-page mode.
       // For side="bottom": popover.top = trigger.bottom + sideOffset → target VIEWPORT_MARGIN.
       const VIEWPORT_MARGIN = 16; // 1rem
-      const triggerRect =
-        popoverViewState === "expanded-page" ? triggerRef.current?.getBoundingClientRect() : null;
+      const triggerRect = popoverViewState === "expanded-page" ? triggerRef.current?.getBoundingClientRect() : null;
       setExpandedPageSideOffset(triggerRect ? VIEWPORT_MARGIN - triggerRect.bottom : undefined);
     }, [popoverViewState]);
 
@@ -571,22 +570,22 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // biome-ignore lint/correctness/useExhaustiveDependencies: firstSeenAtRef/verification are stable refs or read at call-time — only isHovering transitions should trigger this effect
     useEffect(() => {
       if (isHovering && firstSeenAtRef.current != null) {
-        popoverOpenedAtRef.current = Date.now();
+        popoverOpenedAtRef.current = performance.now();
         onTimingEventRef.current?.({
           event: "popover_opened",
           citationKey,
-          timestamp: popoverOpenedAtRef.current,
+          timestamp: Date.now(),
           elapsedSinceSeenMs: popoverOpenedAtRef.current - firstSeenAtRef.current,
           verificationStatus: verification?.status ?? null,
         });
       } else if (!isHovering && popoverOpenedAtRef.current != null) {
-        const now = Date.now();
+        const now = performance.now();
         const dwellMs = now - popoverOpenedAtRef.current;
 
         onTimingEventRef.current?.({
           event: "popover_closed",
           citationKey,
-          timestamp: now,
+          timestamp: Date.now(),
           elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
           popoverDurationMs: dwellMs,
           verificationStatus: verification?.status ?? null,
@@ -598,7 +597,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           onTimingEventRef.current?.({
             event: "citation_reviewed",
             citationKey,
-            timestamp: now,
+            timestamp: Date.now(),
             elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
             popoverDurationMs: dwellMs,
             verificationStatus: verification?.status ?? null,
@@ -1039,8 +1038,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         isLoading ||
         // Miss state (show what was searched)
         isMiss);
-
-    const hasImage = !!resolvedImageSrc;
 
     // Shared trigger element props
     // All variants use status-aware hover colors (green/amber/red/gray)
