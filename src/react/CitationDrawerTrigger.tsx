@@ -159,6 +159,7 @@ function CitationTooltip({
 }) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [adjustedLeft, setAdjustedLeft] = useState<number | null>(null);
+  const isTouch = useIsTouchDevice();
   const { item, sourceName, sourceFavicon, group } = flatItem;
   const statusInfo = getStatusInfo(item.verification, indicatorVariant);
 
@@ -264,7 +265,7 @@ function CitationTooltip({
             />
           </div>
           <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center">
-            Click to view details
+            {isTouch ? "Tap" : "Click"} to view details
           </span>
         </div>
       )}

@@ -494,6 +494,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // because each CitationComponent instance has its own lastTouchTimeRef.
     const lastTouchTimeRef = useRef(0);
 
+    // Track touch start coordinates for scroll-vs-tap detection.
+    // If the finger moves more than TAP_SLOP_PX between touchstart and touchend,
+    // the gesture is a scroll — not a tap — and should NOT open the popover.
+    const touchStartXRef = useRef(0);
+    const touchStartYRef = useRef(0);
+
     // Refs kept in sync with state/context via useLayoutEffect (runs before paint)
     // so event handlers always read the latest value without callback churn.
     // useLayoutEffect (not render-body assignment) avoids React Compiler bailouts.
@@ -968,6 +974,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const handleTouchStart = useCallback(
       (e: React.TouchEvent<HTMLSpanElement>) => {
         if (isMobile) {
+          // Record touch coordinates for scroll-vs-tap detection in handleTouchEnd.
+          const touch = e.touches[0];
+          if (touch) {
+            touchStartXRef.current = touch.clientX;
+            touchStartYRef.current = touch.clientY;
+          }
+
           // Capture whether popover was already open before this tap.
           // This determines first vs second tap behavior in handleTouchEnd.
           wasPopoverOpenBeforeTap.current = isHoveringRef.current;
@@ -981,9 +994,23 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     // Touch handler for mobile - handles tap-to-show-popover and tap-to-close.
     // On second tap, closes the popover.
+    // Ignores touches that moved beyond TAP_SLOP_PX (scroll/swipe gestures).
     const handleTouchEnd = useCallback(
       (e: React.TouchEvent<HTMLSpanElement>) => {
         if (isMobile) {
+          // Scroll-vs-tap detection: if the finger moved significantly, this is a scroll — bail out.
+          // We still update lastTouchTimeRef so the synthetic click (fired ~300ms later by the
+          // browser when preventDefault is NOT called) gets caught by TOUCH_CLICK_DEBOUNCE_MS.
+          const touch = e.changedTouches[0];
+          if (touch) {
+            const dx = touch.clientX - touchStartXRef.current;
+            const dy = touch.clientY - touchStartYRef.current;
+            if (dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX) {
+              lastTouchTimeRef.current = Date.now();
+              return; // Scroll gesture — do not open/close popover
+            }
+          }
+
           e.preventDefault();
           e.stopPropagation();
 
