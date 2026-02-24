@@ -22,13 +22,12 @@ import {
   EASE_COLLAPSE,
   EASE_EXPAND,
   getPortalContainer,
-  isValidProofImageSrc,
   Z_INDEX_BACKDROP_DEFAULT,
   Z_INDEX_DRAWER_BACKDROP_VAR,
   Z_INDEX_DRAWER_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
-import { EvidenceTray, InlineExpandedImage } from "./EvidenceTray.js";
+import { EvidenceTray, InlineExpandedImage, resolveExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ExternalLinkIcon } from "./icons.js";
@@ -50,6 +49,14 @@ interface DrawerEscapeCtx {
   collapseExpandedSignal: number;
   /** Items call this whenever their expanded/inline state changes */
   onSubstateChange: (key: string, isExpanded: boolean, hasInline: boolean) => void;
+  /** The currently expanded item's citation key (accordion) */
+  expandedCitationKey: string | null;
+  /** Toggle expansion for a citation key (same key = collapse, different = switch) */
+  onItemExpand: (key: string | null) => void;
+  /** Signal to auto-open InlineExpandedImage for this citation key (one-shot) */
+  pendingInlineExpand: string | null;
+  /** Clear the pending inline expand signal after consuming it */
+  clearPendingInlineExpand: () => void;
 }
 
 const DrawerEscapeContext = React.createContext<DrawerEscapeCtx | null>(null);
@@ -70,11 +77,75 @@ function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
   return Array.from(pages).sort((a, b) => a - b);
 }
 
-function formatDrawerPageNumbers(pages: number[]): string | null {
+/** Finds the citationKey of the first citation on the given page number. */
+function findFirstCitationKeyForPage(groups: SourceCitationGroup[], targetPage: number): string | null {
+  for (const group of groups) {
+    for (const { citationKey, citation, verification } of group.citations) {
+      const page =
+        (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
+      if (page === targetPage) return citationKey;
+    }
+  }
+  return null;
+}
+
+/** Clickable page number button used in the drawer header. */
+function PageBadgeButton({ page, onPageClick }: { page: number; onPageClick: (page: number) => void }) {
+  return (
+    <button
+      type="button"
+      className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors cursor-pointer"
+      onClick={e => {
+        e.stopPropagation();
+        onPageClick(page);
+      }}
+      aria-label={`Go to page ${page}`}
+    >
+      {page}
+    </button>
+  );
+}
+
+/**
+ * Renders page number badges in the drawer header.
+ * 1-3 pages: comma-separated clickable numbers.
+ * 4+ pages: range with clickable first and last.
+ */
+function DrawerPageBadges({ pages, onPageClick }: { pages: number[]; onPageClick: (page: number) => void }) {
   if (pages.length === 0) return null;
-  if (pages.length === 1) return `p.${pages[0]}`;
-  if (pages.length <= 3) return `p.${pages.join(", ")}`;
-  return `p.${pages[0]}\u2013${pages[pages.length - 1]}`;
+
+  if (pages.length === 1) {
+    return (
+      <>
+        p.
+        <PageBadgeButton page={pages[0]} onPageClick={onPageClick} />
+      </>
+    );
+  }
+
+  if (pages.length <= 3) {
+    return (
+      <>
+        p.
+        {pages.map((page, i) => (
+          <React.Fragment key={page}>
+            {i > 0 && ", "}
+            <PageBadgeButton page={page} onPageClick={onPageClick} />
+          </React.Fragment>
+        ))}
+      </>
+    );
+  }
+
+  // 4+ pages: range with clickable endpoints
+  return (
+    <>
+      p.
+      <PageBadgeButton page={pages[0]} onPageClick={onPageClick} />
+      {"\u2013"}
+      <PageBadgeButton page={pages[pages.length - 1]} onPageClick={onPageClick} />
+    </>
+  );
 }
 
 // =========
@@ -171,13 +242,21 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
   const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  // Escape navigation context — null when rendered outside CitationDrawer
+  const escCtx = React.useContext(DrawerEscapeContext);
+
+  // Local fallback state for standalone usage (outside DrawerEscapeContext)
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+  const citationKey = item.citationKey;
+
+  // Accordion: derive isExpanded from context when available, otherwise local state
+  const isExpanded = escCtx ? escCtx.expandedCitationKey === citationKey : localExpanded;
+
   const [wasAutoExpanded, setWasAutoExpanded] = useState(defaultExpanded);
   // Tracks the src shown in InlineExpandedImage (null = show EvidenceTray)
   const [inlineExpandedSrc, setInlineExpandedSrc] = useState<string | null>(null);
 
-  // Escape navigation context — null when rendered outside CitationDrawer
-  const escCtx = React.useContext(DrawerEscapeContext);
   const collapseInlineSignal = escCtx?.collapseInlineSignal ?? 0;
   const collapseExpandedSignal = escCtx?.collapseExpandedSignal ?? 0;
   const onSubstateChange = escCtx?.onSubstateChange;
@@ -194,17 +273,17 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     }
   }, [collapseInlineSignal]);
 
-  // Collapse expanded tray when parent sends the signal
+  // Collapse expanded tray when parent sends the signal — only clear inlineExpandedSrc
+  // (expansion is now parent-controlled via expandedCitationKey)
   useEffect(() => {
     if (collapseExpandedSignal > seenExpandedSignalRef.current) {
       seenExpandedSignalRef.current = collapseExpandedSignal;
-      setIsExpanded(false);
       setInlineExpandedSrc(null);
+      if (!escCtx) setLocalExpanded(false);
     }
-  }, [collapseExpandedSignal]);
+  }, [collapseExpandedSignal, escCtx]);
 
   // Report substate to parent so the escape handler knows what to collapse next
-  const citationKey = item.citationKey;
   useEffect(() => {
     onSubstateChange?.(citationKey, isExpanded, !!inlineExpandedSrc);
   }, [isExpanded, inlineExpandedSrc, citationKey, onSubstateChange]);
@@ -212,27 +291,33 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   // Sync expanded state when defaultExpanded changes from false → true
   useEffect(() => {
     if (defaultExpanded) {
-      setIsExpanded(true);
+      if (escCtx) {
+        escCtx.onItemExpand(citationKey);
+      } else {
+        setLocalExpanded(true);
+      }
       setWasAutoExpanded(true);
     }
-  }, [defaultExpanded]);
+  }, [defaultExpanded, escCtx, citationKey]);
+
+  // Clear inlineExpandedSrc when this item becomes collapsed (accordion switch)
+  const prevExpandedRef = useRef(isExpanded);
+  useEffect(() => {
+    if (prevExpandedRef.current && !isExpanded) {
+      setInlineExpandedSrc(null);
+    }
+    prevExpandedRef.current = isExpanded;
+  }, [isExpanded]);
 
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const anchorText = citation.anchorText?.toString();
   const fullPhrase = citation.fullPhrase;
 
-  // Proof image — evidence source for EvidenceTray and InlineExpandedImage
-  const rawProofImageDoc = verification?.document?.verificationImageSrc;
-  const rawUrlScreenshot = verification?.url?.webPageScreenshotBase64;
-  const rawProofImage =
-    rawProofImageDoc ??
-    (rawUrlScreenshot
-      ? rawUrlScreenshot.startsWith("data:")
-        ? rawUrlScreenshot
-        : `data:image/jpeg;base64,${rawUrlScreenshot}`
-      : undefined);
-  const proofImage = isValidProofImageSrc(rawProofImage) ? rawProofImage : null;
+  // Proof image — unified resolution via resolveExpandedImage (same as popover),
+  // which includes pages[0].source fallback so not_found citations get thumbnails.
+  const expandedImage = useMemo(() => resolveExpandedImage(verification), [verification]);
+  const proofImage = expandedImage?.src ?? null;
 
   // Status
   const statusCategory = getItemStatusCategory(item);
@@ -255,20 +340,38 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const sourceUrl = citation.type === "url" && citation.url ? sanitizeUrl(citation.url) : null;
 
   const handleClick = useCallback(() => {
-    setIsExpanded(prev => {
-      if (prev) setInlineExpandedSrc(null); // reset inline expansion when collapsing
-      return !prev;
-    });
+    if (escCtx) {
+      escCtx.onItemExpand(isExpanded ? null : citationKey);
+    } else {
+      setLocalExpanded(prev => {
+        if (prev) setInlineExpandedSrc(null);
+        return !prev;
+      });
+    }
     onClick?.(item);
-  }, [item, onClick]);
+  }, [item, onClick, escCtx, isExpanded, citationKey]);
 
   // Opens InlineExpandedImage with the proof image (used by both keyhole click and tray click)
   const handleExpand = useCallback(() => {
     if (proofImage) setInlineExpandedSrc(proofImage);
   }, [proofImage]);
 
+  // Auto-open InlineExpandedImage when pendingInlineExpand matches this item (page badge click)
+  const itemRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (escCtx?.pendingInlineExpand === citationKey && proofImage) {
+      setInlineExpandedSrc(proofImage);
+      escCtx.clearPendingInlineExpand();
+      // Scroll the item into view after expansion
+      requestAnimationFrame(() => {
+        itemRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+  }, [escCtx?.pendingInlineExpand, citationKey, proofImage, escCtx]);
+
   return (
     <div
+      ref={itemRef}
       className={cn(
         "cursor-pointer transition-colors border-l-[3px] animate-in fade-in-0 slide-in-from-bottom-1 duration-200 fill-mode-backwards",
         !isLast && "border-b border-gray-200 dark:border-gray-700",
@@ -362,7 +465,12 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                 proofImageSrc={proofImage ?? undefined}
               />
             ) : (
-              <InlineExpandedImage src={inlineExpandedSrc} onCollapse={() => setInlineExpandedSrc(null)} />
+              <InlineExpandedImage
+                src={inlineExpandedSrc}
+                onCollapse={() => setInlineExpandedSrc(null)}
+                verification={verification ?? undefined}
+                renderScale={expandedImage?.renderScale}
+              />
             )}
 
             {/* Open page — consistent action for all expanded URL citations */}
@@ -705,15 +813,36 @@ export function CitationDrawer({
   const totalCitations = summary.total;
   const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
 
-  // Page numbers for header — computed from all groups, shown top-right
-  const drawerPageLabel = useMemo(() => {
-    const pages = computeUniquePageNumbers(sortedGroups);
-    return formatDrawerPageNumbers(pages);
-  }, [sortedGroups]);
+  // Page numbers for header — computed from all groups, shown top-right as clickable badges
+  const drawerPages = useMemo(() => computeUniquePageNumbers(sortedGroups), [sortedGroups]);
+
+  // Handler for clicking a page badge — expands the first citation on that page + auto-opens image
+  const handlePageBadgeClick = useCallback(
+    (page: number) => {
+      const key = findFirstCitationKeyForPage(sortedGroups, page);
+      if (key) {
+        setExpandedCitationKey(key);
+        setPendingInlineExpand(key);
+      }
+    },
+    [sortedGroups],
+  );
+
+  // Accordion state — only one item expanded at a time
+  const [expandedCitationKey, setExpandedCitationKey] = useState<string | null>(null);
+  const [pendingInlineExpand, setPendingInlineExpand] = useState<string | null>(null);
+
+  const onItemExpand = useCallback((key: string | null) => {
+    setExpandedCitationKey(key);
+  }, []);
+
+  const clearPendingInlineExpand = useCallback(() => {
+    setPendingInlineExpand(null);
+  }, []);
 
   // Escape navigation — tracks substate (expanded items, inline images) to step back
   const [collapseInlineSignal, setCollapseInlineSignal] = useState(0);
-  const [collapseExpandedSignal, setCollapseExpandedSignal] = useState(0);
+  const [collapseExpandedSignal] = useState(0);
   const expandedKeysRef = useRef(new Set<string>());
   const inlineKeysRef = useRef(new Set<string>());
 
@@ -725,8 +854,24 @@ export function CitationDrawer({
   }, []);
 
   const escCtxValue = useMemo<DrawerEscapeCtx>(
-    () => ({ collapseInlineSignal, collapseExpandedSignal, onSubstateChange }),
-    [collapseInlineSignal, collapseExpandedSignal, onSubstateChange],
+    () => ({
+      collapseInlineSignal,
+      collapseExpandedSignal,
+      onSubstateChange,
+      expandedCitationKey,
+      onItemExpand,
+      pendingInlineExpand,
+      clearPendingInlineExpand,
+    }),
+    [
+      collapseInlineSignal,
+      collapseExpandedSignal,
+      onSubstateChange,
+      expandedCitationKey,
+      onItemExpand,
+      pendingInlineExpand,
+      clearPendingInlineExpand,
+    ],
   );
 
   // Escape key: step back through navigation levels instead of always closing
@@ -739,9 +884,9 @@ export function CitationDrawer({
           // Level 3 → Level 2: collapse inline full-page images
           setCollapseInlineSignal(s => s + 1);
           inlineKeysRef.current.clear();
-        } else if (expandedKeysRef.current.size > 0) {
-          // Level 2 → Level 1: collapse expanded evidence trays
-          setCollapseExpandedSignal(s => s + 1);
+        } else if (expandedCitationKey !== null) {
+          // Level 2 → Level 1: collapse the accordion
+          setExpandedCitationKey(null);
           expandedKeysRef.current.clear();
         } else {
           // Level 1 → closed: close the drawer
@@ -752,7 +897,7 @@ export function CitationDrawer({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, expandedCitationKey]);
 
   // Don't render if closed
   if (!isOpen) return null;
@@ -824,9 +969,9 @@ export function CitationDrawer({
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {drawerPageLabel && (
+              {drawerPages.length > 0 && (
                 <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0 uppercase tracking-wide">
-                  {drawerPageLabel}
+                  <DrawerPageBadges pages={drawerPages} onPageClick={handlePageBadgeClick} />
                 </span>
               )}
               <button
