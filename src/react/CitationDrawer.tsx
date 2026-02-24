@@ -22,13 +22,12 @@ import {
   EASE_COLLAPSE,
   EASE_EXPAND,
   getPortalContainer,
-  isValidProofImageSrc,
   Z_INDEX_BACKDROP_DEFAULT,
   Z_INDEX_DRAWER_BACKDROP_VAR,
   Z_INDEX_DRAWER_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
-import { EvidenceTray, InlineExpandedImage, normalizeScreenshotSrc, resolveExpandedImage } from "./EvidenceTray.js";
+import { EvidenceTray, InlineExpandedImage, resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { cn } from "./utils.js";
@@ -259,20 +258,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const proofImage = expandedImage?.src ?? null;
 
   // Evidence image — the verification crop (keyhole source), separate from the full page.
-  const evidenceSrc = useMemo(() => {
-    if (verification?.document?.verificationImageSrc) {
-      const s = verification.document.verificationImageSrc;
-      return isValidProofImageSrc(s) ? s : null;
-    }
-    const raw = verification?.url?.webPageScreenshotBase64;
-    if (!raw) return null;
-    try {
-      const s = normalizeScreenshotSrc(raw);
-      return isValidProofImageSrc(s) ? s : null;
-    } catch {
-      return null;
-    }
-  }, [verification]);
+  const evidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
 
   // Status
   const statusCategory = getItemStatusCategory(item);
