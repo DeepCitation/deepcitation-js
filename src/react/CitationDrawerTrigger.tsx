@@ -332,7 +332,7 @@ export function StackedStatusIcons({
               )}
               style={DOT_INDICATOR_FIXED_SIZE_STYLE}
             />
-            {count > 1 && (
+            {(count > 1 || groups.length > 1) && (
               <span className={cn("text-[10px] font-medium leading-none", PRIORITY_DOT_TEXT[priority])}>{count}</span>
             )}
           </span>
