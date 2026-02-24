@@ -391,7 +391,7 @@ export function AnchorTextFocusedImage({
         <button
           type="button"
           className="block relative w-full"
-          title={!canExpand && imageFitInfo?.imageFitsCompletely ? "Already full size" : undefined}
+          title={!canExpand && !isPannable && imageFitInfo?.imageFitsCompletely ? "Already full size" : undefined}
           style={{ cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default" }}
           onKeyDown={e => {
             const el = containerRef.current;
