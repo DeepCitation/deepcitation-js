@@ -679,7 +679,7 @@ export function EvidenceTray({
           onFitStateChange={setKeyholeImageFits}
           onAlreadyFullSize={handleAlreadyFullSize}
         />
-      ) : isMiss && searchAttempts.length > 0 ? (
+      ) : isMiss && (searchAttempts.length > 0 || isValidProofImageSrc(proofImageSrc)) ? (
         <div key="miss-analysis">
           {isValidProofImageSrc(proofImageSrc) && (
             <div className="overflow-hidden" style={{ height: MISS_TRAY_THUMBNAIL_HEIGHT }}>
@@ -691,7 +691,9 @@ export function EvidenceTray({
               />
             </div>
           )}
-          <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
+          {searchAttempts.length > 0 && (
+            <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
+          )}
         </div>
       ) : null}
 
