@@ -4,6 +4,7 @@
  */
 
 import type React from "react";
+import { ANCHOR_HIGHLIGHT_COLOR } from "../drawing/citationDrawing.js";
 
 /**
  * CSS custom property name for the wavy underline color.
@@ -395,13 +396,6 @@ export function isValidProofImageSrc(src: unknown): src is string {
 }
 
 /**
- * Anchor text highlight colors — matches the proof image highlight from the API.
- * Used to highlight the anchorText substring within the fullPhrase display.
- */
-export const ANCHOR_HIGHLIGHT_COLOR = "rgba(251, 191, 36, 0.2)";
-export const ANCHOR_HIGHLIGHT_COLOR_DARK = "rgba(251, 191, 36, 0.25)";
-
-/**
  * CSS custom property for anchor text highlight color.
  * Can be overridden to match custom proof image styles.
  */
@@ -413,37 +407,6 @@ export const ANCHOR_HIGHLIGHT_STYLE: React.CSSProperties = {
   borderRadius: "2px",
   padding: "0 1px",
 };
-
-/**
- * Minimum word count difference between fullPhrase and anchorText
- * required to show the highlight. Matches API-side MIN_WORD_DIFFERENCE.
- */
-export const MIN_WORD_DIFFERENCE = 2;
-
-// =============================================================================
-// CITATION ANNOTATION OVERLAY
-// =============================================================================
-//
-// Constants for drawing citation annotations on full-page proof images.
-// Mirrors @filelasso/shared/utils/citationDrawing values — deepcitation-js
-// cannot import from shared, so the values are duplicated here.
-
-/** Border width for citation bracket outlines (px). */
-export const CITATION_BRACKET_BORDER_WIDTH = 2;
-/** Blue bracket color for exact/full-phrase matches. */
-export const CITATION_BRACKET_BLUE = "#005595";
-/** Amber bracket color for partial/anchor-text matches. */
-export const CITATION_BRACKET_AMBER = "#fbbf24";
-/** Semi-transparent overlay covering non-citation areas (spotlight effect). */
-export const SPOTLIGHT_OVERLAY_COLOR = "rgba(26, 26, 26, 0.4)";
-
-/**
- * Calculates bracket arm width based on highlight height.
- * Matches the backend's `getBracketWidth` (ratio = 1/5, clamped to 4–12px).
- */
-export function getCitationBracketWidth(heightPx: number): number {
-  return Math.max(4, Math.min(heightPx * 0.2, 12));
-}
 
 // =============================================================================
 // KEYHOLE SKIP THRESHOLD
@@ -525,6 +488,20 @@ export const TOOLTIP_HIDE_DELAY_MS = 80;
 
 /** Debounce threshold in ms for ignoring click events immediately after touch events. */
 export const TOUCH_CLICK_DEBOUNCE_MS = 100;
+
+/**
+ * Maximum distance (px) a finger can move between touchstart and touchend
+ * and still be considered a tap (not a scroll or swipe). Matches the
+ * platform tap-vs-scroll threshold used by iOS and Chrome.
+ */
+export const TAP_SLOP_PX = 10;
+
+/**
+ * Sensitivity multiplier for trackpad pinch-to-zoom (Ctrl+wheel).
+ * Maps `deltaY` pixels into a zoom delta — 0.005 gives roughly 1% zoom
+ * per pixel of wheel travel, balancing precision and responsiveness.
+ */
+export const WHEEL_ZOOM_SENSITIVITY = 0.005;
 
 /**
  * Duration in ms to show "Copied" feedback before resetting to idle state.

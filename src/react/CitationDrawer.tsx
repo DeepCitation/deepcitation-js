@@ -176,13 +176,7 @@ function SourceGroupHeader({ group }: { group: SourceCitationGroup }) {
       <div className="shrink-0">
         {isUrlSource ? (
           <FaviconImage faviconUrl={group.sourceFavicon || null} domain={group.sourceDomain || null} alt={sourceName} />
-        ) : (
-          <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
-              {sourceName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* Source name and domain (for URL sources, show domain in muted text) */}
@@ -370,20 +364,22 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
           }
         }}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           {/* Status indicator */}
-          <div className="shrink-0 mt-0.5" data-testid="status-indicator">
-            <span
-              className={cn(
-                "inline-flex w-5 h-5 items-center justify-center",
-                statusInfo.color,
-                isPending && indicatorVariant !== "dot" && "animate-spin",
-              )}
-              title={statusInfo.label}
-            >
-              {statusInfo.icon}
-            </span>
-          </div>
+          {indicatorVariant !== "none" && (
+            <div className="shrink-0" data-testid="status-indicator">
+              <span
+                className={cn(
+                  "inline-flex w-5 h-5 items-center justify-center",
+                  statusInfo.color,
+                  isPending && indicatorVariant !== "dot" && "animate-spin",
+                )}
+                title={statusInfo.label}
+              >
+                {statusInfo.icon}
+              </span>
+            </div>
+          )}
 
           {/* Header: fullPhrase with anchorText highlighted */}
           <div className="flex-1 min-w-0">
@@ -400,7 +396,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
           <svg
             aria-hidden="true"
             className={cn(
-              "w-4 h-4 shrink-0 mt-1 transition-transform duration-150",
+              "w-4 h-4 shrink-0 transition-transform duration-150",
               isExpanded ? "rotate-180 text-gray-500 dark:text-gray-400" : "text-gray-400 dark:text-gray-500",
             )}
             fill="none"
@@ -487,7 +483,7 @@ function CompactSingleCitationRow({
   group: SourceCitationGroup;
   isLast?: boolean;
   onClick?: (item: CitationDrawerItem) => void;
-  indicatorVariant?: "icon" | "dot";
+  indicatorVariant?: "icon" | "dot" | "none";
 }) {
   const item = group.citations[0];
   const { citation, verification } = item;
@@ -538,16 +534,18 @@ function CompactSingleCitationRow({
       </span>
 
       {/* Status indicator */}
-      <span
-        className={cn(
-          "inline-flex w-4 h-4 items-center justify-center shrink-0",
-          statusInfo.color,
-          isPending && indicatorVariant !== "dot" && "animate-spin",
-        )}
-        title={statusInfo.label}
-      >
-        {statusInfo.icon}
-      </span>
+      {indicatorVariant !== "none" && (
+        <span
+          className={cn(
+            "inline-flex w-4 h-4 items-center justify-center shrink-0",
+            statusInfo.color,
+            isPending && indicatorVariant !== "dot" && "animate-spin",
+          )}
+          title={statusInfo.label}
+        >
+          {statusInfo.icon}
+        </span>
+      )}
 
       {/* Anchor text */}
       {displayText && (
@@ -569,7 +567,7 @@ interface DrawerSourceGroupProps {
   isLastGroup: boolean;
   staggerOffset: number;
   onCitationClick?: (item: CitationDrawerItem) => void;
-  indicatorVariant: "icon" | "dot";
+  indicatorVariant: "icon" | "dot" | "none";
   renderCitationItem?: (item: CitationDrawerItem) => React.ReactNode;
   /** When true, the drawer header already identifies the source — omit group headers and source names */
   isSingleGroup?: boolean;
@@ -918,7 +916,11 @@ export function CitationDrawer({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm animate-in fade-in-0 duration-150"
+        // backdrop-blur-sm removed intentionally: on low-end mobile devices the blur
+        // filter causes visible jank during the drawer slide-in animation (composited
+        // layer promotion + GPU shader cost). The semi-transparent overlay alone provides
+        // sufficient visual separation without the performance hit.
+        className="fixed inset-0 bg-black/20 animate-in fade-in-0 duration-150"
         style={{ zIndex: `var(${Z_INDEX_DRAWER_BACKDROP_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})` } as React.CSSProperties}
         onClick={onClose}
         aria-hidden="true"
@@ -950,7 +952,7 @@ export function CitationDrawer({
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <DrawerSourceHeading citationGroups={resolvedGroups} label={label} fallbackTitle={title} />
-              {totalCitations > 0 && (
+              {totalCitations > 0 && indicatorVariant !== "none" && (
                 <div className="mt-0.5">
                   <StackedStatusIcons
                     flatCitations={flatCitations}

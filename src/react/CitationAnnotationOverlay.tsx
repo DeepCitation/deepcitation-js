@@ -1,15 +1,16 @@
 import type React from "react";
-import type { DeepTextItem } from "../types/boxes.js";
 import {
   ANCHOR_HIGHLIGHT_COLOR,
-  CITATION_BRACKET_AMBER,
-  CITATION_BRACKET_BLUE,
-  CITATION_BRACKET_BORDER_WIDTH,
-  getCitationBracketWidth,
-  MIN_WORD_DIFFERENCE,
-  SPOTLIGHT_OVERLAY_COLOR,
-} from "./constants.js";
-import { toPercentRect, wordCount } from "./overlayGeometry.js";
+  BOX_PADDING,
+  CITATION_LINE_BORDER_WIDTH,
+  computeKeySpanHighlight,
+  getBracketColor,
+  getBracketWidth,
+  OVERLAY_COLOR,
+  SPOTLIGHT_PADDING,
+} from "../drawing/citationDrawing.js";
+import type { DeepTextItem } from "../types/boxes.js";
+import { toPercentRect } from "./overlayGeometry.js";
 
 const NONE: React.CSSProperties = { pointerEvents: "none" };
 
@@ -41,26 +42,57 @@ export function CitationAnnotationOverlay({
   // Bail out if geometry is invalid (zero dimensions, NaN, Infinity, etc.)
   if (!rect) return null;
 
-  const bracketColor = highlightColor === "amber" ? CITATION_BRACKET_AMBER : CITATION_BRACKET_BLUE;
+  const bracketColor = getBracketColor(highlightColor === "amber" ? "amber" : "blue");
 
   // Compute pixel height for bracket width calculation
   const heightPx = phraseMatchDeepItem.height * renderScale.y;
-  const bracketW = getCitationBracketWidth(heightPx);
+  const bracketW = getBracketWidth(heightPx);
 
-  // Determine if anchor text highlight should be shown
-  const showAnchor =
-    anchorTextDeepItem &&
-    anchorText &&
-    fullPhrase &&
-    anchorTextDeepItem.text?.toLowerCase() !== phraseMatchDeepItem.text?.toLowerCase() &&
-    wordCount(fullPhrase) - wordCount(anchorText) >= MIN_WORD_DIFFERENCE;
+  // Determine if anchor text highlight should be shown (uses canonical logic from drawing module)
+  const { showKeySpanHighlight } = computeKeySpanHighlight(
+    phraseMatchDeepItem,
+    anchorTextDeepItem ? [anchorTextDeepItem] : undefined,
+    anchorText,
+    fullPhrase,
+  );
 
-  const anchorRect = showAnchor
-    ? toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight)
-    : null;
+  // Two padding levels matching the backend rendering:
+  // 1. Bracket rect: text bbox + BOX_PADDING (2px) — small offset from text
+  // 2. Spotlight rect: bracket rect + SPOTLIGHT_PADDING (24px) — creates the
+  //    visible white gap between brackets and the dark overlay edge.
+  //    Backend equivalent: VERIFICATION_IMAGE_PADDING_EXTRA (30px canvas space).
+  const baseLeft = parseFloat(rect.left);
+  const baseTop = parseFloat(rect.top);
+  const baseWidth = parseFloat(rect.width);
+  const baseHeight = parseFloat(rect.height);
+
+  const bracketPadX = (BOX_PADDING / imageNaturalWidth) * 100;
+  const bracketPadY = (BOX_PADDING / imageNaturalHeight) * 100;
+  const bracketRect = {
+    left: `${baseLeft - bracketPadX}%`,
+    top: `${baseTop - bracketPadY}%`,
+    width: `${baseWidth + 2 * bracketPadX}%`,
+    height: `${baseHeight + 2 * bracketPadY}%`,
+  };
+
+  const spotlightPad = BOX_PADDING + SPOTLIGHT_PADDING;
+  const spotPadX = (spotlightPad / imageNaturalWidth) * 100;
+  const spotPadY = (spotlightPad / imageNaturalHeight) * 100;
+  const spotlightRect = {
+    left: `${baseLeft - spotPadX}%`,
+    top: `${baseTop - spotPadY}%`,
+    width: `${baseWidth + 2 * spotPadX}%`,
+    height: `${baseHeight + 2 * spotPadY}%`,
+  };
+
+  const anchorRect =
+    showKeySpanHighlight && anchorTextDeepItem
+      ? toPercentRect(anchorTextDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight)
+      : null;
 
   return (
     <div
+      data-dc-annotation-overlay=""
       style={{
         position: "absolute",
         inset: 0,
@@ -70,38 +102,41 @@ export function CitationAnnotationOverlay({
     >
       {/* Spotlight: transparent cutout with massive box-shadow covering the rest */}
       <div
+        data-dc-spotlight=""
         style={{
           position: "absolute",
-          ...rect,
-          boxShadow: `0 0 0 9999px ${SPOTLIGHT_OVERLAY_COLOR}`,
+          ...spotlightRect,
+          boxShadow: `0 0 0 9999px ${OVERLAY_COLOR}`,
           ...NONE,
         }}
       />
 
       {/* Left bracket [ */}
       <div
+        data-dc-bracket-left=""
         style={{
           position: "absolute",
-          ...rect,
+          ...bracketRect,
           width: `${bracketW}px`,
-          borderLeft: `${CITATION_BRACKET_BORDER_WIDTH}px solid ${bracketColor}`,
-          borderTop: `${CITATION_BRACKET_BORDER_WIDTH}px solid ${bracketColor}`,
-          borderBottom: `${CITATION_BRACKET_BORDER_WIDTH}px solid ${bracketColor}`,
+          borderLeft: `${CITATION_LINE_BORDER_WIDTH}px solid ${bracketColor}`,
+          borderTop: `${CITATION_LINE_BORDER_WIDTH}px solid ${bracketColor}`,
+          borderBottom: `${CITATION_LINE_BORDER_WIDTH}px solid ${bracketColor}`,
           ...NONE,
         }}
       />
 
-      {/* Right bracket ] — positioned at the right edge of the phrase box */}
+      {/* Right bracket ] — positioned at the right edge of the bracket box */}
       <div
+        data-dc-bracket-right=""
         style={{
           position: "absolute",
-          top: rect.top,
-          left: `calc(${rect.left} + ${rect.width} - ${bracketW}px)`,
+          top: bracketRect.top,
+          left: `calc(${bracketRect.left} + ${bracketRect.width} - ${bracketW}px)`,
           width: `${bracketW}px`,
-          height: rect.height,
-          borderRight: `${CITATION_BRACKET_BORDER_WIDTH}px solid ${bracketColor}`,
-          borderTop: `${CITATION_BRACKET_BORDER_WIDTH}px solid ${bracketColor}`,
-          borderBottom: `${CITATION_BRACKET_BORDER_WIDTH}px solid ${bracketColor}`,
+          height: bracketRect.height,
+          borderRight: `${CITATION_LINE_BORDER_WIDTH}px solid ${bracketColor}`,
+          borderTop: `${CITATION_LINE_BORDER_WIDTH}px solid ${bracketColor}`,
+          borderBottom: `${CITATION_LINE_BORDER_WIDTH}px solid ${bracketColor}`,
           ...NONE,
         }}
       />
@@ -109,6 +144,7 @@ export function CitationAnnotationOverlay({
       {/* Anchor text highlight (amber background) */}
       {anchorRect && (
         <div
+          data-dc-anchor-highlight=""
           style={{
             position: "absolute",
             ...anchorRect,

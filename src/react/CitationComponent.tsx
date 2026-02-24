@@ -16,9 +16,11 @@ import {
   isValidProofImageSrc,
   POPOVER_WIDTH,
   SPINNER_TIMEOUT_MS,
+  TAP_SLOP_PX,
   TOUCH_CLICK_DEBOUNCE_MS,
 } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
+import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { WarningIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
@@ -337,7 +339,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   isLoading: boolean;
   isVisible: boolean;
   sourceLabel?: string;
-  indicatorVariant: "icon" | "dot";
+  indicatorVariant: "icon" | "dot" | "none";
   viewState: PopoverViewState;
   onViewStateChange: (viewState: PopoverViewState) => void;
   expandedImageSrcOverride: string | null;
@@ -625,6 +627,31 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const spinnerStage = useSpinnerStage(isLoading, isPending, !!hasDefinitiveResult);
     const shouldShowSpinner = (isLoading || isPending) && !hasDefinitiveResult && spinnerStage !== "stale";
 
+    // Low-priority prefetch: queue image downloads as soon as verification arrives.
+    // Evidence crop (keyhole) and full-page image are both fetched at idle priority
+    // so they're already cached when the user clicks to open the popover.
+    // Data URIs are skipped — they're inline and don't need network fetching.
+    // The normal-priority prefetch in DefaultPopoverContent still fires on popover
+    // open, upgrading the browser's fetch priority if the request is still in-flight.
+    //
+    // Dependencies: resolved URL strings (not the verification object) so re-renders
+    // with the same verification data don't re-fire.
+    const prefetchEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
+    const prefetchExpandedSrc = useMemo(() => resolveExpandedImage(verification)?.src ?? null, [verification]);
+    useEffect(() => {
+      if (prefetchEvidenceSrc && !prefetchEvidenceSrc.startsWith("data:")) {
+        const img = new Image();
+        img.fetchPriority = "low";
+        img.src = prefetchEvidenceSrc;
+      }
+
+      if (prefetchExpandedSrc && !prefetchExpandedSrc.startsWith("data:")) {
+        const img = new Image();
+        img.fetchPriority = "low";
+        img.src = prefetchExpandedSrc;
+      }
+    }, [prefetchEvidenceSrc, prefetchExpandedSrc]);
+
     const displayText = useMemo(() => {
       return getDisplayText(citation, resolvedContent, fallbackDisplay);
     }, [citation, resolvedContent, fallbackDisplay]);
@@ -816,45 +843,69 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     useEffect(() => {
       if (!isMobile || !isHovering) return;
 
-      const handleOutsideTouch = (e: TouchEvent) => {
-        // Don't dismiss popover while an image overlay is open - user expects to return
-        // to the popover after closing the zoomed image. Uses ref to avoid stale closure.
-        if (isAnyOverlayOpenRef.current) {
-          return;
-        }
+      // Track touch state to distinguish taps from scrolls/swipes.
+      // Only dismiss on touchend if the finger didn't move significantly (< 10px).
+      let startX = 0;
+      let startY = 0;
+      let moved = false;
+      let outsideTarget = false;
 
-        // Type guard for touch event target
-        const target = e.target;
-        if (!(target instanceof Node)) {
-          return;
-        }
+      // TAP_SLOP_PX imported from constants.ts
 
-        // Check if touch is inside the trigger element
-        if (triggerRef.current?.contains(target)) {
-          return;
-        }
-
-        // Check if touch is inside the popover content (works with portaled content)
-        if (popoverContentRef.current?.contains(target)) {
-          return;
-        }
-
-        // Touch is outside both - dismiss the popover
-        closePopover();
+      const isOutsidePopover = (target: EventTarget | null): boolean => {
+        if (!(target instanceof Node)) return false;
+        if (triggerRef.current?.contains(target)) return false;
+        if (popoverContentRef.current?.contains(target)) return false;
+        return true;
       };
 
-      // Use touchstart with capture phase to detect touches before they're handled
-      // by other handlers (like handleTouchStart on the citation trigger itself).
-      // passive: true — handler never calls preventDefault(), so allow scroll immediately.
-      document.addEventListener("touchstart", handleOutsideTouch, {
-        capture: true,
-        passive: true,
-      });
+      const handleTouchStart = (e: TouchEvent) => {
+        if (isAnyOverlayOpenRef.current) return;
+        const touch = e.touches[0];
+        if (!touch) return;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        moved = false;
+        outsideTarget = isOutsidePopover(e.target);
+      };
+
+      const handleTouchMove = (e: TouchEvent) => {
+        if (!outsideTarget || moved) return;
+        const touch = e.touches[0];
+        if (!touch) return;
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+        if (dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX) {
+          moved = true;
+        }
+      };
+
+      const handleTouchEnd = () => {
+        if (outsideTarget && !moved) {
+          closePopover();
+        }
+        outsideTarget = false;
+        moved = false;
+      };
+
+      // Reset state when the OS cancels a touch (notification shade, incoming call, etc.)
+      const handleTouchCancel = () => {
+        outsideTarget = false;
+        moved = false;
+      };
+
+      // All passive — we never preventDefault(), allowing scroll to proceed freely.
+      // Capture phase so we see touches before child handlers.
+      document.addEventListener("touchstart", handleTouchStart, { capture: true, passive: true });
+      document.addEventListener("touchmove", handleTouchMove, { capture: true, passive: true });
+      document.addEventListener("touchend", handleTouchEnd, { capture: true, passive: true });
+      document.addEventListener("touchcancel", handleTouchCancel, { capture: true, passive: true });
 
       return () => {
-        document.removeEventListener("touchstart", handleOutsideTouch, {
-          capture: true,
-        });
+        document.removeEventListener("touchstart", handleTouchStart, { capture: true });
+        document.removeEventListener("touchmove", handleTouchMove, { capture: true });
+        document.removeEventListener("touchend", handleTouchEnd, { capture: true });
+        document.removeEventListener("touchcancel", handleTouchCancel, { capture: true });
       };
     }, [isMobile, isHovering, closePopover]);
 

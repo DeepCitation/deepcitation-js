@@ -35,7 +35,7 @@ import {
   type UrlAccessExplanation,
 } from "./urlAccessExplanation.js";
 import { isValidProofUrl } from "./urlUtils.js";
-import { cn, isUrlCitation } from "./utils.js";
+import { cn, isImageSource, isUrlCitation } from "./utils.js";
 import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
 
 // React 19.2's Activity component is disabled here because it triggers a fiber
@@ -71,7 +71,7 @@ export interface PopoverContentProps {
    * Visual style for status indicators inside the popover.
    * @default "icon"
    */
-  indicatorVariant?: "icon" | "dot";
+  indicatorVariant?: "icon" | "dot" | "none";
   /** Current view state: summary or expanded */
   viewState?: PopoverViewState;
   /** Callback when view state changes */
@@ -361,7 +361,9 @@ function PopoverLoadingView({
           </p>
         )}
         {!isUrlCitation(citation) && citation.pageNumber && citation.pageNumber > 0 && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">Looking on p.{citation.pageNumber}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {isImageSource(verification) ? "Searching image\u2026" : `Looking on p.${citation.pageNumber}`}
+          </span>
         )}
       </div>
     </div>
@@ -424,7 +426,9 @@ function PopoverFallbackView({
           </q>
         )}
         {pageNumber && pageNumber > 0 && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">Page {pageNumber}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {isImageSource(verification) ? "View Image" : `Page ${pageNumber}`}
+          </span>
         )}
       </div>
     </div>
@@ -458,7 +462,7 @@ export function DefaultPopoverContent({
   // Resolve expanded image for the full-page viewer; allow caller to override the src
   const expandedImage = useMemo(() => {
     const resolved = resolveExpandedImage(verification);
-    if (!expandedImageSrcOverride) return resolved;
+    if (!expandedImageSrcOverride || !isValidProofImageSrc(expandedImageSrcOverride)) return resolved;
     // Custom src provided: clear overlay metadata since dimensions belong to the original image
     return resolved
       ? { ...resolved, src: expandedImageSrcOverride, dimensions: null, highlightBox: null, renderScale: null }

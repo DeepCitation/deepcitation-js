@@ -11,6 +11,7 @@
 
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt, SearchStatus } from "../types/search.js";
@@ -32,11 +33,12 @@ import {
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
   MISS_TRAY_THUMBNAIL_HEIGHT,
+  WHEEL_ZOOM_SENSITIVITY,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
-import { SpinnerIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
+import { LocateIcon, SpinnerIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { deriveOutcomeLabel } from "./outcomeLabel.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "./overlayGeometry.js";
 import { buildSearchSummary } from "./searchSummaryUtils.js";
@@ -813,6 +815,8 @@ export function InlineExpandedImage({
   fill = false,
   onNaturalSize,
   renderScale,
+  highlightItem,
+  anchorItem,
 }: {
   src: string;
   onCollapse: () => void;
@@ -823,6 +827,10 @@ export function InlineExpandedImage({
   onNaturalSize?: (width: number, height: number) => void;
   /** Scale factors for converting DeepTextItem PDF coords to image pixels. */
   renderScale?: { x: number; y: number } | null;
+  /** Override phraseMatchDeepItem from verification.document (for direct DeepTextItem injection). */
+  highlightItem?: DeepTextItem | null;
+  /** Override anchorTextMatchDeepItems[0] from verification.document (for direct DeepTextItem injection). */
+  anchorItem?: DeepTextItem | null;
 }) {
   const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -843,6 +851,17 @@ export function InlineExpandedImage({
   // This ensures the initial-zoom effect re-fires once the container is measured.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const hasSetInitialZoom = useRef(false);
+
+  // Effective annotation items: override props take precedence, then verification.document, then null.
+  const effectivePhraseItem = highlightItem ?? verification?.document?.phraseMatchDeepItem ?? null;
+  const effectiveAnchorItem = anchorItem ?? verification?.document?.anchorTextMatchDeepItems?.[0] ?? null;
+
+  // Anchor-aware scroll/zoom target: when anchor text is highlighted, center on it
+  // instead of the (potentially wider) full phrase box.
+  const anchorHighlightActive =
+    effectiveAnchorItem &&
+    shouldHighlightAnchorText(verification?.verifiedAnchorText, verification?.verifiedFullPhrase);
+  const scrollTarget = anchorHighlightActive ? effectiveAnchorItem : effectivePhraseItem;
 
   // Track container size via ResizeObserver (both width and height for fit-to-screen).
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
@@ -898,17 +917,18 @@ export function InlineExpandedImage({
     onNaturalSize?.(Math.round(naturalWidth * fitZoom), Math.round(naturalHeight * fitZoom));
 
     // Auto-scroll to annotation: after fit-to-screen zoom is computed, scroll
-    // the container so the phraseMatchDeepItem annotation is centered in view.
+    // the container so the annotation is centered in view.
     // Uses rAF to wait for the DOM to reflow at the new zoom level.
+    // Prefers anchor text position when it will be highlighted.
     let rafId: number | undefined;
-    const phraseItem = verification?.document?.phraseMatchDeepItem;
-    if (phraseItem && renderScale) {
+    const scrollItem = scrollTarget ?? effectivePhraseItem;
+    if (scrollItem && renderScale) {
       const effectiveZoom = fitZoom < 1 ? fitZoom : 1;
       rafId = requestAnimationFrame(() => {
         const container = containerRef.current;
         if (!container) return;
         const target = computeAnnotationScrollTarget(
-          phraseItem,
+          scrollItem,
           renderScale,
           naturalWidth,
           naturalHeight,
@@ -932,7 +952,8 @@ export function InlineExpandedImage({
     naturalHeight,
     containerSize,
     onNaturalSize,
-    verification,
+    scrollTarget,
+    effectivePhraseItem,
     renderScale,
     containerRef,
   ]);
@@ -954,26 +975,80 @@ export function InlineExpandedImage({
     setZoom(z => clampZoom(z - EXPANDED_ZOOM_STEP));
   }, [clampZoom]);
 
+  // Scroll the container so the annotation is centered in view (re-center after pan/zoom).
+  // Prefers anchor text position when it will be highlighted.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
+  const handleScrollToAnnotation = useCallback(() => {
+    const scrollItem = scrollTarget ?? effectivePhraseItem;
+    if (!containerRef.current || !scrollItem || !renderScale || !naturalWidth || !naturalHeight) return;
+    const container = containerRef.current;
+    const target = computeAnnotationScrollTarget(
+      scrollItem,
+      renderScale,
+      naturalWidth,
+      naturalHeight,
+      zoomRef.current,
+      container.clientWidth,
+      container.clientHeight,
+    );
+    if (target) container.scrollTo({ left: target.scrollLeft, top: target.scrollTop, behavior: "smooth" });
+  }, [scrollTarget, effectivePhraseItem, renderScale, naturalWidth, naturalHeight]);
+
   // Trackpad pinch zoom (Ctrl+wheel) — prevents default browser zoom.
+  // Batches rapid wheel events with rAF so we apply at most one setZoom per
+  // animation frame, avoiding excessive React re-renders during fast pinches.
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   useEffect(() => {
     if (!fill) return;
     const el = containerRef.current;
     if (!el) return;
+    let pendingDelta = 0;
+    let rafId: number | null = null;
+    const flushZoom = () => {
+      rafId = null;
+      const d = pendingDelta;
+      pendingDelta = 0;
+      setZoom(z => clampZoom(z + d));
+    };
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
       // deltaY is negative for zoom-in, positive for zoom-out on trackpads
-      const delta = -e.deltaY * 0.005;
-      setZoom(z => clampZoom(z + delta));
+      pendingDelta += -e.deltaY * WHEEL_ZOOM_SENSITIVITY;
+      if (rafId === null) rafId = requestAnimationFrame(flushZoom);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [fill, clampZoom]);
 
-  // Touch pinch-to-zoom (two-finger gesture).
+  // Touch pinch-to-zoom with midpoint anchoring (two-finger gesture).
+  // Zooms centered on the midpoint between the two fingers so the content under the
+  // pinch stays visually stable. After computing the new zoom, the container's scroll
+  // position is adjusted so the content-space point under the pinch midpoint maps back
+  // to the same viewport position.
+  //
   // Uses zoomRef to read current zoom so listeners can be registered once (on mount /
   // fill change) rather than re-added on every zoom change during a pinch gesture.
+  //
+  // After setZoom(), the DOM hasn't reflowed yet so the image width is still the old
+  // value. We store the target scroll in a ref and apply it in a useLayoutEffect that
+  // fires after React renders the new width. This ensures scroll correction happens in
+  // the same frame as the size change, preventing any visible jump.
+  const pinchScrollTarget = useRef<{ left: number; top: number } | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
+  useLayoutEffect(() => {
+    if (!pinchScrollTarget.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollLeft = pinchScrollTarget.current.left;
+    el.scrollTop = pinchScrollTarget.current.top;
+    pinchScrollTarget.current = null;
+  }, [zoom]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   useEffect(() => {
     if (!fill) return;
@@ -982,6 +1057,8 @@ export function InlineExpandedImage({
 
     let initialDistance: number | null = null;
     let initialZoom = 1;
+    let pendingZoom: number | null = null;
+    let rafId: number | null = null;
 
     const getTouchDistance = (touches: TouchList): number => {
       const [a, b] = [touches[0], touches[1]];
@@ -989,6 +1066,20 @@ export function InlineExpandedImage({
       const dx = a.clientX - b.clientX;
       const dy = a.clientY - b.clientY;
       return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const getTouchMidpoint = (touches: TouchList): { x: number; y: number } => {
+      const [a, b] = [touches[0], touches[1]];
+      if (!a || !b) return { x: 0, y: 0 };
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    };
+
+    const flushPinchZoom = () => {
+      rafId = null;
+      if (pendingZoom !== null) {
+        setZoom(pendingZoom);
+        pendingZoom = null;
+      }
     };
 
     const onTouchStart = (e: TouchEvent) => {
@@ -1003,13 +1094,40 @@ export function InlineExpandedImage({
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || initialDistance === null) return;
       e.preventDefault(); // prevent native scroll while pinching
+
       const currentDistance = getTouchDistance(e.touches);
       const scale = currentDistance / initialDistance;
-      setZoom(clampZoom(initialZoom * scale));
+      const oldZoom = zoomRef.current;
+      const newZoom = clampZoom(initialZoom * scale);
+
+      // Compute midpoint-anchored scroll correction.
+      // The pinch midpoint in viewport coords should map to the same content point
+      // before and after the zoom change.
+      const mid = getTouchMidpoint(e.touches);
+      const rect = el.getBoundingClientRect();
+      // Content-space point currently under the pinch midpoint
+      const contentX = mid.x - rect.left + el.scrollLeft;
+      const contentY = mid.y - rect.top + el.scrollTop;
+      // After zoom, that content point has scaled — adjust scroll so it maps back
+      const ratio = newZoom / oldZoom;
+      pinchScrollTarget.current = {
+        left: contentX * ratio - (mid.x - rect.left),
+        top: contentY * ratio - (mid.y - rect.top),
+      };
+
+      // Batch: store the latest zoom and schedule a single setZoom per frame
+      pendingZoom = newZoom;
+      if (rafId === null) rafId = requestAnimationFrame(flushPinchZoom);
     };
 
     const onTouchEnd = () => {
       initialDistance = null;
+      // Flush any pending zoom immediately on gesture end so the final
+      // position is applied without waiting for the next frame.
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        flushPinchZoom();
+      }
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -1019,6 +1137,7 @@ export function InlineExpandedImage({
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [fill, clampZoom]);
 
@@ -1045,15 +1164,17 @@ export function InlineExpandedImage({
 
   // Show zoom controls in fill mode when image has loaded
   const showZoomControls = fill && imageLoaded && naturalWidth !== null;
+  const showScrollToAnnotation = showZoomControls && !!effectivePhraseItem && !!renderScale;
 
   // Compute transform-origin from annotation position (fill mode only).
+  // Prefers anchor text center when it will be highlighted.
   // Inline computation (no useMemo) — computeAnnotationOriginPercent is pure
   // arithmetic, cheaper than the overhead of a hook in this effect-heavy component.
-  const annotationPhraseItem =
-    fill && renderScale && naturalWidth && naturalHeight ? (verification?.document?.phraseMatchDeepItem ?? null) : null;
+  const annotationOriginItem =
+    fill && renderScale && naturalWidth && naturalHeight ? (scrollTarget ?? effectivePhraseItem) : null;
   const annotationOrigin =
-    annotationPhraseItem && renderScale && naturalWidth && naturalHeight
-      ? computeAnnotationOriginPercent(annotationPhraseItem, renderScale, naturalWidth, naturalHeight)
+    annotationOriginItem && renderScale && naturalWidth && naturalHeight
+      ? computeAnnotationOriginPercent(annotationOriginItem, renderScale, naturalWidth, naturalHeight)
       : null;
 
   const footerEl = (
@@ -1148,7 +1269,7 @@ export function InlineExpandedImage({
               }}
             >
               <img
-                src={src}
+                src={isValidProofImageSrc(src) ? src : undefined}
                 alt="Verification evidence"
                 className={cn("block", !imageLoaded && "hidden")}
                 style={zoomedWidth !== undefined ? { width: zoomedWidth, maxWidth: "none" } : { maxWidth: "none" }}
@@ -1165,22 +1286,18 @@ export function InlineExpandedImage({
                 }}
                 draggable={false}
               />
-              {imageLoaded &&
-                renderScale &&
-                naturalWidth &&
-                naturalHeight &&
-                verification?.document?.phraseMatchDeepItem && (
-                  <CitationAnnotationOverlay
-                    phraseMatchDeepItem={verification.document.phraseMatchDeepItem}
-                    renderScale={renderScale}
-                    imageNaturalWidth={naturalWidth}
-                    imageNaturalHeight={naturalHeight}
-                    highlightColor={verification.highlightColor}
-                    anchorTextDeepItem={verification.document.anchorTextMatchDeepItems?.[0]}
-                    anchorText={verification.verifiedAnchorText}
-                    fullPhrase={verification.verifiedFullPhrase}
-                  />
-                )}
+              {imageLoaded && renderScale && naturalWidth && naturalHeight && effectivePhraseItem && (
+                <CitationAnnotationOverlay
+                  phraseMatchDeepItem={effectivePhraseItem}
+                  renderScale={renderScale}
+                  imageNaturalWidth={naturalWidth}
+                  imageNaturalHeight={naturalHeight}
+                  highlightColor={verification?.highlightColor}
+                  anchorTextDeepItem={effectiveAnchorItem}
+                  anchorText={verification?.verifiedAnchorText}
+                  fullPhrase={verification?.verifiedFullPhrase}
+                />
+              )}
             </div>
           </div>
           {/* In fill mode, footer sits inside the scroll area right below the page image */}
@@ -1252,6 +1369,22 @@ export function InlineExpandedImage({
               <span className="min-w-[4ch] text-center font-mono tabular-nums select-none text-[11px] leading-none">
                 {Math.round(zoom * 100)}%
               </span>
+              {showScrollToAnnotation && (
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleScrollToAnnotation();
+                  }}
+                  data-dc-scroll-to-annotation=""
+                  className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                  aria-label="Scroll to annotation"
+                >
+                  <span className="size-3.5">
+                    <LocateIcon />
+                  </span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={e => {
