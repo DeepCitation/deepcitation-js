@@ -9,12 +9,11 @@ import {
   CheckIcon,
   ChevronRightIcon,
   DocumentIcon,
-  ExternalLinkIcon,
   GlobeIcon,
   MissIcon,
   SpinnerIcon,
   XCircleIcon,
-  XIcon,
+  XIcon
 } from "./icons.js";
 import type { UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
@@ -381,7 +380,7 @@ export function SourceContextHeader({
       </div>
       {/* Right: Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-2">
-        {validatedProofUrl && (
+        {/* Not ready {validatedProofUrl && (
           <a
             href={validatedProofUrl}
             target="_blank"
@@ -394,7 +393,7 @@ export function SourceContextHeader({
               <ExternalLinkIcon />
             </span>
           </a>
-        )}
+        )} */}
         {showPagePill && (
           <PagePill
             pageNumber={pageNumber ?? undefined}
