@@ -299,10 +299,7 @@ describe("buildSearchSummary", () => {
     });
 
     it("captures variationTypeLabel from first attempt that has it", () => {
-      const attempts = [
-        attempt({ searchPhrase: "A" }),
-        attempt({ searchPhrase: "A", variationType: "currency" }),
-      ];
+      const attempts = [attempt({ searchPhrase: "A" }), attempt({ searchPhrase: "A", variationType: "currency" })];
       const group = buildSearchSummary(attempts).queryGroups[0];
       expect(group.variationTypeLabel).toBe("Price formats");
     });

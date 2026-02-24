@@ -947,10 +947,7 @@ function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
     locationText = "Full document";
   } else if (group.locations.pages.length > 0) {
     const pages = group.locations.pages;
-    locationText =
-      pages.length === 1
-        ? `Page ${pages[0]}`
-        : `Pages ${pages[0]}-${pages[pages.length - 1]}`;
+    locationText = pages.length === 1 ? `Page ${pages[0]}` : `Pages ${pages[0]}-${pages[pages.length - 1]}`;
   } else {
     locationText = "";
   }
@@ -964,9 +961,7 @@ function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
         <span
           className={cn(
             "size-3 max-w-3 max-h-3 mt-0.5 shrink-0",
-            group.anySuccess
-              ? "text-green-600 dark:text-green-400"
-              : "text-gray-400 dark:text-gray-500",
+            group.anySuccess ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500",
           )}
           role="img"
           aria-label={group.anySuccess ? "Found" : "Not found"}
@@ -1059,10 +1054,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
   const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
 
   // Query-centric summary for miss state
-  const summary = useMemo(
-    () => (isMiss ? buildSearchSummary(searchAttempts) : null),
-    [searchAttempts, isMiss],
-  );
+  const summary = useMemo(() => (isMiss ? buildSearchSummary(searchAttempts) : null), [searchAttempts, isMiss]);
 
   // If no search attempts, fall back to citation data
   if (searchAttempts.length === 0) {
