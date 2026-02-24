@@ -41,12 +41,11 @@ function derivePhraseType(attempt: SearchAttempt): SearchQueryGroup["phraseType"
     method === "third_quarter_fallback" ||
     method === "fourth_quarter_fallback" ||
     method === "first_word_fallback" ||
-    method === "longest_word_fallback" ||
-    method === "keyspan_fallback"
+    method === "longest_word_fallback"
   ) {
     return "fragment";
   }
-  if (method === "anchor_text_fallback") return "anchor_text";
+  if (method === "anchor_text_fallback" || method === "keyspan_fallback") return "anchor_text";
   return "full_phrase";
 }
 

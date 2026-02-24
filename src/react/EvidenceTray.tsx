@@ -589,6 +589,8 @@ export function SearchAnalysisSummary({
   const nQueries = summary.distinctQueries;
   if (summary.includesFullDocScan && nQueries <= 1) {
     description = "Full document scan.";
+  } else if (nQueries > 1 && summary.includesFullDocScan) {
+    description = `Searched ${nQueries} phrases including full document scan.`;
   } else if (nQueries > 1 && summary.pageRange) {
     description = `Searched ${nQueries} phrases across ${summary.pageRange}.`;
   } else if (nQueries > 1) {

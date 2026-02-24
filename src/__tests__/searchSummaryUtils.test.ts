@@ -248,6 +248,13 @@ describe("buildSearchSummary", () => {
       expect(group.phraseType).toBe("full_phrase");
       expect(group.phraseLabel).toBe("Full phrase");
     });
+
+    it("infers anchor_text from keyspan_fallback method", () => {
+      const attempts = [attempt({ searchPhrase: "span text", method: "keyspan_fallback" })];
+      const group = buildSearchSummary(attempts).queryGroups[0];
+      expect(group.phraseType).toBe("anchor_text");
+      expect(group.phraseLabel).toBe("Anchor text");
+    });
   });
 
   describe("queryGroups — methods and locations", () => {
