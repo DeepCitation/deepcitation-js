@@ -22,7 +22,7 @@ import { getCitationStatus } from "./parseCitation.js";
  */
 const PAGE_NUMBER_REGEX = /page[_a-zA-Z]*(\d+)/;
 const _RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
-const CITE_TAG_REGEX = /<cite\s[^>]*\/>/g;
+const CITE_TAG_REGEX = /<cite\s(?:[^>/]|\/(?!>))*\/>/g;
 
 export interface ReplaceCitationsOptions {
   /**
