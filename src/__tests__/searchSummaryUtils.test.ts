@@ -399,9 +399,7 @@ describe("deriveContextWindow", () => {
   });
 
   it("provides surrounding words as context", () => {
-    const items = [
-      textItem("word1 word2 word3 word4 word5 TARGET word6 word7 word8 word9 word10"),
-    ];
+    const items = [textItem("word1 word2 word3 word4 word5 TARGET word6 word7 word8 word9 word10")];
     const result = deriveContextWindow("TARGET", items);
     expect(result).not.toBeNull();
     if (result == null) return;
@@ -461,9 +459,7 @@ describe("buildIntentSummary", () => {
       status: "not_found",
       citation: { type: "document", fullPhrase: "Revenue increased by 15%", pageNumber: 4 },
     };
-    const result = buildIntentSummary(verification, [
-      attempt({ searchPhrase: "Revenue increased by 15%" }),
-    ]);
+    const result = buildIntentSummary(verification, [attempt({ searchPhrase: "Revenue increased by 15%" })]);
     expect(result).not.toBeNull();
     if (result == null) return;
     expect(result.outcome).toBe("not_found");
@@ -573,10 +569,12 @@ describe("buildIntentSummary", () => {
       document: { verifiedPageNumber: 4 },
     };
     const result = buildIntentSummary(verification, []);
-    expect(result!.outcome).toBe("related_found");
-    expect(result!.snippets).toHaveLength(1);
-    expect(result!.snippets[0].matchedText).toBe("snippet from verification");
-    expect(result!.snippets[0].page).toBe(4);
+    expect(result).not.toBeNull();
+    if (result == null) return;
+    expect(result.outcome).toBe("related_found");
+    expect(result.snippets).toHaveLength(1);
+    expect(result.snippets[0].matchedText).toBe("snippet from verification");
+    expect(result.snippets[0].page).toBe(4);
   });
 
   it("uses matchedText as context fallback when textItems unavailable", () => {
@@ -592,9 +590,11 @@ describe("buildIntentSummary", () => {
         method: "current_page",
       }),
     ]);
-    expect(result!.snippets[0].contextText).toBe("Revenue increased");
-    expect(result!.snippets[0].matchStart).toBe(0);
-    expect(result!.snippets[0].matchEnd).toBe("Revenue increased".length);
+    expect(result).not.toBeNull();
+    if (result == null) return;
+    expect(result.snippets[0].contextText).toBe("Revenue increased");
+    expect(result.snippets[0].matchStart).toBe(0);
+    expect(result.snippets[0].matchEnd).toBe("Revenue increased".length);
   });
 
   it("tracks totalAttempts correctly", () => {
@@ -608,6 +608,8 @@ describe("buildIntentSummary", () => {
       attempt({ searchPhrase: "Test" }),
     ];
     const result = buildIntentSummary(verification, attempts);
-    expect(result!.totalAttempts).toBe(3);
+    expect(result).not.toBeNull();
+    if (result == null) return;
+    expect(result.totalAttempts).toBe(3);
   });
 });

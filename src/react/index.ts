@@ -13,6 +13,8 @@
 
 // Citation Primitives Namespace (composable building blocks)
 export { Citation } from "./Citation.js";
+// Citation Annotation Overlay Types
+export type { AdditionalHighlight } from "./CitationAnnotationOverlay.js";
 // Components
 export {
   CitationComponent,
@@ -151,8 +153,6 @@ export {
   type SearchQueryGroup,
   type SearchSummary,
 } from "./searchSummaryUtils.js";
-// Citation Annotation Overlay Types
-export type { AdditionalHighlight } from "./CitationAnnotationOverlay.js";
 // Status Message Utilities
 export { getContextualStatusMessage } from "./statusMessage.js";
 // Time to Certainty (TtC) — timing utilities and hooks

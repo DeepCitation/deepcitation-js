@@ -185,13 +185,15 @@ function CitationTooltip({
     const clamp = () => {
       const rect = el.getBoundingClientRect();
       const margin = 8;
-      if (rect.left < margin) {
-        setAdjustedLeft(-rect.left + margin);
-      } else if (rect.right > window.innerWidth - margin) {
-        setAdjustedLeft(window.innerWidth - margin - rect.right);
-      } else {
-        setAdjustedLeft(null);
-      }
+      // Single setState call with computed value (avoids React Compiler bailout from
+      // multiple setState calls in separate branches).
+      const newLeft =
+        rect.left < margin
+          ? -rect.left + margin
+          : rect.right > window.innerWidth - margin
+            ? window.innerWidth - margin - rect.right
+            : null;
+      setAdjustedLeft(newLeft);
     };
 
     clamp();

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import type React from "react";
+import { useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
@@ -983,11 +984,7 @@ function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
           <QuotedText mono className="text-xs text-gray-700 dark:text-gray-200 break-all">
             {displayPhrase}
           </QuotedText>
-          {locationText && (
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-              {locationText}
-            </div>
-          )}
+          {locationText && <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{locationText}</div>}
         </div>
       </div>
     </div>
@@ -1101,9 +1098,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
   return (
     <div className="px-4 py-3 space-y-4 text-sm">
       <div>
-        <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-          Search details
-        </div>
+        <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Search details</div>
         <div className="space-y-0.5">
           {groups.map(group => (
             <QueryGroupRow key={group.searchPhrase} group={group} />

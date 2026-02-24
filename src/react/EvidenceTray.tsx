@@ -613,10 +613,7 @@ export function SearchAnalysisSummary({
 }) {
   const [showDetails, setShowDetails] = useState(false);
 
-  const intentSummary = useMemo(
-    () => buildIntentSummary(verification, searchAttempts),
-    [verification, searchAttempts],
-  );
+  const intentSummary = useMemo(() => buildIntentSummary(verification, searchAttempts), [verification, searchAttempts]);
 
   // Format verified date for compact display
   const formatted = formatCaptureDate(verification?.verifiedAt);
@@ -639,9 +636,7 @@ export function SearchAnalysisSummary({
       {primaryMessage && (
         <div className="text-[11px] text-gray-600 dark:text-gray-300">
           {primaryMessage}
-          {dateStr && (
-            <span className="text-gray-400 dark:text-gray-500"> · {dateStr}</span>
-          )}
+          {dateStr && <span className="text-gray-400 dark:text-gray-500"> · {dateStr}</span>}
         </div>
       )}
 
@@ -664,6 +659,7 @@ export function SearchAnalysisSummary({
             setShowDetails(s => !s);
           }}
           aria-expanded={showDetails}
+          aria-label={showDetails ? "Collapse search log" : "Expand search log"}
         >
           <svg
             className={cn("size-2.5 shrink-0 transition-transform duration-150", showDetails && "rotate-90")}

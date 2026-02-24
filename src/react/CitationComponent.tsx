@@ -292,15 +292,23 @@ function useSpinnerStage(isLoading: boolean, isPending: boolean, hasDefinitiveRe
   const shouldAnimate = (isLoading || isPending) && !hasDefinitiveResult;
   const [stage, setStage] = useState<SpinnerStage>("active");
 
+  // Reset to "active" eagerly when a new animation cycle starts (setState-during-render
+  // pattern — avoids the previous cleanup setState which caused a React Compiler bailout).
+  const [prevShouldAnimate, setPrevShouldAnimate] = useState(shouldAnimate);
+  if (shouldAnimate && !prevShouldAnimate) {
+    setPrevShouldAnimate(true);
+    setStage("active");
+  } else if (!shouldAnimate && prevShouldAnimate) {
+    setPrevShouldAnimate(false);
+  }
+
   useEffect(() => {
     if (!shouldAnimate) return;
-    // Timeouts advance the stage; cleanup resets to "active" for the next cycle
     const t1 = setTimeout(() => setStage("slow"), SPINNER_TIMEOUT_MS);
     const t2 = setTimeout(() => setStage("stale"), SPINNER_TIMEOUT_MS * 3);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      setStage("active");
     };
   }, [shouldAnimate]);
 

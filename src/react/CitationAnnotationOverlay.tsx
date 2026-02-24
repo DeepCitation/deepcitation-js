@@ -42,7 +42,7 @@ function SecondaryBrackets({
   const rect = toPercentRect(deepItem, renderScale, imageNaturalWidth, imageNaturalHeight);
   if (!rect) return null;
 
-  const bracketColor = getBracketColor("amber");
+  const bracketColor = getBracketColor(color === "muted" ? "blue" : "amber");
   const opacity = color === "muted" ? 0.35 : 0.5;
 
   const baseLeft = parseFloat(rect.left);
@@ -246,7 +246,7 @@ export function CitationAnnotationOverlay({
       {/* Additional highlights for partial match locations */}
       {additionalHighlights?.map((h, i) => (
         <SecondaryBrackets
-          key={`additional-${i}-${h.deepItem.x}-${h.deepItem.y}`}
+          key={`additional-${i}`}
           deepItem={h.deepItem}
           renderScale={renderScale}
           imageNaturalWidth={imageNaturalWidth}

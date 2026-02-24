@@ -146,16 +146,13 @@ export const CitationTrigger = forwardRef<HTMLSpanElement, CitationTriggerProps>
     const touchStartXRef = useRef(0);
     const touchStartYRef = useRef(0);
 
-    const handleTouchStart = useCallback(
-      (e: TouchEvent<HTMLSpanElement>) => {
-        const touch = e.touches[0];
-        if (touch) {
-          touchStartXRef.current = touch.clientX;
-          touchStartYRef.current = touch.clientY;
-        }
-      },
-      [],
-    );
+    const handleTouchStart = useCallback((e: TouchEvent<HTMLSpanElement>) => {
+      const touch = e.touches[0];
+      if (touch) {
+        touchStartXRef.current = touch.clientX;
+        touchStartYRef.current = touch.clientY;
+      }
+    }, []);
 
     const handleTouchEnd = useCallback(
       (e: TouchEvent<HTMLSpanElement>) => {

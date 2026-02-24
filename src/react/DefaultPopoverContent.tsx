@@ -207,6 +207,9 @@ function PopoverSnippetZone({ snippets }: { snippets: MatchSnippet[] }) {
           </div>
         );
       })}
+      {snippets.length > 3 && (
+        <div className="text-[10px] text-gray-400 dark:text-gray-500 italic">...and {snippets.length - 3} more</div>
+      )}
     </div>
   );
 }
@@ -537,16 +540,24 @@ export function DefaultPopoverContent({
   // Pre-set width from known dimensions when the view state changes.
   // For expanded states without known dimensions, keep the previous width as an estimate
   // (null → viewport-width fallback; or previous expanded width).
-  useEffect(() => {
-    if (viewState === "summary") {
-      setWidth(null);
-    } else if (viewState === "expanded-evidence") {
-      const w = verification?.document?.verificationImageDimensions?.width;
-      if (w) setWidth(w);
-    } else if (viewState === "expanded-page" && cachedPageWidthRef.current !== null) {
-      setWidth(cachedPageWidthRef.current);
-    }
-  }, [viewState, verification?.document?.verificationImageDimensions?.width, setWidth]);
+  // Uses setState-during-render to avoid React Compiler bailout from multiple setState
+  // calls in a single useEffect.
+  const [prevViewState, setPrevViewState] = useState(viewState);
+  const prevVerificationWidth = useRef(verification?.document?.verificationImageDimensions?.width);
+  const verificationWidth = verification?.document?.verificationImageDimensions?.width;
+  if (viewState !== prevViewState || verificationWidth !== prevVerificationWidth.current) {
+    if (viewState !== prevViewState) setPrevViewState(viewState);
+    prevVerificationWidth.current = verificationWidth;
+    const newWidth =
+      viewState === "summary"
+        ? null
+        : viewState === "expanded-evidence" && verificationWidth
+          ? verificationWidth
+          : viewState === "expanded-page" && cachedPageWidthRef.current !== null
+            ? cachedPageWidthRef.current
+            : undefined; // undefined = no change
+    if (newWidth !== undefined) setWidth(newWidth);
+  }
 
   // Callback for InlineExpandedImage onLoad — confirms/corrects the pre-set width.
   const handleExpandedImageLoad = useCallback(
@@ -628,7 +639,10 @@ export function DefaultPopoverContent({
   const anchorText = citation.anchorText?.toString();
   const fullPhrase = citation.fullPhrase;
   const humanizingMessage = useMemo(
-    () => (isUrlCitation(citation) ? getHumanizingMessage(searchStatus, anchorText, expectedPage ?? undefined, foundPage) : null),
+    () =>
+      isUrlCitation(citation)
+        ? getHumanizingMessage(searchStatus, anchorText, expectedPage ?? undefined, foundPage)
+        : null,
     [citation, searchStatus, anchorText, expectedPage, foundPage],
   );
 
@@ -778,9 +792,7 @@ export function DefaultPopoverContent({
         {/* URL access explanation (for URL citations with access failures) */}
         {urlAccessExplanation && <UrlAccessExplanationSection explanation={urlAccessExplanation} />}
         {/* Snippet display for document partial matches */}
-        {!urlAccessExplanation && intentSnippets.length > 0 && (
-          <PopoverSnippetZone snippets={intentSnippets} />
-        )}
+        {!urlAccessExplanation && intentSnippets.length > 0 && <PopoverSnippetZone snippets={intentSnippets} />}
         {/* Humanizing message fallback for URL citations */}
         {!urlAccessExplanation && intentSnippets.length === 0 && humanizingMessage && (
           <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">

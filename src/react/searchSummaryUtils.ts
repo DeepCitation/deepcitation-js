@@ -94,13 +94,17 @@ export function deriveContextWindow(
 ): { contextText: string; matchStart: number; matchEnd: number } | null {
   if (!textItems || textItems.length === 0 || !matchedText) return null;
 
+  // Pre-check total length before concatenating to avoid unnecessary work
+  let estimatedLen = 0;
+  for (const item of textItems) {
+    estimatedLen += (item.text?.length ?? 0) + 1;
+    if (estimatedLen > MAX_TEXT_ITEMS_LENGTH) return null;
+  }
+
   // Concatenate text items with spaces
   let fullText = "";
-  let totalLen = 0;
   for (const item of textItems) {
     const t = item.text ?? "";
-    totalLen += t.length + 1;
-    if (totalLen > MAX_TEXT_ITEMS_LENGTH) return null; // Safety: bail on huge pages
     if (fullText.length > 0) fullText += " ";
     fullText += t;
   }
