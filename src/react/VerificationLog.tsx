@@ -567,34 +567,6 @@ function getStatusHeaderText(status?: SearchStatus | null): string {
   }
 }
 
-/**
- * Get human-readable method name.
- */
-function _getMethodDisplayName(method: SearchMethod): string {
-  return METHOD_DISPLAY_NAMES[method] || method;
-}
-
-/**
- * Format a scope badge string from search attempt.
- */
-function _formatScopeBadge(attempt: SearchAttempt): string {
-  const page = attempt.pageSearched;
-  const line = attempt.lineSearched;
-  const scope = attempt.searchScope;
-
-  if (scope === "document") return "Entire document";
-
-  if (page != null) {
-    if (line != null) {
-      const lineStr = Array.isArray(line) ? line.join("-") : line.toString();
-      return `Page ${page}, line ${lineStr}`;
-    }
-    return `Page ${page}, all lines`;
-  }
-
-  return "Unknown";
-}
-
 // =============================================================================
 // PAGE BADGE COMPONENT
 // =============================================================================
@@ -1023,7 +995,7 @@ function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
             <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
               {group.variationTypeLabel ?? "Also tried"}:{" "}
               {group.variations.slice(0, 3).map((v, vIdx) => (
-                <React.Fragment key={vIdx}>
+                <React.Fragment key={v}>
                   {vIdx > 0 && ", "}
                   <QuotedText mono>{v}</QuotedText>
                 </React.Fragment>
@@ -1037,7 +1009,7 @@ function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
             <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
               Rejected:{" "}
               {group.rejectedMatches.map((m, mIdx) => (
-                <React.Fragment key={mIdx}>
+                <React.Fragment key={m.text}>
                   {mIdx > 0 && ", "}
                   <QuotedText mono>{m.text.length > 40 ? `${m.text.slice(0, 40)}...` : m.text}</QuotedText>
                   {m.occurrences != null && ` (${m.occurrences}x)`}
