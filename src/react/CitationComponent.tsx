@@ -574,7 +574,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         onTimingEventRef.current?.({
           event: "popover_opened",
           citationKey,
-          timestamp: Date.now(),
+          timestamp: popoverOpenedAtRef.current,
           elapsedSinceSeenMs: popoverOpenedAtRef.current - firstSeenAtRef.current,
           verificationStatus: verification?.status ?? null,
         });
@@ -585,7 +585,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         onTimingEventRef.current?.({
           event: "popover_closed",
           citationKey,
-          timestamp: Date.now(),
+          timestamp: now,
           elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
           popoverDurationMs: dwellMs,
           verificationStatus: verification?.status ?? null,
@@ -597,7 +597,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           onTimingEventRef.current?.({
             event: "citation_reviewed",
             citationKey,
-            timestamp: Date.now(),
+            timestamp: now,
             elapsedSinceSeenMs: firstSeenAtRef.current != null ? now - firstSeenAtRef.current : null,
             popoverDurationMs: dwellMs,
             verificationStatus: verification?.status ?? null,

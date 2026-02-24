@@ -157,7 +157,7 @@ export function useCitationTiming(
     onTimingEventRef.current?.({
       event: "citation_seen",
       citationKey,
-      timestamp: Date.now(),
+      timestamp: firstSeenAtRef.current,
       elapsedSinceSeenMs: null,
     });
   }, [citationKey]);
@@ -176,7 +176,7 @@ export function useCitationTiming(
       onTimingEventRef.current?.({
         event: "evidence_ready",
         citationKey,
-        timestamp: Date.now(),
+        timestamp: now,
         elapsedSinceSeenMs: computed,
         timeToCertaintyMs: computed,
         verificationStatus: verification?.status ?? null,
