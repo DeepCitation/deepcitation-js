@@ -685,7 +685,7 @@ export function EvidenceTray({
             <div className="overflow-hidden" style={{ height: MISS_TRAY_THUMBNAIL_HEIGHT }}>
               <img
                 src={proofImageSrc}
-                className="w-full h-full object-cover object-top"
+                className="w-full h-full object-cover object-center"
                 draggable={false}
                 alt="Searched page"
               />

@@ -22,12 +22,13 @@ import {
   EASE_COLLAPSE,
   EASE_EXPAND,
   getPortalContainer,
+  isValidProofImageSrc,
   Z_INDEX_BACKDROP_DEFAULT,
   Z_INDEX_DRAWER_BACKDROP_VAR,
   Z_INDEX_DRAWER_VAR,
   Z_INDEX_OVERLAY_DEFAULT,
 } from "./constants.js";
-import { EvidenceTray, InlineExpandedImage, resolveExpandedImage } from "./EvidenceTray.js";
+import { EvidenceTray, InlineExpandedImage, normalizeScreenshotSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ExternalLinkIcon } from "./icons.js";
@@ -280,6 +281,22 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const expandedImage = useMemo(() => resolveExpandedImage(verification), [verification]);
   const proofImage = expandedImage?.src ?? null;
 
+  // Evidence image — the verification crop (keyhole source), separate from the full page.
+  const evidenceSrc = useMemo(() => {
+    if (verification?.document?.verificationImageSrc) {
+      const s = verification.document.verificationImageSrc;
+      return isValidProofImageSrc(s) ? s : null;
+    }
+    const raw = verification?.url?.webPageScreenshotBase64;
+    if (!raw) return null;
+    try {
+      const s = normalizeScreenshotSrc(raw);
+      return isValidProofImageSrc(s) ? s : null;
+    } catch {
+      return null;
+    }
+  }, [verification]);
+
   // Status
   const statusCategory = getItemStatusCategory(item);
   const isPending = statusCategory === "pending";
@@ -312,10 +329,15 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     onClick?.(item);
   }, [item, onClick, escCtx, isExpanded, citationKey]);
 
-  // Opens InlineExpandedImage with the proof image (used by both keyhole click and tray click)
+  // Opens InlineExpandedImage with the full page image (tray click / onExpand)
   const handleExpand = useCallback(() => {
     if (proofImage) setInlineExpandedSrc(proofImage);
   }, [proofImage]);
+
+  // Opens InlineExpandedImage with the evidence crop (keyhole click / onImageClick)
+  const handleExpandEvidence = useCallback(() => {
+    if (evidenceSrc) setInlineExpandedSrc(evidenceSrc);
+  }, [evidenceSrc]);
 
   // Auto-open InlineExpandedImage when pendingInlineExpand matches this item (page badge click)
   const itemRef = useRef<HTMLDivElement>(null);
@@ -425,7 +447,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
               <EvidenceTray
                 verification={verification ?? null}
                 status={citationStatus}
-                onImageClick={proofImage ? handleExpand : undefined}
+                onImageClick={evidenceSrc ? handleExpandEvidence : undefined}
                 onExpand={proofImage ? handleExpand : undefined}
                 proofImageSrc={proofImage ?? undefined}
               />
@@ -826,8 +848,11 @@ export function CitationDrawer({
     [pageToKey],
   );
 
-  // Active page pill — derived from which citation is currently expanded
-  const activePage = expandedCitationKey ? (keyToPage.get(expandedCitationKey) ?? null) : null;
+  // State mirror of inlineKeysRef so page pill reactivity works (refs don't trigger re-renders)
+  const [hasInlineOpen, setHasInlineOpen] = useState(false);
+
+  // Active page pill — only lit when the inline full-page image is visible
+  const activePage = expandedCitationKey && hasInlineOpen ? (keyToPage.get(expandedCitationKey) ?? null) : null;
 
   const handlePageDeactivate = useCallback(() => {
     setExpandedCitationKey(null);
@@ -843,6 +868,7 @@ export function CitationDrawer({
     else expandedKeysRef.current.delete(key);
     if (hasInline) inlineKeysRef.current.add(key);
     else inlineKeysRef.current.delete(key);
+    setHasInlineOpen(inlineKeysRef.current.size > 0);
   }, []);
 
   const escCtxValue = useMemo<DrawerEscapeCtx>(
@@ -880,6 +906,7 @@ export function CitationDrawer({
           // Level 3 → Level 2: collapse inline full-page images
           setCollapseInlineSignal(s => s + 1);
           inlineKeysRef.current.clear();
+          setHasInlineOpen(false);
         } else if (expandedKeyRef.current !== null) {
           // Level 2 → Level 1: collapse the accordion
           setExpandedCitationKey(null);
