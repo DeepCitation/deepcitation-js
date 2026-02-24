@@ -22,7 +22,7 @@ import { getCitationStatus } from "./parseCitation.js";
  */
 const PAGE_NUMBER_REGEX = /page[_a-zA-Z]*(\d+)/;
 const _RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
-const CITE_TAG_REGEX = /<cite\s+[^>]*?\/>/g;
+const CITE_TAG_REGEX = /<cite\s+[^>]*\/>/g;
 
 export interface ReplaceCitationsOptions {
   /**
@@ -56,7 +56,7 @@ const parseCiteAttributes = (citeTag: string): Record<string, string | undefined
   validateRegexInput(citeTag);
 
   // Match attribute patterns: key='value' or key="value"
-  const attrRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
+  const attrRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\2/g;
   let match: RegExpExecArray | null;
 
   while ((match = attrRegex.exec(citeTag)) !== null) {
@@ -170,6 +170,7 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
       // Build a Citation object from parsed attributes to generate the key
       const parsePageNumber = (startPageId?: string): number | undefined => {
         if (!startPageId) return undefined;
+        if (startPageId.length > 200) return undefined;
         // Performance fix: use module-level compiled regex
         // Note: parent replaceCitations() already validated the full input
         const match = startPageId.match(PAGE_NUMBER_REGEX);
@@ -178,6 +179,7 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
 
       const parseLineIds = (lineIdsStr?: string): number[] | undefined => {
         if (!lineIdsStr) return undefined;
+        if (lineIdsStr.length > 500) return undefined;
 
         // Note: parent replaceCitations() already validated the full input
         // Performance fix: limit range expansion to prevent memory exhaustion
@@ -494,7 +496,7 @@ const normalizeCitationContent = (input: string): string => {
   // (the parser uses regexes that assume a canonical attribute order).
   const reorderCiteTagAttributes = (tag: string): string => {
     // Match both single-quoted and double-quoted attributes
-    const attrRegex = /([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(['"])((?:[^'"\\\n]|\\.)*)(?:\2)/g;
+    const attrRegex = /([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(['"])([^'"\\\n]*(?:\\.[^'"\\\n]*)*)(?:\2)/g;
     // Use safe object to prevent prototype pollution
     const attrs = createSafeObject<string>();
     let match: RegExpExecArray | null;
