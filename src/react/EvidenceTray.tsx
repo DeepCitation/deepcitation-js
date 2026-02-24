@@ -391,7 +391,8 @@ export function AnchorTextFocusedImage({
         <button
           type="button"
           className="block relative w-full"
-          style={{ cursor: isDragging ? "grabbing" : isPannable ? "grab" : canExpand ? "zoom-in" : "default" }}
+          title={!canExpand && imageFitInfo?.imageFitsCompletely ? "Already full size" : undefined}
+          style={{ cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default" }}
           onKeyDown={e => {
             const el = containerRef.current;
             if (!el) return;
@@ -435,7 +436,7 @@ export function AnchorTextFocusedImage({
               WebkitMaskImage: maskImage,
               maskImage,
               ...KEYHOLE_SCROLLBAR_HIDE,
-              cursor: isDragging ? "grabbing" : isPannable ? "grab" : canExpand ? "zoom-in" : "default",
+              cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default",
             }}
             {...handlers}
           >
@@ -1067,7 +1068,7 @@ export function InlineExpandedImage({
           style={{
             ...(fill ? {} : { maxHeight: "min(600px, 80dvh)" }),
             overscrollBehavior: "none",
-            cursor: isDragging ? "grabbing" : fill ? "grab" : "zoom-out",
+            cursor: isDragging ? "grabbing" : "zoom-out",
             ...KEYHOLE_SCROLLBAR_HIDE,
           }}
           onDragStart={e => e.preventDefault()}
