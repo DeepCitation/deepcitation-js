@@ -170,7 +170,8 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     const popover = page.getByRole("dialog");
     await expect(popover).toBeVisible();
 
-    const expandButton = page.getByRole("button", { name: /Expand search log|View search log/i });
+    // Use text selector since aria-label toggles between "Expand" and "Collapse"
+    const expandButton = page.getByText("View search log");
 
     // Rapidly toggle expansion multiple times
     await expandButton.click(); // Expand
