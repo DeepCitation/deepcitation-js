@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { shouldHighlightAnchorText } from "../drawing/citationDrawing";
 import { isValidOverlayGeometry, toPercentRect, wordCount } from "../react/overlayGeometry";
 import type { DeepTextItem } from "../types/boxes";
 
@@ -125,6 +126,52 @@ describe("CitationAnnotationOverlay utilities", () => {
       const result = toPercentRect(makeItem(600, 400, 100, 25), scale, imgW, imgH);
       expect(result).not.toBeNull();
       expect(result?.width).toBe("0%");
+    });
+  });
+
+  describe("shouldHighlightAnchorText", () => {
+    it("returns false for null/undefined inputs", () => {
+      expect(shouldHighlightAnchorText(null, "hello world")).toBe(false);
+      expect(shouldHighlightAnchorText("hello", null)).toBe(false);
+      expect(shouldHighlightAnchorText(undefined, undefined)).toBe(false);
+    });
+
+    it("returns false when anchorText equals fullPhrase", () => {
+      expect(shouldHighlightAnchorText("hello world", "hello world")).toBe(false);
+    });
+
+    it("returns false when anchorText has more words than fullPhrase", () => {
+      expect(shouldHighlightAnchorText("the quick brown fox", "quick brown")).toBe(false);
+    });
+
+    it("returns false for 2 words in 3 words (only 1 word difference)", () => {
+      expect(shouldHighlightAnchorText("quick brown", "the quick brown")).toBe(false);
+    });
+
+    it("highlights 2 words in 4 words (2 word difference)", () => {
+      expect(shouldHighlightAnchorText("quick brown", "the quick brown fox")).toBe(true);
+    });
+
+    it("highlights 1 word in 3 words", () => {
+      expect(shouldHighlightAnchorText("brown", "the quick brown")).toBe(true);
+    });
+
+    // Single-word exception: 1 word in 2 words highlights (1-word diff allowed)
+    it("highlights 1 word in 2 words (single-word exception)", () => {
+      expect(shouldHighlightAnchorText("hello", "hello world")).toBe(true);
+    });
+
+    it("returns false for 1 word in 1 word (same count)", () => {
+      expect(shouldHighlightAnchorText("hello", "world")).toBe(false);
+    });
+
+    it("returns false for empty strings", () => {
+      expect(shouldHighlightAnchorText("", "hello world")).toBe(false);
+      expect(shouldHighlightAnchorText("hello", "")).toBe(false);
+    });
+
+    it("returns false for whitespace-only strings", () => {
+      expect(shouldHighlightAnchorText("   ", "hello world")).toBe(false);
     });
   });
 });

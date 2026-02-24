@@ -20,7 +20,7 @@ import { UrlCitationComponent } from "./UrlCitationComponent.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
 import { buildSearchSummary, type SearchQueryGroup } from "./searchSummaryUtils.js";
-import { cn, isUrlCitation } from "./utils.js";
+import { cn, isImageSource, isUrlCitation } from "./utils.js";
 
 // =============================================================================
 // CONSTANTS
@@ -34,12 +34,6 @@ const MAX_ANCHOR_TEXT_PREVIEW_LENGTH = 50;
 
 /** Maximum length for phrase display in search attempt rows */
 const MAX_PHRASE_DISPLAY_LENGTH = 60;
-
-/** Returns true when the verification source is a raster image (not a PDF). */
-function isImageSource(verification: Verification | null | undefined): boolean {
-  const mt = verification?.document?.mimeType;
-  return typeof mt === "string" && mt.startsWith("image/");
-}
 
 /** Truncate a search phrase for display, showing "(empty)" for blank input. */
 function truncatePhrase(raw: string | undefined | null): string {

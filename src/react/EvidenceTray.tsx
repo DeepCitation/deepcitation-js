@@ -1139,10 +1139,9 @@ export function InlineExpandedImage({
   // arithmetic, cheaper than the overhead of a hook in this effect-heavy component.
   const annotationOriginItem =
     fill && renderScale && naturalWidth && naturalHeight ? (scrollTarget ?? effectivePhraseItem) : null;
-  const annotationPhraseItem = annotationOriginItem;
   const annotationOrigin =
-    annotationPhraseItem && renderScale && naturalWidth && naturalHeight
-      ? computeAnnotationOriginPercent(annotationPhraseItem, renderScale, naturalWidth, naturalHeight)
+    annotationOriginItem && renderScale && naturalWidth && naturalHeight
+      ? computeAnnotationOriginPercent(annotationOriginItem, renderScale, naturalWidth, naturalHeight)
       : null;
 
   const footerEl = (

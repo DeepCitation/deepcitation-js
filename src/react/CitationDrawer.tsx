@@ -176,9 +176,7 @@ function SourceGroupHeader({ group }: { group: SourceCitationGroup }) {
       <div className="shrink-0">
         {isUrlSource ? (
           <FaviconImage faviconUrl={group.sourceFavicon || null} domain={group.sourceDomain || null} alt={sourceName} />
-        ) : (
-          null
-        )}
+        ) : null}
       </div>
 
       {/* Source name and domain (for URL sources, show domain in muted text) */}

@@ -632,23 +632,24 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Data URIs are skipped — they're inline and don't need network fetching.
     // The normal-priority prefetch in DefaultPopoverContent still fires on popover
     // open, upgrading the browser's fetch priority if the request is still in-flight.
+    //
+    // Dependencies: resolved URL strings (not the verification object) so re-renders
+    // with the same verification data don't re-fire.
+    const prefetchEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
+    const prefetchExpandedSrc = useMemo(() => resolveExpandedImage(verification)?.src ?? null, [verification]);
     useEffect(() => {
-      if (!verification) return;
-
-      const evidence = resolveEvidenceSrc(verification);
-      if (evidence && !evidence.startsWith("data:")) {
+      if (prefetchEvidenceSrc && !prefetchEvidenceSrc.startsWith("data:")) {
         const img = new Image();
         img.fetchPriority = "low";
-        img.src = evidence;
+        img.src = prefetchEvidenceSrc;
       }
 
-      const expanded = resolveExpandedImage(verification);
-      if (expanded?.src && !expanded.src.startsWith("data:")) {
+      if (prefetchExpandedSrc && !prefetchExpandedSrc.startsWith("data:")) {
         const img = new Image();
         img.fetchPriority = "low";
-        img.src = expanded.src;
+        img.src = prefetchExpandedSrc;
       }
-    }, [verification]);
+    }, [prefetchEvidenceSrc, prefetchExpandedSrc]);
 
     const displayText = useMemo(() => {
       return getDisplayText(citation, resolvedContent, fallbackDisplay);
@@ -886,16 +887,24 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         moved = false;
       };
 
+      // Reset state when the OS cancels a touch (notification shade, incoming call, etc.)
+      const handleTouchCancel = () => {
+        outsideTarget = false;
+        moved = false;
+      };
+
       // All passive — we never preventDefault(), allowing scroll to proceed freely.
       // Capture phase so we see touches before child handlers.
       document.addEventListener("touchstart", handleTouchStart, { capture: true, passive: true });
       document.addEventListener("touchmove", handleTouchMove, { capture: true, passive: true });
       document.addEventListener("touchend", handleTouchEnd, { capture: true, passive: true });
+      document.addEventListener("touchcancel", handleTouchCancel, { capture: true, passive: true });
 
       return () => {
         document.removeEventListener("touchstart", handleTouchStart, { capture: true });
         document.removeEventListener("touchmove", handleTouchMove, { capture: true });
         document.removeEventListener("touchend", handleTouchEnd, { capture: true });
+        document.removeEventListener("touchcancel", handleTouchCancel, { capture: true });
       };
     }, [isMobile, isHovering, closePopover]);
 

@@ -339,7 +339,8 @@ test.describe("Citation Popover - Mobile/Touch Behavior", () => {
     // Wait for popover to fully open
     await page.waitForTimeout(300);
 
-    // Dispatch touchstart event on body (component listens for touchstart, not pointerdown)
+    // Full tap gesture outside: touchstart + touchend (no touchmove = finger didn't move).
+    // The dismiss handler requires the complete tap sequence, not just touchstart.
     await page.evaluate(() => {
       const touch = new Touch({
         identifier: 0,
@@ -347,14 +348,24 @@ test.describe("Citation Popover - Mobile/Touch Behavior", () => {
         clientX: 10,
         clientY: 10,
       });
-      const touchEvent = new TouchEvent("touchstart", {
-        bubbles: true,
-        cancelable: true,
-        touches: [touch],
-        targetTouches: [touch],
-        changedTouches: [touch],
-      });
-      document.body.dispatchEvent(touchEvent);
+      document.body.dispatchEvent(
+        new TouchEvent("touchstart", {
+          bubbles: true,
+          cancelable: true,
+          touches: [touch],
+          targetTouches: [touch],
+          changedTouches: [touch],
+        }),
+      );
+      document.body.dispatchEvent(
+        new TouchEvent("touchend", {
+          bubbles: true,
+          cancelable: true,
+          touches: [],
+          targetTouches: [],
+          changedTouches: [touch],
+        }),
+      );
     });
 
     // Wait for close animation

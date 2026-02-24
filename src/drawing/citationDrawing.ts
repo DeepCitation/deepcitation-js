@@ -7,6 +7,8 @@
  * (CitationAnnotationOverlay.tsx).
  */
 
+import { safeSplit } from "../utils/regexSafety.js";
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -42,10 +44,6 @@ export const OVERLAY_COLOR_HEX = "#1a1a1a66";
 export const ANCHOR_HIGHLIGHT_COLOR = "rgba(251, 191, 36, 0.2)";
 /** Slightly more visible variant for dark-mode contexts. */
 export const ANCHOR_HIGHLIGHT_COLOR_DARK = "rgba(251, 191, 36, 0.25)";
-
-// Legacy aliases
-export const KEYSPAN_HIGHLIGHT_COLOR = ANCHOR_HIGHLIGHT_COLOR;
-export const KEYSPAN_HIGHLIGHT_COLOR_DARK = ANCHOR_HIGHLIGHT_COLOR_DARK;
 
 // =============================================================================
 // Bracket Geometry
@@ -88,12 +86,11 @@ export function getBracketColor(highlightColor: HighlightColor = "blue"): string
 /** Minimum extra words fullPhrase must have over anchorText to trigger highlight. */
 const MIN_WORD_DIFFERENCE = 2;
 
-/** Count whitespace-delimited words in a string. */
+/** Count whitespace-delimited words in a string. Uses safeSplit for input-length validation. */
 function countWords(text: string): number {
-  return text
-    .trim()
-    .split(/\s+/)
-    .filter(word => word.length > 0).length;
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return 0;
+  return safeSplit(trimmed, /\s+/).length;
 }
 
 /**
@@ -130,9 +127,6 @@ export function shouldHighlightAnchorText(
 
   return wordDifference >= MIN_WORD_DIFFERENCE;
 }
-
-/** @deprecated Use shouldHighlightAnchorText */
-export const shouldHighlightKeySpan = shouldHighlightAnchorText;
 
 /**
  * Computes whether the anchorText keyspan should be highlighted and extracts

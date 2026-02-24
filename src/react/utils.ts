@@ -130,3 +130,9 @@ export function classNames(...classes: (string | undefined | null | false)[]): s
  */
 export const CITATION_X_PADDING = 4;
 export const CITATION_Y_PADDING = 1;
+
+/** Returns true when the verification source is a raster image (not a PDF). */
+export function isImageSource(verification: Verification | null | undefined): boolean {
+  const mt = verification?.document?.mimeType;
+  return typeof mt === "string" && mt.startsWith("image/");
+}

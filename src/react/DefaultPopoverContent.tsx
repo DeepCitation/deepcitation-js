@@ -35,14 +35,8 @@ import {
   type UrlAccessExplanation,
 } from "./urlAccessExplanation.js";
 import { isValidProofUrl } from "./urlUtils.js";
-import { cn, isUrlCitation } from "./utils.js";
+import { cn, isImageSource, isUrlCitation } from "./utils.js";
 import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
-
-/** Returns true when the verification source is a raster image (not a PDF). */
-function isImageSource(verification: Verification | null | undefined): boolean {
-  const mt = verification?.document?.mimeType;
-  return typeof mt === "string" && mt.startsWith("image/");
-}
 
 // React 19.2's Activity component is disabled here because it triggers a fiber
 // effect linked-list corruption bug during simultaneous mode transitions

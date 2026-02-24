@@ -262,8 +262,17 @@ test.describe("Annotation Overlay — scroll-to", () => {
     const scrollToBtn = popover.locator("[data-dc-scroll-to-annotation]");
     await scrollToBtn.click();
 
-    // Wait for smooth scroll animation to complete
-    await page.waitForTimeout(500);
+    // Wait for smooth scroll to reach the annotation (polling instead of fixed timeout)
+    await expandedView.evaluate(
+      el =>
+        new Promise<void>(resolve => {
+          const check = () => {
+            if ((el as HTMLElement).scrollTop > 100) return resolve();
+            requestAnimationFrame(check);
+          };
+          check();
+        }),
+    );
 
     const scrollTopAfter = await expandedView.evaluate(el => (el as HTMLElement).scrollTop);
     // Should have scrolled back down toward the annotation

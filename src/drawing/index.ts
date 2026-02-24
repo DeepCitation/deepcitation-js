@@ -20,8 +20,6 @@ export {
   getBracketWidth,
   // Types
   type HighlightColor,
-  KEYSPAN_HIGHLIGHT_COLOR,
-  KEYSPAN_HIGHLIGHT_COLOR_DARK,
   OVERLAY_COLOR,
   OVERLAY_COLOR_HEX,
   SIGNAL_AMBER,
@@ -30,5 +28,4 @@ export {
   SPOTLIGHT_PADDING,
   // Highlight logic
   shouldHighlightAnchorText,
-  shouldHighlightKeySpan,
 } from "./citationDrawing.js";
