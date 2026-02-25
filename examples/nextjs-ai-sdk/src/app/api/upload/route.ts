@@ -34,6 +34,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    // Validate file size (50MB limit)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "File too large. Maximum size is 50MB." },
+        { status: 413 },
+      );
+    }
+
+    // Validate MIME type
+    const ALLOWED_TYPES = [
+      "application/pdf",
+      "image/png",
+      "image/jpeg",
+      "image/tiff",
+      "image/webp",
+    ];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: `Unsupported file type: ${file.type}` },
+        { status: 400 },
+      );
+    }
+
     // Convert File to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
