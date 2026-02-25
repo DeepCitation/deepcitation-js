@@ -48,7 +48,7 @@ const model = "gpt-5-mini";
 
 /**
  * Upload a file to DeepCitation API and get citation context
- * Equivalent to: deepcitation.prepareFiles()
+ * Equivalent to: deepcitation.prepareAttachment()
  */
 async function prepareFile(
   file: Buffer,

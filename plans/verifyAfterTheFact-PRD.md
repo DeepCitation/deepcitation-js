@@ -26,7 +26,7 @@ This doesn't work when:
 1. **Progressive complexity** - Simple cases should be simple; advanced options available when needed
 2. **Flexible input** - Accept files in multiple formats without unnecessary wrapping
 3. **Fail fast with helpful errors** - Validate early, provide actionable error messages
-4. **Composable** - Works seamlessly with existing `prepareFiles()` and `verify()` methods
+4. **Composable** - Works seamlessly with existing `prepareAttachment()` and `verify()` methods
 
 ### Method Signatures
 
@@ -51,10 +51,10 @@ type SourceInput =
   | Blob                                                    // Blob
   | { file: File | Buffer | Blob; filename?: string }       // File with metadata
   | { attachmentId: string; deepTextPromptPortion: string } // Pre-prepared source
-  | PreparedFile;                                           // Direct from prepareFiles()
+  | PreparedFile;                                           // Direct from prepareAttachment()
 
 /**
- * Result from prepareFiles() - can be passed directly as a source
+ * Result from prepareAttachment() - can be passed directly as a source
  */
 interface PreparedFile {
   attachmentId: string;
@@ -261,7 +261,7 @@ const result = await deepcitation.verifyAfterTheFact({
 
 ```typescript
 // Prepare files once (API call, slower)
-const { fileDataParts } = await deepcitation.prepareFiles([
+const { fileDataParts } = await deepcitation.prepareAttachment([
   { file: report1, filename: "Q1.pdf" },
   { file: report2, filename: "Q2.pdf" },
 ]);
@@ -384,7 +384,7 @@ Validation runs early with clear, actionable messages:
 | Empty `sources` | `"At least one source is required"` |
 | Invalid file type | `"Unsupported file type: {type}. Supported: PDF, images, Word, Excel, PowerPoint"` |
 | File too large | `"File '{name}' exceeds 50MB limit"` |
-| Missing text for attachmentId | `"Source '{id}' requires deepTextPromptPortion. Use prepareFiles() first or include text from a previous call."` |
+| Missing text for attachmentId | `"Source '{id}' requires deepTextPromptPortion. Use prepareAttachment() first or include text from a previous call."` |
 | Token limit exceeded | `"Combined sources (~{n} tokens) exceed limit. Use fewer or smaller files."` |
 
 ---

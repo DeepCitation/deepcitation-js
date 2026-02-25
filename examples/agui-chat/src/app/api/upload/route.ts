@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const { fileDataParts } = await dc.prepareAttachment([{ file: buffer, filename: file.name }]);
 
     const fileDataPart = fileDataParts[0];
-    console.log(`Uploaded: ${file.name} (${fileDataPart.attachmentId})`);
+    console.log(`Uploaded: ${sanitizeForLog(file.name)} (${fileDataPart.attachmentId})`);
 
     // Return the complete FileDataPart - client stores this as single source of truth
     return NextResponse.json({

@@ -93,7 +93,7 @@ import { CitationComponent } from "deepcitation/react";
 
 // 1. Upload sources
 const dc = new DeepCitation({ apiKey: process.env.DEEPCITATION_API_KEY });
-const { deepTextPromptPortion } = await dc.prepareFiles([
+const { deepTextPromptPortion } = await dc.prepareAttachment([
   { file: pdfBuffer, filename: "report.pdf" }
 ]);
 

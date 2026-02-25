@@ -211,7 +211,7 @@ export interface VerifyCitationsOptions {
 export type CitationInput = Citation | Record<string, Citation>;
 
 /**
- * Input for file upload in prepareFiles
+ * Input for file upload in prepareAttachment
  */
 export interface FileInput {
   /** The file content (File, Blob, or Buffer) */
@@ -223,7 +223,7 @@ export interface FileInput {
 }
 
 /**
- * File reference returned from prepareFiles
+ * File reference returned from prepareAttachment
  */
 export interface FileDataPart {
   /** The attachment ID assigned by DeepCitation */
@@ -235,7 +235,7 @@ export interface FileDataPart {
 }
 
 /**
- * Result from prepareFiles
+ * Result from prepareAttachment
  */
 export interface PrepareFilesResult {
   /** Array of file references for verification (includes deepTextPromptPortion for each file) */

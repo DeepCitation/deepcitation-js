@@ -8,6 +8,7 @@ Complete, runnable examples demonstrating DeepCitation integration patterns.
 |---------|-------------|----------|
 | [**basic-verification**](./basic-verification) | Core 3-step workflow with OpenAI/Anthropic | Learning the basics, quick integration |
 | [**nextjs-ai-sdk**](./nextjs-ai-sdk) | Next.js chat app with Vercel AI SDK | Full-stack apps, streaming UI |
+| [**agui-chat**](./agui-chat) | AG-UI protocol chat with SSE streaming | AG-UI integration, protocol-level control |
 
 ## Quick Start
 
@@ -38,7 +39,7 @@ The simplest integration showing the complete workflow:
 
 ```typescript
 // 1. Upload documents
-const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([...]);
+const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareAttachment([...]);
 
 // 2. Wrap prompts with citation instructions
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({

@@ -55,7 +55,7 @@ async function main() {
   const sampleDocument = readFileSync(resolve(__dirname, "../../assets/john-doe-50-m-chart.jpg"));
 
   // Upload documents to DeepCitation
-  const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
+  const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareAttachment([
     { file: sampleDocument, filename: "john-doe-50-m-chart.jpg" },
   ]);
 

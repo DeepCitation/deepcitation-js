@@ -486,7 +486,7 @@ export class DeepCitation {
    *
    * @example
    * ```typescript
-   * const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
+   * const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareAttachment([
    *   { file: pdfBuffer, filename: "report.pdf" },
    *   { file: invoiceBuffer, filename: "invoice.pdf" },
    * ]);
@@ -502,7 +502,7 @@ export class DeepCitation {
    * const result = await deepcitation.verify({ llmOutput, fileDataParts });
    * ```
    */
-  async prepareFiles(files: FileInput[]): Promise<PrepareFilesResult> {
+  async prepareAttachment(files: FileInput[]): Promise<PrepareFilesResult> {
     if (files.length === 0) {
       return { fileDataParts: [] };
     }
