@@ -6,7 +6,6 @@ import type { Verification } from "../types/verification.js";
 import { DOT_COLORS } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import {
-  ArrowLeftIcon,
   CheckIcon,
   ChevronRightIcon,
   DocumentIcon,
@@ -106,13 +105,6 @@ export interface SourceContextHeaderProps {
    */
   onClose?: () => void;
   /**
-   * Callback for the ← Back button only — does NOT affect the page pill state.
-   * Use this when you want a back button but the page pill should stay in expand
-   * (chevron) mode rather than the active/X mode that `onClose` triggers.
-   * If both `onBack` and `onClose` are set, `onBack` takes priority for the button.
-   */
-  onBack?: () => void;
-  /**
    * Proof URL to link to in the expanded view header.
    * Rendered whenever a valid URL is provided.
    * Validated internally via `isValidProofUrl()` — safe to pass untrusted input.
@@ -136,7 +128,8 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
     case "first_word_found":
       return "partial";
     case "not_found":
-      return "error_not_found";
+      // SearchStatus.not_found = text not found on page, not HTTP 404.
+      return "unknown";
     case "loading":
     case "pending":
     case "timestamp_wip":
@@ -214,7 +207,7 @@ interface PagePillProps {
   onClick?: () => void;
   /** Callback to close from expanded view — shows X and active (blue) styling */
   onClose?: () => void;
-  /** When true, source is a raster image — label becomes "Image"/"View Image" instead of "p.X" */
+  /** When true, source is a raster image — label becomes "Image"/"Image" instead of "p.X" */
   isImage?: boolean;
 }
 
@@ -237,7 +230,7 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }:
   // Need either a page number to display or an action to perform
   if (!hasPage && !onClick && !onClose) return null;
 
-  const label = isImage ? (onClick ? "View Image" : "Image") : hasPage ? `p.${pageNumber}` : "Page";
+  const label = isImage ? (onClick ? "Image" : "Image") : hasPage ? `p.${pageNumber}` : "Page";
   const colorClasses = PAGE_PILL_COLORS[colorScheme];
 
   // Active/expanded state: entire pill is a button to close, shows X instead of chevron
@@ -314,7 +307,6 @@ export function SourceContextHeader({
   sourceLabel,
   onExpand,
   onClose,
-  onBack,
   proofUrl: _proofUrl,
 }: SourceContextHeaderProps) {
   const isUrl = isUrlCitation(citation);
@@ -342,24 +334,8 @@ export function SourceContextHeader({
       onClick={e => e.stopPropagation()}
       onKeyDown={e => e.stopPropagation()}
     >
-      {/* Left: Back button (expanded view) + Icon + source name */}
+      {/* Left: Icon + source name */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        {(onClose || onBack) && (
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              (onBack ?? onClose)?.();
-            }}
-            className="shrink-0 flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors pr-1 border-r border-gray-200 dark:border-gray-700 mr-1 min-h-[44px] px-1"
-            aria-label="Back to citation summary"
-          >
-            <span className="size-4 block">
-              <ArrowLeftIcon />
-            </span>
-            <span>Back</span>
-          </button>
-        )}
         {isUrl ? (
           <UrlCitationComponent
             urlMeta={{
@@ -523,7 +499,8 @@ export interface QuoteBoxProps {
 /**
  * Get the color scheme based on status.
  */
-function getStatusColorScheme(status?: SearchStatus | null): "green" | "amber" | "red" | "gray" {
+// biome-ignore lint/style/useComponentExportOnlyModules: Utility function used by EvidenceTray for PagePill colorScheme
+export function getStatusColorScheme(status?: SearchStatus | null): "green" | "amber" | "red" | "gray" {
   if (!status) return "gray";
 
   switch (status) {
@@ -956,37 +933,19 @@ interface AuditSearchDisplayProps {
 function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
   const displayPhrase = truncatePhrase(group.searchPhrase);
 
-  // Format location string
-  let locationText: string;
-  if (group.locations.includesDocScan) {
-    locationText = "Full document";
-  } else if (group.locations.pages.length > 0) {
-    const pages = group.locations.pages;
-    locationText = pages.length === 1 ? `Page ${pages[0]}` : `Pages ${pages[0]}-${pages[pages.length - 1]}`;
-  } else {
-    locationText = "";
-  }
-
   return (
-    <div className="py-1">
-      <div className="flex items-start gap-2">
-        <span
-          className={cn(
-            "size-3 max-w-3 max-h-3 mt-0.5 shrink-0",
-            group.anySuccess ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500",
-          )}
-          role="img"
-          aria-label={group.anySuccess ? "Found" : "Not found"}
-        >
-          {group.anySuccess ? <CheckIcon /> : <MissIcon />}
-        </span>
-        <div className="flex-1 min-w-0">
-          <QuotedText mono className="text-xs text-gray-700 dark:text-gray-200 break-all">
-            {displayPhrase}
-          </QuotedText>
-          {locationText && <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{locationText}</div>}
-        </div>
-      </div>
+    <div className="flex items-start gap-1.5 py-0.5">
+      <span
+        className={cn(
+          "size-3 max-w-3 max-h-3 mt-0.5 shrink-0",
+          group.anySuccess ? "text-green-600 dark:text-green-400" : "text-red-400 dark:text-red-500",
+        )}
+        role="img"
+        aria-label={group.anySuccess ? "Found" : "Not found"}
+      >
+        {group.anySuccess ? <CheckIcon /> : <XIcon />}
+      </span>
+      <span className="text-xs font-mono text-gray-700 dark:text-gray-200 break-all">{displayPhrase}</span>
     </div>
   );
 }
@@ -1095,15 +1054,25 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
 
   // For not_found: show query-centric groups
   const groups = summary?.queryGroups ?? [];
+
+  // Derive a single location summary from all groups (avoids per-row repetition)
+  const allPages = new Set(groups.flatMap(g => g.locations.pages));
+  const anyDocScan = groups.some(g => g.locations.includesDocScan);
+  const locationSummary = anyDocScan
+    ? "Searched full document"
+    : allPages.size === 1
+      ? `Searched page ${[...allPages][0]}`
+      : allPages.size > 1
+        ? `Searched pages ${[...allPages].sort((a, b) => a - b).join(", ")}`
+        : "";
+
   return (
-    <div className="px-4 py-3 space-y-4 text-sm">
-      <div>
-        <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Search details</div>
-        <div className="space-y-0.5">
-          {groups.map(group => (
-            <QueryGroupRow key={group.searchPhrase} group={group} />
-          ))}
-        </div>
+    <div className="px-4 py-2 space-y-1.5 text-sm">
+      {locationSummary && <div className="text-[10px] text-gray-400 dark:text-gray-500">{locationSummary}</div>}
+      <div className="space-y-0">
+        {groups.map(group => (
+          <QueryGroupRow key={group.searchPhrase} group={group} />
+        ))}
       </div>
     </div>
   );

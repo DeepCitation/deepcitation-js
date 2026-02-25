@@ -15,7 +15,7 @@ import { shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt, SearchStatus } from "../types/search.js";
-import type { Verification, VerificationPage } from "../types/verification.js";
+import type { Verification } from "../types/verification.js";
 import { CitationAnnotationOverlay } from "./CitationAnnotationOverlay.js";
 import { computeKeyholeOffset } from "./computeKeyholeOffset.js";
 import {
@@ -39,12 +39,13 @@ import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
-import { LocateIcon, SpinnerIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
+import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { deriveOutcomeLabel } from "./outcomeLabel.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "./overlayGeometry.js";
 import { buildIntentSummary } from "./searchSummaryUtils.js";
 import { cn } from "./utils.js";
 import { VerificationLogTimeline } from "./VerificationLog.js";
+import { ZoomToolbar } from "./ZoomToolbar.js";
 
 // =============================================================================
 // MODULE-LEVEL UTILITIES
@@ -67,6 +68,12 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
  * that would indicate a dimension mismatch between the PDF and proof image.
  */
 const SCALING_TOLERANCE = 1.05;
+
+/** Threshold (px) for considering the viewport "drifted" from the annotation. */
+/** Scroll drift threshold for locate dirty-bit detection (px).
+ *  15px absorbs sub-pixel rendering jitter and browser smooth-scroll overshoot
+ *  while being small enough to catch intentional user panning. */
+const DRIFT_THRESHOLD_PX = 15;
 
 // =============================================================================
 // EXPANDED IMAGE RESOLVER
@@ -309,22 +316,10 @@ function FooterHint({ text }: { text: string }) {
 export function AnchorTextFocusedImage({
   verification,
   onImageClick,
-  onFitStateChange,
-  onAlreadyFullSize,
-  page,
-  onViewPageClick,
 }: {
   verification: Verification;
   onImageClick?: () => void;
-  /** Called after image load to report whether the image fits entirely within the keyhole. */
-  onFitStateChange?: (fitsCompletely: boolean) => void;
-  /** Called when the user clicks but the image already fits — lets parent show a flash hint. */
-  onAlreadyFullSize?: () => void;
-  page?: VerificationPage | null;
-  onViewPageClick?: (page: VerificationPage) => void;
 }) {
-  const showViewPageButton = page?.source && onViewPageClick;
-
   // Resolve highlight region from verification data
   const highlightBox = useMemo(() => resolveHighlightBox(verification), [verification]);
 
@@ -374,11 +369,6 @@ export function AnchorTextFocusedImage({
     // Trigger scroll event so useDragToPan updates fade state for initial position
     container.dispatchEvent(new Event("scroll"));
   }, [imageLoaded, highlightBox]);
-
-  // Notify parent when fit state is determined (after image loads)
-  useEffect(() => {
-    if (imageFitInfo !== null) onFitStateChange?.(imageFitInfo.imageFitsCompletely);
-  }, [imageFitInfo, onFitStateChange]);
 
   // Compute fade mask based on scroll state
   const maskImage = useMemo(
@@ -439,10 +429,6 @@ export function AnchorTextFocusedImage({
             if (canExpand) {
               e.stopPropagation();
               onImageClick?.();
-            } else if (imageFitInfo?.imageFitsCompletely) {
-              // Image already fits — flash a hint instead of silently doing nothing.
-              e.stopPropagation();
-              onAlreadyFullSize?.();
             }
           }}
           aria-label={
@@ -517,24 +503,6 @@ export function AnchorTextFocusedImage({
           )}
         </button>
       </div>
-
-      {/* Action bar — only shown when View page button is available */}
-      {showViewPageButton && (
-        <div className="flex items-center justify-end px-2 bg-gray-100 dark:bg-gray-800 rounded-b-md border-t border-gray-200 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              onViewPageClick(page);
-            }}
-            className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-150 cursor-pointer min-h-[44px] px-2"
-            aria-label="View full page"
-          >
-            <span>View page</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -544,31 +512,89 @@ export function AnchorTextFocusedImage({
 // =============================================================================
 
 /**
- * Footer for the evidence tray showing outcome label + verification date.
+ * Footer for the evidence tray showing outcome label + date + "View page" CTA.
+ * For miss state: includes an expandable search log toggle.
  */
 function EvidenceTrayFooter({
   status,
   searchAttempts,
   verifiedAt,
-  hint,
+  verification,
+  onPageClick,
 }: {
   status?: SearchStatus | null;
   searchAttempts?: SearchAttempt[];
   verifiedAt?: Date | string | null;
-  hint?: { text: string; key: string | number };
+  /** Full verification for the search log timeline (miss state) */
+  verification?: Verification | null;
+  /** When provided, renders a "View page" CTA button */
+  onPageClick?: () => void;
 }) {
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
-
   const outcomeLabel = deriveOutcomeLabel(status, searchAttempts);
+  const [showLog, setShowLog] = useState(false);
+  const searchCount = searchAttempts?.length ?? 0;
+  // Only show log toggle for non-found statuses with multiple search attempts
+  const showLogToggle = searchCount > 1 && status !== "found";
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500">
-      <span>
-        {outcomeLabel}
-        {hint && <FooterHint key={hint.key} text={hint.text} />}
-      </span>
-      {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
+    <div className="px-3 py-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          {showLogToggle ? (
+            <button
+              type="button"
+              className="flex items-center gap-0.5 text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer transition-colors"
+              onClick={e => {
+                e.stopPropagation();
+                setShowLog(s => !s);
+              }}
+              aria-expanded={showLog}
+              aria-label={showLog ? "Collapse search log" : "Expand search log"}
+            >
+              <svg
+                className={cn("size-2 shrink-0 transition-transform duration-150", showLog && "rotate-90")}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+              <span>{searchCount} searches</span>
+            </button>
+          ) : (
+            <span>{outcomeLabel}</span>
+          )}
+          {dateStr && (
+            <span>
+              · <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>
+            </span>
+          )}
+        </div>
+        {onPageClick && (
+          <button
+            type="button"
+            className="flex items-center gap-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
+            onClick={e => {
+              e.stopPropagation();
+              onPageClick();
+            }}
+          >
+            <span>View page</span>
+            <span className="size-3 shrink-0">
+              <ChevronRightIcon />
+            </span>
+          </button>
+        )}
+      </div>
+      {showLog && searchAttempts && searchAttempts.length > 0 && (
+        <div className="mt-1">
+          <VerificationLogTimeline searchAttempts={searchAttempts} status={verification?.status} />
+        </div>
+      )}
     </div>
   );
 }
@@ -602,7 +628,7 @@ function MatchSnippetDisplay({ snippet }: { snippet: import("./searchSummaryUtil
 /**
  * Search analysis summary for not-found / partial evidence tray.
  * Intent-centric display: clean message for misses, snippet-based for partial matches.
- * Collapsed "View search log" at bottom for detailed audit trail.
+ * The expandable search log is now in the footer (EvidenceTrayFooter), not here.
  */
 export function SearchAnalysisSummary({
   searchAttempts,
@@ -611,13 +637,7 @@ export function SearchAnalysisSummary({
   searchAttempts: SearchAttempt[];
   verification?: Verification | null;
 }) {
-  const [showDetails, setShowDetails] = useState(false);
-
   const intentSummary = useMemo(() => buildIntentSummary(verification, searchAttempts), [verification, searchAttempts]);
-
-  // Format verified date for compact display
-  const formatted = formatCaptureDate(verification?.verifiedAt);
-  const dateStr = formatted?.display ?? "";
 
   // Primary message based on outcome
   const primaryMessage =
@@ -633,12 +653,7 @@ export function SearchAnalysisSummary({
   return (
     <div className="px-3 py-2 space-y-1.5">
       {/* Primary message */}
-      {primaryMessage && (
-        <div className="text-[11px] text-gray-600 dark:text-gray-300">
-          {primaryMessage}
-          {dateStr && <span className="text-gray-400 dark:text-gray-500"> · {dateStr}</span>}
-        </div>
-      )}
+      {primaryMessage && <div className="text-[11px] text-gray-600 dark:text-gray-300">{primaryMessage}</div>}
 
       {/* Snippets for related_found */}
       {snippets.length > 0 && (
@@ -648,45 +663,14 @@ export function SearchAnalysisSummary({
           ))}
         </div>
       )}
-
-      {/* Expandable search log */}
-      {searchAttempts.length > 0 && (
-        <button
-          type="button"
-          className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer transition-colors"
-          onClick={e => {
-            e.stopPropagation();
-            setShowDetails(s => !s);
-          }}
-          aria-expanded={showDetails}
-          aria-label={showDetails ? "Collapse search log" : "Expand search log"}
-        >
-          <svg
-            className={cn("size-2.5 shrink-0 transition-transform duration-150", showDetails && "rotate-90")}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            aria-hidden="true"
-          >
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-          <span>View search log</span>
-        </button>
-      )}
-      {showDetails && (
-        <div className="mt-1">
-          <VerificationLogTimeline searchAttempts={searchAttempts} status={verification?.status} />
-        </div>
-      )}
     </div>
   );
 }
 
 /**
  * Evidence tray — the "proof zone" at the bottom of the summary popover.
- * For verified/partial: Shows keyhole image with "Expand" hover CTA.
- * For not-found: Shows search analysis summary with "Verify manually" hover CTA.
+ * For verified/partial: Shows keyhole image with hover expand icon + footer with CTA.
+ * For not-found: Shows search analysis summary + footer with log toggle + CTA.
  * When `onExpand` is provided, the tray is clickable. Otherwise, it's informational only.
  *
  * @param proofImageSrc - Full-page proof image for miss states only. Ignored when
@@ -709,14 +693,9 @@ export function EvidenceTray({
   const isMiss = status.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
   const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
-  const [keyholeImageFits, setKeyholeImageFits] = useState(false);
-  const isTouch = useIsTouchDevice();
-  const tapOrClick = isTouch ? "Tap" : "Click";
 
-  // Incremented each time the user clicks an already-full-size keyhole.
-  // The changing key forces FooterHint to remount, restarting its 2s highlight timer.
-  const [fullSizeFlashKey, setFullSizeFlashKey] = useState(0);
-  const handleAlreadyFullSize = useCallback(() => setFullSizeFlashKey(k => k + 1), []);
+  // Tray-level click: keyhole click if available, else page expansion
+  const trayAction = onImageClick ?? onExpand;
 
   // Shared inner content
   const content = (
@@ -724,15 +703,7 @@ export function EvidenceTray({
       {/* Content: image or search analysis.
           Keys prevent React from reusing fibers across component-type swaps. */}
       {hasImage && verification ? (
-        <AnchorTextFocusedImage
-          key="keyhole"
-          verification={verification}
-          onImageClick={onImageClick}
-          onFitStateChange={setKeyholeImageFits}
-          onAlreadyFullSize={handleAlreadyFullSize}
-          page={verification?.pages?.[0]}
-          onViewPageClick={onExpand ? () => onExpand() : undefined}
-        />
+        <AnchorTextFocusedImage key="keyhole" verification={verification} onImageClick={onImageClick} />
       ) : isMiss && (searchAttempts.length > 0 || isValidProofImageSrc(proofImageSrc)) ? (
         <div key="miss-analysis">
           {isValidProofImageSrc(proofImageSrc) && (
@@ -751,29 +722,16 @@ export function EvidenceTray({
         </div>
       ) : null}
 
-      {/* Footer: outcome + date (skip for miss — compressed summary has this info) */}
-      {!isMiss && (
-        <EvidenceTrayFooter
-          status={verification?.status}
-          searchAttempts={searchAttempts}
-          verifiedAt={verification?.verifiedAt}
-          hint={
-            fullSizeFlashKey > 0
-              ? { text: " · Already full size", key: `flash-${fullSizeFlashKey}` }
-              : !!onImageClick && !keyholeImageFits
-                ? { text: ` · ${tapOrClick} to expand`, key: "expand" }
-                : undefined
-          }
-        />
-      )}
+      {/* Footer: outcome + date + CTA (renders for ALL states including miss) */}
+      <EvidenceTrayFooter
+        status={verification?.status}
+        searchAttempts={searchAttempts}
+        verifiedAt={verification?.verifiedAt}
+        verification={verification}
+        onPageClick={onExpand}
+      />
     </>
   );
-
-  // Mirror the keyhole button's click logic:
-  // - Keyhole present + fits completely → flash "already full size" hint
-  // - Keyhole present + expandable → expand keyhole image
-  // - No keyhole → fall back to page expansion
-  const trayAction = onImageClick ? (keyholeImageFits ? handleAlreadyFullSize : onImageClick) : onExpand;
 
   return (
     <div className="m-3">
@@ -798,13 +756,7 @@ export function EvidenceTray({
             "transition-opacity",
             borderClass,
           )}
-          aria-label={
-            onImageClick
-              ? keyholeImageFits
-                ? "Verification image (already at full size)"
-                : `${tapOrClick} to expand verification image`
-              : "Expand to full page"
-          }
+          aria-label="Expand to full page"
         >
           {content}
         </div>
@@ -861,6 +813,10 @@ export function InlineExpandedImage({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
+  // When true, the CSS annotation overlay (spotlight + brackets) is hidden so the
+  // user can view the underlying page image unfettered. The backend-drawn annotations
+  // on the image itself remain visible. Only applies in fill (expanded-page) mode.
+  const [overlayHidden, setOverlayHidden] = useState(false);
   // Zoom state — only active when fill=true (expanded-page mode).
   // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
   const [zoom, setZoom] = useState(1);
@@ -916,6 +872,7 @@ export function InlineExpandedImage({
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
     hasSetInitialZoom.current = false;
+    setOverlayHidden(false);
   }
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.
@@ -964,6 +921,9 @@ export function InlineExpandedImage({
         if (target) {
           container.scrollLeft = target.scrollLeft;
           container.scrollTop = target.scrollTop;
+          // Record snap position for dirty-bit detection
+          annotationScrollTarget.current = { left: target.scrollLeft, top: target.scrollTop };
+          setLocateDirty(false);
         }
       });
     }
@@ -993,12 +953,18 @@ export function InlineExpandedImage({
     [zoomFloor],
   );
 
-  const handleZoomIn = useCallback(() => {
-    setZoom(z => clampZoom(z + EXPANDED_ZOOM_STEP));
-  }, [clampZoom]);
-  const handleZoomOut = useCallback(() => {
-    setZoom(z => clampZoom(z - EXPANDED_ZOOM_STEP));
-  }, [clampZoom]);
+  // ---------------------------------------------------------------------------
+  // Locate dirty bit — tracks whether the viewport has drifted from the annotation.
+  // Starts false (on-target after initial snap). Set true when user pans away.
+  // Set false again when handleScrollToAnnotation re-centers.
+  // ---------------------------------------------------------------------------
+  const [locateDirty, setLocateDirty] = useState(false);
+  // Ref storing the expected scroll position after a programmatic scroll.
+  // Used by the scroll listener to detect user-initiated drift.
+  const annotationScrollTarget = useRef<{ left: number; top: number } | null>(null);
+  // Guard: true while a programmatic smooth-scroll is in progress.
+  // Prevents intermediate scroll events during the animation from marking dirty.
+  const isAnimatingScroll = useRef(false);
 
   // Scroll the container so the annotation is centered in view (re-center after pan/zoom).
   // Prefers anchor text position when it will be highlighted.
@@ -1006,6 +972,8 @@ export function InlineExpandedImage({
   const handleScrollToAnnotation = useCallback(() => {
     const scrollItem = scrollTarget ?? effectivePhraseItem;
     if (!containerRef.current || !scrollItem || !renderScale || !naturalWidth || !naturalHeight) return;
+    // Restore the overlay when re-centering on the annotation
+    setOverlayHidden(false);
     const container = containerRef.current;
     const target = computeAnnotationScrollTarget(
       scrollItem,
@@ -1016,8 +984,47 @@ export function InlineExpandedImage({
       container.clientWidth,
       container.clientHeight,
     );
-    if (target) container.scrollTo({ left: target.scrollLeft, top: target.scrollTop, behavior: "smooth" });
+    if (target) {
+      annotationScrollTarget.current = { left: target.scrollLeft, top: target.scrollTop };
+      isAnimatingScroll.current = true;
+      setLocateDirty(false);
+      container.scrollTo({ left: target.scrollLeft, top: target.scrollTop, behavior: "smooth" });
+    }
   }, [scrollTarget, effectivePhraseItem, renderScale, naturalWidth, naturalHeight]);
+
+  // Scroll listener for locate dirty-bit detection.
+  // Compares current scroll position against the stored annotation target.
+  // During programmatic smooth-scrolls (isAnimatingScroll), we wait for the
+  // scroll to arrive near the target before enabling drift detection.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
+  useEffect(() => {
+    if (!fill) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const target = annotationScrollTarget.current;
+      if (!target) return;
+      const dx = Math.abs(el.scrollLeft - target.left);
+      const dy = Math.abs(el.scrollTop - target.top);
+      if (isAnimatingScroll.current) {
+        // Still animating — check if we've arrived near the target
+        if (dx < DRIFT_THRESHOLD_PX && dy < DRIFT_THRESHOLD_PX) {
+          isAnimatingScroll.current = false;
+        }
+        return;
+      }
+      // Not animating: if scroll has drifted beyond threshold, mark dirty
+      if (dx > DRIFT_THRESHOLD_PX || dy > DRIFT_THRESHOLD_PX) {
+        setLocateDirty(true);
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      isAnimatingScroll.current = false;
+      annotationScrollTarget.current = null;
+    };
+  }, [fill]);
 
   // Trackpad pinch zoom (Ctrl+wheel) — prevents default browser zoom.
   // Batches rapid wheel events with rAF so we apply at most one setZoom per
@@ -1311,7 +1318,7 @@ export function InlineExpandedImage({
                 }}
                 draggable={false}
               />
-              {imageLoaded && renderScale && naturalWidth && naturalHeight && effectivePhraseItem && (
+              {imageLoaded && renderScale && naturalWidth && naturalHeight && effectivePhraseItem && !overlayHidden && (
                 <CitationAnnotationOverlay
                   phraseMatchDeepItem={effectivePhraseItem}
                   renderScale={renderScale}
@@ -1321,6 +1328,7 @@ export function InlineExpandedImage({
                   anchorTextDeepItem={effectiveAnchorItem}
                   anchorText={verification?.verifiedAnchorText}
                   fullPhrase={verification?.verifiedFullPhrase}
+                  onDismiss={fill ? () => setOverlayHidden(true) : undefined}
                 />
               )}
             </div>
@@ -1329,103 +1337,19 @@ export function InlineExpandedImage({
           {fill && footerEl}
         </div>
 
-        {/* Floating zoom controls — positioned absolutely over the scroll container
-            so they stay visible regardless of horizontal/vertical scroll position.
-            Contains −/slider/+ with percentage label. Supports drag on slider. */}
         {showZoomControls && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 8,
-              right: 8,
-              zIndex: 1,
-              pointerEvents: "auto",
+          <ZoomToolbar
+            zoom={zoom}
+            onZoomChange={z => setZoom(clampZoom(z))}
+            zoomFloor={zoomFloor}
+            zoomStep={EXPANDED_ZOOM_STEP}
+            showLocate={showScrollToAnnotation}
+            onLocate={handleScrollToAnnotation}
+            locateDirty={locateDirty}
+            onSliderGrab={() => {
+              if (outerRef.current) setSliderLockWidth(outerRef.current.offsetWidth);
             }}
-          >
-            <div
-              role="toolbar"
-              aria-label="Zoom controls"
-              className="flex items-center gap-0.5 bg-black/40 backdrop-blur-sm text-white/80 rounded-full px-1 py-0.5 shadow-sm"
-              onClick={e => e.stopPropagation()}
-              onKeyDown={e => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  handleZoomOut();
-                }}
-                disabled={zoom <= zoomFloor}
-                className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
-                aria-label="Zoom out"
-              >
-                <span className="size-3.5">
-                  <ZoomOutIcon />
-                </span>
-              </button>
-              {/* Range slider — draggable zoom control */}
-              <input
-                type="range"
-                min={Math.round(zoomFloor * 100)}
-                max={EXPANDED_ZOOM_MAX * 100}
-                step={5}
-                value={Math.round(zoom * 100)}
-                onChange={e => {
-                  e.stopPropagation();
-                  setZoom(clampZoom(Number(e.target.value) / 100));
-                }}
-                onClick={e => e.stopPropagation()}
-                onPointerDown={e => {
-                  e.stopPropagation();
-                  if (outerRef.current) setSliderLockWidth(outerRef.current.offsetWidth);
-                }}
-                onMouseDown={e => e.stopPropagation()}
-                onTouchStart={e => e.stopPropagation()}
-                className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-3
-                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
-                  [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:cursor-pointer
-                  [&::-moz-range-thumb]:size-3 [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0
-                  [&::-moz-range-thumb]:cursor-pointer"
-                aria-label="Zoom level"
-                aria-valuetext={`${Math.round(zoom * 100)}%`}
-              />
-              <span className="min-w-[4ch] text-center font-mono tabular-nums select-none text-[11px] leading-none">
-                {Math.round(zoom * 100)}%
-              </span>
-              {showScrollToAnnotation && (
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleScrollToAnnotation();
-                  }}
-                  data-dc-scroll-to-annotation=""
-                  className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-                  aria-label="Scroll to annotation"
-                >
-                  <span className="size-3.5">
-                    <LocateIcon />
-                  </span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  handleZoomIn();
-                }}
-                disabled={zoom >= EXPANDED_ZOOM_MAX}
-                className="size-6 flex items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
-                aria-label="Zoom in"
-              >
-                <span className="size-3.5">
-                  <ZoomInIcon />
-                </span>
-              </button>
-            </div>
-          </div>
+          />
         )}
       </div>
       {/* In non-fill mode, footer stays outside the scroll area so it's always visible */}

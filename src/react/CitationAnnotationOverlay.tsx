@@ -10,6 +10,7 @@ import {
   SPOTLIGHT_PADDING,
 } from "../drawing/citationDrawing.js";
 import type { DeepTextItem } from "../types/boxes.js";
+import { CloseIcon } from "./icons.js";
 import { toPercentRect } from "./overlayGeometry.js";
 
 const NONE: React.CSSProperties = { pointerEvents: "none" };
@@ -115,6 +116,7 @@ export function CitationAnnotationOverlay({
   anchorText,
   fullPhrase,
   additionalHighlights,
+  onDismiss,
 }: {
   phraseMatchDeepItem: DeepTextItem;
   renderScale: { x: number; y: number };
@@ -126,6 +128,8 @@ export function CitationAnnotationOverlay({
   fullPhrase?: string | null;
   /** Additional bracket pairs for partial match locations (no spotlight). */
   additionalHighlights?: AdditionalHighlight[];
+  /** When provided, renders a dismiss button at the spotlight top-right corner. */
+  onDismiss?: () => void;
 }) {
   const rect = toPercentRect(phraseMatchDeepItem, renderScale, imageNaturalWidth, imageNaturalHeight);
   // Bail out if geometry is invalid (zero dimensions, NaN, Infinity, etc.)
@@ -244,9 +248,9 @@ export function CitationAnnotationOverlay({
       )}
 
       {/* Additional highlights for partial match locations */}
-      {additionalHighlights?.map((h, i) => (
+      {additionalHighlights?.map(h => (
         <SecondaryBrackets
-          key={`additional-${i}`}
+          key={`additional-${h.deepItem.x}-${h.deepItem.y}-${h.color ?? "amber"}`}
           deepItem={h.deepItem}
           renderScale={renderScale}
           imageNaturalWidth={imageNaturalWidth}
@@ -254,6 +258,31 @@ export function CitationAnnotationOverlay({
           color={h.color}
         />
       ))}
+
+      {/* Dismiss button — straddles the top-right corner of the spotlight cutout */}
+      {onDismiss && (
+        <button
+          type="button"
+          tabIndex={0}
+          data-dc-overlay-dismiss=""
+          onClick={e => {
+            e.stopPropagation();
+            onDismiss();
+          }}
+          style={{
+            position: "absolute",
+            top: `calc(${spotlightRect.top} - 14px)`,
+            left: `calc(${spotlightRect.left} + ${spotlightRect.width} - 14px)`,
+            pointerEvents: "auto",
+          }}
+          className="size-7 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm text-white/90 hover:bg-black/70 active:bg-black/80 transition-colors shadow-md cursor-pointer"
+          aria-label="Hide overlay"
+        >
+          <span className="size-4.5">
+            <CloseIcon />
+          </span>
+        </button>
+      )}
     </div>
   );
 }
