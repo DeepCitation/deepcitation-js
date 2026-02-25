@@ -23,6 +23,7 @@
   "types": "./lib/index.d.ts",
   "typesVersions": {
     "*": {
+      "agent": ["./lib/agent/index.d.ts"],
       "drawing": ["./lib/drawing/index.d.ts"],
       "client": ["./lib/client/index.d.ts"],
       "prompts": ["./lib/prompts/index.d.ts"],
@@ -140,6 +141,12 @@
       "import": "./lib/index.js",
       "require": "./lib/index.cjs",
       "default": "./lib/index.js"
+    },
+    "./agent": {
+      "types": "./lib/agent/index.d.ts",
+      "import": "./lib/agent/index.js",
+      "require": "./lib/agent/index.cjs",
+      "default": "./lib/agent/index.js"
     },
     "./client": {
       "types": "./lib/client/index.d.ts",

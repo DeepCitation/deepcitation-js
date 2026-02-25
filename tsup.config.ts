@@ -6,6 +6,7 @@ import { reactCompilerPlugin } from "./esbuild-plugin-react-compiler.js";
 export default defineConfig({
   entry: {
     index: "src/index.ts",
+    "agent/index": "src/agent/index.ts",
     "client/index": "src/client/index.ts",
     "drawing/index": "src/drawing/index.ts",
     "prompts/index": "src/prompts/index.ts",
