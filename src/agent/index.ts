@@ -25,6 +25,9 @@
  * @packageDocumentation
  */
 
+// Sub-package entry point (tsup builds this as "agent/index").
+// This follows the same pattern as client/index.ts which re-exports
+// DeepCitation class + error classes alongside type-only re-exports.
 export { createFactCheckAgent } from "./factCheckAgent.js";
 
 // Type-only re-exports are allowed per CLAUDE.md rules

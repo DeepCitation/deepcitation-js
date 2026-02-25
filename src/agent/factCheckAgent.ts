@@ -77,31 +77,31 @@ export function createFactCheckAgent(config: FactCheckAgentConfig) {
     const { content, sources, question, verificationOptions } = options;
     const systemPrompt = options.systemPrompt ?? config.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
 
-    // ── Step 1: Upload/prepare sources ──────────────────────────────────
-    const fileDataParts: FileDataPart[] = [];
-
-    for (const source of sources) {
-      if (source.type === "prepared") {
-        fileDataParts.push(source.fileDataPart);
-      } else if (source.type === "url") {
-        const result = await dc.prepareUrl({ url: source.url });
-        fileDataParts.push({
-          attachmentId: result.attachmentId,
-          deepTextPromptPortion: result.deepTextPromptPortion,
-          filename: result.metadata.filename,
-        });
-      } else {
+    // ── Step 1: Upload/prepare sources (parallel) ─────────────────────
+    const fileDataParts: FileDataPart[] = await Promise.all(
+      sources.map(async (source): Promise<FileDataPart> => {
+        if (source.type === "prepared") {
+          return source.fileDataPart;
+        }
+        if (source.type === "url") {
+          const result = await dc.prepareUrl({ url: source.url });
+          return {
+            attachmentId: result.attachmentId,
+            deepTextPromptPortion: result.deepTextPromptPortion,
+            filename: result.metadata.filename,
+          };
+        }
         // source.type === "file"
         const result = await dc.uploadFile(source.file, {
           filename: source.filename,
         });
-        fileDataParts.push({
+        return {
           attachmentId: result.attachmentId,
           deepTextPromptPortion: result.deepTextPromptPortion,
           filename: source.filename ?? result.metadata.filename,
-        });
-      }
-    }
+        };
+      }),
+    );
 
     // ── Step 2: Wrap prompts with citation instructions ─────────────────
     const userPrompt = question
@@ -158,8 +158,8 @@ export function createFactCheckAgent(config: FactCheckAgentConfig) {
       const verification = verifications[key];
       const status = getCitationStatus(verification ?? null);
 
-      if (status.isVerified) verified++;
-      else if (status.isPartialMatch) partial++;
+      if (status.isVerified && status.isPartialMatch) partial++;
+      else if (status.isVerified) verified++;
       else if (status.isMiss) notFound++;
 
       results.push({ key, citation, verification, status });

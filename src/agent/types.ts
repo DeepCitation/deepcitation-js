@@ -65,7 +65,7 @@ export interface FactCheckAgentConfig {
  * Options for a single fact-check run.
  */
 export interface FactCheckOptions {
-  /** The content (LLM output) to fact-check */
+  /** Context or text to provide to the LLM alongside the source documents for citation generation */
   content: string;
   /** Source documents/URLs to verify against */
   sources: FactCheckSource[];
@@ -99,8 +99,8 @@ export interface FactCheckCitationResult {
   key: string;
   /** The original citation extracted from LLM output */
   citation: CitationRecord[string];
-  /** The verification result from DeepCitation */
-  verification: Verification;
+  /** The verification result from DeepCitation (undefined if server omitted this citation) */
+  verification: Verification | undefined;
   /** The derived citation status */
   status: CitationStatus;
 }
