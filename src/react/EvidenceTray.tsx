@@ -69,6 +69,9 @@ const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>): void => {
  */
 const SCALING_TOLERANCE = 1.05;
 
+/** Threshold (px) for considering the viewport "drifted" from the annotation. */
+const DRIFT_THRESHOLD_PX = 15;
+
 // =============================================================================
 // EXPANDED IMAGE RESOLVER
 // =============================================================================
@@ -960,9 +963,6 @@ export function InlineExpandedImage({
   // Prevents intermediate scroll events during the animation from marking dirty.
   const isAnimatingScroll = useRef(false);
 
-  /** Threshold (px) for considering the viewport "drifted" from the annotation. */
-  const DRIFT_THRESHOLD = 15;
-
   // Scroll the container so the annotation is centered in view (re-center after pan/zoom).
   // Prefers anchor text position when it will be highlighted.
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
@@ -1005,13 +1005,13 @@ export function InlineExpandedImage({
       const dy = Math.abs(el.scrollTop - target.top);
       if (isAnimatingScroll.current) {
         // Still animating — check if we've arrived near the target
-        if (dx < DRIFT_THRESHOLD && dy < DRIFT_THRESHOLD) {
+        if (dx < DRIFT_THRESHOLD_PX && dy < DRIFT_THRESHOLD_PX) {
           isAnimatingScroll.current = false;
         }
         return;
       }
       // Not animating: if scroll has drifted beyond threshold, mark dirty
-      if (dx > DRIFT_THRESHOLD || dy > DRIFT_THRESHOLD) {
+      if (dx > DRIFT_THRESHOLD_PX || dy > DRIFT_THRESHOLD_PX) {
         setLocateDirty(true);
       }
     };

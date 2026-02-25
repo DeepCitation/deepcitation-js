@@ -16,10 +16,11 @@ export function useExpandedPageSideOffset(
   triggerRef: React.RefObject<HTMLSpanElement | null>,
 ): number | undefined {
   const [offset, setOffset] = useState<number | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: triggerRef has stable identity — refs should not be in deps per React docs
   useLayoutEffect(() => {
     const VIEWPORT_MARGIN = 16; // 1rem
     const triggerRect = popoverViewState === "expanded-page" ? triggerRef.current?.getBoundingClientRect() : null;
     setOffset(triggerRect ? VIEWPORT_MARGIN - triggerRect.bottom : undefined);
-  }, [popoverViewState, triggerRef]);
+  }, [popoverViewState]);
   return offset;
 }

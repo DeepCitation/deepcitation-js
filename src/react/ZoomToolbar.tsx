@@ -10,7 +10,7 @@
  */
 
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { EXPANDED_ZOOM_MAX } from "./constants.js";
 import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 
@@ -37,7 +37,7 @@ const SLIDER_TRACK_CLASSES = "w-20 h-1.5 appearance-none bg-white/25 rounded-[3p
 // using a <style> tag scoped by data attribute, because Tailwind arbitrary
 // values can't express box-shadow with commas or rgba() reliably across
 // all build pipelines (some strip commas inside `[]`).
-const THUMB_STYLE_TAG = `
+const THUMB_CSS = `
 [data-dc-zoom-slider]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -62,6 +62,29 @@ const THUMB_STYLE_TAG = `
   box-shadow: inset 1px 0 0 0 rgba(0,0,0,.12), inset -1px 0 0 0 rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.25);
 }
 `;
+
+// Singleton style injection: one <style> tag shared across all ZoomToolbar
+// instances. Ref-counted so it's removed when the last instance unmounts.
+let thumbStyleRefCount = 0;
+let thumbStyleElement: HTMLStyleElement | null = null;
+
+function mountThumbStyle() {
+  thumbStyleRefCount++;
+  if (thumbStyleRefCount === 1) {
+    thumbStyleElement = document.createElement("style");
+    thumbStyleElement.setAttribute("data-dc-zoom-thumb", "");
+    thumbStyleElement.textContent = THUMB_CSS;
+    document.head.appendChild(thumbStyleElement);
+  }
+}
+
+function unmountThumbStyle() {
+  thumbStyleRefCount--;
+  if (thumbStyleRefCount === 0 && thumbStyleElement) {
+    thumbStyleElement.remove();
+    thumbStyleElement = null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -113,6 +136,12 @@ export function ZoomToolbar({
   onSliderGrab,
   locateDirty = true,
 }: ZoomToolbarProps) {
+  // Inject singleton <style> tag on first mount, remove on last unmount.
+  useEffect(() => {
+    mountThumbStyle();
+    return unmountThumbStyle;
+  }, []);
+
   const pct = Math.round(zoom * 100);
 
   const set = useCallback(
@@ -133,7 +162,6 @@ export function ZoomToolbar({
         pointerEvents: "auto",
       }}
     >
-      <style>{THUMB_STYLE_TAG}</style>
       <div
         role="toolbar"
         aria-label="Zoom controls"
