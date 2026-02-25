@@ -804,7 +804,11 @@ interface VerificationLogSummaryProps {
  * Get a human-readable outcome summary for the collapsed state.
  * Shows what kind of match was found (or that nothing was found).
  */
-function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttempts: SearchAttempt[], queryGroupCount?: number): string {
+function getOutcomeSummary(
+  status: SearchStatus | null | undefined,
+  searchAttempts: SearchAttempt[],
+  queryGroupCount?: number,
+): string {
   // Early return for not_found - no need to search for successful attempt
   if (!status || status === "not_found") {
     // Use the query group count (what the user sees as rows) rather than raw attempt count
