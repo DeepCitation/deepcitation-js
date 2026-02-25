@@ -34,3 +34,5 @@ examples/**/.next
 examples/**/next-env.d.ts
 
 firebase-debug.log
+
+ag-ui-client*

@@ -89,7 +89,7 @@ import { readFileSync } from "fs";
 
 const myDocument = readFileSync("./path/to/your/document.pdf");
 
-const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles([
+const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareAttachment([
   { file: myDocument, filename: "my-document.pdf" },
 ]);
 ```
@@ -98,7 +98,7 @@ const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareFiles
 
 | Function | Purpose |
 |----------|---------|
-| `deepcitation.prepareFiles()` | Upload documents, get formatted text for LLM |
+| `deepcitation.prepareAttachment()` | Upload documents, get formatted text for LLM |
 | `wrapCitationPrompt()` | Add citation instructions to your prompts |
 | `deepcitation.verify()` | Parse LLM output and verify all citations (recommended) |
 | `deepcitation.verifyAttachment()` | Verify citations against a specific attachment |
