@@ -9,22 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-02-25
 
-### Changed
-- **Package renamed** from `@deepcitation/deepcitation-js` to `deepcitation` — update your imports:
-  ```diff
-  - npm install @deepcitation/deepcitation-js
-  + npm install deepcitation
-  ```
-  ```diff
-  - import { DeepCitation } from "@deepcitation/deepcitation-js";
-  + import { DeepCitation } from "deepcitation";
-  ```
-  ```diff
-  - import { CitationComponent } from "@deepcitation/deepcitation-js/react";
-  + import { CitationComponent } from "deepcitation/react";
-  ```
-- **Repository renamed** from `DeepCitation/deepcitation-js` to `DeepCitation/deepcitation`
-- **Version reset to 0.1.0** — first public npm release under the new unscoped package name. All functionality from the previous `@deepcitation/deepcitation-js@1.1.53` is included.
+First public release of `deepcitation` — deterministic citation verification for AI-generated content. Every claim your LLM makes gets checked against the source document, with visual proof your users can see and trust.
+
+### Highlights
+
+- **Verify, don't detect** — Unlike hallucination detectors that estimate confidence, DeepCitation matches each citation against uploaded source documents and returns a deterministic `found` / `not_found` result. No probabilities, no guessing.
+- **Visual proof with progressive disclosure** — Citations start as subtle inline indicators (an underline, a superscript, a chip). Click to see the verification status. Click deeper to see the exact passage on the source page, highlighted and cropped. Users who just want to read can ignore them; users who want to verify can drill all the way down to the source image.
+- **Page view with keyhole evidence** — Verified citations show a cropped "keyhole" view of the matching region on the source page, then expand to a full-page view with zoom controls. The goal: build trust without requiring users to leave the conversation and open a PDF.
+- **6 display variants** — `linter` (spell-check underlines), `chip` (pill badges), `brackets`, `text`, `superscript` (footnotes), and `badge` (ChatGPT-style source chips). Each tuned for different contexts — long-form research, chat UIs, academic papers, minimal dashboards.
+- **Low cognitive load by default** — Verified citations are quiet (subtle green indicator). Only unverified claims demand attention (red wavy underline). The visual hierarchy prioritizes reading flow over verification noise.
+- **Works with any LLM** — OpenAI, Anthropic, Google, Mistral, local models. Citation extraction, prompt wrapping, and all rendering work entirely client-side with zero dependencies.
+- **Multi-format rendering** — Slack, GitHub, HTML, terminal, and markdown renderers for non-React environments. Same verification data, rendered for each platform.
+
+### What's included
+
+- Citation extraction and parsing from LLM output
+- Prompt wrapping utilities (`wrapCitationPrompt`, `wrapSystemCitationPrompt`)
+- DeepCitation API client for file upload and verification
+- React components: `CitationComponent`, `UrlCitationComponent`, `CitationDrawer`, `SourcesListComponent`
+- Composable primitives: `Citation.Root`, `Citation.Trigger`, `Citation.AnchorText`, `Citation.Indicator`
+- Platform renderers: Slack, GitHub, HTML, terminal, markdown
+- Structured error classes: `AuthenticationError`, `RateLimitError`, `NetworkError`, `ValidationError`, `ServerError`
+- Pluggable logger interface for observability (Datadog, Sentry, OpenTelemetry, etc.)
+- Dark mode support, mobile-responsive popovers, keyboard navigation
+- TypeScript-first with full type exports
+- Zero runtime dependencies (React components require React + `@radix-ui/react-popover`)
+
+### Migration from `@deepcitation/deepcitation-js`
+
+```diff
+- npm install @deepcitation/deepcitation-js
++ npm install deepcitation
+```
+
+```diff
+- import { DeepCitation } from "@deepcitation/deepcitation-js";
++ import { DeepCitation } from "deepcitation";
+
+- import { CitationComponent } from "@deepcitation/deepcitation-js/react";
++ import { CitationComponent } from "deepcitation/react";
+```
+
+The API is identical — only the package name changed. The old package has been deprecated on npm.
 
 ## [1.1.53] - 2026-02-12
 
