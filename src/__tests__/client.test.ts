@@ -234,7 +234,9 @@ describe("DeepCitation Client", () => {
       } as Response);
 
       const blob = new Blob(["content"]);
-      const result = await client.prepareAttachment([{ file: blob, filename: "custom.pdf", attachmentId: "my_custom_id" }]);
+      const result = await client.prepareAttachment([
+        { file: blob, filename: "custom.pdf", attachmentId: "my_custom_id" },
+      ]);
 
       expect(result.fileDataParts[0].attachmentId).toBe("my_custom_id");
     });
