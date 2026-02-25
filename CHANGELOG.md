@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-02-25
+
+### Changed
+- **Package renamed** from `@deepcitation/deepcitation-js` to `deepcitation` — update your imports:
+  ```diff
+  - npm install @deepcitation/deepcitation-js
+  + npm install deepcitation
+  ```
+  ```diff
+  - import { DeepCitation } from "@deepcitation/deepcitation-js";
+  + import { DeepCitation } from "deepcitation";
+  ```
+  ```diff
+  - import { CitationComponent } from "@deepcitation/deepcitation-js/react";
+  + import { CitationComponent } from "deepcitation/react";
+  ```
+- **Repository renamed** from `DeepCitation/deepcitation-js` to `DeepCitation/deepcitation`
+- **Version reset to 0.1.0** — first public npm release under the new unscoped package name. All functionality from the previous `@deepcitation/deepcitation-js@1.1.53` is included.
+
 ## [1.1.53] - 2026-02-12
 
 ### Added
@@ -300,7 +319,8 @@ This release marks the first comprehensive public release of DeepCitation, conso
 - TypeScript support
 - Verification image display with popover
 
-[Unreleased]: https://github.com/deepcitation/deepcitation/compare/v1.1.53...HEAD
+[Unreleased]: https://github.com/deepcitation/deepcitation/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/deepcitation/deepcitation/compare/v1.1.53...v0.1.0
 [1.1.53]: https://github.com/deepcitation/deepcitation/compare/v1.1.52...v1.1.53
 [1.1.52]: https://github.com/deepcitation/deepcitation/compare/v1.1.51...v1.1.52
 [1.1.51]: https://github.com/deepcitation/deepcitation/compare/v1.1.50...v1.1.51
