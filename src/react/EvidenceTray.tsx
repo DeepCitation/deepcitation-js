@@ -807,6 +807,10 @@ export function InlineExpandedImage({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
+  // When true, the CSS annotation overlay (spotlight + brackets) is hidden so the
+  // user can view the underlying page image unfettered. The backend-drawn annotations
+  // on the image itself remain visible. Only applies in fill (expanded-page) mode.
+  const [overlayHidden, setOverlayHidden] = useState(false);
   // Zoom state — only active when fill=true (expanded-page mode).
   // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
   const [zoom, setZoom] = useState(1);
@@ -862,6 +866,7 @@ export function InlineExpandedImage({
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
     hasSetInitialZoom.current = false;
+    setOverlayHidden(false);
   }
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.
@@ -964,6 +969,8 @@ export function InlineExpandedImage({
   const handleScrollToAnnotation = useCallback(() => {
     const scrollItem = scrollTarget ?? effectivePhraseItem;
     if (!containerRef.current || !scrollItem || !renderScale || !naturalWidth || !naturalHeight) return;
+    // Restore the overlay when re-centering on the annotation
+    setOverlayHidden(false);
     const container = containerRef.current;
     const target = computeAnnotationScrollTarget(
       scrollItem,
@@ -1304,7 +1311,7 @@ export function InlineExpandedImage({
                 }}
                 draggable={false}
               />
-              {imageLoaded && renderScale && naturalWidth && naturalHeight && effectivePhraseItem && (
+              {imageLoaded && renderScale && naturalWidth && naturalHeight && effectivePhraseItem && !overlayHidden && (
                 <CitationAnnotationOverlay
                   phraseMatchDeepItem={effectivePhraseItem}
                   renderScale={renderScale}
@@ -1314,6 +1321,7 @@ export function InlineExpandedImage({
                   anchorTextDeepItem={effectiveAnchorItem}
                   anchorText={verification?.verifiedAnchorText}
                   fullPhrase={verification?.verifiedFullPhrase}
+                  onDismiss={fill ? () => setOverlayHidden(true) : undefined}
                 />
               )}
             </div>
