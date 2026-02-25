@@ -289,11 +289,6 @@ pre {
 // so we must override wrapper elements at runtime.
 // -----------------------------------------------------
 @media (prefers-color-scheme: dark) {
-  // Syntax highlighting background
-  .highlight {
-    background-color: var(--code-background-color);
-  }
-
   // Just the Docs wrapper elements have compiled white backgrounds
   .main-content-wrap,
   .main {
@@ -360,8 +355,8 @@ pre {
     border-color: var(--border-color);
   }
 
-  // Scrollbar
-  * {
+  // Scrollbar (use :root, not * — avoids per-element style recalculation)
+  :root {
     scrollbar-color: #{$slate-600} #{$slate-900};
   }
 
@@ -378,6 +373,8 @@ pre {
   // Rouge syntax highlighting tokens (VS Code dark+)
   // -------------------------------------------------
   .highlight {
+    background-color: var(--code-background-color);
+
     .c, .c1, .cm, .cs, .ch { color: #6A9955; font-style: italic; }   // Comments
     .k, .kd, .kn, .kp, .kr, .kt, .kc { color: #569CD6; }            // Keywords
     .s, .s1, .s2, .sb, .sc, .sd, .se, .sh, .si, .sx, .sr, .dl { color: #CE9178; } // Strings
