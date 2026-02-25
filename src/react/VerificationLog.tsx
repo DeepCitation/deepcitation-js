@@ -1093,9 +1093,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
 
   return (
     <div className="px-4 py-2 space-y-1.5 text-sm">
-      {locationSummary && (
-        <div className="text-[10px] text-gray-400 dark:text-gray-500">{locationSummary}</div>
-      )}
+      {locationSummary && <div className="text-[10px] text-gray-400 dark:text-gray-500">{locationSummary}</div>}
       <div className="space-y-0">
         {groups.map(group => (
           <QueryGroupRow key={group.searchPhrase} group={group} />
