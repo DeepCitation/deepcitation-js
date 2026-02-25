@@ -94,7 +94,7 @@ export default function Home() {
         const messageContent =
           lastMessage.content ||
           lastMessage.parts
-            .filter((p): p is { type: "text"; text: string } => p.type === "text")
+            ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
             .map(p => p.text)
             .join("") ||
           "";

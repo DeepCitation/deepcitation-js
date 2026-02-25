@@ -1019,6 +1019,7 @@ export function InlineExpandedImage({
     return () => {
       el.removeEventListener("scroll", onScroll);
       isAnimatingScroll.current = false;
+      annotationScrollTarget.current = null;
     };
   }, [fill]);
 
