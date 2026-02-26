@@ -299,38 +299,48 @@ test.describe("Drawer - Escape Cascade", () => {
     await expect(dialog).toBeVisible();
   });
 
-  test("Escape from Level 3 (inline expanded image) collapses image, keeps accordion expanded", async ({ mount, page }) => {
+  test("Escape from header panel collapses image, keeps accordion expanded", async ({ mount, page }) => {
     await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // Level 1 → Level 3 via page pill (also sets accordion to expanded)
-    await expandToLevel3ViaPagePill(dialog, 1, "cite-esc-a");
+    // Expand accordion first (Level 1 → Level 2)
+    const firstItem = dialog.locator("[data-citation-key='cite-esc-a']");
+    await firstItem.click();
+    await expect(firstItem).toHaveAttribute("aria-expanded", "true", { timeout: 3000 });
 
-    // Press Escape — should collapse inline image (Level 3 → Level 2)
+    // Then open header panel via page pill (Level 2 → Level 3)
+    await dialog.getByLabel(/expand to full page 1/i).click();
+    await expect(dialog.locator("[data-dc-inline-expanded]")).toBeVisible({ timeout: 3000 });
+
+    // Press Escape — should close header panel (Level 3 → Level 2)
     await page.keyboard.press("Escape");
 
-    // Inline image should be gone (header panel, not inside item)
+    // Header panel should be gone
     await expect(dialog.locator("[data-dc-inline-expanded]")).not.toBeVisible({ timeout: 3000 });
 
     // Drawer and accordion still open
-    const firstItem = dialog.locator("[data-citation-key='cite-esc-a']");
     await expect(dialog).toBeVisible();
     await expect(firstItem).toHaveAttribute("aria-expanded", "true");
   });
 
-  test("full three-level escape cascade: image → accordion → drawer", async ({ mount, page }) => {
+  test("full three-level escape cascade: header panel → accordion → drawer", async ({ mount, page }) => {
     await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // Level 1 → Level 3 via page pill
-    await expandToLevel3ViaPagePill(dialog, 1, "cite-esc-a");
+    // Expand accordion (Level 1 → Level 2)
     const firstItem = dialog.locator("[data-citation-key='cite-esc-a']");
+    await firstItem.click();
+    await expect(firstItem).toHaveAttribute("aria-expanded", "true", { timeout: 3000 });
 
-    // Escape #1: Level 3 → 2 (close inline image)
+    // Open header panel via page pill (Level 2 → Level 3)
+    await dialog.getByLabel(/expand to full page 1/i).click();
+    await expect(dialog.locator("[data-dc-inline-expanded]")).toBeVisible({ timeout: 3000 });
+
+    // Escape #1: Level 3 → 2 (close header panel)
     await page.keyboard.press("Escape");
     await expect(dialog.locator("[data-dc-inline-expanded]")).not.toBeVisible({ timeout: 3000 });
     await expect(dialog).toBeVisible();
@@ -346,26 +356,22 @@ test.describe("Drawer - Escape Cascade", () => {
     await expect(dialog).not.toBeVisible({ timeout: 5000 });
   });
 
-  test("page pill click triggers Level 3 directly, Escape cascades back", async ({ mount, page }) => {
+  test("page pill opens header panel directly, Escape cascades back", async ({ mount, page }) => {
     await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // Click page pill → Level 3 directly
+    // Page pill opens header panel without expanding accordion
     await expandToLevel3ViaPagePill(dialog, 1, "cite-esc-a");
     const inlineExpanded = dialog.locator("[data-dc-inline-expanded]");
 
-    // Escape #1: Level 3 → 2
+    // Escape #1: close header panel
     await page.keyboard.press("Escape");
     await expect(inlineExpanded).not.toBeVisible({ timeout: 3000 });
     await expect(dialog).toBeVisible();
 
-    // Escape #2: Level 2 → 1
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeVisible();
-
-    // Escape #3: Level 1 → closed
+    // Escape #2: no accordion expanded, so closes drawer
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible({ timeout: 5000 });
   });

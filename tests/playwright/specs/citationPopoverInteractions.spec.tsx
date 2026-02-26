@@ -148,12 +148,12 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     await expect(popover).toBeVisible();
 
     // Find and click the expand button ("View search log")
-    // scrollIntoViewIfNeeded: avoidCollisions is disabled in summary mode, so the
-    // button may render below the viewport edge on small CI viewports.
+    // force: true because avoidCollisions is disabled in summary mode, so the
+    // popover may extend below the viewport on small CI viewports. The button is
+    // inside a fixed-position popover, so scrollIntoViewIfNeeded cannot help.
     const expandButton = page.getByRole("button", { name: /Expand search log|View search log/i });
     await expect(expandButton).toBeVisible();
-    await expandButton.scrollIntoViewIfNeeded();
-    await expandButton.click();
+    await expandButton.click({ force: true });
 
     // Popover should STILL be visible after expansion
     await expect(popover).toBeVisible();
@@ -174,18 +174,16 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     await expect(popover).toBeVisible();
 
     // The toggle button has aria-label "Expand search log" / "Collapse search log"
-    // scrollIntoViewIfNeeded: avoidCollisions is disabled in summary mode, so the
-    // button may render below the viewport edge on small CI viewports.
+    // force: true because the popover may extend below the viewport on small CI viewports.
     const expandButton = page.getByRole("button", { name: /Expand search log|Collapse search log/i });
     await expect(expandButton).toBeVisible();
-    await expandButton.scrollIntoViewIfNeeded();
 
     // Rapidly toggle expansion multiple times
-    await expandButton.click(); // Expand
+    await expandButton.click({ force: true }); // Expand
     await page.waitForTimeout(50);
-    await expandButton.click(); // Collapse
+    await expandButton.click({ force: true }); // Collapse
     await page.waitForTimeout(50);
-    await expandButton.click(); // Expand again
+    await expandButton.click({ force: true }); // Expand again
 
     // Popover should still be open after rapid toggles
     await expect(popover).toBeVisible();
