@@ -454,7 +454,7 @@ export function buildSearchSummary(searchAttempts: SearchAttempt[], verification
         includesDocScan: docScan,
       },
       anySuccess,
-      variations: Array.from(variationSet),
+      variations: Array.from(variationSet).filter(v => v !== phrase),
       variationTypeLabel,
       rejectedMatches,
       attemptCount: attempts.length,
