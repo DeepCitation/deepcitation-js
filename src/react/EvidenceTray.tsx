@@ -324,7 +324,7 @@ export function AnchorTextFocusedImage({
   const highlightBox = useMemo(() => resolveHighlightBox(verification), [verification]);
 
   // Drag-to-pan hook for mouse interaction
-  const { containerRef, isDragging, handlers, scrollState, wasDragging } = useDragToPan();
+  const { containerRef, isDragging, handlers, scrollState, wasDraggingRef } = useDragToPan();
 
   // Track image load to compute initial scroll position
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -431,8 +431,8 @@ export function AnchorTextFocusedImage({
             e.preventDefault();
             e.stopPropagation();
             // Suppress click if user was dragging
-            if (wasDragging.current) {
-              wasDragging.current = false;
+            if (wasDraggingRef.current) {
+              wasDraggingRef.current = false;
               return;
             }
             if (canExpand) {
@@ -844,7 +844,7 @@ export function InlineExpandedImage({
    */
   showOverlay?: boolean;
 }) {
-  const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
+  const { containerRef, isDragging, handlers: panHandlers, wasDraggingRef } = useDragToPan({ direction: "xy" });
   const isTouch = useIsTouchDevice();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
@@ -858,9 +858,12 @@ export function InlineExpandedImage({
   // Zoom state — only active when fill=true (expanded-page mode).
   // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
   const [zoom, setZoom] = useState(1);
-  // Ref mirror of zoom for touch event handlers (avoids stale closures in pinch gesture)
+  // Ref mirror of zoom for touch event handlers (avoids stale closures in pinch gesture).
+  // Updated in an effect (not during render) to avoid a React Compiler bailout.
   const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
+  useEffect(() => {
+    zoomRef.current = zoom;
+  });
   // Dynamic zoom floor: on narrow viewports the fit-to-screen zoom may be below
   // EXPANDED_ZOOM_MIN (e.g. 29% for a 1700px image on a 550px viewport).
   // This floor feeds into the slider min, zoom-out disabled check, and clampZoom
@@ -898,20 +901,36 @@ export function InlineExpandedImage({
     return () => observer.disconnect();
   }, [fill]);
 
-  // Reset imageLoaded synchronously when src changes (avoids a useEffect render cycle).
-  // This ensures the spinner shows while the new image loads after an evidence ↔ page swap.
-  // Also reset zoom to 1 so each page starts at default scale.
-  const prevSrcRef = useRef(src);
-  if (prevSrcRef.current !== src) {
-    prevSrcRef.current = src;
+  // Reset all image state when src changes — spinner, dimensions, zoom, overlay.
+  // Uses a useEffect (not render-time setState) to avoid a React Compiler bailout
+  // from multiple setState calls in the render body. The one-frame delay is
+  // imperceptible since InlineExpandedImage is typically hidden (display:none) in
+  // the triple-always-render pattern during view-state transitions.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hasSetInitialZoom is a stable ref; initialOverlayHidden is the reset target value, not a reactive dependency
+  useEffect(() => {
     setImageLoaded(false);
     setNaturalWidth(null);
     setNaturalHeight(null);
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
-    hasSetInitialZoom.current = false;
     setOverlayHidden(initialOverlayHidden);
-  }
+    hasSetInitialZoom.current = false;
+  }, [src]);
+
+  // ---------------------------------------------------------------------------
+  // Locate dirty bit — tracks whether the viewport has drifted from the annotation.
+  // Starts false (on-target after initial snap). Set true when user pans away.
+  // Set false again when handleScrollToAnnotation re-centers.
+  // Declared before the fit-to-screen effect which references setLocateDirty and
+  // annotationScrollTarget to satisfy the React Compiler's declaration-order requirement.
+  // ---------------------------------------------------------------------------
+  const [locateDirty, setLocateDirty] = useState(false);
+  // Ref storing the expected scroll position after a programmatic scroll.
+  // Used by the scroll listener to detect user-initiated drift.
+  const annotationScrollTarget = useRef<{ left: number; top: number } | null>(null);
+  // Guard: true while a programmatic smooth-scroll is in progress.
+  // Prevents intermediate scroll events during the animation from marking dirty.
+  const isAnimatingScroll = useRef(false);
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.
   // Width uses the VIEWPORT (minus popover margins + shell padding) because the
@@ -991,22 +1010,8 @@ export function InlineExpandedImage({
     [zoomFloor],
   );
 
-  // ---------------------------------------------------------------------------
-  // Locate dirty bit — tracks whether the viewport has drifted from the annotation.
-  // Starts false (on-target after initial snap). Set true when user pans away.
-  // Set false again when handleScrollToAnnotation re-centers.
-  // ---------------------------------------------------------------------------
-  const [locateDirty, setLocateDirty] = useState(false);
-  // Ref storing the expected scroll position after a programmatic scroll.
-  // Used by the scroll listener to detect user-initiated drift.
-  const annotationScrollTarget = useRef<{ left: number; top: number } | null>(null);
-  // Guard: true while a programmatic smooth-scroll is in progress.
-  // Prevents intermediate scroll events during the animation from marking dirty.
-  const isAnimatingScroll = useRef(false);
-
   // Scroll the container so the annotation is centered in view (re-center after pan/zoom).
   // Prefers anchor text position when it will be highlighted.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   const handleScrollToAnnotation = useCallback(() => {
     const scrollItem = scrollTarget ?? effectivePhraseItem;
     if (!containerRef.current || !scrollItem || !renderScale || !naturalWidth || !naturalHeight) return;
@@ -1028,7 +1033,7 @@ export function InlineExpandedImage({
       setLocateDirty(false);
       container.scrollTo({ left: target.scrollLeft, top: target.scrollTop, behavior: "smooth" });
     }
-  }, [scrollTarget, effectivePhraseItem, renderScale, naturalWidth, naturalHeight]);
+  }, [scrollTarget, effectivePhraseItem, containerRef, renderScale, naturalWidth, naturalHeight]);
 
   // Scroll listener for locate dirty-bit detection.
   // Compares current scroll position against the stored annotation target.
@@ -1292,8 +1297,8 @@ export function InlineExpandedImage({
           onDragStart={e => e.preventDefault()}
           onClick={e => {
             e.stopPropagation();
-            if (wasDragging.current) {
-              wasDragging.current = false;
+            if (wasDraggingRef.current) {
+              wasDraggingRef.current = false;
               return;
             }
             onCollapse();

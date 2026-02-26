@@ -50,10 +50,14 @@ export function useDrawerDragToClose({
   const [dragDirection, setDragDirection] = useState<"up" | "down" | null>(null);
 
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   const onExpandRef = useRef(onExpand);
-  onExpandRef.current = onExpand;
+  useEffect(() => {
+    onExpandRef.current = onExpand;
+  });
 
   const isMountedRef = useRef(true);
   useEffect(

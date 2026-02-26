@@ -22,6 +22,7 @@ import {
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
+import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { WarningIcon } from "./icons.js";
 import { PopoverContent } from "./Popover.js";
@@ -522,6 +523,14 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Isolated into a separate hook so the React Compiler can optimize CitationComponent
     // (setState in useLayoutEffect causes a compiler bailout for the entire component).
     const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef);
+
+    // Lock the popover side (top/bottom) on open so scroll doesn't cause Radix's
+    // flip middleware to jump the popover between sides. Also isolated for compiler.
+    const lockedSide = useLockedPopoverSide(
+      isHovering,
+      popoverPosition === "top" ? "top" : "bottom",
+      triggerRef,
+    );
 
     const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
     const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
@@ -1189,11 +1198,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               side={
                 popoverViewState === "expanded-page"
                   ? "bottom" // Always bottom for expanded — sideOffset positions it
-                  : popoverPosition === "bottom"
-                    ? "bottom"
-                    : "top"
+                  : lockedSide
               }
               sideOffset={expandedPageSideOffset}
+              // Disable collision avoidance so Radix's flip middleware cannot
+              // reposition the popover as the user scrolls. The locked side
+              // (computed once on open) already picks the best placement.
+              avoidCollisions={false}
               onCloseAutoFocus={(e: Event) => {
                 // Prevent Radix from returning focus to the trigger on close.
                 // Without this, the browser scrolls the trigger into view — which
