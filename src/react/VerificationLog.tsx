@@ -682,6 +682,9 @@ export function StatusHeader({
   indicatorVariant = "icon",
   isImage,
 }: StatusHeaderProps) {
+  // "none" means no status indicator at all — skip the entire status row
+  if (indicatorVariant === "none") return null;
+
   const colorScheme = getStatusColorScheme(status);
   const headerText = getStatusHeaderText(status);
 
@@ -716,7 +719,7 @@ export function StatusHeader({
             )}
             aria-hidden="true"
           />
-        ) : indicatorVariant === "none" ? null : (
+        ) : (
           <span className={cn("size-4 max-w-4 max-h-4 shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
             <IconComponent />
           </span>
