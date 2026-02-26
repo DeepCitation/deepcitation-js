@@ -4,7 +4,7 @@ import type { Citation } from "../types/citation.js";
 import { DOT_COLORS, DOT_INDICATOR_FIXED_SIZE_STYLE, MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { CheckIcon, ExternalLinkIcon, LockIcon, XCircleIcon } from "./icons.js";
-import type { UrlCitationProps, UrlFetchStatus } from "./types.js";
+import type { IndicatorVariant, UrlCitationProps, UrlFetchStatus } from "./types.js";
 import { isBlockedStatus, isErrorStatus } from "./urlStatus.js";
 import { extractDomain, getUrlPath, STATUS_ICONS, safeWindowOpen, truncateString } from "./urlUtils.js";
 import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
@@ -115,7 +115,7 @@ const ExternalLinkButton = ({ showExternalLinkIndicator, handleExternalLinkClick
 };
 
 interface UrlStatusIndicatorProps {
-  indicatorVariant: "icon" | "dot" | "none";
+  indicatorVariant: IndicatorVariant;
   isVerified: boolean;
   isPartial: boolean;
   isBlocked: boolean;

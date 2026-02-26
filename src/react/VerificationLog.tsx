@@ -15,7 +15,7 @@ import {
   XCircleIcon,
   XIcon,
 } from "./icons.js";
-import type { UrlFetchStatus } from "./types.js";
+import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
 import { UrlCitationComponent } from "./UrlCitationComponent.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
@@ -53,7 +53,6 @@ const ICON_COLOR_CLASSES = {
   gray: "text-gray-400 dark:text-gray-500",
 } as const;
 
-/** User-friendly method names for display (Issue #10: simplified from technical jargon) */
 const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
   exact_line_match: "Exact location",
   line_with_buffer: "Nearby lines",
@@ -480,7 +479,7 @@ export interface StatusHeaderProps {
    * - `"dot"`: Subtle colored dots
    * @default "icon"
    */
-  indicatorVariant?: "icon" | "dot" | "none";
+  indicatorVariant?: IndicatorVariant;
   /** When true, source is a raster image — PageBadge shows "Image" instead of "p.X" */
   isImage?: boolean;
 }
@@ -522,9 +521,6 @@ export function getStatusColorScheme(status?: SearchStatus | null): "green" | "a
 
 /**
  * Get the header text based on status.
- * Issue #3: Made more concise - anchor text will be integrated separately.
- * Note: For "found" states, we return empty string since the icon is self-explanatory.
- * The status text is only useful for states that need clarification (location differences, partial matches).
  */
 function getStatusHeaderText(status?: SearchStatus | null): string {
   if (!status) return "Verifying...";
@@ -682,7 +678,7 @@ export function StatusHeader({
   indicatorVariant = "icon",
   isImage,
 }: StatusHeaderProps) {
-  // "none" means no status indicator at all — skip the entire status row
+  // "none" variant hides the entire status header (no icon, no text, no page badge)
   if (indicatorVariant === "none") return null;
 
   const colorScheme = getStatusColorScheme(status);
@@ -693,14 +689,17 @@ export function StatusHeader({
   // - Amber (partial): CheckIcon (de-emphasized, not aggressive warning)
   // - Red (not found): XCircleIcon (X in circle for clear "not found" indication)
   // - Gray (pending): SpinnerIcon (not aggressive warning)
-  const IconComponent =
-    colorScheme === "green"
-      ? CheckIcon
-      : colorScheme === "amber"
+  let IconComponent = null;
+  if (indicatorVariant === "icon") {
+    IconComponent =
+      colorScheme === "green"
         ? CheckIcon
-        : colorScheme === "red"
-          ? XCircleIcon
-          : SpinnerIcon;
+        : colorScheme === "amber"
+          ? CheckIcon
+          : colorScheme === "red"
+            ? XCircleIcon
+            : SpinnerIcon;
+  }
 
   // Single-row layout: icon + status text + page badge
   // Status text is always provided by getStatusHeaderText; anchor text is shown
@@ -719,11 +718,11 @@ export function StatusHeader({
             )}
             aria-hidden="true"
           />
-        ) : (
+        ) : indicatorVariant === "icon" ? (
           <span className={cn("size-4 max-w-4 max-h-4 shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
-            <IconComponent />
+            {IconComponent && <IconComponent />}
           </span>
-        )}
+        ) : null}
         {displayText && <span className="font-medium truncate text-gray-800 dark:text-gray-100">{displayText}</span>}
       </div>
       {!hidePageBadge && <PageBadge expectedPage={expectedPage} foundPage={foundPage} isImage={isImage} />}
@@ -737,7 +736,6 @@ export function StatusHeader({
 
 /**
  * Styled quote box for displaying the phrase being verified.
- * Issue #7: Removed serif/italic for modern UI consistency.
  * Uses left border accent (which aligns with shadcn patterns).
  * No literal quotes - the styling indicates quoted text for copy/paste friendliness.
  */

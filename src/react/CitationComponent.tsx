@@ -321,7 +321,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   isLoading: boolean;
   isVisible: boolean;
   sourceLabel?: string;
-  indicatorVariant: "icon" | "dot" | "none";
+  indicatorVariant: IndicatorVariant;
   viewState: PopoverViewState;
   onViewStateChange: (viewState: PopoverViewState) => void;
   expandedImageSrcOverride: string | null;

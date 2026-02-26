@@ -72,7 +72,7 @@ export interface PopoverContentProps {
    * Visual style for status indicators inside the popover.
    * @default "icon"
    */
-  indicatorVariant?: "icon" | "dot" | "none";
+  indicatorVariant?: IndicatorVariant;
   /** Current view state: summary or expanded */
   viewState?: PopoverViewState;
   /** Callback when view state changes */
@@ -426,7 +426,7 @@ function PopoverFallbackView({
   sourceLabel?: string;
   status: CitationStatus;
   urlAccessExplanation: UrlAccessExplanation | null;
-  indicatorVariant?: "icon" | "dot" | "none";
+  indicatorVariant?: IndicatorVariant;
 }) {
   const searchStatus = verification?.status;
   const statusLabel = indicatorVariant !== "none" ? getStatusLabel(status) : null;

@@ -33,6 +33,7 @@ import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useDrawerDragToClose } from "./hooks/useDrawerDragToClose.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { acquireScrollLock, releaseScrollLock } from "./scrollLock.js";
+import type { IndicatorVariant } from "./types.js";
 import { cn } from "./utils.js";
 import { FaviconImage, PagePill } from "./VerificationLog.js";
 
@@ -444,7 +445,7 @@ function CompactSingleCitationRow({
   group: SourceCitationGroup;
   isLast?: boolean;
   onClick?: (item: CitationDrawerItem) => void;
-  indicatorVariant?: "icon" | "dot" | "none";
+  indicatorVariant?: IndicatorVariant;
 }) {
   const item = group.citations[0];
   const { citation, verification } = item;
@@ -522,7 +523,7 @@ interface DrawerSourceGroupProps {
   isLastGroup: boolean;
   staggerOffset: number;
   onCitationClick?: (item: CitationDrawerItem) => void;
-  indicatorVariant: "icon" | "dot" | "none";
+  indicatorVariant: IndicatorVariant;
   renderCitationItem?: (item: CitationDrawerItem) => React.ReactNode;
   /** When true, the drawer header already identifies the source — omit group headers and source names */
   isSingleGroup?: boolean;
