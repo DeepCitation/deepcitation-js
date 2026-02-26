@@ -148,8 +148,11 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     await expect(popover).toBeVisible();
 
     // Find and click the expand button ("View search log")
+    // scrollIntoViewIfNeeded: avoidCollisions is disabled in summary mode, so the
+    // button may render below the viewport edge on small CI viewports.
     const expandButton = page.getByRole("button", { name: /Expand search log|View search log/i });
     await expect(expandButton).toBeVisible();
+    await expandButton.scrollIntoViewIfNeeded();
     await expandButton.click();
 
     // Popover should STILL be visible after expansion
@@ -171,8 +174,11 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     await expect(popover).toBeVisible();
 
     // The toggle button has aria-label "Expand search log" / "Collapse search log"
+    // scrollIntoViewIfNeeded: avoidCollisions is disabled in summary mode, so the
+    // button may render below the viewport edge on small CI viewports.
     const expandButton = page.getByRole("button", { name: /Expand search log|Collapse search log/i });
     await expect(expandButton).toBeVisible();
+    await expandButton.scrollIntoViewIfNeeded();
 
     // Rapidly toggle expansion multiple times
     await expandButton.click(); // Expand

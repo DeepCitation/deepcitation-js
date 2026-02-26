@@ -175,9 +175,7 @@ describe("UrlCitationComponent", () => {
     });
 
     it("shows external link icon on hover (visual hint that click opens URL)", () => {
-      const { getByRole, getByLabelText } = render(<UrlCitationComponent urlMeta={createUrlMeta()} />);
-
-      const button = getByRole("button", { name: /Link to/ });
+      const { getByLabelText } = render(<UrlCitationComponent urlMeta={createUrlMeta()} />);
 
       // External link button is always in the DOM but visually hidden via CSS opacity-0
       // It becomes visible on hover via group-hover:opacity-100
@@ -247,9 +245,7 @@ describe("UrlCitationComponent", () => {
     });
 
     it("shows external link icon on keyboard focus (accessibility)", () => {
-      const { getByRole, getByLabelText } = render(<UrlCitationComponent urlMeta={createUrlMeta()} />);
-
-      const button = getByRole("button", { name: /Link to/ });
+      const { getByLabelText } = render(<UrlCitationComponent urlMeta={createUrlMeta()} />);
 
       // External link button is always in the DOM but hidden via CSS opacity-0
       // It becomes visible on focus via group-focus-within:opacity-100

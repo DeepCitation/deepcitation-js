@@ -48,7 +48,7 @@ if (!openaiApiKey) {
   console.error("\n⚠️  OPENAI_API_KEY is not set!\n");
 }
 
-const deepCitation = dcApiKey ? new DeepCitation({ apiKey: dcApiKey }) : null;
+const dc = dcApiKey ? new DeepCitation({ apiKey: dcApiKey }) : null;
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
 const textEncoder = new TextEncoder();

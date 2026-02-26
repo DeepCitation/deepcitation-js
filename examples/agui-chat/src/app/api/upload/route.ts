@@ -12,7 +12,7 @@ if (!apiKey) {
   );
 }
 
-const deepCitation = apiKey ? new DeepCitation({ apiKey }) : null;
+const dc = apiKey ? new DeepCitation({ apiKey }) : null;
 
 export async function POST(req: NextRequest) {
   // Check API key before processing
