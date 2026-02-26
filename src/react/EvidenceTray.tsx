@@ -545,7 +545,17 @@ function EvidenceTrayFooter({
   const dateStr = formatted?.display ?? "";
   const outcomeLabel = deriveOutcomeLabel(status, searchAttempts);
   const [showLog, setShowLog] = useState(false);
-  const searchCount = searchAttempts?.length ?? 0;
+  const searchCount = useMemo(() => {
+    if (!searchAttempts || searchAttempts.length === 0) return 0;
+    const texts = new Set<string>();
+    for (const a of searchAttempts) {
+      if (a.searchPhrase) texts.add(a.searchPhrase);
+      if (a.searchVariations) {
+        for (const v of a.searchVariations) texts.add(v);
+      }
+    }
+    return texts.size;
+  }, [searchAttempts]);
   // Only show log toggle for non-found statuses with multiple search attempts
   const showLogToggle = searchCount > 1 && status !== "found";
 
@@ -810,6 +820,7 @@ export function InlineExpandedImage({
   renderScale,
   highlightItem,
   anchorItem,
+  initialOverlayHidden = false,
 }: {
   src: string;
   onCollapse: () => void;
@@ -824,6 +835,8 @@ export function InlineExpandedImage({
   highlightItem?: DeepTextItem | null;
   /** Override anchorTextMatchDeepItems[0] from verification.document (for direct DeepTextItem injection). */
   anchorItem?: DeepTextItem | null;
+  /** When true, the annotation overlay starts hidden (e.g. drawer context where overlay is unwanted). */
+  initialOverlayHidden?: boolean;
 }) {
   const { containerRef, isDragging, handlers: panHandlers, wasDragging } = useDragToPan({ direction: "xy" });
   const isTouch = useIsTouchDevice();
@@ -833,7 +846,7 @@ export function InlineExpandedImage({
   // When true, the CSS annotation overlay (spotlight + brackets) is hidden so the
   // user can view the underlying page image unfettered. The backend-drawn annotations
   // on the image itself remain visible. Only applies in fill (expanded-page) mode.
-  const [overlayHidden, setOverlayHidden] = useState(false);
+  const [overlayHidden, setOverlayHidden] = useState(initialOverlayHidden);
   // Zoom state — only active when fill=true (expanded-page mode).
   // 1.0 = natural pixel size. < 1.0 = fit-to-screen (shrunk to container).
   const [zoom, setZoom] = useState(1);
@@ -889,7 +902,7 @@ export function InlineExpandedImage({
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
     hasSetInitialZoom.current = false;
-    setOverlayHidden(false);
+    setOverlayHidden(initialOverlayHidden);
   }
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.

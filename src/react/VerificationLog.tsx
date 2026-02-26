@@ -716,7 +716,7 @@ export function StatusHeader({
             )}
             aria-hidden="true"
           />
-        ) : (
+        ) : indicatorVariant === "none" ? null : (
           <span className={cn("size-4 max-w-4 max-h-4 shrink-0", ICON_COLOR_CLASSES[colorScheme])}>
             <IconComponent />
           </span>
@@ -871,10 +871,17 @@ function VerificationLogSummary({
   verifiedAt,
 }: VerificationLogSummaryProps) {
   const isMiss = status === "not_found";
-  // Count distinct search phrases (query groups) — this matches the number of rows the user sees
+  // Count total unique texts tried (phrases + variations) — consistent with EvidenceTray
   const queryGroupCount = useMemo(() => {
     if (!isMiss) return undefined;
-    return new Set(searchAttempts.map(a => a.searchPhrase ?? "")).size;
+    const texts = new Set<string>();
+    for (const a of searchAttempts) {
+      if (a.searchPhrase) texts.add(a.searchPhrase);
+      if (a.searchVariations) {
+        for (const v of a.searchVariations) texts.add(v);
+      }
+    }
+    return texts.size;
   }, [searchAttempts, isMiss]);
   const outcomeSummary = getOutcomeSummary(status, searchAttempts, queryGroupCount);
 
@@ -955,7 +962,14 @@ function QueryGroupRow({ group }: { group: SearchQueryGroup }) {
       >
         {group.anySuccess ? <CheckIcon /> : <XIcon />}
       </span>
-      <span className="text-xs font-mono text-gray-700 dark:text-gray-200 break-all">{displayPhrase}</span>
+      <div className="min-w-0">
+        <span className="text-xs font-mono text-gray-700 dark:text-gray-200 break-all">{displayPhrase}</span>
+        {group.variations.length > 0 && (
+          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+            {group.variationTypeLabel ?? "Also tried"}: {group.variations.map(v => truncatePhrase(v)).join(", ")}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
