@@ -55,6 +55,8 @@ interface DrawerEscapeCtx {
   pendingInlineExpand: string | null;
   /** Clear the pending inline expand signal after consuming it */
   clearPendingInlineExpand: () => void;
+  /** Whether the drawer is in full-page mode (bottom sheet with inline image open) */
+  isFullPage: boolean;
 }
 
 const DrawerEscapeContext = React.createContext<DrawerEscapeCtx | null>(null);
@@ -457,6 +459,8 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                 onCollapse={() => setInlineExpandedSrc(null)}
                 verification={verification ?? undefined}
                 renderScale={expandedImage?.renderScale}
+                initialOverlayHidden
+                fill={escCtx?.isFullPage}
               />
             )}
           </div>
@@ -530,18 +534,12 @@ function CompactSingleCitationRow({
         }
       }}
     >
-      {/* Favicon or letter avatar */}
-      <div className="shrink-0">
-        {isUrlSource ? (
+      {/* Favicon for URL sources only — document sources show just the name */}
+      {isUrlSource && (
+        <div className="shrink-0">
           <FaviconImage faviconUrl={group.sourceFavicon || null} domain={group.sourceDomain || null} alt={sourceName} />
-        ) : (
-          <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
-              {sourceName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Source name */}
       <span className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0" title={sourceName}>
@@ -707,22 +705,16 @@ function DrawerSourceHeading({
 
   return (
     <div className="flex items-center gap-2 min-w-0">
-      {/* Favicon for URL sources, letter avatar for documents */}
-      <div className="shrink-0">
-        {isUrlSource ? (
+      {/* Favicon for URL sources only — document sources show just the label text */}
+      {isUrlSource && (
+        <div className="shrink-0">
           <FaviconImage
             faviconUrl={firstGroup.sourceFavicon || null}
             domain={firstGroup.sourceDomain || null}
             alt={displayLabel}
           />
-        ) : (
-          <div className="w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <span className="text-[9px] font-medium text-gray-500 dark:text-gray-400">
-              {displayLabel.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Source label — identical text to CitationDrawerTrigger */}
       <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{displayLabel}</h2>
@@ -768,10 +760,14 @@ export function CitationDrawer({
   indicatorVariant = "icon",
   sourceLabelMap,
 }: CitationDrawerProps): React.ReactNode {
-  // Drag-to-close on the handle bar (bottom sheet convention)
+  // Manual full-page state — set via drag-up gesture, reset on close
+  const [manualFullPage, setManualFullPage] = useState(false);
+
+  // Drag-to-close (down) and drag-to-expand (up) on the handle bar
   const isBottomSheet = position === "bottom";
-  const { handleRef, drawerRef, dragOffset, isDragging } = useDrawerDragToClose({
+  const { handleRef, drawerRef, dragOffset, isDragging, dragDirection } = useDrawerDragToClose({
     onClose,
+    onExpand: () => setManualFullPage(true),
     enabled: isBottomSheet && isOpen,
   });
 
@@ -842,6 +838,9 @@ export function CitationDrawer({
   // State mirror of inlineKeysRef so page pill reactivity works (refs don't trigger re-renders)
   const [hasInlineOpen, setHasInlineOpen] = useState(false);
 
+  // Full-page mode: auto (inline image open) or manual (drag-up gesture)
+  const isFullPage = isBottomSheet && (hasInlineOpen || manualFullPage);
+
   // Active page pill — only lit when the inline full-page image is visible
   const activePage = expandedCitationKey && hasInlineOpen ? (keyToPage.get(expandedCitationKey) ?? null) : null;
 
@@ -870,6 +869,7 @@ export function CitationDrawer({
       onItemExpand,
       pendingInlineExpand,
       clearPendingInlineExpand,
+      isFullPage,
     }),
     [
       collapseInlineSignal,
@@ -878,6 +878,7 @@ export function CitationDrawer({
       onItemExpand,
       pendingInlineExpand,
       clearPendingInlineExpand,
+      isFullPage,
     ],
   );
 
@@ -888,6 +889,11 @@ export function CitationDrawer({
   useLayoutEffect(() => {
     expandedKeyRef.current = expandedCitationKey;
   }, [expandedCitationKey]);
+
+  // Reset manualFullPage when drawer closes
+  useEffect(() => {
+    if (!isOpen) setManualFullPage(false);
+  }, [isOpen]);
 
   // Lock body scroll while drawer is open (prevents pull-to-refresh on mobile)
   useEffect(() => {
@@ -961,17 +967,27 @@ export function CitationDrawer({
         className={cn(
           "fixed bg-white dark:bg-gray-900 flex flex-col",
           "animate-in duration-200",
-          position === "bottom" && "inset-x-0 bottom-0 max-h-[80vh] rounded-t-2xl slide-in-from-bottom-4",
+          position === "bottom" &&
+            "inset-x-0 bottom-0 slide-in-from-bottom-4 transition-[max-height,border-radius] duration-200",
+          position === "bottom" && (isFullPage ? "max-h-[100dvh]" : "max-h-[80vh] rounded-t-2xl"),
           position === "right" && "inset-y-0 right-0 w-full max-w-md slide-in-from-right-4",
           className,
         )}
         style={
           {
             zIndex: `var(${Z_INDEX_DRAWER_VAR}, ${Z_INDEX_OVERLAY_DEFAULT})`,
-            ...(dragOffset > 0 && {
-              transform: `translateY(${dragOffset}px)`,
-              transition: isDragging ? "none" : "transform 200ms ease-out",
-            }),
+            // Dragging down: translate the sheet downward (close gesture)
+            ...(dragDirection === "down" &&
+              dragOffset > 0 && {
+                transform: `translateY(${dragOffset}px)`,
+                transition: isDragging ? "none" : "transform 200ms ease-out",
+              }),
+            // Dragging up: grow the sheet taller (expand gesture) — no gap at bottom
+            ...(dragDirection === "up" &&
+              dragOffset < 0 && {
+                maxHeight: `calc(80vh + ${Math.abs(dragOffset)}px)`,
+                transition: isDragging ? "none" : "max-height 200ms ease-out",
+              }),
           } as React.CSSProperties
         }
         role="dialog"
