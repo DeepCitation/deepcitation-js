@@ -851,6 +851,16 @@ export function InlineExpandedImage({
   // Container size as state (not ref) so that ResizeObserver updates trigger re-renders.
   // This ensures the initial-zoom effect re-fires once the container is measured.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  // Viewport width as state so the fit-to-screen effect re-runs on window resize.
+  // The effect uses window.innerWidth to compute maxImageWidth; without this reactive
+  // dependency, the popover's expanded width stays stale after viewport changes.
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 0));
+  useEffect(() => {
+    if (!fill) return;
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [fill]);
   // Tracks whether zoom was changed by explicit user interaction (slider/wheel/pinch).
   // When true, viewport resizes keep the user's zoom level instead of re-fitting.
   const hasManualZoomRef = useRef(false);
@@ -927,8 +937,8 @@ export function InlineExpandedImage({
     if (!fill || !imageLoaded || !naturalWidth || !naturalHeight) return;
     if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;
     // Max image width the popover can provide: viewport - 2rem outer margin - shell px.
-    const maxImageWidth =
-      typeof window !== "undefined" ? window.innerWidth - 32 - EXPANDED_IMAGE_SHELL_PX : containerSize.width;
+    // Uses viewportWidth state (tracked via resize listener) so the effect re-runs on resize.
+    const maxImageWidth = viewportWidth > 0 ? viewportWidth - 32 - EXPANDED_IMAGE_SHELL_PX : containerSize.width;
     const fitZoomW = maxImageWidth / naturalWidth;
     // Width-only zoom: fill the popover horizontally; tall images scroll vertically
     // inside the overflow-auto container (same pattern as keyhole's horizontal scroll).
@@ -988,6 +998,7 @@ export function InlineExpandedImage({
     naturalWidth,
     naturalHeight,
     containerSize,
+    viewportWidth,
     onNaturalSize,
     scrollTarget,
     effectivePhraseItem,
