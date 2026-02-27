@@ -43,7 +43,7 @@ Upload a PDF. Ask your LLM a question. Get back **deterministic, visual proof** 
 ## 7 ways to display citations
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/DeepCitation/deepcitation/main/tests/playwright/specs/__snapshots__/visualShowcase.spec.tsx-snapshots/desktop-showcase-chromium-linux.avif" alt="DeepCitation Component Showcase - linter, chip, brackets, text, superscript, and badge variants" width="700" />
+<img src="https://raw.githubusercontent.com/DeepCitation/deepcitation/main/tests/playwright/specs/__snapshots__/visualShowcase.spec.tsx-snapshots/desktop-showcase-chromium-linux.avif" alt="DeepCitation Component Showcase - linter, chip, brackets, text, superscript, footnote, and badge variants" width="700" />
 </div>
 
 | Variant | Style | Best for |
