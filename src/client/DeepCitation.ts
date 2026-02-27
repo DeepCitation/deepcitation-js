@@ -15,6 +15,7 @@ import type {
   ExtendExpirationResponse,
   FileDataPart,
   FileInput,
+  GetAttachmentOptions,
   PrepareAttachmentsResult,
   PrepareConvertedFileOptions,
   PrepareUrlOptions,
@@ -152,6 +153,7 @@ export class DeepCitation {
   private readonly apiKey: string;
   private readonly apiUrl: string;
   private readonly logger: DeepCitationLogger;
+  private readonly endUserId?: string;
 
   /**
    * Request deduplication cache for verify calls.
@@ -196,6 +198,12 @@ export class DeepCitation {
     this.apiUrl = config.apiUrl?.replace(/\/$/, "") || DEFAULT_API_URL;
     this.uploadLimiter = createConcurrencyLimiter(config.maxUploadConcurrency ?? DEFAULT_UPLOAD_CONCURRENCY);
     this.logger = config.logger ?? {};
+    this.endUserId = config.endUserId;
+  }
+
+  /** Resolve endUserId: per-request override wins over instance default. */
+  private resolveEndUserId(override?: string): string | undefined {
+    return override ?? this.endUserId;
   }
 
   /**
@@ -269,6 +277,8 @@ export class DeepCitation {
 
     if (options?.attachmentId) formData.append("attachmentId", options.attachmentId);
     if (options?.filename) formData.append("filename", options.filename);
+    const resolvedEndUserId = this.resolveEndUserId(options?.endUserId);
+    if (resolvedEndUserId) formData.append("endUserId", resolvedEndUserId);
 
     const response = await fetch(`${this.apiUrl}/prepareAttachments`, {
       method: "POST",
@@ -326,6 +336,7 @@ export class DeepCitation {
       throw new ValidationError("Either url or file must be provided");
     }
 
+    const resolvedEndUserId = this.resolveEndUserId(inputObj.endUserId);
     this.logger.info?.("Converting to PDF", { url, filename, attachmentId });
     let response: Response;
 
@@ -336,7 +347,7 @@ export class DeepCitation {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, filename, attachmentId }),
+        body: JSON.stringify({ url, filename, attachmentId, endUserId: resolvedEndUserId }),
       });
     } else if (file) {
       const { blob, name } = toBlob(file, filename);
@@ -344,6 +355,7 @@ export class DeepCitation {
       formData.append("file", blob, name);
       if (attachmentId) formData.append("attachmentId", attachmentId);
       if (filename) formData.append("filename", filename);
+      if (resolvedEndUserId) formData.append("endUserId", resolvedEndUserId);
 
       response = await fetch(`${this.apiUrl}/convertFile`, {
         method: "POST",
@@ -386,6 +398,7 @@ export class DeepCitation {
    */
   async prepareConvertedFile(options: PrepareConvertedFileOptions): Promise<UploadFileResponse> {
     this.logger.info?.("Preparing converted file", { attachmentId: options.attachmentId });
+    const resolvedEndUserId = this.resolveEndUserId(options.endUserId);
 
     const response = await fetch(`${this.apiUrl}/prepareAttachments`, {
       method: "POST",
@@ -395,6 +408,7 @@ export class DeepCitation {
       },
       body: JSON.stringify({
         attachmentId: options.attachmentId,
+        endUserId: resolvedEndUserId,
       }),
     });
 
@@ -448,6 +462,7 @@ export class DeepCitation {
       skipCache: options.skipCache,
     });
 
+    const resolvedEndUserId = this.resolveEndUserId(options.endUserId);
     const response = await fetch(`${this.apiUrl}/prepareAttachments`, {
       method: "POST",
       headers: {
@@ -460,6 +475,7 @@ export class DeepCitation {
         filename: options.filename,
         unsafeFastUrlOutput: options.unsafeFastUrlOutput,
         skipCache: options.skipCache,
+        endUserId: resolvedEndUserId,
       }),
     });
 
@@ -511,9 +527,9 @@ export class DeepCitation {
 
     // Upload files with concurrency limit to prevent overwhelming network/server
     // Performance fix: limits concurrent uploads to DEFAULT_UPLOAD_CONCURRENCY
-    const uploadPromises = files.map(({ file, filename, attachmentId }) =>
+    const uploadPromises = files.map(({ file, filename, attachmentId, endUserId }) =>
       this.uploadLimiter(() =>
-        this.uploadFile(file, { filename, attachmentId }).then(result => ({
+        this.uploadFile(file, { filename, attachmentId, endUserId }).then(result => ({
           result,
           filename,
         })),
@@ -636,6 +652,7 @@ export class DeepCitation {
       console.warn("DeepCitation: proofConfig is ignored when generateProofUrls is not true");
     }
 
+    const resolvedEndUserId = this.resolveEndUserId(options?.endUserId);
     this.logger.info?.("Verifying citations", { attachmentId, citationCount });
     const requestUrl = `${this.apiUrl}/verifyCitations`;
     const requestBody = {
@@ -645,6 +662,7 @@ export class DeepCitation {
         outputImageFormat: options?.outputImageFormat || "avif",
         generateProofUrls: options?.generateProofUrls,
         proofConfig: options?.generateProofUrls ? options?.proofConfig : undefined,
+        endUserId: resolvedEndUserId,
       },
     };
 
@@ -718,7 +736,7 @@ export class DeepCitation {
    * ```
    */
   async verify(input: VerifyInput, citations?: { [key: string]: Citation }): Promise<VerifyCitationsResponse> {
-    const { llmOutput, outputImageFormat = "avif", generateProofUrls, proofConfig } = input;
+    const { llmOutput, outputImageFormat = "avif", generateProofUrls, proofConfig, endUserId } = input;
 
     // Parse citations from LLM output
     if (!citations) citations = getAllCitationsFromLlmOutput(llmOutput);
@@ -755,6 +773,7 @@ export class DeepCitation {
             outputImageFormat,
             generateProofUrls,
             proofConfig,
+            endUserId,
           }),
         );
       } else {
@@ -891,11 +910,12 @@ export class DeepCitation {
    * }
    * ```
    */
-  async getAttachment(attachmentId: string): Promise<AttachmentResponse> {
+  async getAttachment(attachmentId: string, options?: GetAttachmentOptions): Promise<AttachmentResponse> {
     if (!attachmentId) {
       throw new ValidationError("attachmentId is required");
     }
 
+    const resolvedEndUserId = this.resolveEndUserId(options?.endUserId);
     this.logger.info?.("Getting attachment", { attachmentId });
 
     const response = await fetch(`${this.apiUrl}/getAttachment`, {
@@ -904,7 +924,7 @@ export class DeepCitation {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ attachmentId }),
+      body: JSON.stringify({ attachmentId, endUserId: resolvedEndUserId }),
     });
 
     if (!response.ok) {
