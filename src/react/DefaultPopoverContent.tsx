@@ -13,6 +13,7 @@ import type { CitationStatus } from "../types/citation.js";
 import type { SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { getStatusLabel } from "./citationStatus.js";
+import { createTranslator, useTranslation, type TranslateFunction } from "./i18n.js";
 import {
   EASE_COLLAPSE,
   EASE_EXPAND,
@@ -98,6 +99,7 @@ function getHumanizingMessage(
   anchorText?: string,
   expectedPage?: number,
   foundPage?: number,
+  t: TranslateFunction = createTranslator(),
 ): string | null {
   if (!status) return null;
 
@@ -106,7 +108,7 @@ function getHumanizingMessage(
   const safeAnchorText = typeof anchorText === "string" ? anchorText : null;
   const displayText = safeAnchorText
     ? safeAnchorText.length > MAX_ANCHOR_LENGTH
-      ? `"${safeAnchorText.slice(0, MAX_ANCHOR_LENGTH)}…"`
+      ? `"${safeAnchorText.slice(0, MAX_ANCHOR_LENGTH)}\u2026"`
       : `"${safeAnchorText}"`
     : "this phrase";
 
@@ -115,17 +117,17 @@ function getHumanizingMessage(
       return null; // Redundant — the red icon + "Not found" header already conveys this
     case "found_on_other_page":
       if (expectedPage && foundPage) {
-        return `Found ${displayText} on page ${foundPage} instead of page ${expectedPage}.`;
+        return t("popover.foundOnOtherPage", { displayText, foundPage, expectedPage });
       }
-      return `Found ${displayText} on a different page than expected.`;
+      return t("popover.foundOnOtherPageGeneric", { displayText });
     case "found_on_other_line":
-      return `Found ${displayText} at a different position than expected.`;
+      return t("popover.foundOnOtherLine", { displayText });
     case "partial_text_found":
-      return `Only part of ${displayText} was found.`;
+      return t("popover.partialTextFound", { displayText });
     case "first_word_found":
-      return `Only the beginning of ${displayText} was found.`;
+      return t("popover.firstWordFound", { displayText });
     case "found_anchor_text_only":
-      return `Found ${displayText}, but not the full surrounding context.`;
+      return t("popover.anchorTextOnly", { displayText });
     default:
       return null;
   }
@@ -136,6 +138,7 @@ function getHumanizingMessage(
  * Amber background for blocked states (potentially resolvable), red for errors.
  */
 function UrlAccessExplanationSection({ explanation }: { explanation: UrlAccessExplanation }) {
+  const t = useTranslation();
   const isAmber = explanation.colorScheme === "amber";
   return (
     <div
@@ -146,7 +149,7 @@ function UrlAccessExplanationSection({ explanation }: { explanation: UrlAccessEx
           : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
       )}
       role="status"
-      aria-label={`${isAmber ? "Warning" : "Error"}: ${explanation.title}`}
+      aria-label={`${isAmber ? t("misc.warning") : t("misc.error")}: ${explanation.title}`}
     >
       <div
         className={cn(
@@ -365,6 +368,7 @@ function PopoverLoadingView({
   verification: Verification | null;
   sourceLabel?: string;
 }) {
+  const t = useTranslation();
   const anchorText = citation.anchorText?.toString();
   const fullPhrase = citation.fullPhrase;
   const searchStatus = verification?.status;
@@ -392,7 +396,7 @@ function PopoverLoadingView({
           <span className="inline-block relative top-[0.1em] mr-1.5 size-2 animate-spin">
             <SpinnerIcon />
           </span>
-          Searching...
+          {t("popover.searching")}
         </span>
         {searchingPhrase && (
           <p className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded font-mono text-[11px] break-words text-gray-700 dark:text-gray-300">
@@ -401,7 +405,9 @@ function PopoverLoadingView({
         )}
         {!isUrlCitation(citation) && citation.pageNumber && citation.pageNumber > 0 && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {isImageSource(verification) ? "Searching image\u2026" : `Looking on p.${citation.pageNumber}`}
+            {isImageSource(verification)
+              ? t("popover.searchingImage")
+              : t("popover.lookingOnPage", { pageNumber: citation.pageNumber })}
           </span>
         )}
       </div>
@@ -428,8 +434,9 @@ function PopoverFallbackView({
   urlAccessExplanation: UrlAccessExplanation | null;
   indicatorVariant?: IndicatorVariant;
 }) {
+  const t = useTranslation();
   const searchStatus = verification?.status;
-  const statusLabel = indicatorVariant !== "none" ? getStatusLabel(status) : null;
+  const statusLabel = indicatorVariant !== "none" ? getStatusLabel(status, t) : null;
   const hasSnippet = verification?.verifiedMatchSnippet;
   const pageNumber = verification?.document?.verifiedPageNumber;
 
@@ -468,7 +475,7 @@ function PopoverFallbackView({
         )}
         {pageNumber && pageNumber > 0 && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {isImageSource(verification) ? "Image" : `Page ${pageNumber}`}
+            {isImageSource(verification) ? t("location.image") : t("location.page", { pageNumber })}
           </span>
         )}
       </div>
@@ -494,6 +501,7 @@ export function DefaultPopoverContent({
   onExpandedWidthChange,
   prevBeforeExpandedPageRef: propPrevBeforeExpandedPageRef,
 }: PopoverContentProps) {
+  const t = useTranslation();
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
@@ -639,9 +647,9 @@ export function DefaultPopoverContent({
   const humanizingMessage = useMemo(
     () =>
       isUrlCitation(citation)
-        ? getHumanizingMessage(searchStatus, anchorText, expectedPage ?? undefined, foundPage)
+        ? getHumanizingMessage(searchStatus, anchorText, expectedPage ?? undefined, foundPage, t)
         : null,
-    [citation, searchStatus, anchorText, expectedPage, foundPage],
+    [citation, searchStatus, anchorText, expectedPage, foundPage, t],
   );
 
   // Intent summary for document citations — snippet-based display for partial matches
@@ -659,8 +667,8 @@ export function DefaultPopoverContent({
     const fetchStatus = urlAccessStatus
       ? mapUrlAccessStatusToFetchStatus(urlAccessStatus, errorMsg)
       : mapSearchStatusToFetchStatus(searchStatus);
-    return getUrlAccessExplanation(fetchStatus, verification?.url?.urlVerificationError);
-  }, [citation, verification, searchStatus]);
+    return getUrlAccessExplanation(fetchStatus, verification?.url?.urlVerificationError, t);
+  }, [citation, verification, searchStatus, t]);
 
   // Loading/pending state view — skeleton mirrors resolved layout shape
   if (isLoading || isPending) {

@@ -17,6 +17,7 @@ import {
   PENDING_COLOR_STYLE,
   VERIFIED_COLOR_STYLE,
 } from "./constants.js";
+import { useTranslation } from "./i18n.js";
 import { CheckIcon, SpinnerIcon, XIcon } from "./icons.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
 import type { IndicatorVariant } from "./types.js";
@@ -98,10 +99,22 @@ const DotIndicator = ({
   />
 );
 
-const VerifiedDot = () => <DotIndicator color="green" label="Verified" />;
-const PartialDot = () => <DotIndicator color="amber" label="Partial match" />;
-const PendingDot = () => <DotIndicator color="gray" pulse label="Verifying" />;
-const MissDot = () => <DotIndicator color="red" label="Not found" />;
+const VerifiedDot = () => {
+  const t = useTranslation();
+  return <DotIndicator color="green" label={t("indicator.verified")} />;
+};
+const PartialDot = () => {
+  const t = useTranslation();
+  return <DotIndicator color="amber" label={t("indicator.partial")} />;
+};
+const PendingDot = () => {
+  const t = useTranslation();
+  return <DotIndicator color="gray" pulse label={t("indicator.verifying")} />;
+};
+const MissDot = () => {
+  const t = useTranslation();
+  return <DotIndicator color="red" label={t("indicator.notFound")} />;
+};
 
 // =============================================================================
 // SPINNER STAGE TYPE
@@ -145,6 +158,8 @@ export const CitationStatusIndicator = ({
   isMiss,
   spinnerStage,
 }: CitationStatusIndicatorProps): React.ReactNode => {
+  const t = useTranslation();
+
   if (renderIndicator) return renderIndicator(status);
   if (!showIndicator || indicatorVariant === "none") return null;
 
@@ -172,7 +187,7 @@ export const CitationStatusIndicator = ({
         }}
         data-dc-indicator="pending"
         aria-hidden="true"
-        title={spinnerStage === "slow" ? "Still verifying..." : undefined}
+        title={spinnerStage === "slow" ? t("indicator.stillVerifying") : undefined}
       >
         <SpinnerIcon />
       </span>

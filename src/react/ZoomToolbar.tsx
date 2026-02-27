@@ -12,6 +12,7 @@
 import type React from "react";
 import { useCallback, useEffect } from "react";
 import { EXPANDED_ZOOM_MAX } from "./constants.js";
+import { useTranslation } from "./i18n.js";
 import { LocateIcon, ZoomInIcon, ZoomOutIcon } from "./icons.js";
 import { cn } from "./utils.js";
 
@@ -137,6 +138,8 @@ export function ZoomToolbar({
   onSliderGrab,
   locateDirty = true,
 }: ZoomToolbarProps) {
+  const t = useTranslation();
+
   // Inject singleton <style> tag on first mount, remove on last unmount.
   useEffect(() => {
     mountThumbStyle();
@@ -165,7 +168,7 @@ export function ZoomToolbar({
     >
       <div
         role="toolbar"
-        aria-label="Zoom controls"
+        aria-label={t("zoom.controls")}
         className="flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white/90 rounded-md px-1.5 py-1 shadow-md"
         onClick={stop}
         onKeyDown={stop}
@@ -179,7 +182,7 @@ export function ZoomToolbar({
           }}
           disabled={zoom <= zoomFloor}
           className="size-9 flex items-center justify-center rounded-sm hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
-          aria-label="Zoom out"
+          aria-label={t("zoom.out")}
         >
           <span className="size-4">
             <ZoomOutIcon />
@@ -206,7 +209,7 @@ export function ZoomToolbar({
           onMouseDown={stop}
           onTouchStart={stop}
           className={SLIDER_TRACK_CLASSES}
-          aria-label="Zoom level"
+          aria-label={t("zoom.level")}
           aria-valuetext={`${pct}%`}
         />
 
@@ -227,7 +230,7 @@ export function ZoomToolbar({
               "size-9 flex items-center justify-center rounded-sm transition-all duration-200",
               locateDirty ? "opacity-100 hover:bg-white/15 active:bg-white/25" : "opacity-30 hover:opacity-60",
             )}
-            aria-label={locateDirty ? "Re-center on annotation" : "Centered on annotation"}
+            aria-label={locateDirty ? t("zoom.reCenter") : t("zoom.centered")}
           >
             <span className="size-4">
               <LocateIcon />
@@ -244,7 +247,7 @@ export function ZoomToolbar({
           }}
           disabled={zoom >= zoomMax}
           className="size-9 flex items-center justify-center rounded-sm hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
-          aria-label="Zoom in"
+          aria-label={t("zoom.in")}
         >
           <span className="size-4">
             <ZoomInIcon />

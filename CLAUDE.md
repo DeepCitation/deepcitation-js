@@ -26,6 +26,9 @@ import {
   SourcesListComponent,
   SourcesTrigger,
   SourcesListItem,
+  // i18n
+  DeepCitationI18nProvider,
+  useTranslation,
 } from "deepcitation/react";
 ```
 
@@ -56,6 +59,7 @@ src/
 │   └── promptCompression.ts
 ├── react/
 │   ├── index.ts              # Public API types + consumer-facing exports
+│   ├── i18n.ts               # i18n infrastructure — CANONICAL LOCATION for all i18n symbols
 │   ├── CitationComponent.tsx       # Main component, popover wiring
 │   ├── CitationContentDisplay.tsx  # Variant rendering (chip, superscript, badge, etc.)
 │   ├── CitationErrorBoundary.tsx   # Error boundary for citation components
@@ -249,6 +253,11 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `useCitationEvents()` | `src/react/hooks/useCitationEvents.ts` | Click/hover/keyboard event handlers |
 | `useExpandedPageSideOffset()` | `src/react/hooks/useExpandedPageSideOffset.ts` | Expanded-page popover vertical offset |
 | `useAnimationState()` | `src/react/hooks/useAnimationState.ts` | Enter/exit animation lifecycle |
+| `defaultMessages` | `src/react/i18n.ts` | Default English message dictionary (all i18n keys) |
+| `DeepCitationI18nProvider` | `src/react/i18n.ts` | React context provider for custom translations |
+| `useTranslation()` | `src/react/i18n.ts` | Hook to access the `t()` translator inside components |
+| `createTranslator()` | `src/react/i18n.ts` | Factory for `t()` in non-React contexts (tests, SSR) |
+| `tPlural()` | `src/react/i18n.ts` | Plural form selector using `_one` / `_other` suffix convention |
 
 ### Example
 
