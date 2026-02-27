@@ -7,6 +7,7 @@
  * @packageDocumentation
  */
 
+import { safeReplace } from "../utils/regexSafety.js";
 import type { BaseCitationProps, CitationContent, CitationVariant } from "./types.js";
 import { cn, isUrlCitation } from "./utils.js";
 
@@ -64,8 +65,7 @@ export function getDefaultContent(variant: CitationVariant): CitationContent {
  * Handles cases where LLM output includes brackets in anchorText.
  */
 function stripBrackets(text: string): string {
-  if (text.length > 1000) return text;
-  return text.replace(/^\[[\s[]*/, "").replace(/[\s\]]*\]$/, "");
+  return safeReplace(safeReplace(text, /^\[[\s[]*/, ""), /[\s\]]*\]$/, "");
 }
 
 /**
