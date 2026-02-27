@@ -747,10 +747,7 @@ function IndicatorRow({
  * />
  * ```
  */
-export function CitationDrawer({
-  isOpen,
-  ...props
-}: CitationDrawerProps): React.ReactNode {
+export function CitationDrawer({ isOpen, ...props }: CitationDrawerProps): React.ReactNode {
   if (!isOpen) return null;
   return <OpenCitationDrawer {...props} />;
 }

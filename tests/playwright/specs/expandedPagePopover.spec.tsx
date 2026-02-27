@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/experimental-ct-react";
+import { useMemo } from "react";
 import { CitationComponent } from "../../../src/react/CitationComponent";
 import type { Citation } from "../../../src/types/citation";
 import type { Verification } from "../../../src/types/verification";
@@ -39,6 +40,58 @@ const verificationWithTallImage: Verification = {
     },
   ],
 };
+
+function createCanvasDataUrl(width: number, height: number): string {
+  if (typeof document === "undefined") {
+    // Fallback used only in non-browser contexts. CT runs this in browser.
+    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mO8cuXKfwYGBgYGAAi7Av7W3NgAAAAASUVORK5CYII=";
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mO8cuXKfwYGBgYGAAi7Av7W3NgAAAAASUVORK5CYII=";
+  }
+  ctx.fillStyle = "#f3f4f6";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#111827";
+  ctx.font = "20px sans-serif";
+  ctx.fillText("DeepCitation proof", 20, 40);
+  return canvas.toDataURL("image/png");
+}
+
+function GeneratedImageCitation({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
+  const imageSrc = useMemo(() => createCanvasDataUrl(width, height), [width, height]);
+  const verification = useMemo<Verification>(
+    () => ({
+      status: "found",
+      verifiedMatchSnippet: "Functional status: He is at baseline",
+      document: {
+        verifiedPageNumber: 5,
+        verificationImageSrc: imageSrc,
+        verificationImageDimensions: { width, height },
+      },
+      pages: [
+        {
+          pageNumber: 5,
+          dimensions: { width, height },
+          source: imageSrc,
+          isMatchPage: true,
+        },
+      ],
+    }),
+    [height, imageSrc, width],
+  );
+
+  return <CitationComponent citation={baseCitation} verification={verification} />;
+}
 
 // =============================================================================
 // HELPERS
@@ -315,6 +368,63 @@ test.describe("Expanded-Page Popover Sizing", () => {
     const popoverBox = await popover.boundingBox();
     expect(popoverBox).toBeTruthy();
     expect(popoverBox!.height).toBeGreaterThan(500);
+  });
+
+  test("uses image-driven width for medium pages instead of near-full viewport fallback", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <GeneratedImageCitation width={520} height={300} />
+      </div>,
+    );
+
+    const { popover } = await expandToFullPage(page);
+    const expandedImage = popover.locator("[data-dc-inline-expanded]").filter({ visible: true }).locator("img");
+    await expect(expandedImage).toBeVisible();
+
+    const [popoverWidth, imageWidth] = await Promise.all([
+      popover.evaluate(el => el.getBoundingClientRect().width),
+      expandedImage.evaluate(el => (el as HTMLImageElement).getBoundingClientRect().width),
+    ]);
+
+    expect(popoverWidth).toBeLessThan(650);
+    expect(popoverWidth).toBeLessThanOrEqual(imageWidth + 48);
+  });
+
+  test("expanded width adapts across viewport resize without staying oversized", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <GeneratedImageCitation width={900} height={1200} />
+      </div>,
+    );
+
+    const { popover } = await expandToFullPage(page);
+    const expandedImage = popover.locator("[data-dc-inline-expanded]").filter({ visible: true }).locator("img");
+    await expect(expandedImage).toBeVisible();
+
+    const readSizes = async () => {
+      const [popoverWidth, imageWidth] = await Promise.all([
+        popover.evaluate(el => el.getBoundingClientRect().width),
+        expandedImage.evaluate(el => (el as HTMLImageElement).getBoundingClientRect().width),
+      ]);
+      return { popoverWidth, imageWidth };
+    };
+
+    const initial = await readSizes();
+    expect(initial.popoverWidth).toBeLessThanOrEqual(initial.imageWidth + 48);
+
+    await page.setViewportSize({ width: 700, height: 720 });
+    await page.waitForTimeout(250);
+    const narrowed = await readSizes();
+    expect(narrowed.popoverWidth).toBeLessThan(initial.popoverWidth);
+    expect(narrowed.imageWidth).toBeLessThan(initial.imageWidth);
+    expect(narrowed.popoverWidth).toBeLessThanOrEqual(narrowed.imageWidth + 48);
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.waitForTimeout(250);
+    const widened = await readSizes();
+    expect(widened.popoverWidth).toBeGreaterThan(narrowed.popoverWidth);
+    expect(widened.imageWidth).toBeGreaterThan(narrowed.imageWidth);
+    expect(widened.popoverWidth).toBeLessThanOrEqual(widened.imageWidth + 48);
   });
 });
 

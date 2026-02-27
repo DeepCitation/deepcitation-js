@@ -1,6 +1,6 @@
 import type React from "react";
 import { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CitationStatus } from "../types/citation.js";
+import type { Citation, CitationStatus } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { CitationContentDisplay } from "./CitationContentDisplay.js";
 import {
@@ -13,16 +13,10 @@ import { CitationErrorBoundary } from "./CitationErrorBoundary.js";
 import { useCitationOverlay } from "./CitationOverlayContext.js";
 import type { CitationStatusIndicatorProps, SpinnerStage } from "./CitationStatusIndicator.js";
 import { getStatusFromVerification, getStatusLabel } from "./citationStatus.js";
-import {
-  EXPANDED_IMAGE_SHELL_PX,
-  isValidProofImageSrc,
-  POPOVER_WIDTH,
-  SPINNER_TIMEOUT_MS,
-  TAP_SLOP_PX,
-  TOUCH_CLICK_DEBOUNCE_MS,
-} from "./constants.js";
+import { isValidProofImageSrc, SPINNER_TIMEOUT_MS, TAP_SLOP_PX, TOUCH_CLICK_DEBOUNCE_MS } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
+import { getExpandedPopoverWidth } from "./expandedWidthPolicy.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
@@ -117,6 +111,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `brackets`: [text✓] with square brackets
    * - `text`: Plain text, inherits parent styling
    * - `superscript`: Small raised text like footnotes¹
+   * - `footnote`: Clean footnote marker with neutral default
    * - `badge`: ChatGPT-style source chip with favicon + count
    */
   variant?: CitationVariant;
@@ -133,6 +128,7 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `brackets` → `anchorText`
    * - `text` → `anchorText`
    * - `superscript` → `number`
+   * - `footnote` → `number`
    * - `badge` → `source`
    */
   content?: CitationContent;
@@ -191,6 +187,21 @@ export interface CitationComponentProps extends BaseCitationProps {
    * Side-effect only — never replaces default behavior.
    */
   onTimingEvent?: (event: import("../types/timing.js").CitationTimingEvent) => void;
+  /**
+   * Callback when the user clicks the download button in the popover header.
+   * The button only renders when this prop is provided. Consumers handle actual
+   * download logic — the component just fires the callback with the Citation object.
+   *
+   * @example
+   * ```tsx
+   * <CitationComponent
+   *   citation={citation}
+   *   verification={verification}
+   *   onSourceDownload={(c) => downloadFile(c.attachmentId)}
+   * />
+   * ```
+   */
+  onSourceDownload?: (citation: Citation) => void;
 }
 
 // getStatusLabel, getTrustLevel, isLowTrustMatch, getStatusFromVerification
@@ -264,6 +275,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   expandedImageSrcOverride,
   onExpandedWidthChange,
   prevBeforeExpandedPageRef,
+  onSourceDownload,
 }: {
   renderPopoverContent?: CitationComponentProps["renderPopoverContent"];
   citation: BaseCitationProps["citation"];
@@ -278,6 +290,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   expandedImageSrcOverride: string | null;
   onExpandedWidthChange: (width: number | null) => void;
   prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-evidence">;
+  onSourceDownload?: (citation: Citation) => void;
 }) {
   if (renderPopoverContent) {
     const CustomContent = renderPopoverContent;
@@ -302,6 +315,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
         expandedImageSrcOverride={expandedImageSrcOverride}
         onExpandedWidthChange={onExpandedWidthChange}
         prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
+        onSourceDownload={onSourceDownload}
       />
     </CitationErrorBoundary>
   );
@@ -351,6 +365,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       indicatorVariant = "icon",
       sourceLabel,
       onTimingEvent,
+      onSourceDownload,
     },
     ref,
   ) => {
@@ -1100,6 +1115,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           expandedImageSrcOverride={customExpandedSrc}
           onExpandedWidthChange={setExpandedImageWidth}
           prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
+          onSourceDownload={onSourceDownload}
         />
       );
 
@@ -1173,10 +1189,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                 popoverViewState === "expanded-page"
                   ? {
                       maxWidth: "calc(100dvw - 2rem)",
-                      width:
-                        expandedImageWidth !== null
-                          ? `max(${POPOVER_WIDTH}, min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
-                          : "calc(100dvw - 2rem)",
+                      width: getExpandedPopoverWidth(expandedImageWidth),
                       // Explicit height gives the flex chain a definite reference size
                       // so flex-1 min-h-0 children can grow into available space.
                       // The shift middleware repositions the popover within viewport bounds.
@@ -1190,10 +1203,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                   : popoverViewState === "expanded-evidence"
                     ? {
                         maxWidth: "calc(100dvw - 2rem)",
-                        width:
-                          expandedImageWidth !== null
-                            ? `max(${POPOVER_WIDTH}, min(${expandedImageWidth + EXPANDED_IMAGE_SHELL_PX}px, calc(100dvw - 2rem)))`
-                            : "calc(100dvw - 2rem)",
+                        width: getExpandedPopoverWidth(expandedImageWidth),
                       }
                     : undefined
               }

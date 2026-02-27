@@ -11,7 +11,7 @@ import type { BaseCitationProps, CitationContent, CitationVariant } from "./type
 import { isUrlCitation } from "./utils.js";
 
 /** Variants that handle their own hover styling (don't need parent hover) */
-export const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge", "linter", "superscript"]);
+export const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge", "linter", "superscript", "footnote"]);
 
 /**
  * Get status-aware hover classes for contained hover styling.

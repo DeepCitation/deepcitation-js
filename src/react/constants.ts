@@ -515,11 +515,17 @@ export const WHEEL_ZOOM_SENSITIVITY = 0.005;
  */
 export const COPY_FEEDBACK_DURATION_MS = 2000;
 
-/**
- * Duration in ms that footer hints (e.g. "Click to expand") remain bold/dark
- * before transitioning to muted gray. Used by FooterHint component.
- */
-export const FOOTER_HINT_DURATION_MS = 2000;
+/** Shared neutral interactive styling for tertiary actions (links/buttons). */
+export const TERTIARY_ACTION_BASE_CLASSES =
+  "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40";
+/** Idle tertiary action text color. */
+export const TERTIARY_ACTION_IDLE_CLASSES = "text-gray-600 dark:text-gray-400";
+/** Hover/focus tertiary action text color. */
+export const TERTIARY_ACTION_HOVER_CLASSES = "hover:text-blue-600 dark:hover:text-blue-400";
+/** Shared page pill focus treatment. */
+export const PAGE_PILL_FOCUS_CLASSES = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40";
+/** Helper hint text style (muted and non-competitive). */
+export const HELPER_HINT_TEXT_CLASSES = "font-medium text-gray-400 dark:text-gray-500";
 
 /** Auto-hide spinner after this duration if verification is still pending. */
 export const SPINNER_TIMEOUT_MS = 5000;

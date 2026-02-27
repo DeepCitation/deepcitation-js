@@ -139,6 +139,42 @@ export const CitationContentDisplay = ({
     );
   }
 
+  // Variant: footnote (clean footnote marker with neutral default)
+  if (variant === "footnote") {
+    const anchorTextDisplay = citation.anchorText?.toString() || "";
+    const citationNumber = citation.citationNumber?.toString() || "1";
+
+    // Neutral gray default, status colors when resolved
+    const footnoteStatusClasses = cn(
+      !isVerified && !isMiss && !isPartialMatch && !shouldShowSpinner && "text-gray-500 dark:text-gray-400",
+      shouldShowSpinner && "text-gray-400 dark:text-gray-500",
+      isVerified && !isPartialMatch && !shouldShowSpinner && "text-green-600 dark:text-green-500",
+      isPartialMatch && !shouldShowSpinner && "text-amber-500 dark:text-amber-400",
+      isMiss && !shouldShowSpinner && "text-red-500 dark:text-red-400",
+    );
+
+    return (
+      <>
+        {anchorTextDisplay && <span className="font-normal">{anchorTextDisplay}</span>}
+        <sup
+          className={cn(
+            "text-xs font-normal transition-colors",
+            footnoteStatusClasses,
+            ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner),
+          )}
+        >
+          <span
+            className={cn(isMiss && !shouldShowSpinner && "opacity-70")}
+            style={isMiss && !shouldShowSpinner ? MISS_WAVY_UNDERLINE_STYLE : undefined}
+          >
+            {citationNumber}
+          </span>
+          {indicator}
+        </sup>
+      </>
+    );
+  }
+
   // Variant: text
   if (variant === "text") {
     return (

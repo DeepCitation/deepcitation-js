@@ -26,19 +26,21 @@ import {
   EXPANDED_ZOOM_MAX,
   EXPANDED_ZOOM_MIN,
   EXPANDED_ZOOM_STEP,
-  FOOTER_HINT_DURATION_MS,
+  HELPER_HINT_TEXT_CLASSES,
   isValidProofImageSrc,
   KEYHOLE_FADE_WIDTH,
   KEYHOLE_SKIP_THRESHOLD,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
   MISS_TRAY_THUMBNAIL_HEIGHT,
+  TERTIARY_ACTION_BASE_CLASSES,
+  TERTIARY_ACTION_HOVER_CLASSES,
+  TERTIARY_ACTION_IDLE_CLASSES,
   WHEEL_ZOOM_SENSITIVITY,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
-import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { deriveOutcomeLabel } from "./outcomeLabel.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "./overlayGeometry.js";
@@ -271,30 +273,9 @@ const KEYHOLE_SCROLLBAR_HIDE: React.CSSProperties = {
 // FOOTER HINT (shared bold-then-muted hint for evidence tray / expanded image)
 // =============================================================================
 
-/** Renders hint text that appears bold/dark for 2s, then transitions to muted gray. */
+/** Renders muted helper text for secondary guidance (for example, "Click to expand"). */
 function FooterHint({ text }: { text: string }) {
-  const [highlighted, setHighlighted] = useState(true);
-  const reducedMotion = usePrefersReducedMotion();
-
-  useEffect(() => {
-    if (reducedMotion) {
-      setHighlighted(false);
-      return;
-    }
-    const timer = setTimeout(() => setHighlighted(false), FOOTER_HINT_DURATION_MS);
-    return () => clearTimeout(timer);
-  }, [reducedMotion]);
-
-  return (
-    <span
-      className={cn(
-        "font-bold transition-colors duration-500",
-        highlighted ? "text-gray-900 dark:text-gray-200" : "text-gray-400 dark:text-gray-500",
-      )}
-    >
-      {text}
-    </span>
-  );
+  return <span className={HELPER_HINT_TEXT_CLASSES}>{text}</span>;
 }
 
 // =============================================================================
@@ -589,7 +570,12 @@ function EvidenceTrayFooter({
         {onPageClick && (
           <button
             type="button"
-            className="flex items-center gap-0.5 text-[11px] font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
+            className={cn(
+              "flex items-center gap-0.5 text-[11px] font-medium cursor-pointer",
+              TERTIARY_ACTION_BASE_CLASSES,
+              TERTIARY_ACTION_IDLE_CLASSES,
+              TERTIARY_ACTION_HOVER_CLASSES,
+            )}
             onClick={e => {
               e.stopPropagation();
               onPageClick();
@@ -862,7 +848,11 @@ export function InlineExpandedImage({
   // Container size as state (not ref) so that ResizeObserver updates trigger re-renders.
   // This ensures the initial-zoom effect re-fires once the container is measured.
   const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
-  const hasSetInitialZoom = useRef(false);
+  // Tracks whether zoom was changed by explicit user interaction (slider/wheel/pinch).
+  // When true, viewport resizes keep the user's zoom level instead of re-fitting.
+  const hasManualZoomRef = useRef(false);
+  // Auto-locate only once per image load; resizing should not keep re-centering/pulling view.
+  const hasAutoScrolledToAnnotationRef = useRef(false);
 
   // Effective annotation items: override props take precedence, then verification.document, then null.
   const effectivePhraseItem = highlightItem ?? verification?.document?.phraseMatchDeepItem ?? null;
@@ -896,7 +886,7 @@ export function InlineExpandedImage({
   // from multiple setState calls in the render body. The one-frame delay is
   // imperceptible since InlineExpandedImage is typically hidden (display:none) in
   // the triple-always-render pattern during view-state transitions.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: hasSetInitialZoom is a stable ref; initialOverlayHidden is the reset target value, not a reactive dependency
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref identities are stable; initialOverlayHidden is the reset target value, not a reactive dependency
   useEffect(() => {
     setImageLoaded(false);
     setNaturalWidth(null);
@@ -904,7 +894,8 @@ export function InlineExpandedImage({
     setZoom(1);
     setZoomFloor(EXPANDED_ZOOM_MIN);
     setOverlayHidden(initialOverlayHidden);
-    hasSetInitialZoom.current = false;
+    hasManualZoomRef.current = false;
+    hasAutoScrolledToAnnotationRef.current = false;
   }, [src]);
 
   // ---------------------------------------------------------------------------
@@ -929,9 +920,8 @@ export function InlineExpandedImage({
   // (flex-1 min-h-0 under a maxHeight-constrained column) has already allocated
   // exactly the vertical space remaining after header zones and margins.
   useEffect(() => {
-    if (!fill || !imageLoaded || !naturalWidth || !naturalHeight || hasSetInitialZoom.current) return;
+    if (!fill || !imageLoaded || !naturalWidth || !naturalHeight) return;
     if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;
-    hasSetInitialZoom.current = true;
     // Max image width the popover can provide: viewport - 2rem outer margin - shell px.
     const maxImageWidth =
       typeof window !== "undefined" ? window.innerWidth - 32 - EXPANDED_IMAGE_SHELL_PX : containerSize.width;
@@ -939,20 +929,25 @@ export function InlineExpandedImage({
     // Width-only zoom: fill the popover horizontally; tall images scroll vertically
     // inside the overflow-auto container (same pattern as keyhole's horizontal scroll).
     const fitZoom = Math.min(1, Math.max(0.1, fitZoomW));
-    if (fitZoom < 1) setZoom(fitZoom);
+    if (!hasManualZoomRef.current) {
+      setZoom(prevZoom => (Math.abs(prevZoom - fitZoom) < 0.005 ? prevZoom : fitZoom));
+    }
     setZoomFloor(Math.min(EXPANDED_ZOOM_MIN, fitZoom));
+    const effectiveZoom = hasManualZoomRef.current ? zoomRef.current : fitZoom;
     // Report zoomed dimensions so the popover sizes to the displayed image,
     // not the natural pixel width (which could be e.g. 1700px for a PDF page).
-    onNaturalSize?.(Math.round(naturalWidth * fitZoom), Math.round(naturalHeight * fitZoom));
+    onNaturalSize?.(Math.round(naturalWidth * effectiveZoom), Math.round(naturalHeight * effectiveZoom));
 
     // Auto-scroll to annotation: after fit-to-screen zoom is computed, scroll
     // the container so the annotation is centered in view.
     // Uses rAF to wait for the DOM to reflow at the new zoom level.
     // Prefers anchor text position when it will be highlighted.
+    if (hasAutoScrolledToAnnotationRef.current || hasManualZoomRef.current) return;
+
     let rafId: number | undefined;
     const scrollItem = scrollTarget ?? effectivePhraseItem;
     if (scrollItem && renderScale) {
-      const effectiveZoom = fitZoom < 1 ? fitZoom : 1;
+      hasAutoScrolledToAnnotationRef.current = true;
       rafId = requestAnimationFrame(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -1073,6 +1068,8 @@ export function InlineExpandedImage({
       rafId = null;
       const d = pendingDelta;
       pendingDelta = 0;
+      if (d === 0) return;
+      hasManualZoomRef.current = true;
       setZoom(z => clampZoom(z + d));
     };
     const onWheel = (e: WheelEvent) => {
@@ -1142,6 +1139,7 @@ export function InlineExpandedImage({
     const flushPinchZoom = () => {
       rafId = null;
       if (pendingZoom !== null) {
+        hasManualZoomRef.current = true;
         setZoom(pendingZoom);
         pendingZoom = null;
       }
@@ -1375,7 +1373,10 @@ export function InlineExpandedImage({
         {showZoomControls && (
           <ZoomToolbar
             zoom={zoom}
-            onZoomChange={z => setZoom(clampZoom(z))}
+            onZoomChange={z => {
+              hasManualZoomRef.current = true;
+              setZoom(clampZoom(z));
+            }}
             zoomFloor={zoomFloor}
             zoomStep={EXPANDED_ZOOM_STEP}
             showLocate={showScrollToAnnotation}
