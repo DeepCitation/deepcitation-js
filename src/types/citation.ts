@@ -68,6 +68,9 @@ export interface VerifyCitationRequest {
   outputImageFormat?: OutputImageFormat;
   apiKey?: string; // Optional API key for authentication
 
+  /** Developer's end-user identifier for usage attribution */
+  endUserId?: string;
+
   /**
    * When true, the backend will persist proof artifacts (images, metadata)
    * and return proofId, proofUrl, and proofImageUrl in the response.

@@ -42,6 +42,8 @@ export interface DeepCitationConfig {
    * ```
    */
   logger?: DeepCitationLogger;
+  /** Developer's end-user identifier for usage attribution. Applied to all API calls unless overridden per-request. */
+  endUserId?: string;
 }
 
 /**
@@ -94,6 +96,8 @@ export interface UploadFileOptions {
   attachmentId?: string;
   /** Optional custom filename (uses File.name if not provided) */
   filename?: string;
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
@@ -124,6 +128,8 @@ export interface PrepareUrlOptions {
    * Default is false (use cache if available).
    */
   skipCache?: boolean;
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
@@ -203,6 +209,8 @@ export interface VerifyCitationsOptions {
     /** Whether to also return base64 images inline */
     includeBase64?: boolean;
   };
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
@@ -220,6 +228,8 @@ export interface FileInput {
   filename?: string;
   /** Optional custom attachment ID */
   attachmentId?: string;
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
@@ -262,6 +272,8 @@ export interface VerifyInput {
    * Proof URL configuration. Only used when `generateProofUrls` is `true`.
    */
   proofConfig?: VerifyCitationsOptions["proofConfig"];
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
@@ -276,6 +288,8 @@ export interface ConvertFileInput {
   filename?: string;
   /** Optional custom attachment ID */
   attachmentId?: string;
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
@@ -307,6 +321,8 @@ export interface ConvertFileResponse {
 export interface PrepareConvertedFileOptions {
   /** The attachment ID from a previous convertFile call */
   attachmentId: string;
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
 }
 
 /**
