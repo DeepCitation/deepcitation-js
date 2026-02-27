@@ -1164,11 +1164,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                   : lockedSide
               }
               sideOffset={expandedPageSideOffset}
-              // Enable collision avoidance for all states — Radix's shift middleware
-              // keeps the popover within viewport bounds on narrow screens.
-              // The locked side (useLockedPopoverSide) already prevents vertical
-              // flipping; shift only adds horizontal containment.
-              avoidCollisions
+              // Summary: disable collision avoidance — the locked side handles placement
+              // and we don't want Radix's flip middleware causing scroll-jank.
+              // Expanded states: enable it so Radix's shift middleware keeps the
+              // wider popover within viewport bounds on narrow screens.
+              avoidCollisions={popoverViewState !== "summary"}
               onCloseAutoFocus={(e: Event) => {
                 // Prevent Radix from returning focus to the trigger on close.
                 // Without this, the browser scrolls the trigger into view — which

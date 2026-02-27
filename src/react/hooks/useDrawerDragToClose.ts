@@ -127,6 +127,8 @@ export function useDrawerDragToClose({
       if (snapBackRafRef.current !== null) {
         cancelAnimationFrame(snapBackRafRef.current);
         snapBackRafRef.current = null;
+        dragOffsetRef.current = 0;
+        setDragOffset(0);
       }
       startYRef.current = e.touches[0].clientY;
       hasVibratedRef.current = false;
