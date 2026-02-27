@@ -61,6 +61,9 @@ export function useDrawerDragToClose({
   const [isDragging, setIsDragging] = useState(false);
   const [dragDirection, setDragDirection] = useState<"up" | "down" | null>(null);
 
+  /** Ref mirror of dragOffset so touchend can read the latest value synchronously. */
+  const dragOffsetRef = useRef(0);
+
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -147,19 +150,23 @@ export function useDrawerDragToClose({
         history.shift();
       }
 
+      let offset: number;
       if (deltaY >= 0) {
         // Downward drag — close gesture (rubber-banded past threshold)
-        setDragOffset(applyRubberBand(deltaY));
+        offset = applyRubberBand(deltaY);
         setDragDirection("down");
       } else if (onExpandRef.current) {
         // Upward drag — expand gesture (negative offset, clamped to -threshold)
-        setDragOffset(Math.max(-threshold, deltaY));
+        offset = Math.max(-threshold, deltaY);
         setDragDirection("up");
       } else {
         // No onExpand handler — ignore upward drag
-        setDragOffset(0);
+        offset = 0;
         setDragDirection(null);
       }
+
+      dragOffsetRef.current = offset;
+      setDragOffset(offset);
 
       // Fire haptic feedback once when the drag crosses the threshold
       if (!hasVibratedRef.current && (deltaY >= threshold || deltaY <= -threshold)) {
@@ -177,44 +184,41 @@ export function useDrawerDragToClose({
     const velocity = computeVelocity();
     touchHistoryRef.current = [];
 
-    // Determine action from current state
-    // We read dragOffset via the functional updater to get the latest value
-    setDragOffset(prev => {
-      const shouldClose =
-        (prev >= threshold || velocity > FLICK_VELOCITY_THRESHOLD) && isMountedRef.current;
-      const shouldExpand =
-        prev <= -threshold && isMountedRef.current && onExpandRef.current;
+    const currentOffset = dragOffsetRef.current;
 
-      if (shouldClose) {
-        // Fire close after state settles
-        queueMicrotask(() => {
-          if (isMountedRef.current) onCloseRef.current();
-        });
-        // Keep offset at current position — the drawer will unmount
-        return prev;
-      }
-
-      if (shouldExpand) {
-        queueMicrotask(() => {
-          if (isMountedRef.current) onExpandRef.current?.();
-        });
-        return prev;
-      }
-
-      // Snap back: set isDragging=false first (enables CSS transition),
-      // then defer dragOffset=0 to the next frame so the transition animates.
+    // Downward close: past threshold OR fast flick
+    if ((currentOffset >= threshold || velocity > FLICK_VELOCITY_THRESHOLD) && isMountedRef.current) {
       setIsDragging(false);
       setDragDirection(null);
-
-      snapBackRafRef.current = requestAnimationFrame(() => {
-        snapBackRafRef.current = null;
-        if (isMountedRef.current) {
-          setDragOffset(0);
-        }
+      queueMicrotask(() => {
+        if (isMountedRef.current) onCloseRef.current();
       });
+      return;
+    }
 
-      // Return prev for now — the rAF will set it to 0
-      return prev;
+    // Upward expand: past negative threshold
+    if (currentOffset <= -threshold && isMountedRef.current && onExpandRef.current) {
+      setIsDragging(false);
+      setDragDirection(null);
+      queueMicrotask(() => {
+        if (isMountedRef.current) onExpandRef.current?.();
+      });
+      return;
+    }
+
+    // Snap back: two-phase commit for CSS transition animation.
+    // Phase 1: set isDragging=false (enables CSS transition), keep offset non-zero.
+    setIsDragging(false);
+    setDragDirection(null);
+
+    // Phase 2: defer offset reset to next frame so the browser sees the transition
+    // activate before the value changes — this produces a smooth animated snap-back.
+    snapBackRafRef.current = requestAnimationFrame(() => {
+      snapBackRafRef.current = null;
+      if (isMountedRef.current) {
+        dragOffsetRef.current = 0;
+        setDragOffset(0);
+      }
     });
   }, [threshold, computeVelocity]);
 
