@@ -28,7 +28,7 @@ import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { SpinnerIcon } from "./icons.js";
 import { buildIntentSummary, type MatchSnippet } from "./searchSummaryUtils.js";
-import type { BaseCitationProps } from "./types.js";
+import type { BaseCitationProps, IndicatorVariant } from "./types.js";
 import {
   getUrlAccessExplanation,
   mapSearchStatusToFetchStatus,

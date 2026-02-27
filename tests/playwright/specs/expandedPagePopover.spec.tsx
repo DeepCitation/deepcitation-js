@@ -293,7 +293,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
       // At 768px viewport, image should fill most of the width
       // (800px natural, capped to ~768 - 2rem = 736px)
       // Triple always-render: filter to visible InlineExpandedImage before locating img inside.
-    const img = popover.locator("[data-dc-inline-expanded]").filter({ visible: true }).locator("img");
+      const img = popover.locator("[data-dc-inline-expanded]").filter({ visible: true }).locator("img");
       await expect(img).toBeVisible();
       const renderedWidth = await img.evaluate(el => (el as HTMLImageElement).getBoundingClientRect().width);
       expect(renderedWidth).toBeGreaterThan(500);

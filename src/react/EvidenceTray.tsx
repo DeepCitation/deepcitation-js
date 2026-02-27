@@ -825,6 +825,9 @@ export function InlineExpandedImage({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
+  // Dedup guard: avoids redundant onNaturalSize calls when the computed
+  // zoomed dimensions haven't actually changed (e.g. during window resize).
+  const lastReportedSizeRef = useRef<{ w: number; h: number } | null>(null);
   // When true, the CSS annotation overlay (spotlight + brackets) is hidden so the
   // user can view the underlying page image unfettered. The backend-drawn annotations
   // on the image itself remain visible. Only applies in fill (expanded-page) mode.
@@ -896,6 +899,7 @@ export function InlineExpandedImage({
     setOverlayHidden(initialOverlayHidden);
     hasManualZoomRef.current = false;
     hasAutoScrolledToAnnotationRef.current = false;
+    lastReportedSizeRef.current = null;
   }, [src]);
 
   // ---------------------------------------------------------------------------
@@ -936,7 +940,13 @@ export function InlineExpandedImage({
     const effectiveZoom = hasManualZoomRef.current ? zoomRef.current : fitZoom;
     // Report zoomed dimensions so the popover sizes to the displayed image,
     // not the natural pixel width (which could be e.g. 1700px for a PDF page).
-    onNaturalSize?.(Math.round(naturalWidth * effectiveZoom), Math.round(naturalHeight * effectiveZoom));
+    const reportedW = Math.round(naturalWidth * effectiveZoom);
+    const reportedH = Math.round(naturalHeight * effectiveZoom);
+    const last = lastReportedSizeRef.current;
+    if (!last || last.w !== reportedW || last.h !== reportedH) {
+      lastReportedSizeRef.current = { w: reportedW, h: reportedH };
+      onNaturalSize?.(reportedW, reportedH);
+    }
 
     // Auto-scroll to annotation: after fit-to-screen zoom is computed, scroll
     // the container so the annotation is centered in view.

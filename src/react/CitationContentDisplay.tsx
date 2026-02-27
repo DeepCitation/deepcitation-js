@@ -9,7 +9,7 @@
 
 import type React from "react";
 import type { CitationStatus } from "../types/citation.js";
-import { getStatusHoverClasses } from "./CitationContentDisplay.utils.js";
+import { getInteractionClasses } from "./CitationContentDisplay.utils.js";
 import { CitationStatusIndicator, type CitationStatusIndicatorProps } from "./CitationStatusIndicator.js";
 import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
 import type { CitationContent, CitationRenderProps, CitationVariant } from "./types.js";
@@ -48,6 +48,8 @@ export interface CitationContentDisplayProps {
   faviconUrl?: string;
   additionalCount?: number;
   indicatorProps: CitationStatusIndicatorProps;
+  /** Whether the popover/tooltip is currently open (drives active state styling). */
+  isOpen: boolean;
 }
 
 /**
@@ -71,6 +73,7 @@ export const CitationContentDisplay = ({
   faviconUrl,
   additionalCount,
   indicatorProps,
+  isOpen,
 }: CitationContentDisplayProps): React.ReactNode => {
   const indicator = <CitationStatusIndicator {...indicatorProps} />;
 
@@ -96,7 +99,7 @@ export const CitationContentDisplay = ({
         className={cn(
           "inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-[0.9em] font-normal transition-colors",
           "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
-          ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner),
+          getInteractionClasses(isOpen, variant),
         )}
       >
         <span
@@ -112,11 +115,12 @@ export const CitationContentDisplay = ({
     );
   }
 
+  // Shared across superscript and footnote variants
+  const anchorTextDisplay = citation.anchorText?.toString() || "";
+  const citationNumber = citation.citationNumber?.toString() || "1";
+
   // Variant: superscript (footnote style)
   if (variant === "superscript") {
-    const anchorTextDisplay = citation.anchorText?.toString() || "";
-    const citationNumber = citation.citationNumber?.toString() || "1";
-
     const supStatusClasses = cn(
       !shouldShowSpinner && "text-gray-700 dark:text-gray-200",
       shouldShowSpinner && "text-gray-500 dark:text-gray-400",
@@ -128,7 +132,7 @@ export const CitationContentDisplay = ({
           className={cn(
             "font-medium transition-colors px-0.5 rounded",
             supStatusClasses,
-            ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner),
+            getInteractionClasses(isOpen, variant),
           )}
           style={{ fontSize: "0.65em", lineHeight: 0, position: "relative", top: "-0.65em", verticalAlign: "baseline" }}
         >
@@ -141,9 +145,6 @@ export const CitationContentDisplay = ({
 
   // Variant: footnote (clean footnote marker with neutral default)
   if (variant === "footnote") {
-    const anchorTextDisplay = citation.anchorText?.toString() || "";
-    const citationNumber = citation.citationNumber?.toString() || "1";
-
     // Neutral gray default, status colors when resolved
     const footnoteStatusClasses = cn(
       !isVerified && !isMiss && !isPartialMatch && !shouldShowSpinner && "text-gray-500 dark:text-gray-400",
@@ -160,7 +161,7 @@ export const CitationContentDisplay = ({
           className={cn(
             "text-xs font-normal transition-colors",
             footnoteStatusClasses,
-            ...getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner),
+            getInteractionClasses(isOpen, variant),
           )}
         >
           <span
@@ -194,11 +195,7 @@ export const CitationContentDisplay = ({
           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium",
           "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
           "transition-colors cursor-pointer",
-          isVerified && !isPartialMatch && !shouldShowSpinner && "hover:bg-green-600/10 dark:hover:bg-green-500/10",
-          isPartialMatch && !shouldShowSpinner && "hover:bg-amber-500/10 dark:hover:bg-amber-500/10",
-          isMiss && !shouldShowSpinner && "hover:bg-red-500/10 dark:hover:bg-red-400/10",
-          (shouldShowSpinner || (!isVerified && !isMiss && !isPartialMatch)) &&
-            "hover:bg-gray-200 dark:hover:bg-gray-700",
+          getInteractionClasses(isOpen, variant),
         )}
       >
         {faviconSrc && (
@@ -261,10 +258,8 @@ export const CitationContentDisplay = ({
 
     const linterClasses = cn(
       "cursor-pointer font-normal",
-      isVerifiedState && "hover:bg-green-600/10 dark:hover:bg-green-500/10",
-      isPartialState && "hover:bg-amber-500/10 dark:hover:bg-amber-500/10",
-      isMissState && "hover:bg-red-500/10 dark:hover:bg-red-400/10",
-      isPendingState && "bg-gray-500/[0.05] hover:bg-gray-500/10 dark:bg-gray-400/[0.05] dark:hover:bg-gray-400/10",
+      isPendingState && "bg-gray-500/[0.05] dark:bg-gray-400/[0.05]",
+      getInteractionClasses(isOpen, variant),
     );
 
     return (

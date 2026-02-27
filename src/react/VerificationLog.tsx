@@ -4,7 +4,7 @@ import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.
 import type { Verification } from "../types/verification.js";
 import {
   DOT_COLORS,
-  PAGE_PILL_FOCUS_CLASSES,
+  FOCUS_RING_CLASSES,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
   TERTIARY_ACTION_IDLE_CLASSES,
@@ -256,7 +256,7 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }:
         className={cn(
           "relative inline-flex items-center gap-0.5 px-2 py-1 text-xs font-medium rounded border cursor-pointer",
           "transition-colors bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40",
-          PAGE_PILL_FOCUS_CLASSES,
+          FOCUS_RING_CLASSES,
           "after:content-[''] after:absolute after:inset-x-[-8px] after:inset-y-[-14px]",
         )}
         aria-label={isImage ? "Close image view" : hasPage ? `Close page ${pageNumber} view` : "Close page view"}
@@ -289,12 +289,10 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }:
       }}
       className={cn(
         "relative inline-flex items-center gap-0.5 px-2 py-1 text-xs font-medium rounded border cursor-pointer",
-        "transition-colors",
         TERTIARY_ACTION_BASE_CLASSES,
         TERTIARY_ACTION_IDLE_CLASSES,
         TERTIARY_ACTION_HOVER_CLASSES,
         "hover:bg-gray-200 dark:hover:bg-gray-700",
-        PAGE_PILL_FOCUS_CLASSES,
         "after:content-[''] after:absolute after:inset-x-[-8px] after:inset-y-[-14px]",
         colorClasses,
       )}

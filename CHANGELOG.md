@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `onSourceDownload` callback prop on `CitationComponent` — renders a download button in the popover header for both URL and Document citations.
 - `DownloadIcon` SVG component exported from `deepcitation/react`.
+- `footnote` display variant — a clean numeric footnote marker with neutral gray default and status-aware coloring after verification.
 
 ### Deprecated
 

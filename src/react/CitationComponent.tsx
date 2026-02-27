@@ -6,7 +6,7 @@ import { CitationContentDisplay } from "./CitationContentDisplay.js";
 import {
   getDefaultContent,
   getDisplayText,
-  getStatusHoverClasses,
+  getInteractionClasses,
   VARIANTS_WITH_OWN_HOVER,
 } from "./CitationContentDisplay.utils.js";
 import { CitationErrorBoundary } from "./CitationErrorBoundary.js";
@@ -1032,6 +1032,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         faviconUrl={faviconUrl}
         additionalCount={additionalCount}
         indicatorProps={indicatorProps}
+        isOpen={isHovering}
       />
     );
 
@@ -1053,7 +1054,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         isMiss);
 
     // Shared trigger element props
-    // All variants use status-aware hover colors (green/amber/red/gray)
+    // All variants use neutral hover/active colors (shadcn-inspired grey palette)
     // Cursor is always pointer since click toggles popover/details
     const cursorClass = "cursor-pointer";
 
@@ -1076,8 +1077,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         // Improved touch target size on mobile (minimum 44px recommended)
         // Using py-1.5 for better touch accessibility without breaking layout
         isMobile && "py-1.5 touch-manipulation",
-        // Status-aware hover for variants that don't handle their own hover styling (10% opacity)
-        ...(variantHasOwnHover ? [] : getStatusHoverClasses(isVerified, isPartialMatch, isMiss, shouldShowSpinner, 10)),
+        // Neutral hover/active for variants that don't handle their own hover styling
+        ...(variantHasOwnHover ? [] : [getInteractionClasses(isHovering, variant)]),
         // Focus styles for keyboard accessibility
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
         className,
