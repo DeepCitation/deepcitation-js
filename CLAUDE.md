@@ -89,7 +89,8 @@ src/
 │   │   ├── usePopoverAlignOffset.ts # Horizontal viewport clamping (replaces shift middleware)
 │   │   ├── useViewportBoundaryGuard.ts # Hard viewport boundary guard (Layer 3 safety net)
 │   │   ├── useAnimatedHeight.ts      # Imperative height animation for viewState transitions
-│   │   └── useAnimationState.ts     # Enter/exit animation lifecycle
+│   │   ├── useAnimationState.ts     # Enter/exit animation lifecycle
+│   │   └── useWheelZoom.ts          # Wheel/trackpad zoom with gesture anchor
 │   └── utils.ts          # generateCitationKey() — CANONICAL LOCATION
 ├── markdown/
 │   ├── renderMarkdown.ts
@@ -262,6 +263,7 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `VIEWPORT_MARGIN_PX` | `src/react/constants.ts` | Viewport edge margin for popover positioning (16px) |
 | `useAnimatedHeight()` | `src/react/hooks/useAnimatedHeight.ts` | Imperative height animation for viewState transitions |
 | `useAnimationState()` | `src/react/hooks/useAnimationState.ts` | Enter/exit animation lifecycle |
+| `useWheelZoom()` | `src/react/hooks/useWheelZoom.ts` | Wheel/trackpad zoom with gesture anchor |
 | `EXPANDED_POPOVER_MID_WIDTH` | `src/react/expandedWidthPolicy.ts` | Mid-width fallback for expanded popover states |
 | `getExpandedPopoverWidth()` | `src/react/expandedWidthPolicy.ts` | Computes expanded popover width from image width |
 | `getInteractionClasses()` | `src/react/CitationContentDisplay.utils.ts` | Hover/active interaction classes for citation triggers |
