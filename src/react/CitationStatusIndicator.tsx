@@ -62,9 +62,13 @@ const PartialIndicator = () => (
   </span>
 );
 
-/** Miss indicator - red X for not found (centered, not subscript) */
+/** Miss indicator - red X for not found (centered, not subscript).
+ * Subtle fade-in entry so the miss result doesn't feel like the UI "gave up". */
 const MissIndicator = () => (
-  <StatusIndicatorWrapper className="relative top-[0.1em] [text-decoration:none]" dataIndicator="error">
+  <StatusIndicatorWrapper
+    className="relative top-[0.1em] [text-decoration:none] animate-in fade-in-0 duration-100"
+    dataIndicator="error"
+  >
     <XIcon />
   </StatusIndicatorWrapper>
 );
@@ -180,8 +184,8 @@ export const CitationStatusIndicator = ({
         {spinnerStage === "slow" && (
           <style>{`
             @keyframes dc-spin-ease {
-              0% { transform: rotate(0deg); animation-timing-function: ease-in; }
-              50% { transform: rotate(180deg); animation-timing-function: ease-out; }
+              0% { transform: rotate(0deg); }
+              60% { transform: rotate(252deg); }
               100% { transform: rotate(360deg); }
             }
             @media (prefers-reduced-motion: reduce) {

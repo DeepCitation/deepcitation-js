@@ -16,10 +16,10 @@ import { getStatusFromVerification, getStatusLabel } from "./citationStatus.js";
 import { isValidProofImageSrc, SPINNER_TIMEOUT_MS, TAP_SLOP_PX, TOUCH_CLICK_DEBOUNCE_MS } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
-import { getExpandedPopoverWidth } from "./expandedWidthPolicy.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
+import { usePopoverAlignOffset } from "./hooks/usePopoverAlignOffset.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { acquireScrollLock, releaseScrollLock } from "./scrollLock.js";
@@ -273,7 +273,6 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   viewState,
   onViewStateChange,
   expandedImageSrcOverride,
-  onExpandedWidthChange,
   prevBeforeExpandedPageRef,
   onSourceDownload,
 }: {
@@ -288,7 +287,6 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   viewState: PopoverViewState;
   onViewStateChange: (viewState: PopoverViewState) => void;
   expandedImageSrcOverride: string | null;
-  onExpandedWidthChange: (width: number | null) => void;
   prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-evidence">;
   onSourceDownload?: (citation: Citation) => void;
 }) {
@@ -313,7 +311,6 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
         viewState={viewState}
         onViewStateChange={onViewStateChange}
         expandedImageSrcOverride={expandedImageSrcOverride}
-        onExpandedWidthChange={onExpandedWidthChange}
         prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
         onSourceDownload={onSourceDownload}
       />
@@ -403,9 +400,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const [popoverViewState, setPopoverViewState] = useState<PopoverViewState>("summary");
     // Custom image src from behaviorConfig.onClick returning setImageExpanded: "<url>"
     const [customExpandedSrc, setCustomExpandedSrc] = useState<string | null>(null);
-    // Natural width of the expanded image (propagated from DefaultPopoverContent).
-    // Used to size PopoverContent so floating-ui can position it correctly.
-    const [expandedImageWidth, setExpandedImageWidth] = useState<number | null>(null);
     // Tracks which state preceded expanded-page so Escape can navigate back correctly.
     // Lifted here (from DefaultPopoverContent) so onEscapeKeyDown on <PopoverContent> can read it.
     const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
@@ -425,7 +419,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       setIsHovering(false);
       setPopoverViewState("summary");
       setCustomExpandedSrc(null);
-      setExpandedImageWidth(null);
     }, []);
 
     // Track if popover was already open before current interaction (for mobile/lazy mode).
@@ -485,13 +478,14 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       [ref],
     );
 
-    // Isolated into a separate hook so the React Compiler can optimize CitationComponent
-    // (setState in useLayoutEffect causes a compiler bailout for the entire component).
-    const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef);
-
     // Lock the popover side (top/bottom) on open so scroll doesn't cause Radix's
     // flip middleware to jump the popover between sides. Also isolated for compiler.
     const lockedSide = useLockedPopoverSide(isHovering, popoverPosition === "top" ? "top" : "bottom", triggerRef);
+
+    // Isolated into separate hooks so the React Compiler can optimize CitationComponent
+    // (setState in useLayoutEffect causes a compiler bailout for the entire component).
+    const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef, lockedSide);
+    const popoverAlignOffset = usePopoverAlignOffset(isHovering, popoverViewState, triggerRef, popoverContentRef);
 
     const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
     const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
@@ -1072,7 +1066,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       className: cn(
         "relative inline-flex items-baseline",
         "px-0.5 -mx-0.5 rounded-sm",
-        "transition-colors duration-75",
+        "transition-colors duration-100 active:scale-[0.98]",
         cursorClass,
         // Improved touch target size on mobile (minimum 44px recommended)
         // Using py-1.5 for better touch accessibility without breaking layout
@@ -1114,7 +1108,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           viewState={popoverViewState}
           onViewStateChange={setPopoverViewState}
           expandedImageSrcOverride={customExpandedSrc}
-          onExpandedWidthChange={setExpandedImageWidth}
           prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
           onSourceDownload={onSourceDownload}
         />
@@ -1158,17 +1151,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             <PopoverContent
               ref={setPopoverContentRef}
               id={popoverId}
-              side={
-                popoverViewState === "expanded-page"
-                  ? "bottom" // Always bottom for expanded — sideOffset positions it
-                  : lockedSide
-              }
+              side={lockedSide}
               sideOffset={expandedPageSideOffset}
-              // Summary: disable collision avoidance — the locked side handles placement
-              // and we don't want Radix's flip middleware causing scroll-jank.
-              // Expanded states: enable it so Radix's shift middleware keeps the
-              // wider popover within viewport bounds on narrow screens.
-              avoidCollisions={popoverViewState !== "summary"}
+              alignOffset={popoverAlignOffset}
+              // Collision avoidance always off — the locked side handles vertical
+              // placement and usePopoverAlignOffset handles horizontal clamping.
+              // CSS maxWidth/maxHeight (calc(100dvw/dvh - 2rem)) constrains size.
+              avoidCollisions={false}
               onCloseAutoFocus={(e: Event) => {
                 // Prevent Radix from returning focus to the trigger on close.
                 // Without this, the browser scrolls the trigger into view — which
@@ -1189,11 +1178,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               style={
                 popoverViewState === "expanded-page"
                   ? {
+                      // Override base maxWidth (480px) to allow full-viewport expansion.
+                      // No explicit `width` — PopoverLayoutShell drives content width via
+                      // w-fit, preventing a jarring gap when the outer container is wider
+                      // than its content before the image loads.
                       maxWidth: "calc(100dvw - 2rem)",
-                      width: getExpandedPopoverWidth(expandedImageWidth),
                       // Explicit height gives the flex chain a definite reference size
                       // so flex-1 min-h-0 children can grow into available space.
-                      // The shift middleware repositions the popover within viewport bounds.
                       height: "calc(100dvh - 2rem)",
                       maxHeight: "calc(100dvh - 2rem)",
                       // The inner InlineExpandedImage handles its own scrolling (with hidden
@@ -1204,7 +1195,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                   : popoverViewState === "expanded-evidence"
                     ? {
                         maxWidth: "calc(100dvw - 2rem)",
-                        width: getExpandedPopoverWidth(expandedImageWidth),
                       }
                     : undefined
               }

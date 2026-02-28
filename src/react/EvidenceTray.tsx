@@ -20,17 +20,23 @@ import { CitationAnnotationOverlay } from "./CitationAnnotationOverlay.js";
 import { computeKeyholeOffset } from "./computeKeyholeOffset.js";
 import {
   buildKeyholeMaskImage,
+  CONTENT_STAGGER_DELAY_MS,
+  EASE_COLLAPSE,
+  EASE_EXPAND,
   EVIDENCE_TRAY_BORDER_DASHED,
   EVIDENCE_TRAY_BORDER_SOLID,
   EXPANDED_IMAGE_SHELL_PX,
+  EXPANDED_MIN_READABLE_ZOOM,
   EXPANDED_ZOOM_MAX,
   EXPANDED_ZOOM_MIN,
   EXPANDED_ZOOM_STEP,
+  HITBOX_EXTEND_8x14,
   isValidProofImageSrc,
   KEYHOLE_FADE_WIDTH,
   KEYHOLE_SKIP_THRESHOLD,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
   KEYHOLE_STRIP_HEIGHT_VAR,
+  KEYHOLE_WIDTH_FIT_THRESHOLD,
   MISS_TRAY_THUMBNAIL_HEIGHT,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
@@ -39,11 +45,13 @@ import {
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
+import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "./overlayGeometry.js";
-import { buildIntentSummary } from "./searchSummaryUtils.js";
+import { buildIntentSummary, countUniqueSearchTexts } from "./searchSummaryUtils.js";
 import { cn } from "./utils.js";
+import { VerificationLogTimeline } from "./VerificationLog.js";
 import { ZoomToolbar } from "./ZoomToolbar.js";
 
 // =============================================================================
@@ -219,11 +227,18 @@ export function resolveExpandedImage(verification: Verification | null | undefin
  * When the highlight coordinates come from source PDF space, they need to be scaled
  * to the verification image pixel space using the ratio of image dimensions to page dimensions.
  */
-function resolveHighlightBox(verification: Verification): { x: number; width: number } | null {
+function resolveHighlightBox(
+  verification: Verification,
+): { x: number; y: number; width: number; height: number } | null {
   // 1. Prefer highlightBox from matching verification page (already in image coordinates)
   const matchPage = verification.pages?.find(p => p.isMatchPage);
   if (matchPage?.highlightBox) {
-    return { x: matchPage.highlightBox.x, width: matchPage.highlightBox.width };
+    return {
+      x: matchPage.highlightBox.x,
+      y: matchPage.highlightBox.y,
+      width: matchPage.highlightBox.width,
+      height: matchPage.highlightBox.height,
+    };
   }
 
   const imgDims = verification.document?.verificationImageDimensions;
@@ -231,18 +246,20 @@ function resolveHighlightBox(verification: Verification): { x: number; width: nu
   // Helper: scale a DeepTextItem from PDF space to image pixel space.
   // If the scaled result falls outside the image bounds, assumes coordinates
   // are already in image space and returns them unscaled.
-  const scaleItem = (item: { x: number; width: number }) => {
+  const scaleItem = (item: { x: number; y: number; width: number; height: number }) => {
     if (imgDims && matchPage?.dimensions && matchPage.dimensions.width > 0) {
-      const scale = imgDims.width / matchPage.dimensions.width;
-      const scaledX = item.x * scale;
-      const scaledWidth = item.width * scale;
+      const scaleX = imgDims.width / matchPage.dimensions.width;
+      const scaleY =
+        imgDims.height && matchPage.dimensions.height > 0 ? imgDims.height / matchPage.dimensions.height : scaleX;
+      const scaledX = item.x * scaleX;
+      const scaledWidth = item.width * scaleX;
       // Sanity check: if scaled coords are within image bounds, use them
       if (scaledX >= 0 && scaledX + scaledWidth <= imgDims.width * SCALING_TOLERANCE) {
-        return { x: scaledX, width: scaledWidth };
+        return { x: scaledX, y: item.y * scaleY, width: scaledWidth, height: item.height * scaleY };
       }
     }
     // Assume image coordinates if scaling is unavailable or produces out-of-bounds values
-    return { x: item.x, width: item.width };
+    return { x: item.x, y: item.y, width: item.width, height: item.height };
   };
 
   // 2. Anchor text match deep items (may be in PDF space, scale if we have dimensions)
@@ -281,21 +298,26 @@ const KEYHOLE_SCROLLBAR_HIDE: React.CSSProperties = {
 export function AnchorTextFocusedImage({
   verification,
   onImageClick,
+  onKeyholeWidth,
 }: {
   verification: Verification;
   onImageClick?: () => void;
+  onKeyholeWidth?: (width: number) => void;
 }) {
   // Resolve highlight region from verification data
   const highlightBox = useMemo(() => resolveHighlightBox(verification), [verification]);
 
-  // Drag-to-pan hook for mouse interaction
-  const { containerRef, isDragging, handlers, scrollState, wasDraggingRef } = useDragToPan();
+  // Drag-to-pan hook for mouse interaction (xy enables vertical pan for width-fit tall images;
+  // when no vertical overflow exists, scrollTop stays 0 — no visible effect on normal crops).
+  const { containerRef, isDragging, handlers, scrollState, wasDraggingRef } = useDragToPan({ direction: "xy" });
 
   // Track image load to compute initial scroll position
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageFitInfo, setImageFitInfo] = useState<{ displayedWidth: number; imageFitsCompletely: boolean } | null>(
-    null,
-  );
+  const [imageFitInfo, setImageFitInfo] = useState<{
+    displayedWidth: number;
+    imageFitsCompletely: boolean;
+    isWidthFit?: boolean;
+  } | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
   // Set initial scroll position after image loads.
@@ -315,30 +337,54 @@ export function AnchorTextFocusedImage({
       img.naturalHeight > 0 ? img.naturalWidth * (stripHeight / img.naturalHeight) : img.naturalWidth;
     const containerWidth = container.clientWidth;
 
-    // Detect whether the image nearly fits within the keyhole (minimal cropping).
-    // Uses KEYHOLE_SKIP_THRESHOLD (1.5) so images up to 50% taller than the strip
-    // are treated as "fits" — expanding would reveal almost nothing new.
-    // displayedWidth <= containerWidth → image is narrow enough to show in full horizontally.
-    // When both are true, the keyhole already reveals nearly everything — expand adds no value.
-    if (displayedWidth > 0) {
-      const imageFitsCompletely =
-        img.naturalHeight > 0 &&
-        img.naturalHeight <= stripHeight * KEYHOLE_SKIP_THRESHOLD &&
-        displayedWidth <= containerWidth;
-      setImageFitInfo({ displayedWidth, imageFitsCompletely });
+    // Width-fit mode: when the image at height-fit scale is too narrow to read
+    // (a tiny sliver for tall images like full-page screenshots), switch to
+    // width-fit mode — fill the container width and scroll vertically instead.
+    const isWidthFit = displayedWidth < containerWidth * KEYHOLE_WIDTH_FIT_THRESHOLD && img.naturalHeight > stripHeight;
+
+    if (isWidthFit) {
+      const effectiveWidth = Math.min(containerWidth, img.naturalWidth);
+      const effectiveHeight = img.naturalHeight * (effectiveWidth / img.naturalWidth);
+
+      setImageFitInfo({ displayedWidth: effectiveWidth, imageFitsCompletely: false, isWidthFit: true });
+      if (effectiveWidth > 0) onKeyholeWidth?.(effectiveWidth);
+
+      // Vertical centering: scroll to the highlight region or center of image
+      if (highlightBox) {
+        const displayScale = effectiveWidth / img.naturalWidth;
+        const highlightCenterY = highlightBox.y * displayScale + (highlightBox.height * displayScale) / 2;
+        container.scrollTop = Math.max(0, highlightCenterY - stripHeight / 2);
+      } else {
+        container.scrollTop = Math.max(0, (effectiveHeight - stripHeight) / 2);
+      }
+      container.scrollLeft = 0;
+    } else {
+      // Height-fit mode (default): detect whether the image nearly fits within the keyhole.
+      // Uses KEYHOLE_SKIP_THRESHOLD (1.5) so images up to 50% taller than the strip
+      // are treated as "fits" — expanding would reveal almost nothing new.
+      // displayedWidth <= containerWidth → image is narrow enough to show in full horizontally.
+      // When both are true, the keyhole already reveals nearly everything — expand adds no value.
+      if (displayedWidth > 0) {
+        const imageFitsCompletely =
+          img.naturalHeight > 0 &&
+          img.naturalHeight <= stripHeight * KEYHOLE_SKIP_THRESHOLD &&
+          displayedWidth <= containerWidth;
+        setImageFitInfo({ displayedWidth, imageFitsCompletely });
+        onKeyholeWidth?.(displayedWidth);
+      }
+
+      // Scale highlight box from image-natural coordinates to displayed coordinates.
+      // resolveHighlightBox() returns coords in the verificationImage's natural pixel
+      // space, but the scroll container operates in the displayed (strip-height-scaled)
+      // space. Without this, the centering algorithm sees the highlight as far off-screen.
+      const displayScale = img.naturalWidth > 0 ? displayedWidth / img.naturalWidth : 1;
+      const scaledHighlight = highlightBox
+        ? { x: highlightBox.x * displayScale, width: highlightBox.width * displayScale }
+        : null;
+
+      const { scrollLeft } = computeKeyholeOffset(displayedWidth, containerWidth, scaledHighlight);
+      container.scrollLeft = scrollLeft;
     }
-
-    // Scale highlight box from image-natural coordinates to displayed coordinates.
-    // resolveHighlightBox() returns coords in the verificationImage's natural pixel
-    // space, but the scroll container operates in the displayed (strip-height-scaled)
-    // space. Without this, the centering algorithm sees the highlight as far off-screen.
-    const displayScale = img.naturalWidth > 0 ? displayedWidth / img.naturalWidth : 1;
-    const scaledHighlight = highlightBox
-      ? { x: highlightBox.x * displayScale, width: highlightBox.width * displayScale }
-      : null;
-
-    const { scrollLeft } = computeKeyholeOffset(displayedWidth, containerWidth, scaledHighlight);
-    container.scrollLeft = scrollLeft;
 
     // Trigger scroll event so useDragToPan updates fade state for initial position
     container.dispatchEvent(new Event("scroll"));
@@ -364,7 +410,9 @@ export function AnchorTextFocusedImage({
   if (!imageSrc) return null;
 
   const stripHeightStyle = `var(${KEYHOLE_STRIP_HEIGHT_VAR}, ${KEYHOLE_STRIP_HEIGHT_DEFAULT}px)`;
-  const isPannable = scrollState.canScrollLeft || scrollState.canScrollRight;
+  const isWidthFit = imageFitInfo?.isWidthFit ?? false;
+  const isPannable =
+    scrollState.canScrollLeft || scrollState.canScrollRight || scrollState.canScrollUp || scrollState.canScrollDown;
   // When the image fits entirely in the keyhole, expanding would show nothing new — suppress affordances.
   const canExpand = !imageFitInfo?.imageFitsCompletely && !!onImageClick;
 
@@ -374,7 +422,7 @@ export function AnchorTextFocusedImage({
           maxWidth clamps to the image's rendered width so no blank space appears to the right. */}
       <div
         className="relative group/keyhole"
-        style={imageFitInfo ? { maxWidth: imageFitInfo.displayedWidth } : undefined}
+        style={imageFitInfo && !isWidthFit ? { maxWidth: imageFitInfo.displayedWidth } : undefined}
       >
         <button
           type="button"
@@ -413,9 +461,11 @@ export function AnchorTextFocusedImage({
           <div
             ref={containerRef}
             data-dc-keyhole=""
-            className="overflow-x-auto overflow-y-hidden"
+            className={isWidthFit ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"}
             style={{
               height: stripHeightStyle,
+              // Fade mask only applies in height-fit mode (horizontal overflow).
+              // In width-fit mode, there's no horizontal overflow so mask is "none" automatically.
               WebkitMaskImage: maskImage,
               maskImage,
               ...KEYHOLE_SCROLLBAR_HIDE,
@@ -429,8 +479,12 @@ export function AnchorTextFocusedImage({
               ref={imageRef}
               src={imageSrc}
               alt="Citation verification"
-              className="block h-full w-auto max-w-none select-none"
-              style={{ height: stripHeightStyle }}
+              className={isWidthFit ? "block select-none" : "block h-full w-auto max-w-none select-none"}
+              style={
+                isWidthFit
+                  ? { width: imageFitInfo?.displayedWidth, height: "auto", maxWidth: "none" }
+                  : { height: stripHeightStyle }
+              }
               loading="eager"
               decoding="async"
               draggable={false}
@@ -486,23 +540,66 @@ export function AnchorTextFocusedImage({
 
 /**
  * Minimal footer for the evidence tray: date on the left, "View page ›" CTA on the right.
- * Unified across found/miss states — no outcome labels, search counts, or hint text.
+ * For miss states, an optional "› N searches" toggle sits between the date and CTA.
  */
 function EvidenceTrayFooter({
   verifiedAt,
   onPageClick,
+  searchCount,
+  isSearchLogOpen,
+  onToggleSearchLog,
+  locationLabel,
 }: {
   verifiedAt?: Date | string | null;
   /** When provided, renders a "View page" CTA button */
   onPageClick?: () => void;
+  /** Number of unique search texts (toggle hidden when 0 or absent) */
+  searchCount?: number;
+  /** Whether the search log is currently expanded */
+  isSearchLogOpen?: boolean;
+  /** Toggle callback — when provided and searchCount > 0, renders the toggle */
+  onToggleSearchLog?: () => void;
+  /** Location label to append after search count (e.g. "page 1", "full document") */
+  locationLabel?: string;
 }) {
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
+  const showToggle = onToggleSearchLog && searchCount != null && searchCount > 0;
 
   return (
-    <div className="px-3 py-1.5 text-[11px] text-gray-400 dark:text-gray-500">
-      <div className="flex items-center justify-between">
-        {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
+    <div className="px-3 py-2 min-h-[44px] flex items-center text-[11px] text-gray-400 dark:text-gray-500">
+      <div className="flex items-center justify-between w-full">
+        <span className="flex items-center gap-1">
+          {showToggle && (
+            <button
+              type="button"
+              className={cn(
+                "relative flex items-center gap-0.5 text-[11px] font-medium cursor-pointer",
+                TERTIARY_ACTION_BASE_CLASSES,
+                TERTIARY_ACTION_IDLE_CLASSES,
+                TERTIARY_ACTION_HOVER_CLASSES,
+                HITBOX_EXTEND_8x14,
+              )}
+              onClick={e => {
+                e.stopPropagation();
+                onToggleSearchLog();
+              }}
+            >
+              <span
+                className="size-3 shrink-0 transition-transform duration-150"
+                style={isSearchLogOpen ? { transform: "rotate(90deg)" } : undefined}
+              >
+                <ChevronRightIcon />
+              </span>
+              <span>
+                {searchCount} search{searchCount === 1 ? "" : "es"}
+                {locationLabel && <> · {locationLabel}</>}
+              </span>
+            </button>
+          )}
+          {showToggle && dateStr && <span aria-hidden="true">·</span>}
+          {dateStr && <span title={formatted?.tooltip ?? dateStr}>{dateStr}</span>}
+        </span>
         {onPageClick && (
           <button
             type="button"
@@ -610,20 +707,38 @@ export function EvidenceTray({
   onExpand,
   onImageClick,
   proofImageSrc,
+  onKeyholeWidth,
 }: {
   verification: Verification | null;
   status: CitationStatus;
   onExpand?: () => void;
   onImageClick?: () => void;
   proofImageSrc?: string;
+  onKeyholeWidth?: (width: number) => void;
 }) {
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const isMiss = status.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
   const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Tray-level click: keyhole click if available, else page expansion
   const trayAction = onImageClick ?? onExpand;
+
+  // Search log toggle state (miss states only)
+  const [showSearchLog, setShowSearchLog] = useState(false);
+  const searchCount = useMemo(() => (isMiss ? countUniqueSearchTexts(searchAttempts) : 0), [isMiss, searchAttempts]);
+
+  // Footer element — shared across top/bottom placement
+  const footerEl = (
+    <EvidenceTrayFooter
+      verifiedAt={verification?.verifiedAt}
+      onPageClick={onExpand}
+      searchCount={isMiss ? searchCount : undefined}
+      isSearchLogOpen={showSearchLog}
+      onToggleSearchLog={isMiss ? () => setShowSearchLog(prev => !prev) : undefined}
+    />
+  );
 
   // Shared inner content
   const content = (
@@ -631,7 +746,12 @@ export function EvidenceTray({
       {/* Content: image or search analysis.
           Keys prevent React from reusing fibers across component-type swaps. */}
       {hasImage && verification ? (
-        <AnchorTextFocusedImage key="keyhole" verification={verification} onImageClick={onImageClick} />
+        <AnchorTextFocusedImage
+          key="keyhole"
+          verification={verification}
+          onImageClick={onImageClick}
+          onKeyholeWidth={onKeyholeWidth}
+        />
       ) : isMiss && (searchAttempts.length > 0 || isValidProofImageSrc(proofImageSrc)) ? (
         <div key="miss-analysis">
           {isValidProofImageSrc(proofImageSrc) && (
@@ -647,11 +767,38 @@ export function EvidenceTray({
           {searchAttempts.length > 0 && (
             <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
           )}
+          {footerEl}
+          {searchAttempts.length > 0 && (
+            <div
+              className="grid transition-[grid-template-rows]"
+              style={{
+                gridTemplateRows: showSearchLog ? "1fr" : "0fr",
+                ...(prefersReducedMotion
+                  ? { transitionDuration: "0ms" }
+                  : {
+                      transitionDuration: showSearchLog ? "200ms" : "120ms",
+                      transitionTimingFunction: showSearchLog ? EASE_EXPAND : EASE_COLLAPSE,
+                    }),
+              }}
+            >
+              <div className="overflow-hidden" style={{ minHeight: 0 }}>
+                <div className="border-t border-gray-200 dark:border-gray-700">
+                  <VerificationLogTimeline
+                    searchAttempts={searchAttempts}
+                    fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
+                    anchorText={verification?.citation?.anchorText ?? verification?.verifiedAnchorText ?? undefined}
+                    status="not_found"
+                    onCollapse={() => setShowSearchLog(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
 
-      {/* Footer: date + "View page" CTA */}
-      <EvidenceTrayFooter verifiedAt={verification?.verifiedAt} onPageClick={onExpand} />
+      {/* Footer — placed after the miss block for non-miss states */}
+      {!isMiss && footerEl}
     </>
   );
 
@@ -761,6 +908,7 @@ export function InlineExpandedImage({
    */
   showOverlay?: boolean;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const { containerRef, isDragging, handlers: panHandlers, wasDraggingRef } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
@@ -895,14 +1043,19 @@ export function InlineExpandedImage({
     // Uses viewportWidth state (tracked via resize listener) so the effect re-runs on resize.
     const maxImageWidth = viewportWidth > 0 ? viewportWidth - 32 - EXPANDED_IMAGE_SHELL_PX : containerSize.width;
     const fitZoomW = maxImageWidth / naturalWidth;
-    // Width-only zoom: fill the popover horizontally; tall images scroll vertically
-    // inside the overflow-auto container (same pattern as keyhole's horizontal scroll).
+    // fitZoom = the zoom that fits the page width to the container (minimum usable zoom).
     const fitZoom = Math.min(1, Math.max(0.1, fitZoomW));
+    // readableZoom = initial zoom clamped to a readable minimum (65%).
+    // On narrow viewports where fitZoomW < 0.65, this starts zoomed in for legibility
+    // with horizontal panning (already handled by overflow:auto + useDragToPan xy).
+    const readableZoom = Math.min(1, Math.max(EXPANDED_MIN_READABLE_ZOOM, fitZoomW));
     if (!hasManualZoomRef.current) {
-      setZoom(prevZoom => (Math.abs(prevZoom - fitZoom) < 0.005 ? prevZoom : fitZoom));
+      setZoom(prevZoom => (Math.abs(prevZoom - readableZoom) < 0.005 ? prevZoom : readableZoom));
     }
+    // zoomFloor uses fitZoom (not readableZoom) so the user can still zoom OUT
+    // to fit-to-screen via the slider, below the readable minimum.
     setZoomFloor(Math.min(EXPANDED_ZOOM_MIN, fitZoom));
-    const effectiveZoom = hasManualZoomRef.current ? zoomRef.current : fitZoom;
+    const effectiveZoom = hasManualZoomRef.current ? zoomRef.current : readableZoom;
     // Report zoomed dimensions so the popover sizes to the displayed image,
     // not the natural pixel width (which could be e.g. 1700px for a PDF page).
     const reportedW = Math.round(naturalWidth * effectiveZoom);
@@ -1057,7 +1210,12 @@ export function InlineExpandedImage({
       const wrapper = imageWrapperRef.current;
       if (!wrapper) return;
 
-      const delta = -e.deltaY * WHEEL_ZOOM_SENSITIVITY;
+      // Normalize deltaY across deltaMode values:
+      // mode 0 = pixels (trackpad/smooth wheel), mode 1 = lines (~16px each),
+      // mode 2 = pages (rare). Without this, line-mode scroll wheels zoom
+      // far too little per notch (deltaY ≈ 3 → only 1.5% zoom).
+      const normalizedDeltaY = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 100 : e.deltaY;
+      const delta = -normalizedDeltaY * WHEEL_ZOOM_SENSITIVITY;
 
       // First event of gesture: initialize from committed zoom and capture anchor
       if (gestureZoomRef.current === null) {
@@ -1282,7 +1440,11 @@ export function InlineExpandedImage({
   return (
     <div
       ref={outerRef}
-      className={cn("relative mx-3 mb-3 animate-in fade-in-0 duration-150", fill && "flex-1 min-h-0 flex flex-col")}
+      className={cn(
+        "relative mx-3 mb-3",
+        !fill && "animate-in fade-in-0 duration-150",
+        fill && "flex-1 min-h-0 flex flex-col",
+      )}
       style={
         fill
           ? undefined // fill mode: container fills popover width, image scrolls inside
@@ -1341,12 +1503,16 @@ export function InlineExpandedImage({
             className={cn(
               "animate-in fade-in-0",
               fill && annotationOrigin ? "zoom-in-95 duration-[180ms]" : "zoom-in-[0.97] duration-150",
+              fill && "fill-mode-backwards",
             )}
-            style={
-              annotationOrigin
+            style={{
+              ...(annotationOrigin
                 ? { transformOrigin: `${annotationOrigin.xPercent}% ${annotationOrigin.yPercent}%` }
-                : undefined
-            }
+                : undefined),
+              ...(fill && !prefersReducedMotion
+                ? { animationDelay: `${CONTENT_STAGGER_DELAY_MS}ms`, animationTimingFunction: EASE_EXPAND }
+                : undefined),
+            }}
           >
             {!imageLoaded && (
               <div className="flex items-center justify-center h-24">
