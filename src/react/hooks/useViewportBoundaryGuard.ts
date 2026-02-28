@@ -35,7 +35,9 @@ import type { PopoverViewState } from "../DefaultPopoverContent.js";
  */
 
 /** Debounce delay for ResizeObserver callbacks only.
- *  Must exceed POPOVER_MORPH_EXPAND_MS (200ms) + overshoot settling time. */
+ *  Must exceed POPOVER_MORPH_EXPAND_MS (200ms) + overshoot settling time.
+ *  Coupled to the morph expand duration — if POPOVER_MORPH_EXPAND_MS changes,
+ *  this must be updated to remain > expand + settling (~100ms). */
 const SETTLE_MS = 300;
 
 /**
@@ -127,11 +129,19 @@ export function useViewportBoundaryGuard(
 
     // MutationObserver on the Radix wrapper: re-clamp whenever @floating-ui
     // updates the wrapper's transform (style attribute changes).
+    // Uses attributeOldValue to skip no-op mutations (same style rewritten).
     const wrapper = el.closest("[data-radix-popper-content-wrapper]") as HTMLElement | null;
     let mo: MutationObserver | null = null;
     if (wrapper) {
-      mo = new MutationObserver(() => clamp(el));
-      mo.observe(wrapper, { attributes: true, attributeFilter: ["style"] });
+      mo = new MutationObserver(mutations => {
+        for (const m of mutations) {
+          if (m.oldValue !== wrapper.getAttribute("style")) {
+            clamp(el);
+            break;
+          }
+        }
+      });
+      mo.observe(wrapper, { attributes: true, attributeFilter: ["style"], attributeOldValue: true });
     }
 
     // ResizeObserver: debounced to avoid fighting CSS morph transitions.
@@ -164,6 +174,10 @@ export function useViewportBoundaryGuard(
       el.style.translate = "";
       el.style.removeProperty(GUARD_MAX_WIDTH_VAR);
     };
+    // Dep array: [isOpen] only. popoverViewState is intentionally excluded —
+    // the MO/RO observe DOM changes (not React state), and `el` is the same
+    // DOM node for the popover's entire lifecycle. View-state transitions are
+    // handled by the rAF-based useEffect above which has [isOpen, popoverViewState].
   }, [isOpen]);
 }
 
@@ -176,7 +190,8 @@ export function useViewportBoundaryGuard(
  * (document.documentElement.clientWidth, excluding scrollbar) so CSS
  * maxWidth formulas constrain the element to the usable viewport area.
  */
-function clamp(el: HTMLElement): void {
+function clamp(el: HTMLElement | null): void {
+  if (!el) return;
   // 1. Set the guard's max-width constraint using the visible viewport width
   //    (excludes scrollbar). This is a CSS custom property that all maxWidth
   //    formulas reference, so React re-renders don't clobber it.

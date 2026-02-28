@@ -1253,7 +1253,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                   : popoverViewState === "expanded-evidence"
                     ? {
                         maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
-                        // Same rationale as expanded-page: prevent width transition.
+                        // Prevent Tailwind's duration-200 from transitioning width
+                        // changes — hooks need instant measurement (see expanded-page).
                         transitionProperty: "none",
                       }
                     : { transitionProperty: "none" }
