@@ -1524,6 +1524,9 @@ export function InlineExpandedImage({
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
+      // Clear gesture refs so a remount doesn't read stale anchor data.
+      touchGestureZoomRef.current = null;
+      touchGestureAnchorRef.current = null;
     };
   }, [fill, clampZoom, clampZoomRaw]);
 

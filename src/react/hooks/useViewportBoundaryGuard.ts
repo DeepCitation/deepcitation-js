@@ -138,6 +138,10 @@ export function useViewportBoundaryGuard(
       mo = new MutationObserver(mutations => {
         for (const m of mutations) {
           if (m.oldValue !== wrapper.getAttribute("style")) {
+            // Cancel any pending rAF from a previous cycle so the guard
+            // measures the final Radix-positioned rect, not an intermediate.
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = 0;
             clamp(el);
             break;
           }
