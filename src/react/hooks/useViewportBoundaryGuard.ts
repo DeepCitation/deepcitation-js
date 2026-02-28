@@ -89,18 +89,33 @@ export function useViewportBoundaryGuard(
     return () => cancelAnimationFrame(rafIdRef.current);
   }, [isOpen, popoverViewState]);
 
-  // Reactive clamping from two independent sources:
-  // - ResizeObserver: debounced (morph animations fire rapid size changes).
+  // Reactive clamping from three independent sources:
+  // - MutationObserver on the Radix wrapper: catches @floating-ui transform
+  //   updates that move the wrapper after our rAF-based clamp has already fired.
+  //   Without this, a race condition between the guard's rAF and floating-ui's
+  //   rAF leaves the correction stale (computed for an intermediate position).
+  // - ResizeObserver on the content: debounced (morph animations fire rapid size
+  //   changes). Catches content reflow (e.g., image loads).
   // - Window resize: immediate (user dragging browser edge — no morph conflict).
   //
-  // Bug fix: the previous implementation shared a single debounced callback
-  // for both. During continuous window drag, the 300ms timer reset on every
-  // event, so the clamp only fired after the user stopped dragging.
+  // No infinite loop: MutationObserver watches the *wrapper*'s style attribute,
+  // but we only modify the *content* element's CSS translate property. The
+  // ResizeObserver watches content size, and CSS translate doesn't affect the
+  // content box. Window resize is external.
   // biome-ignore lint/correctness/useExhaustiveDependencies: popoverContentRef has stable identity — refs should not be in deps per React docs
   useEffect(() => {
     if (!isOpen) return;
     const el = popoverContentRef.current;
     if (!el) return;
+
+    // MutationObserver on the Radix wrapper: re-clamp whenever @floating-ui
+    // updates the wrapper's transform (style attribute changes).
+    const wrapper = el.closest("[data-radix-popper-content-wrapper]") as HTMLElement | null;
+    let mo: MutationObserver | null = null;
+    if (wrapper) {
+      mo = new MutationObserver(() => clamp(el));
+      mo.observe(wrapper, { attributes: true, attributeFilter: ["style"] });
+    }
 
     // ResizeObserver: debounced to avoid fighting CSS morph transitions.
     let timerId: ReturnType<typeof setTimeout>;
@@ -118,6 +133,7 @@ export function useViewportBoundaryGuard(
     return () => {
       cancelAnimationFrame(rafIdRef.current);
       clearTimeout(timerId);
+      mo?.disconnect();
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };

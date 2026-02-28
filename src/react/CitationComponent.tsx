@@ -1229,10 +1229,22 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       // scrollbars). Override PopoverContent's default overflow-y-auto to
                       // prevent a redundant outer scrollbar from appearing.
                       overflowY: "hidden" as const,
+                      // Disable CSS transitions on this element during view-state changes.
+                      // Tailwind's data-[state=open]:duration-200 sets transition-duration
+                      // on ALL properties (transition-property defaults to "all"). Without
+                      // this override, width/height changes transition over 200ms instead
+                      // of snapping instantly, causing usePopoverAlignOffset and
+                      // useViewportBoundaryGuard to measure stale intermediate widths.
+                      // Entry/exit animations use @keyframes (animate-in/out), not CSS
+                      // transitions, so they are unaffected. The inner useAnimatedHeight
+                      // wrapper manages its own transition property.
+                      transitionProperty: "none",
                     }
                   : popoverViewState === "expanded-evidence"
                     ? {
                         maxWidth: "calc(100dvw - 2rem)",
+                        // Same rationale as expanded-page: prevent width transition.
+                        transitionProperty: "none",
                       }
                     : undefined
               }
