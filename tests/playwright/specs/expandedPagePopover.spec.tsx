@@ -357,15 +357,26 @@ test.describe("Expanded-Page Popover Sizing", () => {
     // At 1280px viewport, popover = 1248px
     expect(initial).toBeGreaterThanOrEqual(1280 - 32 - 2);
 
+    // Playwright CT doesn't fire window.resize on setViewportSize, so the
+    // guard's resize listener never re-clamps --dc-guard-max-width. Simulate
+    // the guard's clamp logic (set the CSS variable from clientWidth) directly.
+    const reclampGuard = () =>
+      page.evaluate(() => {
+        const el = document.querySelector("[role='dialog']") as HTMLElement | null;
+        if (!el) return;
+        const vw = document.documentElement.clientWidth;
+        el.style.setProperty("--dc-guard-max-width", `${vw - 32}px`);
+      });
+
     await page.setViewportSize({ width: 700, height: 720 });
-    await page.waitForTimeout(250);
+    await reclampGuard();
     const narrowed = await readWidth();
     expect(narrowed).toBeLessThan(initial);
     // At 700px viewport, popover = 668px
     expect(narrowed).toBeGreaterThanOrEqual(700 - 32 - 2);
 
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.waitForTimeout(250);
+    await reclampGuard();
     const widened = await readWidth();
     expect(widened).toBeGreaterThan(narrowed);
     expect(widened).toBeGreaterThanOrEqual(1280 - 32 - 2);

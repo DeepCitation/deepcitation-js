@@ -652,6 +652,14 @@ export const DRAWER_DRAG_CLOSE_THRESHOLD_PX = 80;
 // KEYHOLE ZOOM
 // =============================================================================
 
+/** Minimum total overflow (px) in an axis before showing pan arrows/fades.
+ *  Suppresses arrow buttons for negligible overflow (e.g. 5px rounding). */
+export const MIN_PAN_OVERFLOW_PX = 24;
+
+/** Minimum ratio (natural size / displayed size) to enable wheel zoom on the keyhole.
+ *  Images smaller than 3× the container in both axes don't benefit from zoom. */
+export const KEYHOLE_ZOOM_MIN_SIZE_RATIO = 3;
+
 /** Minimum zoom level for the keyhole strip — never zoom below natural pixel density. */
 export const KEYHOLE_ZOOM_MIN = 1.0;
 /** Maximum zoom level for the keyhole strip — enough to read small text. */

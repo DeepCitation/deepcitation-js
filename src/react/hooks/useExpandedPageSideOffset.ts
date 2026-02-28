@@ -34,6 +34,6 @@ export function useExpandedPageSideOffset(
     if (!triggerRect) return undefined;
     return lockedSide === "bottom"
       ? VIEWPORT_MARGIN_PX - triggerRect.bottom
-      : triggerRect.top - (window.innerHeight - VIEWPORT_MARGIN_PX);
+      : triggerRect.top - (document.documentElement.clientHeight - VIEWPORT_MARGIN_PX);
   }, [popoverViewState, lockedSide]);
 }

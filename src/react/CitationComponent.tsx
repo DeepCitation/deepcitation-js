@@ -1180,8 +1180,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           <Popover
             open={isHovering}
             onOpenChange={open => {
-              // Only handle close (Escape key) - don't interfere with our custom hover logic
               if (!open && !isAnyOverlayOpenRef.current) {
+                // In non-summary states, Escape steps back instead of closing.
+                // The onEscapeKeyDown handler manages the view-state transition;
+                // this guard prevents a redundant onOpenChange from closing early.
+                if (popoverViewState !== "summary") return;
                 closePopover();
               }
             }}

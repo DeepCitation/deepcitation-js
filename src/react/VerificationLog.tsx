@@ -387,12 +387,12 @@ export function SourceContextHeader({
         )}
       </div>
       {/* Right: Download + Proof link (expanded view) + Page pill */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {onSourceDownload && (
           <button
             type="button"
             aria-label="Download source"
-            className="shrink-0 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            className="shrink-0 size-8 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
             onClick={e => {
               e.stopPropagation();
               onSourceDownload(citation);

@@ -48,7 +48,7 @@ import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
 // Using a Fragment pass-through preserves identical render output without the
 // unstable Activity lifecycle. Image prefetching is handled imperatively
 // via `new Image().src` in the useEffect below.
-const Activity = ({ children }: { mode: "visible" | "hidden"; children: ReactNode }) => <>{children}</>;
+const Activity = ({ children }: { children: ReactNode }) => <>{children}</>;
 
 // =============================================================================
 // TYPES
@@ -237,31 +237,31 @@ function PopoverSnippetZone({ snippets }: { snippets: MatchSnippet[] }) {
  * spinner staging, stagger delays) for visual orchestration.
  */
 function PopoverLayoutShell({
-  isVisible,
   isExpanded,
   isFullPage,
   expandedNaturalWidth,
   summaryWidth,
   children,
 }: {
-  isVisible: boolean;
   isExpanded: boolean;
   isFullPage: boolean;
   expandedNaturalWidth: number | null;
   summaryWidth: string;
   children: ReactNode;
 }) {
-  // expanded-page fills the entire viewport — use viewport width immediately so
-  // width and height snap in the same frame (no narrow-tall intermediate state).
-  // For expanded-evidence, stay at summaryWidth until the real expanded width is
-  // known to avoid a jarring jump to the mid-width fallback.
-  const shellWidth = isFullPage
-    ? "calc(100dvw - 2rem)"
-    : isExpanded && expandedNaturalWidth !== null
+  // Both expanded-evidence and expanded-page size to the image once its width is known,
+  // via getExpandedPopoverWidth() → max(320px, min(imageW + 32px, 100dvw - 2rem)).
+  // Before the image reports its width: expanded-page falls back to full viewport so
+  // width and height snap in the same frame; expanded-evidence stays at summaryWidth
+  // to avoid a jarring jump to the mid-width fallback.
+  const shellWidth =
+    (isFullPage || isExpanded) && expandedNaturalWidth !== null
       ? getExpandedPopoverWidth(expandedNaturalWidth)
-      : summaryWidth;
+      : isFullPage
+        ? "calc(100dvw - 2rem)"
+        : summaryWidth;
   return (
-    <Activity mode={isVisible ? "visible" : "hidden"}>
+    <Activity>
       <div
         className={cn(POPOVER_CONTAINER_BASE_CLASSES, "animate-in fade-in-0 duration-150")}
         style={{
@@ -777,7 +777,6 @@ export function DefaultPopoverContent({
       isFullPage && verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
     return (
       <PopoverLayoutShell
-        isVisible={isVisible}
         isExpanded={isExpanded}
         isFullPage={isFullPage}
         expandedNaturalWidth={expandedNaturalWidth}
@@ -868,7 +867,6 @@ export function DefaultPopoverContent({
 
     return (
       <PopoverLayoutShell
-        isVisible={isVisible}
         isExpanded={isExpanded}
         isFullPage={isFullPage}
         expandedNaturalWidth={expandedNaturalWidth}

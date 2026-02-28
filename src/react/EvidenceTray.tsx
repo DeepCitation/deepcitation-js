@@ -41,6 +41,8 @@ import {
   KEYHOLE_WIDTH_FIT_THRESHOLD,
   KEYHOLE_ZOOM_MAX,
   KEYHOLE_ZOOM_MIN,
+  KEYHOLE_ZOOM_MIN_SIZE_RATIO,
+  MIN_PAN_OVERFLOW_PX,
   MISS_TRAY_THUMBNAIL_HEIGHT,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
@@ -390,6 +392,9 @@ export function AnchorTextFocusedImage({
   // --- Keyhole zoom state ---
   const [keyholeZoom, setKeyholeZoom] = useState(1.0);
   const [hasZoomed, setHasZoomed] = useState(false);
+  // Whether the image is large enough relative to the container to benefit from wheel zoom.
+  // Computed once on image load — images must be ≥ 3× container in at least one axis.
+  const [zoomEligible, setZoomEligible] = useState(false);
   const imageWrapperRef = useRef<HTMLDivElement>(null);
   const keyholeZoomRef = useRef(keyholeZoom);
   useEffect(() => {
@@ -403,7 +408,7 @@ export function AnchorTextFocusedImage({
   const clampKeyholeZoomRaw = useCallback((z: number) => Math.max(KEYHOLE_ZOOM_MIN, Math.min(KEYHOLE_ZOOM_MAX, z)), []);
 
   const { isHovering, gestureAnchorRef } = useWheelZoom({
-    enabled: imageLoaded,
+    enabled: imageLoaded && zoomEligible,
     sensitivity: KEYHOLE_WHEEL_ZOOM_SENSITIVITY,
     containerRef: containerRef as React.RefObject<HTMLElement | null>,
     wrapperRef: imageWrapperRef,
@@ -457,6 +462,14 @@ export function AnchorTextFocusedImage({
     const displayedWidth =
       img.naturalHeight > 0 ? img.naturalWidth * (stripHeight / img.naturalHeight) : img.naturalWidth;
     const containerWidth = container.clientWidth;
+
+    // Zoom eligibility: only enable wheel-to-zoom when the image is meaningfully
+    // larger than the container — at least 3× in either dimension. For small images,
+    // zooming is useless and hijacks normal scrolling.
+    const meetsZoomThreshold =
+      img.naturalWidth >= KEYHOLE_ZOOM_MIN_SIZE_RATIO * containerWidth ||
+      img.naturalHeight >= KEYHOLE_ZOOM_MIN_SIZE_RATIO * stripHeight;
+    setZoomEligible(meetsZoomThreshold);
 
     // Width-fit mode: when the image at height-fit scale is too narrow to read
     // (a tiny sliver for tall images like full-page screenshots), switch to
@@ -537,6 +550,13 @@ export function AnchorTextFocusedImage({
   const isWidthFit = imageFitInfo?.isWidthFit ?? false;
   const isPannable =
     scrollState.canScrollLeft || scrollState.canScrollRight || scrollState.canScrollUp || scrollState.canScrollDown;
+
+  // Suppress arrow buttons for negligible horizontal overflow (e.g. sub-pixel rounding).
+  // Fades (top/bottom gradients) are left as-is — they're passive visual hints, not clickable.
+  const totalOverflowX = scrollState.scrollWidth - scrollState.clientWidth;
+  const showLeftArrow = scrollState.canScrollLeft && totalOverflowX > MIN_PAN_OVERFLOW_PX;
+  const showRightArrow = scrollState.canScrollRight && totalOverflowX > MIN_PAN_OVERFLOW_PX;
+
   // When the image fits entirely in the keyhole, expanding would show nothing new — suppress affordances.
   const canExpand = !imageFitInfo?.imageFitsCompletely && !!onImageClick;
 
@@ -658,7 +678,7 @@ export function AnchorTextFocusedImage({
           </div>
 
           {/* Left pan hint — clicking pans the image left */}
-          {scrollState.canScrollLeft && (
+          {showLeftArrow && (
             <div
               aria-hidden="true"
               className="absolute left-0 top-0 h-full min-w-[44px] flex items-center justify-center opacity-0 group-hover/keyhole:opacity-100 transition-opacity duration-150 cursor-pointer"
@@ -676,7 +696,7 @@ export function AnchorTextFocusedImage({
           )}
 
           {/* Right pan hint — clicking pans the image right */}
-          {scrollState.canScrollRight && (
+          {showRightArrow && (
             <div
               aria-hidden="true"
               className="absolute right-0 top-0 h-full min-w-[44px] flex items-center justify-center opacity-0 group-hover/keyhole:opacity-100 transition-opacity duration-150 cursor-pointer"
@@ -719,7 +739,7 @@ export function AnchorTextFocusedImage({
 
           {/* Zoom hint badge — shows once per session on hover dwell.
               Only shown when the image has meaningful zoom range (> 2×). */}
-          <ZoomHint isHovering={isHovering} hasZoomed={hasZoomed} enabled={KEYHOLE_ZOOM_MAX / keyholeZoom > 2} />
+          <ZoomHint isHovering={isHovering} hasZoomed={hasZoomed} enabled={zoomEligible && KEYHOLE_ZOOM_MAX / keyholeZoom > 2} />
         </button>
       </div>
     </div>

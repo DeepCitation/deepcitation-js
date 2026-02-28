@@ -103,7 +103,10 @@ export function useViewportBoundaryGuard(
     const el = popoverContentRef.current;
     if (!el) return;
 
-    rafIdRef.current = requestAnimationFrame(() => clamp(el));
+    rafIdRef.current = requestAnimationFrame(() => {
+      const current = popoverContentRef.current;
+      if (current) clamp(current);
+    });
 
     return () => cancelAnimationFrame(rafIdRef.current);
   }, [isOpen, popoverViewState]);
@@ -196,7 +199,7 @@ function clamp(el: HTMLElement | null): void {
   //    (excludes scrollbar). This is a CSS custom property that all maxWidth
   //    formulas reference, so React re-renders don't clobber it.
   const vw = getVisibleViewportWidth();
-  const vh = window.innerHeight;
+  const vh = document.documentElement.clientHeight;
   el.style.setProperty(GUARD_MAX_WIDTH_VAR, `${vw - 2 * VIEWPORT_MARGIN_PX}px`);
 
   // 2. Remove previous translate correction so we measure the Radix-only position.
