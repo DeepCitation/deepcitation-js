@@ -695,7 +695,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
             className={classNames(
               "relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl",
               "transform transition-all ease-[cubic-bezier(0.34,1.06,0.64,1)]",
-              isOpen ? "opacity-100 scale-100 duration-200" : "opacity-0 scale-[0.96] duration-[120ms]",
+              "opacity-100 scale-100 duration-200",
               "w-full max-w-md max-h-[80vh] flex flex-col mx-4",
               className,
             )}

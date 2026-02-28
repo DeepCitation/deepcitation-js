@@ -328,10 +328,13 @@ test.describe("Image Click to Expand", () => {
     const expandedView = popover.locator("[data-dc-inline-expanded]").filter({ visible: true });
     await expect(expandedView).toBeVisible({ timeout: 5000 });
 
-    // Press Escape to close
+    // First Escape collapses expanded-evidence back to summary
     await page.keyboard.press("Escape");
+    await expect(expandedView).not.toBeVisible();
+    await expect(popover).toBeVisible();
 
-    // Popover should be closed
+    // Second Escape closes the popover
+    await page.keyboard.press("Escape");
     await expect(popover).not.toBeVisible();
   });
 });
