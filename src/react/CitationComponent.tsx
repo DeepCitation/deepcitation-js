@@ -963,10 +963,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         const dy = touch.clientY - startY;
         if (dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX) {
           moved = true;
-          // Scroll gesture outside the popover — dismiss immediately so the
-          // gesture can proceed. Any body scroll lock is released by the
-          // effect cleanup when isHovering transitions to false.
-          closePopover();
+          // Marks the gesture as a scroll so touchend won't treat it as a tap.
+          // Body scroll is not locked on mobile for summary/expanded-evidence
+          // (see the acquireScrollLock effect), so the page scrolls freely here
+          // without needing an explicit dismiss.
         }
       };
 
