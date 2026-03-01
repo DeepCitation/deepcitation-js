@@ -220,6 +220,12 @@ export interface CitationComponentProps extends BaseCitationProps {
    * `onSourceDownload` takes precedence when both are provided.
    */
   downloadUrl?: string;
+  /**
+   * Enable haptic feedback on mobile for expand/collapse transitions.
+   * Experimental — off by default while we validate the feel across devices.
+   * @default false
+   */
+  experimentalHaptics?: boolean;
 }
 
 // getStatusLabel, getTrustLevel, isLowTrustMatch, getStatusFromVerification
@@ -382,6 +388,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       onTimingEvent,
       onSourceDownload,
       downloadUrl,
+      experimentalHaptics = false,
     },
     ref,
   ) => {
@@ -454,9 +461,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // transitions. Replaces direct setPopoverViewState calls in user-event handlers.
     // closePopover still calls setPopoverViewState directly — a full dismiss is not
     // a collapse in the haptic sense (it's a close, not a step-back navigation).
+    //
+    // Haptics are gated behind experimentalHaptics prop (off by default).
     const setViewStateWithHaptics = useCallback(
       (newState: PopoverViewState) => {
-        if (isMobile) {
+        if (experimentalHaptics && isMobile) {
           const prev = popoverViewStateRef.current;
           const isExpanding =
             (newState === "expanded-page" || newState === "expanded-evidence") &&
@@ -469,7 +478,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         }
         setPopoverViewState(newState);
       },
-      [isMobile],
+      [experimentalHaptics, isMobile],
     );
 
     // Lock body scroll when the popover is open (ref-counted so overlapping
