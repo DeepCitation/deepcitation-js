@@ -595,6 +595,12 @@ export function DefaultPopoverContent({
         setStatusAnnouncement("Verification complete — partial match found");
       }
     }
+    // Clear when entering pending state so the next transition can re-announce
+    // (React skips state updates with identical values, so clearing is required
+    // for a second pending→resolved transition to trigger a new announcement).
+    if (isPending) {
+      setStatusAnnouncement("");
+    }
     wasPendingRef.current = isPending;
   }, [isPending, isVerified, isPartialMatch, isMiss]);
 
@@ -773,12 +779,14 @@ export function DefaultPopoverContent({
   }, [citation, verification, searchStatus]);
 
   // A.5.3 aria-live region for screen reader announcements on status transitions.
-  // Rendered in all code paths so it's in the DOM when the announcement changes.
-  const statusLiveRegion = statusAnnouncement ? (
+  // Always rendered (even when empty) so it's in the DOM before content changes —
+  // screen readers only announce changes within an already-mounted aria-live container.
+  // A newly-inserted container with pre-populated content is not reliably announced.
+  const statusLiveRegion = (
     <div aria-live="polite" aria-atomic="true" className="sr-only">
       {statusAnnouncement}
     </div>
-  ) : null;
+  );
 
   // Loading/pending state view — skeleton mirrors resolved layout shape
   if (isLoading || isPending) {

@@ -450,16 +450,37 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       return () => releaseScrollLock();
     }, [isHovering]);
 
-    // A.5.1 Focus trap: set `inert` on the closest <main> (or document.body fallback)
-    // when the popover is opened via keyboard. This prevents Tab from escaping the
-    // popover into background content. Mouse-opened popovers don't need this because
-    // users can click outside to dismiss. The `inert` attribute is natively supported
-    // in all modern browsers and hides background content from assistive technology.
+    // A.5.1 Focus trap: set `inert` on background content when the popover is
+    // opened via keyboard. This prevents Tab from escaping the popover into
+    // background content. Mouse-opened popovers don't need this because users
+    // can click outside to dismiss.
+    //
+    // When <main> exists, we set inert on it (the popover portal is a sibling
+    // of <main> inside document.body, so it stays interactive).
+    // When no <main> exists, we cannot set inert on document.body because the
+    // Radix portal renders inside body — that would make the popover itself
+    // inert. Instead, we inert each direct child of body except the one
+    // containing the popover.
     useEffect(() => {
       if (!isHovering || !openedViaKeyboardRef.current) return;
-      const root = document.querySelector("main") ?? document.body;
-      root.setAttribute("inert", "");
-      return () => root.removeAttribute("inert");
+      const main = document.querySelector("main");
+      if (main) {
+        main.setAttribute("inert", "");
+        return () => main.removeAttribute("inert");
+      }
+      // Fallback: inert all body children except the popover portal
+      const popoverEl = popoverContentRef.current;
+      const inerted: Element[] = [];
+      for (const child of Array.from(document.body.children)) {
+        if (popoverEl && child.contains(popoverEl)) continue;
+        if (!child.hasAttribute("inert")) {
+          child.setAttribute("inert", "");
+          inerted.push(child);
+        }
+      }
+      return () => {
+        for (const el of inerted) el.removeAttribute("inert");
+      };
     }, [isHovering]);
 
     // Dismiss the popover and reset its view state in one step.
