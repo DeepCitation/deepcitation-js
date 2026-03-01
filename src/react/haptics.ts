@@ -60,6 +60,7 @@ const HAPTIC_MIN_GAP_MS = 300;
  * - `prefers-reduced-motion: reduce` is set by the user.
  */
 export function triggerHaptic(event: HapticEvent): void {
+  if (typeof window === "undefined") return;
   const now = Date.now();
   if (now - lastHapticAt < HAPTIC_MIN_GAP_MS) return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

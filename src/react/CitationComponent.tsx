@@ -22,6 +22,7 @@ import {
 } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
+import { triggerHaptic } from "./haptics.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
@@ -30,7 +31,6 @@ import { useViewportBoundaryGuard } from "./hooks/useViewportBoundaryGuard.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
 import { acquireScrollLock, releaseScrollLock } from "./scrollLock.js";
-import { triggerHaptic } from "./haptics.js";
 import { REVIEW_DWELL_THRESHOLD_MS, useCitationTiming } from "./timingUtils.js";
 import type {
   BaseCitationProps,
@@ -452,8 +452,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     // Ref kept in sync with popoverViewState so setViewStateWithHaptics can read
     // the current value inside callbacks without stale closure issues.
+    // useLayoutEffect (not useEffect) ensures the ref is updated before any
+    // synchronous reads in the same tick — React 18 automatic batching can call
+    // setViewStateWithHaptics twice in one handler, and useEffect would leave
+    // the ref stale until after paint.
     const popoverViewStateRef = useRef<PopoverViewState>("summary");
-    useEffect(() => {
+    useLayoutEffect(() => {
       popoverViewStateRef.current = popoverViewState;
     }, [popoverViewState]);
 
@@ -467,12 +471,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       (newState: PopoverViewState) => {
         if (experimentalHaptics && isMobile) {
           const prev = popoverViewStateRef.current;
-          const isExpanding =
-            (newState === "expanded-page" || newState === "expanded-evidence") &&
-            prev === "summary";
-          const isCollapsing =
-            newState === "summary" &&
-            (prev === "expanded-page" || prev === "expanded-evidence");
+          // Haptic fires only on the initial expand from summary and the final
+          // collapse back to summary. Intermediate transitions (expanded-evidence ↔
+          // expanded-page) are silent to avoid double-pulse when the user drills
+          // deeper within an already-expanded state.
+          const isExpanding = (newState === "expanded-page" || newState === "expanded-evidence") && prev === "summary";
+          const isCollapsing = newState === "summary" && (prev === "expanded-page" || prev === "expanded-evidence");
           if (isExpanding) triggerHaptic("expand");
           else if (isCollapsing) triggerHaptic("collapse");
         }
@@ -823,7 +827,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             break;
         }
       },
-      [behaviorConfig, eventHandlers, citation, citationKey, getBehaviorContext, applyBehaviorActions, closePopover, setViewStateWithHaptics],
+      [
+        behaviorConfig,
+        eventHandlers,
+        citation,
+        citationKey,
+        getBehaviorContext,
+        applyBehaviorActions,
+        closePopover,
+        setViewStateWithHaptics,
+      ],
     );
 
     // Click handler
