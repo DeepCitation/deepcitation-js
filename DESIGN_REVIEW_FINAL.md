@@ -606,3 +606,596 @@ The spec is a solid **interaction design intent document** for someone unfamilia
 3. **Prioritize the genuine gaps** — focus trap, aria-live, arrow-key panning, focus return strategy, drawer documentation
 4. **Ship the easy wins** — the momentum tuning, reduced-motion height fix, and focus trap would have more impact than any gesture system rewrite
 5. **Test on devices** — the spec's testing checklist (Section 6) is good; use it against the existing implementation to find real issues rather than theoretical ones
+
+---
+---
+
+# Appendix A: Gap-Filling Specification Sections
+
+The following sections fill the gaps identified in the review above. Each is a complete spec section that can be inserted into the original specification, replacing the corresponding area.
+
+---
+
+## A.1 View State Machine
+
+*Replaces: Spec Section 1 "Component States"*
+
+### State Definition
+
+```typescript
+type PopoverViewState = "summary" | "expanded-evidence" | "expanded-page";
+```
+
+Three states within a **single Radix Popover** (no separate modal):
+
+| State | Width | Height | Content |
+|-------|-------|--------|---------|
+| `summary` | `clamp(320px, keyholeWidth + 32px, 480px)` | `auto` | Header + quote + keyhole strip |
+| `expanded-evidence` | `max(320px, min(imageWidth + 26px, 100dvw - 2rem))` | `auto` | Header + quote + inline expanded image |
+| `expanded-page` | `var(--dc-guard-max-width, calc(100dvw - 2rem))` | `calc(100dvh - 2rem)` | Header + full-page image viewer with zoom toolbar |
+
+### Transition Diagram
+
+```
+                        click keyhole
+         ┌──────────┐ ───────────────→ ┌───────────────────┐
+         │ summary  │                  │ expanded-evidence │
+         │ (default)│ ←─────────────── │                   │
+         └────┬─────┘    Escape        └────────┬──────────┘
+              │                                  │
+              │ click expand button              │ click expand button
+              │                                  │
+              ↓                                  ↓
+         ┌─────────────────────────────────────────┐
+         │           expanded-page                  │
+         │                                          │
+         │  Escape → return to origin state         │
+         │  (summary or expanded-evidence)          │
+         └──────────────────────────────────────────┘
+```
+
+### Two-Stage Escape Navigation
+
+The system remembers which state the user came from via `prevBeforeExpandedPageRef`:
+
+| Current State | First Escape | Second Escape |
+|---------------|-------------|---------------|
+| `expanded-page` (from summary) | → `summary` | → Close popover |
+| `expanded-page` (from expanded-evidence) | → `expanded-evidence` | → `summary`, then close |
+| `expanded-evidence` | → `summary` | → Close popover |
+| `summary` | → Close popover | N/A |
+
+### Width Transition Policy
+
+**Width snaps instantly** — no CSS transition. Text re-wraps on every intermediate width frame, causing visible jitter. This matches Linear, Notion, and Vercel behavior.
+
+### Height Transition Policy
+
+**Height animates** via `useAnimatedHeight` (imperative, zero React renders):
+
+| Direction | Duration | Easing | Behavior |
+|-----------|----------|--------|----------|
+| Expand (grow) | 200ms | `cubic-bezier(0.34, 1.06, 0.64, 1)` | Spring with 6% overshoot |
+| Collapse (shrink) | 100ms | `cubic-bezier(0.2, 0, 0, 1)` | Decisive decelerate |
+
+**Algorithm:**
+1. `useLayoutEffect` fires (before paint) — measures new content height
+2. Pins wrapper to old height with `overflow: hidden`
+3. Next frame: applies CSS transition, animates to new height
+4. `transitionend`: clears inline styles, returns to `auto`
+
+**Shrinking exception:** If new height < old height, animation is skipped (gap would appear below shorter content).
+
+### Content Stagger
+
+`CONTENT_STAGGER_DELAY_MS = 30ms` — container morphs first, content follows 30ms later. Not a visible animation; prevents empty-container flash during morph.
+
+### Triple Always-Render Pattern
+
+All three states render simultaneously; inactive states are hidden with `display: none`. This keeps the React hook tree stable — React 19 StrictMode corrupts the fiber effect linked list when conditionally swapping components with different hook counts inside a portal.
+
+**Re-entry animation:** When returning from expanded to summary, applies `animate-in fade-in-0 duration-100` to avoid a visual snap.
+
+---
+
+## A.2 Citation Drawer (Bottom Sheet)
+
+*Adds: Missing section — the spec has no drawer documentation*
+
+### Overview
+
+The `CitationDrawer` is a portal-based bottom sheet that groups multiple citations by source. On mobile, this is often the primary interaction surface.
+
+### Structure
+
+```
+CitationDrawer (portal to document.body)
+├── Backdrop (bg-black/30, z-index 9998)
+├── Drawer Container (z-index 9999, rounded-t-2xl)
+│   ├── Drag Handle Bar (w-10 h-1, rounded-full)
+│   ├── Header
+│   │   ├── Source Heading (favicon + name + "+N")
+│   │   ├── Stacked Status Icons
+│   │   ├── Page Badges (filterable pills)
+│   │   └── Close Button
+│   ├── Header Inline Panel (expanded-page viewer, optional)
+│   │   ├── InlineExpandedImage (with zoom/pan)
+│   │   └── Indicator Row (per-citation buttons)
+│   └── Scrollable Citation List (overflow-y: auto)
+│       ├── Source Group Header (multi-source only)
+│       └── CitationDrawerItemComponent (per citation)
+│           ├── Summary Row (status icon + text + chevron)
+│           └── Expanded Detail (accordion, EvidenceTray)
+└── (Scroll Lock: acquireScrollLock / releaseScrollLock)
+```
+
+### Positioning
+
+| Position | Layout | Max Height | Drag-to-Close |
+|----------|--------|-----------|---------------|
+| `bottom` (default, mobile) | `inset-x-0 bottom-0 rounded-t-2xl` | `80dvh` (normal), `100dvh` (full-page) | Yes |
+| `right` (side panel) | `inset-y-0 right-0 w-full max-w-md` | Full height | No |
+
+### Accordion Behavior
+
+Single-expanded radio pattern — only one citation expanded at a time:
+
+| Animation | Duration | Easing |
+|-----------|----------|--------|
+| Accordion expand | 200ms | `cubic-bezier(0.34, 1.06, 0.64, 1)` |
+| Accordion collapse | 120ms | `cubic-bezier(0.2, 0, 0, 1)` |
+
+Uses CSS `grid-template-rows: 0fr → 1fr` transition (not height animation).
+
+### Stagger Animation
+
+Citations animate in with an **exponential approach** delay curve:
+
+```
+delay(i) = 250 × (1 − e^(−i × 40 / 250))
+```
+
+| Item | Delay |
+|------|-------|
+| 0 | ~0ms |
+| 1 | ~40ms |
+| 2 | ~77ms |
+| 3 | ~109ms |
+| 4 | ~138ms |
+| ... | → 250ms asymptote |
+
+Each item enters with: `fade-in-0 slide-in-from-bottom-2 duration-[160ms]`
+
+**Why exponential over linear:** Avoids the abrupt "cliff" where all items beyond a linear cap appear simultaneously.
+
+### Drag-to-Close Gesture
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Close threshold | **80px** downward | Apple sheet dismiss threshold (~75-80px) |
+| Flick velocity | **0.5 px/ms** (~500 px/s) | Fast downward flick dismisses even below threshold |
+| Rubber-band factor | **0.4** | 40% damping past threshold (resistance feel) |
+| Velocity samples | **4** (ring buffer) | Smooth velocity estimation |
+| Haptic feedback | `navigator.vibrate?.(10)` | 10ms pulse at threshold crossing (fires once per gesture) |
+| Expand threshold | **−80px** upward | Same threshold, opposite direction |
+
+**Snap-back:** Two-phase RAF — `setIsDragging(false)` enables CSS transition, then `rAF(setDragOffset(0))` animates back.
+
+### Escape Key Navigation (Three Levels)
+
+| Level | Escape Action | Result |
+|-------|--------------|--------|
+| Header inline panel open | Close panel | Stay in drawer |
+| Citation expanded | Collapse accordion | Stay in drawer |
+| Citation list visible | Close drawer | Return to page |
+
+### Drawer Trigger
+
+Compact collapsed summary bar:
+
+```
+[Per-citation status icons] [Source label] [TtC display] [Chevron]
+```
+
+- **Status icons:** Stack with `-0.25rem` overlap; expand horizontally on desktop hover
+- **Label:** `generateDefaultLabel()` — single source → name, 2+ → "Name +N" (truncated to 25 chars)
+- **TtC display:** `"avg rev {time}"` when metrics available, using `TTC_TEXT_STYLE` (muted, tabular-nums)
+- **Tooltip:** On individual icon hover — shows source name, anchor text preview (60 chars), proof thumbnail
+
+---
+
+## A.3 Three-Layer Positioning Defense
+
+*Adds: Missing section — the spec must acknowledge this system*
+
+### Architecture
+
+| Layer | Mechanism | Property Modified | When It Acts |
+|-------|-----------|------------------|-------------|
+| 1. Radix | `@floating-ui/dom computePosition()` | `transform: translate3d(x, y, 0)` | Every position update |
+| 2. Hooks | `sideOffset` + `alignOffset` props | Radix prop inputs | On open + view-state change + resize |
+| 3. Guard | `useViewportBoundaryGuard` | CSS `translate: dx dy` (separate property) | After morph settles (300ms debounce) |
+
+### Layer 2: Offset Hooks
+
+**useLockedPopoverSide:**
+- Picks `top` or `bottom` once on open via `useLayoutEffect`
+- `MIN_SPACE_PX = 200` — minimum required space before flipping
+- **Never changes** during popover lifetime (prevents scroll-triggered jumps)
+
+**useExpandedPageSideOffset:**
+- Positions expanded-page at 1rem (16px) from viewport edge
+- Uses `useMemo` (not `useLayoutEffect + setState`) — offset is synchronous, no one-frame delay
+- Math: `side === "bottom" ? 16 - triggerRect.bottom : triggerRect.top - (viewportHeight - 16)`
+
+**usePopoverAlignOffset:**
+- Clamps popover horizontally so neither edge is within 16px of viewport boundary
+- Uses `document.documentElement.clientWidth` (excludes scrollbar)
+- `requestAnimationFrame` debounced on window resize
+- Computation is independent of current offset — converges in single pass
+
+### Layer 3: Viewport Boundary Guard
+
+- **SETTLE_MS = 300ms** (200ms morph + 100ms buffer) — debounce for ResizeObserver
+- Sets `--dc-guard-max-width` CSS variable (viewport width minus 32px, excluding scrollbar)
+- Uses CSS `translate` (separate from Radix's `transform`) — corrections compose additively
+- **No React state** — pure DOM manipulation for React Compiler compatibility
+
+Three reactive sources:
+1. **MutationObserver** on Radix wrapper (detects `@floating-ui` transform updates)
+2. **ResizeObserver** on content (debounced by SETTLE_MS)
+3. **Window resize** (immediate, rAF-deferred)
+
+**If Layers 1-2 get it right, Layer 3 is a no-op** — `clamp()` returns `dx=0, dy=0`.
+
+### Constraints on Animation
+
+Any animation proposal must respect:
+- **Cannot animate `transform`** — Layer 1 (Radix) owns it
+- **Cannot animate `translate`** — Layer 3 (Guard) owns it
+- **Entry animation uses Tailwind `animate-in`** which composes via Radix's `data-[state=open]` selectors, not custom transforms
+
+---
+
+## A.4 Zoom Toolbar
+
+*Adds: Missing section — the spec only describes gesture-based zoom*
+
+### Structure
+
+```
+ZoomToolbar (absolute, bottom-right, bg-black/50 backdrop-blur-sm)
+├── Zoom Out Button (−)
+├── Range Slider (5% steps, capsule thumb 14×22px)
+├── Percentage Display (tabular-nums, min-w-[4ch])
+├── Locate Button (scroll to annotation, dirty-bit emphasis)
+└── Zoom In Button (+)
+```
+
+**Position:** `bottom: 8px, right: 8px` within the expanded-page container.
+
+### Zoom Constants
+
+| Constant | Value | Context |
+|----------|-------|---------|
+| `EXPANDED_ZOOM_MIN` | 0.5 (50%) | Hard floor for expanded-page |
+| `EXPANDED_ZOOM_MAX` | 3.0 (300%) | Hard ceiling |
+| `EXPANDED_ZOOM_STEP` | 0.25 (25%) | Per +/− button click |
+| `EXPANDED_MIN_READABLE_ZOOM` | 0.8 (80%) | Auto-zoom floor for legibility |
+| `KEYHOLE_ZOOM_MIN` | 1.0 | Never below natural pixel density |
+| `KEYHOLE_ZOOM_MAX` | 2.5 | Read small text |
+| `KEYHOLE_ZOOM_STEP` | 0.15 | Per discrete wheel notch |
+| `WHEEL_ZOOM_SENSITIVITY` | 0.005 | Ctrl+wheel delta → zoom delta |
+| `KEYHOLE_WHEEL_ZOOM_SENSITIVITY` | 0.008 | Keyhole-specific (more sensitive) |
+
+### Slider Behavior
+
+- Range: `[zoomFloor × 100, EXPANDED_ZOOM_MAX × 100]`, step 5%
+- Keyboard: native `<input type="range">` — arrow keys ±5%, Home/End to extremes
+- **Grab lock:** `onSliderGrab` freezes container width (`minWidth = maxWidth = current`) so the toolbar doesn't shift under the user's finger during zoom-out
+
+### Fit-to-Screen Computation
+
+```
+maxImageWidth = viewportWidth - 32 - 26  (margins + shell)
+fitZoom = maxImageWidth / naturalWidth
+readableZoom = clamp(fitZoom, 0.8, 1.0)
+zoomFloor = min(0.5, fitZoom)
+```
+
+If `hasManualZoomRef` is true (user has zoomed), window resize preserves user's zoom level.
+
+### Scroll Position Anchor Preservation
+
+During gesture zoom (pinch or Ctrl+wheel), CSS `transform: scale()` is applied directly to the image wrapper (GPU-composited, zero layout reflow). On gesture end:
+
+1. Final zoom committed to React state → width reflows
+2. `useLayoutEffect` clears transform and corrects scroll position:
+
+```
+ratio = newZoom / oldZoom
+scrollLeft = (anchorX + oldScrollLeft) × ratio − anchorX
+scrollTop = (anchorY + oldScrollTop) × ratio − anchorY
+```
+
+This keeps the content point under the gesture anchor visually stable.
+
+### Locate Button & Drift Detection
+
+- `DRIFT_THRESHOLD_PX = 15` — marks annotation as "drifted" (off-screen) after 15px pan
+- When drifted: locate button emphasized (brighter, pulse)
+- When centered: locate button de-emphasized (muted)
+- Click: smooth-scrolls to annotation, sets `isAnimatingScroll` flag to suppress false drift detection during scroll
+
+---
+
+## A.5 Accessibility Gaps & Fixes
+
+*Amends: Spec Section 7*
+
+### A.5.1 Focus Trap (High Priority — Genuine Gap)
+
+**Current state:** Radix `Popover` does NOT provide focus trapping (unlike `Dialog`). Tab key can escape to background content.
+
+**Fix:**
+
+```typescript
+// In Popover.tsx or CitationComponent.tsx:
+// Option A: Use the `inert` attribute on background content
+useEffect(() => {
+  if (!isOpen) return;
+  const main = document.querySelector("main"); // or app root
+  if (main) main.setAttribute("inert", "");
+  return () => main?.removeAttribute("inert");
+}, [isOpen]);
+
+// Option B: Wrap PopoverContent with a FocusTrap component
+// Only activate for keyboard-opened popovers
+```
+
+**Conditional activation:** Track whether popover was opened via keyboard (`handleKeyDown` already exists and identifies Enter/Space). Only trap focus for keyboard-opened popovers — mouse users can click outside to dismiss without needing a trap.
+
+### A.5.2 Focus Return (Medium Priority — Regression Risk)
+
+**Current state:** `onCloseAutoFocus` calls `e.preventDefault()` unconditionally to avoid scroll-jumping to trigger on close.
+
+**Problem:** Keyboard users lose their place after closing because focus doesn't return.
+
+**Fix:**
+
+```typescript
+// Track how popover was opened
+const openedViaKeyboardRef = useRef(false);
+
+// In keyboard handler:
+if (e.key === "Enter" || e.key === " ") {
+  openedViaKeyboardRef.current = true;
+  // ... open popover
+}
+
+// In click handler:
+openedViaKeyboardRef.current = false;
+
+// In onCloseAutoFocus:
+onCloseAutoFocus={(e: Event) => {
+  if (!openedViaKeyboardRef.current) {
+    e.preventDefault(); // Suppress scroll-jump for click-opened popovers
+  }
+  // For keyboard-opened: allow Radix to return focus (use preventScroll: true if available)
+}}
+```
+
+### A.5.3 aria-live for Status Changes (Medium Priority — Partially Exists)
+
+**Current state:** `aria-live="polite"` exists on the trigger's status description span, but NOT inside the popover content. When verification status changes from pending → verified while the popover is open, screen readers don't announce the change.
+
+**Fix:**
+
+```tsx
+// In DefaultPopoverContent.tsx, add inside popover content:
+<div aria-live="polite" aria-atomic="true" className="sr-only">
+  {prevStatusRef.current === "pending" && isVerified && "Citation verified — exact match found"}
+  {prevStatusRef.current === "pending" && isMiss && "Verification complete — citation not found in source"}
+  {prevStatusRef.current === "pending" && isPartialMatch && "Verification complete — partial match found"}
+</div>
+```
+
+### A.5.4 Arrow Key Panning (Low Priority — Partially Exists)
+
+**Current state:** Arrow keys work in keyhole strip (50% of container width per keypress, min 80px). Arrow keys do NOT work in expanded-page view.
+
+**Fix for expanded-page:**
+
+```typescript
+// In InlineExpandedImage container:
+onKeyDown={(e) => {
+  const el = containerRef.current;
+  if (!el) return;
+  const step = e.shiftKey ? 200 : 50; // Shift = large pan
+  switch (e.key) {
+    case "ArrowLeft":  el.scrollLeft -= step; e.preventDefault(); break;
+    case "ArrowRight": el.scrollLeft += step; e.preventDefault(); break;
+    case "ArrowUp":    el.scrollTop -= step;  e.preventDefault(); break;
+    case "ArrowDown":  el.scrollTop += step;  e.preventDefault(); break;
+  }
+}}
+tabIndex={0} // Make container focusable
+```
+
+### A.5.5 Reduced Motion Height Fix (Low Priority — Easy Win)
+
+**Current state:** `AnimatedHeightWrapper` renders as `<Fragment>` when `prefersReducedMotion` is true. This removes the wrapper entirely, causing instant layout jumps.
+
+**Fix:** Keep the wrapper but disable animation:
+
+```typescript
+if (prefersReducedMotion) {
+  return (
+    <div ref={wrapperRef}>
+      <div ref={contentRef} style={{ display: "flow-root" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+// useAnimatedHeight hook still runs but detects prefersReducedMotion
+// and sets transitionDuration: "0ms" instead of skipping entirely
+```
+
+Height changes are still instant (0ms duration), but without the disorienting layout shift that occurs when the wrapper DOM element appears/disappears.
+
+---
+
+## A.6 Hit-Box Extenders
+
+*Adds: Missing section — the spec mentions 44px touch targets but not the implementation mechanism*
+
+### CSS Implementation
+
+```typescript
+// Uniform 8px extension (16px added per dimension):
+HITBOX_EXTEND_8 = "after:content-[''] after:absolute after:inset-[-8px]"
+
+// Rectangular extension (16px horizontal, 28px vertical):
+HITBOX_EXTEND_8x14 = "after:content-[''] after:absolute after:inset-x-[-8px] after:inset-y-[-14px]"
+```
+
+### How They Work
+
+The `::after` pseudo-element extends the clickable area without affecting layout:
+- Element must be `position: relative | absolute | fixed`
+- Negative `inset` values extend the pseudo-element beyond the parent's bounds
+- The pseudo-element is invisible (`content: ''`) but captures pointer events
+- Layout is unaffected — siblings don't move
+
+### Usage Example
+
+A 28px (size-7) close button with `HITBOX_EXTEND_8`:
+```
+Visual button: 28×28px
+::after extension: 8px each side
+Effective touch target: 44×44px ✓ (meets Apple HIG minimum)
+```
+
+### Where Used
+
+- Annotation overlay close button (8px all sides)
+- Keyhole pan arrow buttons (8px horizontal, 14px vertical — wider vertical reach for thumbs)
+- Verification timeline controls (8px horizontal, 14px vertical)
+
+---
+
+## A.7 Timing Telemetry
+
+*Adds: Missing section — the spec doesn't document how timing affects UX*
+
+### Time-to-Certainty (TtC) System
+
+TtC tracks how long from citation render to verification resolution:
+
+| Range | Display | Tier | Visual Treatment |
+|-------|---------|------|-----------------|
+| < 100ms | "instant" | fast | Green tint (`#86efac`) |
+| 100-999ms | "0.Xs" | fast | Green tint |
+| 1-2s | "X.Xs" | fast | Green tint |
+| 2-10s | "X.Xs" or "XXs" | normal | Muted gray (`#9ca3af`) |
+| 10-60s | "XXs" | slow | Muted gray |
+| ≥ 60s | ">60s" | slow | Muted gray |
+
+### Spinner Staging
+
+Three-stage spinner for pending citations:
+
+| Stage | Trigger | Visual |
+|-------|---------|--------|
+| `active` | Initial state | Standard spin animation |
+| `slow` | After `SPINNER_TIMEOUT_MS` (5s) | Decelerated rotation, 60% opacity |
+| `stale` | After 15s | Hidden |
+
+### Popover Dwell
+
+`REVIEW_DWELL_THRESHOLD_MS = 2000` — if popover stays open > 2s, emit `citation_reviewed` timing event.
+
+### Aggregate Metrics
+
+`useTtcMetrics(verifications)` computes: `avgTtcMs`, `minTtcMs`, `maxTtcMs`, `medianTtcMs`, `resolvedCount`, `totalCount`. Displayed in drawer trigger as `"avg rev {time}"`.
+
+---
+
+## A.8 Image Security
+
+*Adds: Missing section — the spec mentions "right-click save image" but not validation*
+
+### Source Validation (`isValidProofImageSrc`)
+
+All image sources must pass validation before rendering:
+
+1. **Data URIs:** Only `data:image/png`, `jpeg`, `webp`, `avif`, `gif`. **Blocks SVG** (can contain `<script>`)
+2. **Relative paths:** Reject `//` (protocol-relative), `..` (traversal). Iterative decode (5×) to prevent double-encoding attacks. Reject Unicode lookalike dots (U+FF0E, U+2024). Reject null bytes. Decoded length < 2KB.
+3. **URLs:** Require `https://` (or localhost for dev). Whitelist: `api.deepcitation.com`, `cdn.deepcitation.com`, `proof.deepcitation.com`
+
+### Image Error Handling
+
+```typescript
+// Module-level handler (no new ref per render):
+handleImageError = (e) => { e.target.style.display = "none"; }
+```
+
+Hides broken images silently instead of showing browser error icons.
+
+---
+
+## A.9 Device Tier Model
+
+*Replaces: Spec Section 8 "Mobile vs Desktop"*
+
+### Three Tiers
+
+| Tier | Detection | Popover | Drawer | Hover | Gestures |
+|------|-----------|---------|--------|-------|----------|
+| **Touch-only (phone)** | `(pointer: coarse)` + small viewport | Single citations | Groups | No — skip icon spread, go straight to drawer | Native scroll pan, pinch zoom (expanded only), drag-to-close |
+| **Touch + large viewport (tablet)** | `(pointer: coarse)` + large viewport | Both | Optional | No | Same as phone |
+| **Pointer-primary (desktop)** | `(pointer: fine)` | Both | Optional | Yes — icon spread, tooltips | Mouse drag-to-pan, Ctrl+wheel zoom, click-outside dismiss |
+
+### Event System Per Tier
+
+| Event | Phone | Tablet | Desktop |
+|-------|-------|--------|---------|
+| Open popover | `touchend` (TAP_SLOP_PX = 10) | `touchend` | `click` |
+| Close outside | `touchstart/touchend` capture, passive | `touchstart/touchend` capture, passive | `mousedown` capture |
+| Close debounce | `TOUCH_CLICK_DEBOUNCE_MS = 100` | 100ms | N/A |
+| Image pan | Native overflow scroll | Native overflow scroll | `useDragToPan` (mouse drag) |
+| Zoom | Pinch (expanded only) | Pinch (expanded only) | Ctrl+wheel |
+| Drawer close | `useDrawerDragToClose` (80px + velocity) | N/A (side panel, no drag) | N/A |
+
+### Passive Event Listeners
+
+All touch event handlers use `{ passive: true }` except:
+- `touchmove` during pinch zoom (`passive: false` — needs `preventDefault` to block native scroll)
+- `wheel` during zoom (`passive: false` — needs `preventDefault` to block page scroll)
+
+---
+
+## A.10 Gesture Ownership Table
+
+*Replaces: Spec Section 5 "Gesture Conflict Resolution"*
+
+Instead of a unified gesture arena, each interaction surface owns its gestures:
+
+| Surface | Horizontal | Vertical | Zoom | Tap |
+|---------|-----------|----------|------|-----|
+| **Keyhole strip** | Native scroll (touch) / `useDragToPan` (mouse) | Parent scroll wins | Wheel only (`useWheelZoom`, sensitivity 0.008) | Expand to evidence (DRAG_THRESHOLD = 5px) |
+| **Expanded-page image** | Scroll pan (overflow) | Scroll pan (overflow) | Ctrl+wheel (0.005) / pinch (touch) | N/A |
+| **Drawer handle** | N/A | `useDrawerDragToClose` (80px threshold) | N/A | N/A |
+| **Popover content** | N/A | Scroll (overflow-y: auto) | N/A | N/A |
+| **Citation trigger** | N/A | N/A | N/A | Click/tap (TAP_SLOP_PX = 10px) |
+
+### Conflict Resolution (Without Gesture Arena)
+
+| Conflict | Winner | Mechanism |
+|----------|--------|-----------|
+| Scroll vs keyhole pan | **Browser decides** | `overflow-x: auto` + `overscroll-behavior: none` |
+| Keyhole pan vs tap-to-expand | **Distance threshold** | `DRAG_THRESHOLD = 5px` in `useDragToPan`; `wasDraggingRef` suppresses click |
+| Scroll vs drawer drag | **Direction + surface** | Drawer drag only on handle bar; content area scrolls normally |
+| Bare scroll vs zoom | **Modifier key** | `requireCtrl: true` — bare scroll pans, Ctrl+scroll zooms |
+| Touch scroll vs popover open | **Distance threshold** | `TAP_SLOP_PX = 10px` — movement > 10px = scroll, < 10px = tap |
