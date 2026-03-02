@@ -2,6 +2,7 @@ import type React from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { GUARD_MAX_WIDTH_VAR, POPOVER_MORPH_EXPAND_MS, VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
+import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
 
 /**
  * Hard viewport boundary guard for popover positioning (Layer 3 safety net).
@@ -197,19 +198,21 @@ export function useViewportBoundaryGuard(
     const ro = new ResizeObserver(debouncedClamp);
     ro.observe(el);
 
-    // Window resize: rAF-deferred so measurement happens after @floating-ui's
-    // async computePosition() resolves. Uses a local rafId (not the shared
-    // rafIdRef) to avoid canceling post-render clamps from the useEffect above.
-    let resizeRafId = 0;
-    const onResize = () => {
-      cancelAnimationFrame(resizeRafId);
-      resizeRafId = requestAnimationFrame(() => clamp(el));
+    // Geometry shifts (window resize + scroll-lock style changes): rAF-deferred
+    // so measurement happens after @floating-ui's async computePosition() resolves.
+    // Uses a local rafId (not the shared rafIdRef) to avoid canceling post-render
+    // clamps from the useEffect above.
+    let geometryRafId = 0;
+    const onGeometryChange = () => {
+      cancelAnimationFrame(geometryRafId);
+      geometryRafId = requestAnimationFrame(() => clamp(el));
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onGeometryChange);
+    window.addEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
 
     return () => {
       cancelAnimationFrame(rafIdRef.current);
-      cancelAnimationFrame(resizeRafId);
+      cancelAnimationFrame(geometryRafId);
       if (timerIdRef.current !== null) {
         clearTimeout(timerIdRef.current);
         timerIdRef.current = null;
@@ -219,7 +222,8 @@ export function useViewportBoundaryGuard(
         moRef.current = null;
       }
       ro.disconnect();
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onGeometryChange);
+      window.removeEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
       // Clean up guard overrides so they don't persist to next open cycle.
       el.style.translate = "";
       el.style.removeProperty(GUARD_MAX_WIDTH_VAR);

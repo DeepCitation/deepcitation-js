@@ -196,6 +196,23 @@ test.describe("Expanded-Page Viewport Containment", () => {
     await expectPopoverInViewport(page, popoverContent);
   });
 
+  test("desktop: scroll-lock layout shift re-clamps expanded popover near left edge", async ({ mount, page }) => {
+    await mount(
+      <div style={{ position: "relative", height: "2600px" }}>
+        <div style={{ position: "absolute", top: "1600px", left: "2px" }}>
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        </div>
+      </div>,
+    );
+
+    // Ensure the document has a visible scrollbar before opening; entering
+    // expanded-page will lock body scroll and remove that scrollbar.
+    await page.evaluate(() => window.scrollTo(0, 1300));
+
+    const { popoverContent } = await expandToFullPage(page);
+    await expectPopoverInViewport(page, popoverContent);
+  });
+
   // ── Tablet portrait (768×1024) ────────────────────────────────────────
 
   test.describe("Tablet (768×1024)", () => {

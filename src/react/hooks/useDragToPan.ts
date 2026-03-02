@@ -214,8 +214,7 @@ export function useDragToPan(options: { direction?: "x" | "xy" } = {}): {
     const el = containerRef.current;
     const scrollMoved =
       el &&
-      (el.scrollLeft !== startScrollLeft.current ||
-        (direction === "xy" && el.scrollTop !== startScrollTop.current));
+      (el.scrollLeft !== startScrollLeft.current || (direction === "xy" && el.scrollTop !== startScrollTop.current));
     if (dragDistance.current > DRAG_THRESHOLD || scrollMoved) {
       wasDraggingRef.current = true;
     }

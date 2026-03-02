@@ -1298,7 +1298,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                 // In non-summary states, Escape steps back instead of closing.
                 // The onEscapeKeyDown handler manages the view-state transition;
                 // this guard prevents a redundant onOpenChange from closing early.
-                if (popoverViewState !== "summary") return;
+                // Use the ref (not the closure) — the ref is kept in sync by
+                // useLayoutEffect, guaranteeing it reflects the current committed
+                // state even if this onOpenChange closure is slightly stale.
+                if (popoverViewStateRef.current !== "summary") return;
                 closePopover();
               }
             }}
@@ -1331,16 +1334,19 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               onPointerDownOutside={(e: Event) => e.preventDefault()}
               onInteractOutside={(e: Event) => e.preventDefault()}
               onEscapeKeyDown={e => {
-                // Always take ownership — calling e.preventDefault() prevents Radix from
-                // also firing onOpenChange(false). Without this, Radix may fire onOpenChange
-                // after React commits the setViewStateWithHaptics("summary") update, causing
-                // the onOpenChange guard to see "summary" and call closePopover() on the
-                // first press instead of the second.
+                // Always take ownership — e.preventDefault() prevents Radix's
+                // DismissableLayer from calling onDismiss() → onOpenChange(false).
+                // Read popoverViewStateRef (not the closure value) so this handler
+                // is correct even if Radix's useCallbackRef still holds a stale
+                // closure from before the most recent setViewStateWithHaptics call.
+                // (useCallbackRef syncs via useEffect — deferred — whereas
+                // popoverViewStateRef is kept current by useLayoutEffect — sync.)
                 e.preventDefault();
-                if (popoverViewState === "summary") {
+                const vs = popoverViewStateRef.current;
+                if (vs === "summary") {
                   // Already at summary: close the popover.
                   closePopover();
-                } else if (popoverViewState === "expanded-page") {
+                } else if (vs === "expanded-page") {
                   // Step back to whichever state preceded expanded-page.
                   const prev = prevBeforeExpandedPageRef.current;
                   setViewStateWithHaptics(prev);

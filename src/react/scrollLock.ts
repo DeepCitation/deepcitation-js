@@ -17,6 +17,9 @@ let scrollLockOriginalOverflow = "";
 let scrollLockOriginalPaddingRight = "";
 let scrollLockOriginalOverscrollBehavior = "";
 
+/** Event fired when body scroll lock changes page layout (scrollbar/padding shift). */
+export const SCROLL_LOCK_LAYOUT_SHIFT_EVENT = "deepcitation:scroll-lock-layout-shift";
+
 /**
  * Acquire a body scroll lock. The first call captures original styles;
  * subsequent calls increment the ref count.
@@ -32,6 +35,7 @@ export function acquireScrollLock(): void {
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
+    window.dispatchEvent(new CustomEvent(SCROLL_LOCK_LAYOUT_SHIFT_EVENT));
   }
   scrollLockCount++;
 }
@@ -46,5 +50,6 @@ export function releaseScrollLock(): void {
     document.body.style.overflow = scrollLockOriginalOverflow;
     document.body.style.paddingRight = scrollLockOriginalPaddingRight;
     document.body.style.overscrollBehavior = scrollLockOriginalOverscrollBehavior;
+    window.dispatchEvent(new CustomEvent(SCROLL_LOCK_LAYOUT_SHIFT_EVENT));
   }
 }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
   "root": true,
   "vcs": {
     "enabled": true,
@@ -137,9 +137,6 @@
       "includes": ["**/*.spec.ts", "**/*.test.ts", "**/__tests__/**"],
       "linter": {
         "rules": {
-          "suppressions": {
-            "unused": "off"
-          },
           "correctness": {
             "noUnusedFunctionParameters": "off",
             "noUnusedVariables": "off",

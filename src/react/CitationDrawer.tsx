@@ -318,7 +318,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     if (proofImage) escCtx?.onInlineExpand(citationKey, proofImage, verification, expandedImage?.renderScale);
   }, [proofImage, citationKey, verification, expandedImage, escCtx]);
 
-
   return (
     <div
       data-dc-item={citationKey}

@@ -860,7 +860,12 @@ export function DefaultPopoverContent({
           )}
           <AnimatedHeightWrapper viewState={viewState}>
             {fullPhrase && (
-              <ClaimQuote fullPhrase={fullPhrase} anchorText={anchorText} isMiss={isMiss} borderColor={claimBorderColor} />
+              <ClaimQuote
+                fullPhrase={fullPhrase}
+                anchorText={anchorText}
+                isMiss={isMiss}
+                borderColor={claimBorderColor}
+              />
             )}
           </AnimatedHeightWrapper>
           {/* Zone 3: Evidence */}

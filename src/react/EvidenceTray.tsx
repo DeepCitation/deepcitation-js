@@ -65,16 +65,6 @@ import { ZoomToolbar } from "./ZoomToolbar.js";
 // MODULE-LEVEL UTILITIES
 // =============================================================================
 
-/**
- * Tolerance factor for coordinate scaling sanity checks.
- * PDF text coordinates are extracted at a different resolution than the proof image,
- * so converting between coordinate spaces introduces floating-point rounding errors.
- * A 5% tolerance (1.05×) absorbs these rounding differences — empirically sufficient
- * to avoid false rejections while still catching genuinely out-of-bounds coordinates
- * that would indicate a dimension mismatch between the PDF and proof image.
- */
-const SCALING_TOLERANCE = 1.05;
-
 /** Threshold (px) for considering the viewport "drifted" from the annotation. */
 /** Scroll drift threshold for locate dirty-bit detection (px).
  *  15px absorbs sub-pixel rendering jitter while being small enough
@@ -231,59 +221,6 @@ export function resolveExpandedImage(verification: Verification | null | undefin
 // VERIFICATION IMAGE COMPONENT — "Keyhole" Crop & Fade
 // =============================================================================
 
-/**
- * Resolves the best available highlight bounding box from verification data.
- * Tries in order: matching page highlightBox → anchorTextMatchDeepItems → phraseMatchDeepItem.
- *
- * When the highlight coordinates come from source PDF space, they need to be scaled
- * to the verification image pixel space using the ratio of image dimensions to page dimensions.
- */
-function resolveHighlightBox(
-  verification: Verification,
-): { x: number; y: number; width: number; height: number } | null {
-  // 1. Prefer highlightBox from matching verification page (already in image coordinates)
-  const matchPage = verification.pages?.find(p => p.isMatchPage);
-  if (matchPage?.highlightBox) {
-    return {
-      x: matchPage.highlightBox.x,
-      y: matchPage.highlightBox.y,
-      width: matchPage.highlightBox.width,
-      height: matchPage.highlightBox.height,
-    };
-  }
-
-  const imgDims = verification.document?.verificationImageDimensions;
-
-  // Helper: scale a DeepTextItem from PDF space to image pixel space.
-  // If the scaled result falls outside the image bounds, assumes coordinates
-  // are already in image space and returns them unscaled.
-  const scaleItem = (item: { x: number; y: number; width: number; height: number }) => {
-    if (imgDims && matchPage?.dimensions && matchPage.dimensions.width > 0) {
-      const scaleX = imgDims.width / matchPage.dimensions.width;
-      const scaleY =
-        imgDims.height && matchPage.dimensions.height > 0 ? imgDims.height / matchPage.dimensions.height : scaleX;
-      const scaledX = item.x * scaleX;
-      const scaledWidth = item.width * scaleX;
-      // Sanity check: if scaled coords are within image bounds, use them
-      if (scaledX >= 0 && scaledX + scaledWidth <= imgDims.width * SCALING_TOLERANCE) {
-        return { x: scaledX, y: item.y * scaleY, width: scaledWidth, height: item.height * scaleY };
-      }
-    }
-    // Assume image coordinates if scaling is unavailable or produces out-of-bounds values
-    return { x: item.x, y: item.y, width: item.width, height: item.height };
-  };
-
-  // 2. Anchor text match deep items (may be in PDF space, scale if we have dimensions)
-  const anchorItem = verification.document?.anchorTextMatchDeepItems?.[0];
-  if (anchorItem) return scaleItem(anchorItem);
-
-  // 3. Phrase match deep item
-  const phraseItem = verification.document?.phraseMatchDeepItem;
-  if (phraseItem) return scaleItem(phraseItem);
-
-  return null;
-}
-
 /** CSS to hide native scrollbars on the keyhole strip. */
 const KEYHOLE_SCROLLBAR_HIDE: React.CSSProperties = {
   scrollbarWidth: "none", // Firefox
@@ -377,8 +314,19 @@ export function AnchorTextFocusedImage({
   /** Called with natural-pixel scroll coords just before onImageClick fires. */
   onScrollCapture?: (left: number, top: number) => void;
 }) {
-  // Resolve highlight region from verification data (null when no verification provided)
-  const highlightBox = useMemo(() => (verification ? resolveHighlightBox(verification) : null), [verification]);
+  // Anchor item and renderScale for scroll positioning.
+  // Uses anchorTextMatchDeepItems[0] (specific cited word) with phraseMatchDeepItem fallback.
+  // renderScale is required to convert PDF point coords → image pixel coords, matching
+  // the same transform used by computeAnnotationScrollTarget / toPercentRect in overlayGeometry.
+  const anchorScrollData = useMemo(() => {
+    if (!verification) return null;
+    const anchorItem =
+      verification.document?.anchorTextMatchDeepItems?.[0] ?? verification.document?.phraseMatchDeepItem;
+    if (!anchorItem) return null;
+    const renderScale = verification.pages?.find(p => p.isMatchPage)?.renderScale;
+    if (!renderScale) return null;
+    return { anchorItem, renderScale };
+  }, [verification]);
 
   // Drag-to-pan hook for mouse interaction (xy enables vertical pan for width-fit tall images;
   // when no vertical overflow exists, scrollTop stays 0 — no visible effect on normal crops).
@@ -496,12 +444,23 @@ export function AnchorTextFocusedImage({
       // Report the visible footprint (container width), not the overflowing image width.
       onKeyholeWidth?.(Math.min(effectiveWidth, containerWidth));
 
-      // Center on the highlight region (both axes); fall back to image center.
-      if (highlightBox) {
-        const highlightCenterX = highlightBox.x * readableScale + (highlightBox.width * readableScale) / 2;
-        const highlightCenterY = highlightBox.y * readableScale + (highlightBox.height * readableScale) / 2;
-        container.scrollLeft = Math.max(0, highlightCenterX - containerWidth / 2);
-        container.scrollTop = Math.max(0, highlightCenterY - stripHeight / 2);
+      // Center on the anchor text (both axes); fall back to image center.
+      // computeAnnotationScrollTarget uses the same PDF→pixel transform as the overlay
+      // (item.x * renderScale.x, flipping Y), with readableScale as zoom.
+      const widthFitTarget =
+        anchorScrollData &&
+        computeAnnotationScrollTarget(
+          anchorScrollData.anchorItem,
+          anchorScrollData.renderScale,
+          img.naturalWidth,
+          img.naturalHeight,
+          readableScale,
+          containerWidth,
+          stripHeight,
+        );
+      if (widthFitTarget) {
+        container.scrollLeft = widthFitTarget.scrollLeft;
+        container.scrollTop = widthFitTarget.scrollTop;
       } else {
         container.scrollLeft = Math.max(0, (effectiveWidth - containerWidth) / 2);
         container.scrollTop = Math.max(0, (effectiveHeight - stripHeight) / 2);
@@ -521,22 +480,35 @@ export function AnchorTextFocusedImage({
         onKeyholeWidth?.(displayedWidth);
       }
 
-      // Scale highlight box from image-natural coordinates to displayed coordinates.
-      // resolveHighlightBox() returns coords in the verificationImage's natural pixel
-      // space, but the scroll container operates in the displayed (strip-height-scaled)
-      // space. Without this, the centering algorithm sees the highlight as far off-screen.
+      // Set initial scroll position using the same PDF→pixel transform as the overlay:
+      //   pixelX = item.x * renderScale.x  (crop starts at x=0 in PDF space)
+      //   pixelY = img.naturalHeight - item.y * renderScale.y  (Y-axis flip)
+      // For a crop strip, pixelY is typically negative (the crop covers different page rows),
+      // so scrollTop clamps to 0 — correct for the horizontal-only keyhole.
+      // Falls back to centering the image when renderScale is unavailable.
       const displayScale = img.naturalWidth > 0 ? displayedWidth / img.naturalWidth : 1;
-      const scaledHighlight = highlightBox
-        ? { x: highlightBox.x * displayScale, width: highlightBox.width * displayScale }
-        : null;
-
-      const { scrollLeft } = computeKeyholeOffset(displayedWidth, containerWidth, scaledHighlight);
-      container.scrollLeft = scrollLeft;
+      const heightFitTarget =
+        anchorScrollData &&
+        computeAnnotationScrollTarget(
+          anchorScrollData.anchorItem,
+          anchorScrollData.renderScale,
+          img.naturalWidth,
+          img.naturalHeight,
+          displayScale,
+          containerWidth,
+          stripHeight,
+        );
+      if (heightFitTarget) {
+        container.scrollLeft = heightFitTarget.scrollLeft;
+      } else {
+        const { scrollLeft } = computeKeyholeOffset(displayedWidth, containerWidth, null);
+        container.scrollLeft = scrollLeft;
+      }
     }
 
     // Trigger scroll event so useDragToPan updates fade state for initial position
     container.dispatchEvent(new Event("scroll"));
-  }, [imageLoaded, highlightBox]);
+  }, [imageLoaded, anchorScrollData]);
 
   // Compute fade mask based on scroll state
   const maskImage = useMemo(
@@ -566,28 +538,14 @@ export function AnchorTextFocusedImage({
           maxWidth clamps to the image's rendered width so no blank space appears to the right. */}
       <div
         className="relative group/keyhole"
-        style={
-          imageFitInfo && !isWidthFit
-            ? { maxWidth: imageFitInfo.displayedWidth * keyholeZoom }
-            : undefined
-        }
+        style={imageFitInfo && !isWidthFit ? { maxWidth: imageFitInfo.displayedWidth * keyholeZoom } : undefined}
       >
         <button
           type="button"
           className="block relative w-full"
-          title={
-            !canExpand && !isPannable && imageFitInfo?.imageFitsCompletely
-              ? "Already full size"
-              : undefined
-          }
+          title={!canExpand && !isPannable && imageFitInfo?.imageFitsCompletely ? "Already full size" : undefined}
           style={{
-            cursor: isDragging
-              ? "grabbing"
-              : canExpand
-                ? "zoom-in"
-                : isPannable
-                  ? "grab"
-                  : "default",
+            cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default",
           }}
           onKeyDown={e => {
             const el = containerRef.current;
@@ -627,10 +585,7 @@ export function AnchorTextFocusedImage({
             }
           }}
           aria-label={
-            [
-              isPannable && "Drag or click arrows to pan",
-              canExpand && "click to view full size",
-            ]
+            [isPannable && "Drag or click arrows to pan", canExpand && "click to view full size"]
               .filter(Boolean)
               .join(", ") || "Verification image"
           }
@@ -638,9 +593,7 @@ export function AnchorTextFocusedImage({
           <div
             ref={containerRef}
             data-dc-keyhole=""
-            className={
-              isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"
-            }
+            className={isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"}
             style={{
               height: stripHeightStyle,
               // Fade mask only applies in height-fit mode (horizontal overflow).
@@ -648,13 +601,7 @@ export function AnchorTextFocusedImage({
               WebkitMaskImage: maskImage,
               maskImage,
               ...KEYHOLE_SCROLLBAR_HIDE,
-              cursor: isDragging
-                ? "grabbing"
-                : canExpand
-                  ? "zoom-in"
-                  : isPannable
-                    ? "grab"
-                    : "default",
+              cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default",
               // Hover ring affordance signals zoom interactivity
               ...(isHovering && !isDragging
                 ? { boxShadow: "inset 0 0 0 2px rgba(96, 165, 250, 0.2)", borderRadius: "2px" }
@@ -1283,7 +1230,6 @@ export function InlineExpandedImage({
   // early: the container transitions from display:none in this same commit, so the browser
   // hasn't computed its scroll geometry yet when useLayoutEffect fires — the write is a no-op.
   // Reference-equality check prevents re-applying the same position after the user pans away.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object
   useEffect(() => {
     if (fill || !imageLoaded || !initialScroll) return;
     if (lastAppliedInitialScrollRef.current === initialScroll) return;

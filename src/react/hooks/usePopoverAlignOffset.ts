@@ -2,6 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
+import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
 
 /**
  * Computes an alignOffset that prevents the popover from overflowing the
@@ -89,19 +90,22 @@ export function usePopoverAlignOffset(
     recompute();
   }, [recompute, popoverViewState]);
 
-  // Window resize listener for viewport width changes.
+  // Window resize and layout-shift listeners for viewport geometry changes.
+  // Scroll-lock transitions can shift page layout without firing `resize`.
   useEffect(() => {
     if (!isOpen) return;
 
     let rafId = 0;
-    const onResize = () => {
+    const onGeometryChange = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => recompute());
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onGeometryChange);
+    window.addEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
     return () => {
       cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onGeometryChange);
+      window.removeEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
     };
   }, [isOpen, recompute]);
 
@@ -120,8 +124,7 @@ export function usePopoverAlignOffset(
 
     const ro = new ResizeObserver(entries => {
       for (const entry of entries) {
-        const inlineSize =
-          entry.borderBoxSize?.[0]?.inlineSize ?? el.getBoundingClientRect().width;
+        const inlineSize = entry.borderBoxSize?.[0]?.inlineSize ?? el.getBoundingClientRect().width;
         if (inlineSize !== prevInlineSize) {
           prevInlineSize = inlineSize;
           recompute();

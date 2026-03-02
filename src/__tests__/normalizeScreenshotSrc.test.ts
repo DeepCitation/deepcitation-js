@@ -49,22 +49,18 @@ describe("normalizeScreenshotSrc", () => {
     });
 
     it("should throw on null input", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc(null as any)).toThrow("expected non-empty string");
     });
 
     it("should throw on undefined input", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc(undefined as any)).toThrow("expected non-empty string");
     });
 
     it("should throw on non-string input (number)", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc(123 as any)).toThrow("expected non-empty string");
     });
 
     it("should throw on non-string input (object)", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc({} as any)).toThrow("expected non-empty string");
     });
   });
