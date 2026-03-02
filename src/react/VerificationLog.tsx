@@ -33,14 +33,13 @@ import { cn, isImageSource, isUrlCitation } from "./utils.js";
 /** Pattern for detecting converted PDF labels on URL citations */
 const PDF_LABEL_PATTERN = /\.pdf$/i;
 
-/** Statuses that warrant showing all search attempts (miss + partial outcomes) */
-const SHOW_ALL_SEARCH_STATUSES: ReadonlySet<SearchStatus> = new Set<SearchStatus>([
-  "not_found",
-  "partial_text_found",
-  "found_anchor_text_only",
-  "found_on_other_page",
-  "found_on_other_line",
-  "first_word_found",
+/**
+ * Statuses that show only the successful hit (not the full search trail).
+ * Everything else — miss, partial, and transient (loading/pending) — shows all attempts.
+ */
+const SHOW_ONLY_HIT_STATUSES: ReadonlySet<SearchStatus> = new Set<SearchStatus>([
+  "found",
+  "found_phrase_missed_anchor_text",
 ]);
 
 // =============================================================================
@@ -1041,17 +1040,19 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
  * - For all other statuses (not_found, partial): Shows all search attempts to help debug
  */
 function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: AuditSearchDisplayProps) {
-  // Show all searches for miss and partial outcomes; exact matches and non-terminal
-  // statuses (loading, pending, skipped, timestamp_wip) only show the successful hit.
-  const showAll = SHOW_ALL_SEARCH_STATUSES.has(status);
+  // Show all searches unless the status is a confirmed exact match.
+  // Transient statuses (loading, pending) show partial attempts as they arrive.
+  const showAll = !SHOW_ONLY_HIT_STATUSES.has(status);
   const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
 
   // Query-centric summary for all-search display (miss and partial)
   const summary = useMemo(() => (showAll ? buildSearchSummary(searchAttempts) : null), [searchAttempts, showAll]);
 
-  // For not_found / partial: flatten all unique texts (phrases + variations) into a single
-  // list, ordered with failures first and the successful hit last.
+  // For not_found / partial / transient: flatten all unique texts (phrases + variations)
+  // into a single list, ordered with failures first and the successful hit last.
+  // Returns [] when showAll is false (exact-match statuses) — intentional no-op.
   const orderedTexts = useMemo(() => {
+    if (!showAll) return [];
     const groups = summary?.queryGroups ?? [];
     const flat: Array<{ text: string; success: boolean }> = [];
     const seen = new Set<string>();
@@ -1068,7 +1069,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
       }
     }
     return [...flat.filter(t => !t.success), ...flat.filter(t => t.success)];
-  }, [summary]);
+  }, [showAll, summary]);
 
   // If no search attempts, fall back to citation data
   if (searchAttempts.length === 0) {
