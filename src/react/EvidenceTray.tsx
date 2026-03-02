@@ -97,6 +97,15 @@ export function normalizeScreenshotSrc(raw: string): string {
     throw new Error("normalizeScreenshotSrc: Invalid screenshot data - expected non-empty string");
   }
 
+  // Reject payloads larger than 10 MB before any regex work.
+  // A base64-encoded JPEG screenshot is at most ~3–4 MB for typical pages;
+  // anything beyond 10 MB is almost certainly malformed or malicious input
+  // and would cause memory exhaustion if processed downstream.
+  const MAX_SCREENSHOT_SIZE_BYTES = 10 * 1024 * 1024;
+  if (raw.length > MAX_SCREENSHOT_SIZE_BYTES) {
+    throw new Error("normalizeScreenshotSrc: Screenshot data exceeds 10 MB limit");
+  }
+
   // Already a data URI - return as-is
   if (raw.startsWith("data:")) {
     return raw;
@@ -1455,6 +1464,11 @@ export function InlineExpandedImage({
 
     let initialDistance: number | null = null;
     let initialZoom = 1;
+    // Guard against queued touchend events firing after effect cleanup.
+    // removeEventListener prevents new events but already-queued callbacks can
+    // still run. Setting this flag in the cleanup function prevents stale
+    // touchGestureZoomRef/imageWrapperRef accesses after the refs are cleared.
+    let gestureCleanedUp = false;
 
     const getTouchDistance = (touches: TouchList): number => {
       const [a, b] = [touches[0], touches[1]];
@@ -1514,6 +1528,7 @@ export function InlineExpandedImage({
     };
 
     const onTouchEnd = () => {
+      if (gestureCleanedUp) return;
       initialDistance = null;
       const wrapper = imageWrapperRef.current;
       const finalZoom = touchGestureZoomRef.current;
@@ -1532,6 +1547,7 @@ export function InlineExpandedImage({
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd, { passive: true });
     return () => {
+      gestureCleanedUp = true;
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
@@ -1761,6 +1777,10 @@ export function InlineExpandedImage({
                   // popover gets zoomed (displayed) dimensions, not the natural pixel
                   // width which would make the popover expand to nearly full viewport.
                   if (!fill) onNaturalSize?.(w, h);
+                }}
+                onError={e => {
+                  setImageLoaded(true); // exit spinner so the component doesn't hang
+                  handleImageError(e); // hide broken-image browser icon
                 }}
                 draggable={false}
               />

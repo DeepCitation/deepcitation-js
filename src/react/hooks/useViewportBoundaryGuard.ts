@@ -183,8 +183,13 @@ export function useViewportBoundaryGuard(
     // Safety: wrapper is always a *parent* of el (Radix wraps content in an
     // absolutely-positioned div). We observe wrapper's style mutations and
     // modify el's CSS translate — different elements → no infinite loop.
+    // Guard flag: MutationObserver callbacks queued before disconnect() may still
+    // fire after the effect cleanup runs. Checking this flag at the top of the
+    // callback prevents stale `clamp(el)` calls on an already-unmounted element.
+    let moDisconnected = false;
     if (wrapper && wrapper !== el) {
       moRef.current = new MutationObserver(mutations => {
+        if (moDisconnected) return;
         for (const m of mutations) {
           if (m.oldValue !== wrapper.getAttribute("style")) {
             // Cancel any pending rAF from a previous cycle so the guard
@@ -230,6 +235,7 @@ export function useViewportBoundaryGuard(
         clearTimeout(timerIdRef.current);
         timerIdRef.current = null;
       }
+      moDisconnected = true;
       if (moRef.current) {
         moRef.current.disconnect();
         moRef.current = null;

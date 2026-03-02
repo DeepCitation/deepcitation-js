@@ -1042,7 +1042,8 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
 function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: AuditSearchDisplayProps) {
   // Show all searches unless the status is a confirmed exact match.
   // Transient statuses (loading, pending) show partial attempts as they arrive.
-  const showAll = !SHOW_ONLY_HIT_STATUSES.has(status);
+  // Null/undefined status is treated as "unknown" — show all searches.
+  const showAll = status == null || !SHOW_ONLY_HIT_STATUSES.has(status);
   const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
 
   // Query-centric summary for all-search display (miss and partial)

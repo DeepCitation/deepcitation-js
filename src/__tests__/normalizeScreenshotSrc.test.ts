@@ -87,6 +87,18 @@ describe("normalizeScreenshotSrc", () => {
     });
   });
 
+  describe("Security: Size limit", () => {
+    it("should throw on input exceeding 10 MB limit", () => {
+      const oversized = "A".repeat(10 * 1024 * 1024 + 1);
+      expect(() => normalizeScreenshotSrc(oversized)).toThrow("exceeds 10 MB limit");
+    });
+
+    it("should accept input exactly at 10 MB limit", () => {
+      const atLimit = "A".repeat(10 * 1024 * 1024);
+      expect(() => normalizeScreenshotSrc(atLimit)).not.toThrow();
+    });
+  });
+
   describe("Edge cases", () => {
     it("should validate only first 100 chars (prevent ReDoS)", () => {
       // Valid base64 in first 100 chars, but invalid after
