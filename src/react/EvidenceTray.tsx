@@ -77,8 +77,8 @@ const SCALING_TOLERANCE = 1.05;
 
 /** Threshold (px) for considering the viewport "drifted" from the annotation. */
 /** Scroll drift threshold for locate dirty-bit detection (px).
- *  15px absorbs sub-pixel rendering jitter and browser smooth-scroll overshoot
- *  while being small enough to catch intentional user panning. */
+ *  15px absorbs sub-pixel rendering jitter while being small enough
+ *  to catch intentional user panning. */
 const DRIFT_THRESHOLD_PX = 15;
 
 // =============================================================================
@@ -1309,8 +1309,8 @@ export function InlineExpandedImage({
   // Ref storing the expected scroll position after a programmatic scroll.
   // Used by the scroll listener to detect user-initiated drift.
   const annotationScrollTarget = useRef<{ left: number; top: number } | null>(null);
-  // Guard: true while a programmatic smooth-scroll is in progress.
-  // Prevents intermediate scroll events during the animation from marking dirty.
+  // Guard: true while a programmatic re-center scroll is in progress.
+  // Prevents intermediate scroll events from marking dirty.
   const isAnimatingScroll = useRef(false);
 
   // Fit-to-screen: scale the page image to fit both the available width AND height.
@@ -1433,14 +1433,20 @@ export function InlineExpandedImage({
       annotationScrollTarget.current = { left: target.scrollLeft, top: target.scrollTop };
       isAnimatingScroll.current = true;
       setLocateDirty(false);
-      container.scrollTo({ left: target.scrollLeft, top: target.scrollTop, behavior: "smooth" });
+      // Use immediate programmatic scrolling for recenter actions. Browser-defined
+      // "smooth" timing is too slow/variable for this secondary control.
+      container.scrollTo({ left: target.scrollLeft, top: target.scrollTop, behavior: "auto" });
+      // Ensure guard clears even if no scroll event fires (already at target).
+      requestAnimationFrame(() => {
+        isAnimatingScroll.current = false;
+      });
     }
   }, [scrollTarget, effectivePhraseItem, containerRef, renderScale, naturalWidth, naturalHeight]);
 
   // Scroll listener for locate dirty-bit detection.
   // Compares current scroll position against the stored annotation target.
-  // During programmatic smooth-scrolls (isAnimatingScroll), we wait for the
-  // scroll to arrive near the target before enabling drift detection.
+  // During programmatic re-centers (isAnimatingScroll), we wait briefly for
+  // the target write before enabling drift detection.
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object from useDragToPan — its identity never changes
   useEffect(() => {
     if (!fill) return;
@@ -1688,7 +1694,7 @@ export function InlineExpandedImage({
           data-dc-inline-expanded=""
           role="button"
           tabIndex={0}
-          aria-label="Expanded verification image. Press Enter to collapse. Use arrow keys to pan."
+          aria-label="Expanded verification image. Press Escape or Enter to collapse. Use arrow keys to pan."
           className={cn(
             "relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm",
             fill && "flex-1 min-h-0",
@@ -1709,6 +1715,14 @@ export function InlineExpandedImage({
             onCollapse();
           }}
           onKeyDown={e => {
+            if (e.key === "Escape") {
+              // Collapse the expanded image. e.preventDefault() propagates to the native
+              // event so Radix's onEscapeKeyDown also sees it as "already handled" and
+              // won't call onOpenChange independently.
+              e.preventDefault();
+              onCollapse();
+              return;
+            }
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();

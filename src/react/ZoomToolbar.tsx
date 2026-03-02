@@ -32,7 +32,8 @@ const THUMB_H = 22; // px
 // The thumb pseudo-element classes are intentionally inline (not in a CSS file)
 // because Tailwind's arbitrary-value `[&::-webkit-slider-thumb]` selectors are
 // the idiomatic way to style range inputs in a utility-first codebase.
-const SLIDER_TRACK_CLASSES = "w-20 h-1.5 appearance-none bg-white/25 rounded-[3px] cursor-pointer outline-none";
+const SLIDER_TRACK_CLASSES =
+  "w-20 h-1.5 appearance-none bg-slate-300/70 dark:bg-slate-200/55 rounded-[3px] cursor-pointer outline-none ring-1 ring-inset ring-slate-300/45 dark:ring-slate-400/55";
 
 // We apply thumb dimensions + grip via inline style on the <input> itself
 // using a <style> tag scoped by data attribute, because Tailwind arbitrary
@@ -45,9 +46,9 @@ const THUMB_CSS = `
   width: ${THUMB_W}px;
   height: ${THUMB_H}px;
   border-radius: 3px;
-  background: white;
+  background: rgba(226, 232, 240, .95);
   cursor: pointer;
-  box-shadow: inset 1px 0 0 0 rgba(0,0,0,.12), inset -1px 0 0 0 rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.25);
+  box-shadow: inset 1px 0 0 0 rgba(15,23,42,.16), inset -1px 0 0 0 rgba(15,23,42,.16), 0 1px 2px rgba(15,23,42,.18);
   transition: transform 100ms ease;
 }
 [data-dc-zoom-slider]::-webkit-slider-thumb:active {
@@ -57,10 +58,17 @@ const THUMB_CSS = `
   width: ${THUMB_W}px;
   height: ${THUMB_H}px;
   border-radius: 3px;
-  background: white;
+  background: rgba(226, 232, 240, .95);
   border: 0;
   cursor: pointer;
-  box-shadow: inset 1px 0 0 0 rgba(0,0,0,.12), inset -1px 0 0 0 rgba(0,0,0,.12), 0 1px 3px rgba(0,0,0,.25);
+  box-shadow: inset 1px 0 0 0 rgba(15,23,42,.16), inset -1px 0 0 0 rgba(15,23,42,.16), 0 1px 2px rgba(15,23,42,.18);
+}
+@media (prefers-color-scheme: dark) {
+  [data-dc-zoom-slider]::-webkit-slider-thumb,
+  [data-dc-zoom-slider]::-moz-range-thumb {
+    background: rgba(226, 232, 240, .96);
+    box-shadow: inset 1px 0 0 0 rgba(15,23,42,.3), inset -1px 0 0 0 rgba(15,23,42,.3), 0 1px 2px rgba(2,6,23,.5);
+  }
 }
 `;
 
@@ -166,7 +174,7 @@ export function ZoomToolbar({
       <div
         role="toolbar"
         aria-label="Zoom controls"
-        className="flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white/90 rounded-md px-1.5 py-1 shadow-md"
+        className="flex items-center gap-1 rounded-md border border-slate-200/70 dark:border-slate-700/70 bg-white/72 dark:bg-slate-900/72 backdrop-blur-sm text-slate-700 dark:text-slate-200 px-1.5 py-1 shadow-sm"
         onClick={stop}
         onKeyDown={stop}
       >
@@ -178,7 +186,7 @@ export function ZoomToolbar({
             set(zoom - zoomStep);
           }}
           disabled={zoom <= zoomFloor}
-          className="size-9 flex items-center justify-center rounded-sm hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+          className="size-9 flex items-center justify-center rounded-sm hover:bg-slate-200/65 dark:hover:bg-slate-700/65 active:bg-slate-300/70 dark:active:bg-slate-600/70 disabled:opacity-35 transition-colors"
           aria-label="Zoom out"
         >
           <span className="size-4">
@@ -211,7 +219,9 @@ export function ZoomToolbar({
         />
 
         {/* Percentage label */}
-        <span className="min-w-[4ch] text-center font-mono tabular-nums select-none text-xs leading-none">{pct}%</span>
+        <span className="min-w-[4ch] text-center font-mono tabular-nums select-none text-xs leading-none text-slate-600 dark:text-slate-300">
+          {pct}%
+        </span>
 
         {/* Scroll to annotation — de-emphasized when viewport is on-target,
             emphasized when user has panned away (locateDirty). */}
@@ -225,7 +235,9 @@ export function ZoomToolbar({
             data-dc-scroll-to-annotation=""
             className={cn(
               "size-9 flex items-center justify-center rounded-sm transition-all duration-200",
-              locateDirty ? "opacity-100 hover:bg-white/15 active:bg-white/25" : "opacity-30 hover:opacity-60",
+              locateDirty
+                ? "text-sky-700 dark:text-sky-300 opacity-90 hover:bg-slate-200/65 dark:hover:bg-slate-700/65"
+                : "opacity-45 hover:opacity-65",
             )}
             aria-label={locateDirty ? "Re-center on annotation" : "Centered on annotation"}
           >
@@ -243,7 +255,7 @@ export function ZoomToolbar({
             set(zoom + zoomStep);
           }}
           disabled={zoom >= zoomMax}
-          className="size-9 flex items-center justify-center rounded-sm hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+          className="size-9 flex items-center justify-center rounded-sm hover:bg-slate-200/65 dark:hover:bg-slate-700/65 active:bg-slate-300/70 dark:active:bg-slate-600/70 disabled:opacity-35 transition-colors"
           aria-label="Zoom in"
         >
           <span className="size-4">

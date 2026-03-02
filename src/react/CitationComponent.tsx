@@ -1331,11 +1331,17 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               onPointerDownOutside={(e: Event) => e.preventDefault()}
               onInteractOutside={(e: Event) => e.preventDefault()}
               onEscapeKeyDown={e => {
-                // Two-stage Escape: expanded-page → previous state → close popover.
-                // expanded-keyhole also navigates back to summary instead of closing.
-                if (popoverViewState === "summary") return;
+                // Always take ownership — calling e.preventDefault() prevents Radix from
+                // also firing onOpenChange(false). Without this, Radix may fire onOpenChange
+                // after React commits the setViewStateWithHaptics("summary") update, causing
+                // the onOpenChange guard to see "summary" and call closePopover() on the
+                // first press instead of the second.
                 e.preventDefault();
-                if (popoverViewState === "expanded-page") {
+                if (popoverViewState === "summary") {
+                  // Already at summary: close the popover.
+                  closePopover();
+                } else if (popoverViewState === "expanded-page") {
+                  // Step back to whichever state preceded expanded-page.
                   const prev = prevBeforeExpandedPageRef.current;
                   setViewStateWithHaptics(prev);
                   if (prev === "summary") setCustomExpandedSrc(null);
