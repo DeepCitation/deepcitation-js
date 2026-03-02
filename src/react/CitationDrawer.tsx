@@ -318,16 +318,6 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     if (proofImage) escCtx?.onInlineExpand(citationKey, proofImage, verification, expandedImage?.renderScale);
   }, [proofImage, citationKey, verification, expandedImage, escCtx]);
 
-  // Toggle keyhole expansion in-place (the image grows taller within the item)
-  const [keyholeExpanded, setKeyholeExpanded] = useState(false);
-  const handleExpandEvidence = useCallback(() => {
-    setKeyholeExpanded(prev => !prev);
-  }, []);
-
-  // Derive effective keyhole state — automatically collapsed when the accordion is closed.
-  // Avoids setState-during-render (React Compiler incompatible); keyholeExpanded state
-  // intentionally persists so re-opening the accordion restores the user's last preference.
-  const effectiveKeyholeExpanded = isExpanded && keyholeExpanded;
 
   return (
     <div
@@ -426,10 +416,9 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             <EvidenceTray
               verification={verification ?? null}
               status={citationStatus}
-              onImageClick={evidenceSrc ? handleExpandEvidence : undefined}
+              onImageClick={evidenceSrc ? handleExpand : undefined}
               onExpand={proofImage ? handleExpand : undefined}
               proofImageSrc={proofImage ?? undefined}
-              keyholeExpanded={effectiveKeyholeExpanded}
             />
           </div>
         </div>

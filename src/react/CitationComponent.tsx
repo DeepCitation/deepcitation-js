@@ -311,7 +311,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   viewState: PopoverViewState;
   onViewStateChange: (viewState: PopoverViewState) => void;
   expandedImageSrcOverride: string | null;
-  prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-evidence">;
+  prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-keyhole">;
   onSourceDownload?: (citation: Citation) => void;
 }) {
   if (renderPopoverContent) {
@@ -448,7 +448,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const [customExpandedSrc, setCustomExpandedSrc] = useState<string | null>(null);
     // Tracks which state preceded expanded-page so Escape can navigate back correctly.
     // Lifted here (from DefaultPopoverContent) so onEscapeKeyDown on <PopoverContent> can read it.
-    const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
+    const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
 
     // Ref kept in sync with popoverViewState so setViewStateWithHaptics can read
     // the current value inside callbacks without stale closure issues.
@@ -472,11 +472,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         if (experimentalHaptics && isMobile) {
           const prev = popoverViewStateRef.current;
           // Haptic fires only on the initial expand from summary and the final
-          // collapse back to summary. Intermediate transitions (expanded-evidence ↔
+          // collapse back to summary. Intermediate transitions (expanded-keyhole ↔
           // expanded-page) are silent to avoid double-pulse when the user drills
           // deeper within an already-expanded state.
-          const isExpanding = (newState === "expanded-page" || newState === "expanded-evidence") && prev === "summary";
-          const isCollapsing = newState === "summary" && (prev === "expanded-page" || prev === "expanded-evidence");
+          const isExpanding = (newState === "expanded-page" || newState === "expanded-keyhole") && prev === "summary";
+          const isCollapsing = newState === "summary" && (prev === "expanded-page" || prev === "expanded-keyhole");
           if (isExpanding) triggerHaptic("expand");
           else if (isCollapsing) triggerHaptic("collapse");
         }
@@ -486,7 +486,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     );
 
     // Lock body scroll only for expanded-page (full-viewport). Summary and
-    // expanded-evidence are small overlays where scroll should pass through to
+    // expanded-keyhole are small overlays where scroll should pass through to
     // the page behind — locking there "eats" scroll when the popover content
     // isn't scrollable, trapping users. See acquireScrollLock().
     useEffect(() => {
@@ -972,7 +972,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         if (dx * dx + dy * dy > TAP_SLOP_PX * TAP_SLOP_PX) {
           moved = true;
           // Marks the gesture as a scroll so touchend won't treat it as a tap.
-          // Body scroll is not locked on mobile for summary/expanded-evidence
+          // Body scroll is not locked on mobile for summary/expanded-keyhole
           // (see the acquireScrollLock effect), so the page scrolls freely here
           // without needing an explicit dismiss.
         }
@@ -1332,7 +1332,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               onInteractOutside={(e: Event) => e.preventDefault()}
               onEscapeKeyDown={e => {
                 // Two-stage Escape: expanded-page → previous state → close popover.
-                // expanded-evidence also navigates back to summary instead of closing.
+                // expanded-keyhole also navigates back to summary instead of closing.
                 if (popoverViewState === "summary") return;
                 e.preventDefault();
                 if (popoverViewState === "expanded-page") {
@@ -1340,7 +1340,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                   setViewStateWithHaptics(prev);
                   if (prev === "summary") setCustomExpandedSrc(null);
                 } else {
-                  // expanded-evidence → summary
+                  // expanded-keyhole → summary
                   setViewStateWithHaptics("summary");
                 }
               }}
@@ -1371,7 +1371,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       // wrapper manages its own transition property.
                       transitionProperty: "none",
                     }
-                  : popoverViewState === "expanded-evidence"
+                  : popoverViewState === "expanded-keyhole"
                     ? {
                         maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
                         // Prevent Tailwind's duration-200 from transitioning width

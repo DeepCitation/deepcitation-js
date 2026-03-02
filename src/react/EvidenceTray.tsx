@@ -32,7 +32,6 @@ import {
   EXPANDED_ZOOM_STEP,
   HITBOX_EXTEND_8x14,
   isValidProofImageSrc,
-  KEYHOLE_EXPANDED_HEIGHT,
   KEYHOLE_FADE_WIDTH,
   KEYHOLE_SKIP_THRESHOLD,
   KEYHOLE_STRIP_HEIGHT_DEFAULT,
@@ -369,13 +368,10 @@ export function AnchorTextFocusedImage({
   verification,
   onImageClick,
   onKeyholeWidth,
-  expanded = false,
 }: {
   verification: Verification;
   onImageClick?: () => void;
   onKeyholeWidth?: (width: number) => void;
-  /** When true, the keyhole grows to KEYHOLE_EXPANDED_HEIGHT in-place. */
-  expanded?: boolean;
 }) {
   // Resolve highlight region from verification data
   const highlightBox = useMemo(() => resolveHighlightBox(verification), [verification]);
@@ -549,9 +545,6 @@ export function AnchorTextFocusedImage({
   if (!imageSrc) return null;
 
   const stripHeightStyle = `var(${KEYHOLE_STRIP_HEIGHT_VAR}, ${KEYHOLE_STRIP_HEIGHT_DEFAULT}px)`;
-  const effectiveHeight = expanded ? `${KEYHOLE_EXPANDED_HEIGHT}px` : stripHeightStyle;
-  // Scale maxWidth proportionally when expanded so the image isn't clipped.
-  const expandRatio = expanded ? KEYHOLE_EXPANDED_HEIGHT / KEYHOLE_STRIP_HEIGHT_DEFAULT : 1;
   const isWidthFit = imageFitInfo?.isWidthFit ?? false;
   const isPannable =
     scrollState.canScrollLeft || scrollState.canScrollRight || scrollState.canScrollUp || scrollState.canScrollDown;
@@ -573,7 +566,7 @@ export function AnchorTextFocusedImage({
         className="relative group/keyhole"
         style={
           imageFitInfo && !isWidthFit
-            ? { maxWidth: imageFitInfo.displayedWidth * keyholeZoom * expandRatio }
+            ? { maxWidth: imageFitInfo.displayedWidth * keyholeZoom }
             : undefined
         }
       >
@@ -581,20 +574,18 @@ export function AnchorTextFocusedImage({
           type="button"
           className="block relative w-full"
           title={
-            !canExpand && !expanded && !isPannable && imageFitInfo?.imageFitsCompletely
+            !canExpand && !isPannable && imageFitInfo?.imageFitsCompletely
               ? "Already full size"
               : undefined
           }
           style={{
             cursor: isDragging
               ? "grabbing"
-              : expanded
-                ? "zoom-out"
-                : canExpand
-                  ? "zoom-in"
-                  : isPannable
-                    ? "grab"
-                    : "default",
+              : canExpand
+                ? "zoom-in"
+                : isPannable
+                  ? "grab"
+                  : "default",
           }}
           onKeyDown={e => {
             const el = containerRef.current;
@@ -615,14 +606,14 @@ export function AnchorTextFocusedImage({
               wasDraggingRef.current = false;
               return;
             }
-            if (canExpand || expanded) {
+            if (canExpand) {
               onImageClick?.();
             }
           }}
           aria-label={
             [
               isPannable && "Drag or click arrows to pan",
-              (canExpand || expanded) && (expanded ? "click to collapse" : "click to view full size"),
+              canExpand && "click to view full size",
             ]
               .filter(Boolean)
               .join(", ") || "Verification image"
@@ -632,11 +623,10 @@ export function AnchorTextFocusedImage({
             ref={containerRef}
             data-dc-keyhole=""
             className={
-              isWidthFit || keyholeZoom > 1 || expanded ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"
+              isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"
             }
             style={{
-              height: effectiveHeight,
-              transition: `height 200ms ${expanded ? EASE_EXPAND : EASE_COLLAPSE}`,
+              height: stripHeightStyle,
               // Fade mask only applies in height-fit mode (horizontal overflow).
               // In width-fit mode, there's no horizontal overflow so mask is "none" automatically.
               WebkitMaskImage: maskImage,
@@ -644,13 +634,11 @@ export function AnchorTextFocusedImage({
               ...KEYHOLE_SCROLLBAR_HIDE,
               cursor: isDragging
                 ? "grabbing"
-                : expanded
-                  ? "zoom-out"
-                  : canExpand
-                    ? "zoom-in"
-                    : isPannable
-                      ? "grab"
-                      : "default",
+                : canExpand
+                  ? "zoom-in"
+                  : isPannable
+                    ? "grab"
+                    : "default",
               // Hover ring affordance signals zoom interactivity
               ...(isHovering && !isDragging
                 ? { boxShadow: "inset 0 0 0 2px rgba(96, 165, 250, 0.2)", borderRadius: "2px" }
@@ -670,7 +658,7 @@ export function AnchorTextFocusedImage({
                   isWidthFit
                     ? { width: imageFitInfo?.displayedWidth, height: "auto", maxWidth: "none" }
                     : {
-                        height: keyholeZoom === 1 ? effectiveHeight : `calc(${effectiveHeight} * ${keyholeZoom})`,
+                        height: keyholeZoom === 1 ? stripHeightStyle : `calc(${stripHeightStyle} * ${keyholeZoom})`,
                       }
                 }
                 loading="eager"
@@ -929,7 +917,6 @@ export function EvidenceTray({
   onImageClick,
   proofImageSrc,
   onKeyholeWidth,
-  keyholeExpanded = false,
 }: {
   verification: Verification | null;
   status: CitationStatus;
@@ -937,8 +924,6 @@ export function EvidenceTray({
   onImageClick?: () => void;
   proofImageSrc?: string;
   onKeyholeWidth?: (width: number) => void;
-  /** When true, the keyhole image is expanded in-place. */
-  keyholeExpanded?: boolean;
 }) {
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const isMiss = status.isMiss;
@@ -975,7 +960,6 @@ export function EvidenceTray({
           verification={verification}
           onImageClick={onImageClick}
           onKeyholeWidth={onKeyholeWidth}
-          expanded={keyholeExpanded}
         />
       ) : isMiss && (searchAttempts.length > 0 || isValidProofImageSrc(proofImageSrc)) ? (
         <div key="miss-analysis">
