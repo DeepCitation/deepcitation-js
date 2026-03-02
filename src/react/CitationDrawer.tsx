@@ -416,7 +416,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
             <EvidenceTray
               verification={verification ?? null}
               status={citationStatus}
-              onImageClick={evidenceSrc ? handleExpand : undefined}
+              onImageClick={evidenceSrc || proofImage ? handleExpand : undefined}
               onExpand={proofImage ? handleExpand : undefined}
               proofImageSrc={proofImage ?? undefined}
             />

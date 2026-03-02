@@ -42,7 +42,6 @@ import {
   KEYHOLE_ZOOM_MIN,
   KEYHOLE_ZOOM_MIN_SIZE_RATIO,
   MIN_PAN_OVERFLOW_PX,
-  MISS_TRAY_THUMBNAIL_HEIGHT,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
   TERTIARY_ACTION_IDLE_CLASSES,
@@ -365,16 +364,18 @@ function ZoomHint({
  * Falls back to horizontal centering when no bounding box data is available.
  */
 export function AnchorTextFocusedImage({
+  src,
   verification,
   onImageClick,
   onKeyholeWidth,
 }: {
-  verification: Verification;
+  src: string;
+  verification?: Verification | null;
   onImageClick?: () => void;
   onKeyholeWidth?: (width: number) => void;
 }) {
-  // Resolve highlight region from verification data
-  const highlightBox = useMemo(() => resolveHighlightBox(verification), [verification]);
+  // Resolve highlight region from verification data (null when no verification provided)
+  const highlightBox = useMemo(() => (verification ? resolveHighlightBox(verification) : null), [verification]);
 
   // Drag-to-pan hook for mouse interaction (xy enables vertical pan for width-fit tall images;
   // when no vertical overflow exists, scrollTop stays 0 — no visible effect on normal crops).
@@ -410,6 +411,7 @@ export function AnchorTextFocusedImage({
   const { isHovering, gestureAnchorRef } = useWheelZoom({
     enabled: imageLoaded && zoomEligible,
     requireCtrl: true,
+    passVerticalScroll: true,
     sensitivity: KEYHOLE_WHEEL_ZOOM_SENSITIVITY,
     containerRef: containerRef as React.RefObject<HTMLElement | null>,
     wrapperRef: imageWrapperRef,
@@ -478,21 +480,29 @@ export function AnchorTextFocusedImage({
     const isWidthFit = displayedWidth < containerWidth * KEYHOLE_WIDTH_FIT_THRESHOLD && img.naturalHeight > stripHeight;
 
     if (isWidthFit) {
-      const effectiveWidth = Math.min(containerWidth, img.naturalWidth);
-      const effectiveHeight = img.naturalHeight * (effectiveWidth / img.naturalWidth);
+      // Apply a readable-minimum zoom: width-fit scale can be tiny for large full-page
+      // screenshots (e.g. 800×1200 in a 280px strip → 0.35). Clamp to 50% so the
+      // content is legible. When the readable scale exceeds the container width the image
+      // overflows both axes — the existing overflow-auto + xy drag-to-pan handles it.
+      const widthFitScale = Math.min(containerWidth, img.naturalWidth) / img.naturalWidth;
+      const readableScale = Math.max(widthFitScale, EXPANDED_MIN_READABLE_ZOOM);
+      const effectiveWidth = img.naturalWidth * readableScale;
+      const effectiveHeight = img.naturalHeight * readableScale;
 
       setImageFitInfo({ displayedWidth: effectiveWidth, imageFitsCompletely: false, isWidthFit: true });
-      if (effectiveWidth > 0) onKeyholeWidth?.(effectiveWidth);
+      // Report the visible footprint (container width), not the overflowing image width.
+      onKeyholeWidth?.(Math.min(effectiveWidth, containerWidth));
 
-      // Vertical centering: scroll to the highlight region or center of image
+      // Center on the highlight region (both axes); fall back to image center.
       if (highlightBox) {
-        const displayScale = effectiveWidth / img.naturalWidth;
-        const highlightCenterY = highlightBox.y * displayScale + (highlightBox.height * displayScale) / 2;
+        const highlightCenterX = highlightBox.x * readableScale + (highlightBox.width * readableScale) / 2;
+        const highlightCenterY = highlightBox.y * readableScale + (highlightBox.height * readableScale) / 2;
+        container.scrollLeft = Math.max(0, highlightCenterX - containerWidth / 2);
         container.scrollTop = Math.max(0, highlightCenterY - stripHeight / 2);
       } else {
+        container.scrollLeft = Math.max(0, (effectiveWidth - containerWidth) / 2);
         container.scrollTop = Math.max(0, (effectiveHeight - stripHeight) / 2);
       }
-      container.scrollLeft = 0;
     } else {
       // Height-fit mode (default): detect whether the image nearly fits within the keyhole.
       // Uses KEYHOLE_SKIP_THRESHOLD (1.5) so images up to 50% taller than the strip
@@ -531,18 +541,7 @@ export function AnchorTextFocusedImage({
     [scrollState.canScrollLeft, scrollState.canScrollRight],
   );
 
-  const rawUrlScreenshot = verification.url?.webPageScreenshotBase64;
-  let normalizedUrlScreenshot: string | undefined;
-  if (rawUrlScreenshot) {
-    try {
-      normalizedUrlScreenshot = normalizeScreenshotSrc(rawUrlScreenshot);
-    } catch {
-      /* malformed */
-    }
-  }
-  const rawImageSrc = verification.document?.verificationImageSrc ?? normalizedUrlScreenshot;
-  const imageSrc = isValidProofImageSrc(rawImageSrc) ? rawImageSrc : null;
-  if (!imageSrc) return null;
+  const imageSrc = src;
 
   const stripHeightStyle = `var(${KEYHOLE_STRIP_HEIGHT_VAR}, ${KEYHOLE_STRIP_HEIGHT_DEFAULT}px)`;
   const isWidthFit = imageFitInfo?.isWidthFit ?? false;
@@ -907,8 +906,8 @@ export function SearchAnalysisSummary({
  * For not-found: Shows search analysis summary + footer with log toggle + CTA.
  * When `onExpand` is provided, the tray is clickable. Otherwise, it's informational only.
  *
- * @param proofImageSrc - Full-page proof image for miss states only. Ignored when
- *   `hasImage` is truthy (verified/partial path renders the keyhole image instead).
+ * @param proofImageSrc - Full-page proof image used as keyhole source for miss states
+ *   when no evidence crop is available from verification.
  */
 export function EvidenceTray({
   verification,
@@ -925,7 +924,7 @@ export function EvidenceTray({
   proofImageSrc?: string;
   onKeyholeWidth?: (width: number) => void;
 }) {
-  const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
+  const resolvedEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
   const isMiss = status.isMiss;
   const searchAttempts = verification?.searchAttempts ?? [];
   const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
@@ -952,27 +951,27 @@ export function EvidenceTray({
   // Shared inner content
   const content = (
     <>
-      {/* Content: image or search analysis.
+      {/* Content: keyhole image (verified/partial AND miss with proof image) or search analysis.
           Keys prevent React from reusing fibers across component-type swaps. */}
-      {hasImage && verification ? (
+      {resolvedEvidenceSrc ? (
         <AnchorTextFocusedImage
           key="keyhole"
+          src={resolvedEvidenceSrc}
           verification={verification}
           onImageClick={onImageClick}
           onKeyholeWidth={onKeyholeWidth}
         />
-      ) : isMiss && (searchAttempts.length > 0 || isValidProofImageSrc(proofImageSrc)) ? (
+      ) : isMiss && isValidProofImageSrc(proofImageSrc) ? (
+        <AnchorTextFocusedImage
+          key="keyhole-miss"
+          src={proofImageSrc!}
+          onImageClick={onImageClick}
+          onKeyholeWidth={onKeyholeWidth}
+        />
+      ) : null}
+      {/* Miss-specific: search analysis and collapsible search log (only when there are search attempts) */}
+      {isMiss && searchAttempts.length > 0 ? (
         <div key="miss-analysis">
-          {isValidProofImageSrc(proofImageSrc) && (
-            <div className="overflow-hidden" style={{ height: MISS_TRAY_THUMBNAIL_HEIGHT }}>
-              <img
-                src={proofImageSrc}
-                className="w-full h-full object-cover object-center"
-                draggable={false}
-                alt="Searched page"
-              />
-            </div>
-          )}
           {searchAttempts.length > 0 && (
             <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
           )}
@@ -1006,8 +1005,9 @@ export function EvidenceTray({
         </div>
       ) : null}
 
-      {/* Footer — placed after the miss block for non-miss states */}
-      {!isMiss && footerEl}
+      {/* Footer — for non-miss states, and miss states without search attempts
+          (miss states with searchAttempts render footer inside the miss-analysis block above) */}
+      {(!isMiss || (isMiss && searchAttempts.length === 0)) && footerEl}
     </>
   );
 
