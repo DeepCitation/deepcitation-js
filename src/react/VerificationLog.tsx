@@ -30,6 +30,19 @@ import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
 import { buildSearchSummary, countUniqueSearchTexts } from "./searchSummaryUtils.js";
 import { cn, isImageSource, isUrlCitation } from "./utils.js";
 
+/** Pattern for detecting converted PDF labels on URL citations */
+const PDF_LABEL_PATTERN = /\.pdf$/i;
+
+/** Statuses that warrant showing all search attempts (miss + partial outcomes) */
+const SHOW_ALL_SEARCH_STATUSES: ReadonlySet<SearchStatus> = new Set<SearchStatus>([
+  "not_found",
+  "partial_text_found",
+  "found_anchor_text_only",
+  "found_on_other_page",
+  "found_on_other_line",
+  "first_word_found",
+]);
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -347,7 +360,7 @@ export function SourceContextHeader({
   const url = isUrl ? citation.url || "" : "";
   const hasConvertedUrlPdf =
     !!verification?.attachmentId ||
-    (typeof verification?.label === "string" && safeTest(/\.pdf$/i, verification.label));
+    (typeof verification?.label === "string" && safeTest(PDF_LABEL_PATTERN, verification.label));
   const shouldShowDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
 
   // Display name for document citations (never show attachmentId to users)
@@ -1028,12 +1041,34 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
  * - For all other statuses (not_found, partial): Shows all search attempts to help debug
  */
 function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: AuditSearchDisplayProps) {
-  // Show all searches for anything that isn't a fully-verified exact match
-  const showAll = status !== "found" && status !== "found_phrase_missed_anchor_text";
+  // Show all searches for miss and partial outcomes; exact matches and non-terminal
+  // statuses (loading, pending, skipped, timestamp_wip) only show the successful hit.
+  const showAll = SHOW_ALL_SEARCH_STATUSES.has(status);
   const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
 
   // Query-centric summary for all-search display (miss and partial)
   const summary = useMemo(() => (showAll ? buildSearchSummary(searchAttempts) : null), [searchAttempts, showAll]);
+
+  // For not_found / partial: flatten all unique texts (phrases + variations) into a single
+  // list, ordered with failures first and the successful hit last.
+  const orderedTexts = useMemo(() => {
+    const groups = summary?.queryGroups ?? [];
+    const flat: Array<{ text: string; success: boolean }> = [];
+    const seen = new Set<string>();
+    for (const group of groups) {
+      if (group.searchPhrase && !seen.has(group.searchPhrase)) {
+        seen.add(group.searchPhrase);
+        flat.push({ text: group.searchPhrase, success: group.anySuccess });
+      }
+      for (const v of group.variations) {
+        if (!seen.has(v)) {
+          seen.add(v);
+          flat.push({ text: v, success: false });
+        }
+      }
+    }
+    return [...flat.filter(t => !t.success), ...flat.filter(t => t.success)];
+  }, [summary]);
 
   // If no search attempts, fall back to citation data
   if (searchAttempts.length === 0) {
@@ -1098,27 +1133,6 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
       </div>
     );
   }
-
-  // For not_found / partial: flatten all unique texts (phrases + variations) into a single list
-  const groups = summary?.queryGroups ?? [];
-
-  // Flatten: collect all unique texts (phrases + variations) as individual rows,
-  // then sort so all failures come first and the successful hit appears last.
-  const flatTexts: Array<{ text: string; success: boolean }> = [];
-  const seen = new Set<string>();
-  for (const group of groups) {
-    if (group.searchPhrase && !seen.has(group.searchPhrase)) {
-      seen.add(group.searchPhrase);
-      flatTexts.push({ text: group.searchPhrase, success: group.anySuccess });
-    }
-    for (const v of group.variations) {
-      if (!seen.has(v)) {
-        seen.add(v);
-        flatTexts.push({ text: v, success: false });
-      }
-    }
-  }
-  const orderedTexts = [...flatTexts.filter(t => !t.success), ...flatTexts.filter(t => t.success)];
 
   return (
     <div className="px-4 py-2 space-y-0 text-sm">

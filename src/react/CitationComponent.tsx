@@ -51,7 +51,7 @@ import type {
   UrlFetchStatus,
 } from "./types.js";
 import { isBlockedStatus, isErrorStatus } from "./urlStatus.js";
-import { extractDomain, getUrlPath, STATUS_ICONS, safeWindowOpen, truncateString } from "./urlUtils.js";
+import { extractDomain, getUrlPath, STATUS_ICONS, safeWindowOpen, sanitizeUrl, truncateString } from "./urlUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey } from "./utils.js";
 
 // Re-export types for convenience
@@ -432,7 +432,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Resolve effective download handler: explicit callback wins, else trigger browser download
     const effectiveOnSourceDownload = useMemo(() => {
       if (onSourceDownload) return onSourceDownload;
-      if (downloadUrl) {
+      if (downloadUrl && sanitizeUrl(downloadUrl)) {
         return () => {
           const a = document.createElement("a");
           a.href = downloadUrl;

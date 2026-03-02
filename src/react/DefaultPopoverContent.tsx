@@ -808,6 +808,8 @@ export function DefaultPopoverContent({
 
     // Unified summaryContent: success shows keyhole with onImageClick; miss/partial shows
     // keyhole or search analysis depending on what's available.
+    // When null (no image, no search attempts, no expandable page), EvidenceZone renders
+    // an empty Slot A — only Zones 1 (header) and 2 (claim body) are populated.
     const summaryContent =
       (hasImage || ((isMiss || isPartialMatch) && (verification?.searchAttempts?.length || canExpandToPage))) &&
       verification ? (
