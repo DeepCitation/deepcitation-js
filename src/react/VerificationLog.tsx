@@ -2,6 +2,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
+import { safeTest } from "../utils/regexSafety.js";
 import { UrlCitationComponent } from "./CitationComponent.js";
 import {
   DOT_COLORS,
@@ -345,7 +346,8 @@ export function SourceContextHeader({
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
   const hasConvertedUrlPdf =
-    !!verification?.attachmentId || (typeof verification?.label === "string" && /\.pdf$/i.test(verification.label));
+    !!verification?.attachmentId ||
+    (typeof verification?.label === "string" && safeTest(/\.pdf$/i, verification.label));
   const shouldShowDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
 
   // Display name for document citations (never show attachmentId to users)
@@ -1100,7 +1102,8 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
   // For not_found / partial: flatten all unique texts (phrases + variations) into a single list
   const groups = summary?.queryGroups ?? [];
 
-  // Flatten: collect all unique texts (phrases + variations) as individual rows
+  // Flatten: collect all unique texts (phrases + variations) as individual rows,
+  // then sort so all failures come first and the successful hit appears last.
   const flatTexts: Array<{ text: string; success: boolean }> = [];
   const seen = new Set<string>();
   for (const group of groups) {
@@ -1115,10 +1118,11 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
       }
     }
   }
+  const orderedTexts = [...flatTexts.filter(t => !t.success), ...flatTexts.filter(t => t.success)];
 
   return (
     <div className="px-4 py-2 space-y-0 text-sm">
-      {flatTexts.map(({ text, success }) => (
+      {orderedTexts.map(({ text, success }) => (
         <SearchTextRow key={text} text={text} success={success} />
       ))}
     </div>
