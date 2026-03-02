@@ -27,7 +27,6 @@ import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js"
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
 import { usePopoverAlignOffset } from "./hooks/usePopoverAlignOffset.js";
-import { usePopoverMorphTransition } from "./hooks/usePopoverMorphTransition.js";
 import { useViewportBoundaryGuard } from "./hooks/useViewportBoundaryGuard.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
@@ -423,11 +422,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const indicatorVariant: IndicatorVariant =
       _showIndicator === false && indicatorVariantProp === "icon" ? "none" : indicatorVariantProp;
 
-    // Resolve effective download handler: explicit callback wins, else open downloadUrl
+    // Resolve effective download handler: explicit callback wins, else trigger browser download
     const effectiveOnSourceDownload = useMemo(() => {
       if (onSourceDownload) return onSourceDownload;
       if (downloadUrl) {
-        return () => safeWindowOpen(downloadUrl);
+        return () => {
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.download = "";
+          a.click();
+        };
       }
       return undefined;
     }, [onSourceDownload, downloadUrl]);
@@ -618,10 +622,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // rendered rect and applies corrective CSS `translate` if any edge overflows.
     // If Layers 1–2 got it right, the guard is a no-op.
     useViewportBoundaryGuard(isHovering, popoverViewState, popoverContentRef);
-    // Stability-first FLIP morph: only summary -> expanded-keyhole expand is
-    // animated; collapse/back/full-page transitions snap.
-    usePopoverMorphTransition(isHovering, popoverViewState, triggerRef, popoverContentRef);
-
     const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
     const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
 

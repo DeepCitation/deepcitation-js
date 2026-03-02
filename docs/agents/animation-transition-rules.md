@@ -78,6 +78,11 @@ Positioning is three-layer:
 2. `sideOffset` + `alignOffset` from hooks — optimize common cases
 3. `useViewportBoundaryGuard` CSS `translate` — hard safety net, no-op when layers 1–2 are correct
 
+Popover view-state transitions are snap-based at container level:
+- Width/height still snap at layout level (no `transition: width`)
+- Positioning stability is handled by the three positioning layers above
+- Per-content motion should happen inside evidence/content zones, not by morphing the outer popover container
+
 For full positioning documentation see `CLAUDE.md` → "Popover `avoidCollisions` Must Always Be `false`".
 
 ---

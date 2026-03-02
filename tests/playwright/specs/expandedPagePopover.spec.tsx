@@ -340,7 +340,7 @@ test.describe("Expanded-Page Popover Sizing", () => {
     expect(popoverBox!.height).toBeGreaterThan(500);
   });
 
-  test("expanded-page uses full viewport width (calc(100dvw - 2rem))", async ({ mount, page }) => {
+  test("expanded-page width is adaptive and clamped to viewport bounds", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
         <GeneratedImageCitation width={520} height={300} />
@@ -352,10 +352,30 @@ test.describe("Expanded-Page Popover Sizing", () => {
 
     const popoverWidth = await popoverContent.evaluate(el => el.getBoundingClientRect().width);
 
-    // Expanded-page always fills the viewport: calc(100dvw - 2rem)
-    const expectedWidth = viewport.width - 32; // 2rem = 32px
-    expect(popoverWidth).toBeGreaterThanOrEqual(expectedWidth - 2);
-    expect(popoverWidth).toBeLessThanOrEqual(expectedWidth + 2);
+    // Adaptive width: can be narrower than viewport, but never exceed the
+    // viewport clamp (calc(100dvw - 2rem)).
+    const maxWidth = viewport.width - 32; // 2rem = 32px
+    expect(popoverWidth).toBeLessThanOrEqual(maxWidth + 2);
+    expect(popoverWidth).toBeGreaterThan(500);
+  });
+
+  test("expanded-page stays centered on trigger when viewport has room", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "260px", display: "flex", justifyContent: "center" }}>
+        <GeneratedImageCitation width={520} height={300} />
+      </div>,
+    );
+
+    const { popoverContent } = await expandToFullPage(page);
+    const trigger = page.locator("[data-citation-id]");
+
+    const [popoverBox, triggerBox] = await Promise.all([popoverContent.boundingBox(), trigger.boundingBox()]);
+    expect(popoverBox).toBeTruthy();
+    expect(triggerBox).toBeTruthy();
+
+    const popoverCenterX = popoverBox!.x + popoverBox!.width / 2;
+    const triggerCenterX = triggerBox!.x + triggerBox!.width / 2;
+    expect(Math.abs(popoverCenterX - triggerCenterX)).toBeLessThanOrEqual(24);
   });
 
   test("expanded width adapts across viewport resize", async ({ mount, page }) => {
@@ -371,8 +391,9 @@ test.describe("Expanded-Page Popover Sizing", () => {
       popoverContent.evaluate(el => el.getBoundingClientRect().width);
 
     const initial = await readWidth();
-    // At 1280px viewport, popover = 1248px
-    expect(initial).toBeGreaterThanOrEqual(1280 - 32 - 2);
+    // Adaptive width may be below the viewport max clamp.
+    expect(initial).toBeLessThanOrEqual(1280 - 32 + 2);
+    expect(initial).toBeGreaterThan(700);
 
     // Playwright CT doesn't fire window.resize on setViewportSize, so the
     // guard's resize listener never re-clamps --dc-guard-max-width. Simulate
@@ -389,14 +410,14 @@ test.describe("Expanded-Page Popover Sizing", () => {
     await reclampGuard();
     const narrowed = await readWidth();
     expect(narrowed).toBeLessThan(initial);
-    // At 700px viewport, popover = 668px
-    expect(narrowed).toBeGreaterThanOrEqual(700 - 32 - 2);
+    expect(narrowed).toBeLessThanOrEqual(700 - 32 + 2);
+    expect(narrowed).toBeGreaterThan(400);
 
     await page.setViewportSize({ width: 1280, height: 720 });
     await reclampGuard();
     const widened = await readWidth();
     expect(widened).toBeGreaterThan(narrowed);
-    expect(widened).toBeGreaterThanOrEqual(1280 - 32 - 2);
+    expect(widened).toBeLessThanOrEqual(1280 - 32 + 2);
   });
 });
 

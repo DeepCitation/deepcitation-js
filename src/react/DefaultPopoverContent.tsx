@@ -232,9 +232,9 @@ function PopoverSnippetZone({ snippets }: { snippets: MatchSnippet[] }) {
  * rescale through non-integer sizes, and flex layouts redistribute space. The
  * intermediate frames are never visually coherent for a content-heavy container.
  *
- * The industry standard (Linear, Notion, Vercel) is to snap content-heavy containers
- * to their target layout and rely on component-level transitions (image onLoad,
- * spinner staging, stagger delays) for visual orchestration.
+ * Layout snaps to target width to avoid text/image reflow artifacts during
+ * view-state changes. Any visual motion should be handled by inner evidence/content
+ * components rather than morphing the outer popover container.
  */
 function PopoverLayoutShell({
   isExpanded,
@@ -412,9 +412,11 @@ function EvidenceZone({
       >
         {summaryContent}
       </div>
-      {/* Slot B: expanded-keyhole — InlineExpandedImage with the keyhole's own image source */}
-      {evidenceSrc && (
-        <div style={viewState !== "expanded-keyhole" ? { display: "none" } : undefined}>
+      {/* Slot B: expanded-keyhole — wrapper div always rendered for React 19 fiber
+          stability (constant fiber position). InlineExpandedImage mounts inside once
+          evidenceSrc is available (null→mount, never remounts). */}
+      <div style={viewState !== "expanded-keyhole" ? { display: "none" } : undefined}>
+        {evidenceSrc && (
           <InlineExpandedImage
             src={evidenceSrc}
             onCollapse={() => onViewStateChange?.("summary")}
@@ -423,14 +425,16 @@ function EvidenceZone({
             verification={verification}
             initialScroll={keyholeInitialScroll ?? undefined}
           />
-        </div>
-      )}
-      {/* Slot C: expanded-page — always rendered for React 19 fiber stability */}
-      {expandedImage?.src && (
-        <div
-          className="flex-1 min-h-0 flex flex-col"
-          style={viewState !== "expanded-page" ? { display: "none" } : undefined}
-        >
+        )}
+      </div>
+      {/* Slot C: expanded-page — wrapper div always rendered for React 19 fiber
+          stability (constant fiber position). InlineExpandedImage mounts inside once
+          expandedImage is resolved. */}
+      <div
+        className="flex-1 min-h-0 flex flex-col"
+        style={viewState !== "expanded-page" ? { display: "none" } : undefined}
+      >
+        {expandedImage?.src && (
           <InlineExpandedImage
             src={expandedImage.src}
             onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
@@ -439,8 +443,8 @@ function EvidenceZone({
             onNaturalSize={handlePageImageLoad}
             renderScale={expandedImage.renderScale}
           />
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }

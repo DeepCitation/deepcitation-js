@@ -328,7 +328,7 @@ test.describe("Image Click to Expand", () => {
     const expandedView = popover.locator("[data-dc-inline-expanded]").filter({ visible: true });
     await expect(expandedView).toBeVisible({ timeout: 5000 });
 
-    // First Escape collapses expanded-evidence back to summary
+    // First Escape collapses expanded-keyhole back to summary
     await page.keyboard.press("Escape");
     await expect(expandedView).not.toBeVisible();
     await expect(popover).toBeVisible();

@@ -87,10 +87,10 @@ export function useViewportBoundaryGuard(
     prevViewStateRef.current = popoverViewState;
 
     if (isViewStateChange) {
-      // Clear stale correction immediately (before paint). The useEffect
-      // below re-clamps after React has committed all batched state updates
-      // from sibling hooks.
-      el.style.translate = "";
+      // Re-clamp immediately (before paint) to avoid a one-frame jump where
+      // clearing translate can push the popover outside viewport.
+      // A post-render re-clamp still runs below once sibling hooks settle.
+      clamp(el);
       return;
     }
 
@@ -136,7 +136,20 @@ export function useViewportBoundaryGuard(
       if (current) clamp(current);
     });
 
-    return () => cancelAnimationFrame(rafIdRef.current);
+    // Safety-net re-clamp: if the MutationObserver or ResizeObserver misses
+    // Floating UI repositioning (e.g., wrapper replacement during re-render),
+    // this guaranteed timeout catches up after the morph animation settles.
+    // clamp() is idempotent — the extra getBoundingClientRect() call is free
+    // when the guard already clamped correctly via MO/RO.
+    const safetyTimer = setTimeout(() => {
+      const current = popoverContentRef.current;
+      if (current) clamp(current);
+    }, SETTLE_MS);
+
+    return () => {
+      cancelAnimationFrame(rafIdRef.current);
+      clearTimeout(safetyTimer);
+    };
   }, [isOpen, popoverViewState]);
 
   // Reactive clamping from three independent sources:

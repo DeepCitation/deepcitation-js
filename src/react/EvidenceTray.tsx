@@ -947,9 +947,7 @@ export function EvidenceTray({
       {/* Miss-specific: search analysis and collapsible search log (only when there are search attempts) */}
       {isMiss && searchAttempts.length > 0 ? (
         <div key="miss-analysis">
-          {searchAttempts.length > 0 && (
-            <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
-          )}
+          <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
           {footerEl}
           {searchAttempts.length > 0 && (
             <div
@@ -1643,6 +1641,9 @@ export function InlineExpandedImage({
           aria-label="Expanded verification image. Press Escape or Enter to collapse. Use arrow keys to pan."
           className={cn(
             "relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm",
+            // Top+sides border completes the box started by the footer's border-t-0.
+            // Matches EvidenceTray's EVIDENCE_TRAY_BORDER_SOLID so the transition is seamless.
+            !fill && "border border-b-0 border-gray-200 dark:border-gray-700",
             fill && "flex-1 min-h-0",
           )}
           style={{
@@ -1662,9 +1663,10 @@ export function InlineExpandedImage({
           }}
           onKeyDown={e => {
             if (e.key === "Escape") {
-              // Collapse the expanded image. e.preventDefault() propagates to the native
-              // event so Radix's onEscapeKeyDown also sees it as "already handled" and
-              // won't call onOpenChange independently.
+              // Collapse the expanded image. e.preventDefault() suppresses the default
+              // browser action. Radix's DismissableLayer still receives the event, but
+              // CitationComponent's onEscapeKeyDown handler reads popoverViewStateRef
+              // and steps back one level instead of closing — so no double-close.
               e.preventDefault();
               onCollapse();
               return;
@@ -1709,7 +1711,7 @@ export function InlineExpandedImage({
             className={cn(
               "animate-in fade-in-0",
               fill && annotationOrigin
-                ? "zoom-in-95 duration-[180ms]"
+                ? "zoom-in-95 duration-180"
                 : fill
                   ? "zoom-in-[0.97] duration-150"
                   : "duration-150",

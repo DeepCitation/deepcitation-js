@@ -177,7 +177,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     await expandButton.dispatchEvent("click");
     await page.waitForTimeout(100);
 
-    // Popover should still be visible in expanded-evidence state
+    // Popover should still be visible in expanded-keyhole state
     await expect(popover).toBeVisible();
 
     // Click the page pill to switch to expanded-page view (another internal transition)
