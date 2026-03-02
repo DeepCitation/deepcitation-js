@@ -27,6 +27,7 @@ import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js"
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
 import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
 import { usePopoverAlignOffset } from "./hooks/usePopoverAlignOffset.js";
+import { usePopoverMorphTransition } from "./hooks/usePopoverMorphTransition.js";
 import { useViewportBoundaryGuard } from "./hooks/useViewportBoundaryGuard.js";
 import { PopoverContent } from "./Popover.js";
 import { Popover, PopoverTrigger } from "./PopoverPrimitives.js";
@@ -115,13 +116,14 @@ export interface CitationComponentProps extends BaseCitationProps {
   isLoading?: boolean;
   /**
    * Visual style variant for the citation.
-   * - `linter`: Inline text with semantic underlines (default)
+   * - `text`: Plain text, inherits parent styling (default)
+   * - `linter`: Inline text with semantic underlines
    * - `chip`: Pill/badge style with neutral gray background
    * - `brackets`: [text✓] with square brackets
-   * - `text`: Plain text, inherits parent styling
    * - `superscript`: Small raised text like footnotes¹
    * - `footnote`: Clean footnote marker with neutral default
-   * - `badge`: ChatGPT-style source chip with favicon + count
+   * - `badge`: Source chip with name and indicator
+   * @default "text"
    */
   variant?: CitationVariant;
   /**
@@ -132,10 +134,10 @@ export interface CitationComponentProps extends BaseCitationProps {
    * - `source`: Source name (e.g., "Wikipedia")
    *
    * Defaults based on variant:
+   * - `text` → `anchorText`
    * - `linter` → `anchorText`
    * - `chip` → `anchorText`
    * - `brackets` → `anchorText`
-   * - `text` → `anchorText`
    * - `superscript` → `number`
    * - `footnote` → `number`
    * - `badge` → `source`
@@ -370,7 +372,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       fallbackDisplay,
       verification,
       isLoading = false,
-      variant = "linter",
+      variant = "text",
       content: contentProp,
       interactionMode: _interactionMode, // Deprecated, ignored
       eventHandlers,
@@ -616,6 +618,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // rendered rect and applies corrective CSS `translate` if any edge overflows.
     // If Layers 1–2 got it right, the guard is a no-op.
     useViewportBoundaryGuard(isHovering, popoverViewState, popoverContentRef);
+    // Stability-first FLIP morph: only summary -> expanded-keyhole expand is
+    // animated; collapse/back/full-page transitions snap.
+    usePopoverMorphTransition(isHovering, popoverViewState, triggerRef, popoverContentRef);
 
     const citationKey = useMemo(() => generateCitationKey(citation), [citation]);
     const citationInstanceId = useMemo(() => generateCitationInstanceId(citationKey), [citationKey]);
@@ -1240,7 +1245,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       "aria-expanded": isHovering,
       "aria-controls": shouldShowPopover ? popoverId : undefined,
       "aria-label": displayText ? `Citation: ${displayText}` : "Citation",
-      "aria-describedby": statusDescription ? statusDescId : undefined,
+      "aria-describedby": statusDescId,
       // Event handlers
       onMouseEnter: handleMouseEnter,
       onMouseLeave: handleMouseLeave,
@@ -1285,12 +1290,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       return (
         <>
           {children}
-          {/* Visually hidden live region for screen reader status announcements */}
-          {statusDescription && (
-            <span id={statusDescId} className="sr-only" aria-live="polite">
-              {statusDescription}
-            </span>
-          )}
+          {/* Visually hidden live region — always mounted so screen readers detect content *changes* */}
+          <span id={statusDescId} className="sr-only" aria-live="polite" aria-atomic="true">
+            {statusDescription}
+          </span>
           <Popover
             open={isHovering}
             onOpenChange={open => {
@@ -1359,10 +1362,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               style={
                 popoverViewState === "expanded-page"
                   ? {
-                      // maxWidth lifts the base 480px cap so the inner PopoverLayoutShell
-                      // can size to the image width. No explicit `width` — the Radix w-fit
-                      // class lets content determine the popover's actual width, keeping it
-                      // centered on the trigger instead of snapping to full viewport.
+                      // Expanded-page keeps adaptive width when space allows and is
+                      // clamped to viewport bounds via maxWidth + guard variable.
                       maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
                       // Explicit height gives the flex chain a definite reference size
                       // so flex-1 min-h-0 children can grow into available space.
@@ -1410,12 +1411,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     return (
       <>
         {children}
-        {/* Visually hidden live region for screen reader status announcements */}
-        {statusDescription && (
-          <span id={statusDescId} className="sr-only" aria-live="polite">
-            {statusDescription}
-          </span>
-        )}
+        {/* Visually hidden live region — always mounted so screen readers detect content *changes* */}
+        <span id={statusDescId} className="sr-only" aria-live="polite" aria-atomic="true">
+          {statusDescription}
+        </span>
         <span ref={setTriggerRef} {...triggerProps}>
           {citationContentNode}
         </span>

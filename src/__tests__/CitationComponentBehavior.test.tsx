@@ -515,7 +515,7 @@ describe("CitationComponent behaviorConfig", () => {
         fireEvent.click(citation as HTMLElement);
       });
 
-      // Triple-render pattern: expanded-evidence and expanded-page InlineExpandedImage
+      // Triple-render pattern: expanded-keyhole and expanded-page InlineExpandedImage
       // both exist in the DOM; the expanded-page instance (with override src) renders last.
       const allImages = document.querySelectorAll("img[alt='Verification evidence']");
       const overlayImage = allImages[allImages.length - 1];
