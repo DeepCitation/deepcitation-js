@@ -1278,17 +1278,24 @@ export function InlineExpandedImage({
   }, [src]);
 
   // Apply initial scroll position from the keyhole — expanded-keyhole mode (fill=false) only.
-  // fill=true has its own auto-scroll-to-annotation flow that takes priority.
-  // Reference-equality check prevents re-applying the same position after user pans away.
+  // Uses rAF (matching the annotation auto-scroll pattern) to wait for the browser to lay out
+  // the newly-visible container before writing scrollTop/scrollLeft. useLayoutEffect is too
+  // early: the container transitions from display:none in this same commit, so the browser
+  // hasn't computed its scroll geometry yet when useLayoutEffect fires — the write is a no-op.
+  // Reference-equality check prevents re-applying the same position after the user pans away.
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef is a stable ref object
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (fill || !imageLoaded || !initialScroll) return;
     if (lastAppliedInitialScrollRef.current === initialScroll) return;
-    const el = containerRef.current;
-    if (!el) return;
     lastAppliedInitialScrollRef.current = initialScroll;
-    el.scrollLeft = initialScroll.left;
-    el.scrollTop = initialScroll.top;
+    const { left, top } = initialScroll;
+    const rafId = requestAnimationFrame(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      el.scrollLeft = left;
+      el.scrollTop = top;
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [fill, imageLoaded, initialScroll, containerRef]);
 
   // ---------------------------------------------------------------------------
