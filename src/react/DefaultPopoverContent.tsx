@@ -673,7 +673,7 @@ export function DefaultPopoverContent({
     onViewStateChange?.("expanded-page");
   }, [canExpandToPage, onViewStateChange, viewState]);
 
-  // Resolve the evidence image src — used by handleKeyholeClick and the prefetch effect.
+  // Resolve the evidence image src — used by the prefetch effect.
   const evidenceSrc = useMemo(() => {
     if (verification?.document?.verificationImageSrc) {
       const s = verification.document.verificationImageSrc;
@@ -698,18 +698,6 @@ export function DefaultPopoverContent({
     const pageSrc = expandedImage?.src;
     if (pageSrc && isValidProofImageSrc(pageSrc)) new Image().src = pageSrc;
   }, [isVisible, evidenceSrc, expandedImage?.src]);
-
-  // Toggles the keyhole image expansion in Zone 3. Clicking when already expanded collapses.
-  // Pre-sets width before viewState change so React batches both into one render —
-  // PopoverLayoutShell gets the correct width on the first frame, no mid-width flash.
-  const handleKeyholeClick = useCallback(() => {
-    if (viewState === "expanded-evidence") {
-      onViewStateChange?.("summary");
-      return;
-    }
-    if (!evidenceSrc) return;
-    onViewStateChange?.("expanded-evidence");
-  }, [viewState, evidenceSrc, onViewStateChange]);
 
   // Get page info (document citations only)
   const expectedPage = !isUrlCitation(citation) ? citation.pageNumber : undefined;
@@ -789,7 +777,7 @@ export function DefaultPopoverContent({
           verification={verification}
           status={status}
           onExpand={canExpandToPage ? handleExpand : undefined}
-          onImageClick={hasImage ? handleKeyholeClick : undefined}
+          onImageClick={hasImage && canExpandToPage ? handleExpand : undefined}
           proofImageSrc={expandedImage?.src}
           onKeyholeWidth={setKeyholeDisplayedWidth}
           keyholeExpanded={viewState === "expanded-evidence"}

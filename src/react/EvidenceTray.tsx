@@ -344,7 +344,7 @@ function ZoomHint({
       aria-hidden="true"
       className="absolute bottom-2 right-2 text-[10px] text-white/90 bg-black/60 backdrop-blur-sm rounded-md px-1.5 py-0.5 pointer-events-none select-none animate-in fade-in-0 duration-150"
     >
-      Scroll to zoom
+      Ctrl+scroll to zoom
     </div>
   );
 }
@@ -413,6 +413,7 @@ export function AnchorTextFocusedImage({
 
   const { isHovering, gestureAnchorRef } = useWheelZoom({
     enabled: imageLoaded && zoomEligible,
+    requireCtrl: true,
     sensitivity: KEYHOLE_WHEEL_ZOOM_SENSITIVITY,
     containerRef: containerRef as React.RefObject<HTMLElement | null>,
     wrapperRef: imageWrapperRef,

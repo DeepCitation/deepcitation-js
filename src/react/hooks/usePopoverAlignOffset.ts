@@ -71,7 +71,13 @@ export function usePopoverAlignOffset(
     if (idealLeft < VIEWPORT_MARGIN_PX) {
       setOffset(VIEWPORT_MARGIN_PX - idealLeft);
     } else if (idealRight > viewportWidth - VIEWPORT_MARGIN_PX) {
-      setOffset(viewportWidth - VIEWPORT_MARGIN_PX - idealRight);
+      const rawOffset = viewportWidth - VIEWPORT_MARGIN_PX - idealRight;
+      // Clamp: don't overshoot left. When the popover is close to maxWidth,
+      // subpixel measurement differences can make rawOffset fractionally too
+      // negative, landing the left edge outside the margin while the right is
+      // exactly at the margin. Math.max ensures the left edge stays at or above
+      // VIEWPORT_MARGIN_PX; remaining right overflow is handled by the guard.
+      setOffset(Math.max(rawOffset, VIEWPORT_MARGIN_PX - idealLeft));
     } else {
       setOffset(0);
     }
