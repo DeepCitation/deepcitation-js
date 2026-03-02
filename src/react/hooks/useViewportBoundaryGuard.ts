@@ -58,8 +58,8 @@ export function useViewportBoundaryGuard(
   const moRef = useRef<MutationObserver | null>(null);
   const timerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Unified layout effect: clamps on initial open and on view-state transitions.
-  // Uses prevViewStateRef to distinguish the two cases.
+  // Unified layout effect: handles initial open, view-state transitions, and
+  // re-renders within the same state. Uses prevViewStateRef to distinguish.
   // biome-ignore lint/correctness/useExhaustiveDependencies: popoverContentRef has stable identity — refs should not be in deps per React docs
   useLayoutEffect(() => {
     // Cancel any pending rAF from a previous rapid view-state toggle.
@@ -77,7 +77,8 @@ export function useViewportBoundaryGuard(
       return;
     }
 
-    const isViewStateChange = prevViewStateRef.current !== null && prevViewStateRef.current !== popoverViewState;
+    const isInitialOpen = prevViewStateRef.current === null;
+    const isViewStateChange = !isInitialOpen && prevViewStateRef.current !== popoverViewState;
     prevViewStateRef.current = popoverViewState;
 
     if (isViewStateChange) {
@@ -88,7 +89,22 @@ export function useViewportBoundaryGuard(
       return;
     }
 
-    // Initial open: clamp before first paint (no flash).
+    if (isInitialOpen) {
+      // On initial open, Floating UI hasn't positioned the wrapper yet — its
+      // computePosition() runs in a separate effect cycle. Measuring
+      // getBoundingClientRect() now returns the pre-positioned rect (left:0,
+      // top:0), producing a wrong translate correction that fights with the
+      // transform Floating UI applies later. Only set the max-width constraint
+      // here; the useEffect + rAF below handles the first translate correction
+      // after Floating UI has positioned. The fade-in-0 animation (opacity: 0
+      // start) keeps the pre-positioned element invisible until positioned.
+      const vw = getVisibleViewportWidth();
+      el.style.setProperty(GUARD_MAX_WIDTH_VAR, `${vw - 2 * VIEWPORT_MARGIN_PX}px`);
+      return;
+    }
+
+    // Same view state, subsequent render: full clamp (Floating UI has
+    // already positioned the wrapper by now).
     clamp(el);
   }, [isOpen, popoverViewState]);
 

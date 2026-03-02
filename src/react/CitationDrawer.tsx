@@ -324,10 +324,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     setKeyholeExpanded(prev => !prev);
   }, []);
 
-  // Reset keyhole expansion when the accordion item collapses
-  useEffect(() => {
-    if (!isExpanded) setKeyholeExpanded(false);
-  }, [isExpanded]);
+  // Derive effective keyhole state — automatically collapsed when the accordion is closed.
+  // Avoids setState-during-render (React Compiler incompatible); keyholeExpanded state
+  // intentionally persists so re-opening the accordion restores the user's last preference.
+  const effectiveKeyholeExpanded = isExpanded && keyholeExpanded;
 
   return (
     <div
@@ -429,7 +429,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
               onImageClick={evidenceSrc ? handleExpandEvidence : undefined}
               onExpand={proofImage ? handleExpand : undefined}
               proofImageSrc={proofImage ?? undefined}
-              keyholeExpanded={keyholeExpanded}
+              keyholeExpanded={effectiveKeyholeExpanded}
             />
           </div>
         </div>
@@ -775,25 +775,25 @@ function IndicatorRow({
 const DRAWER_EXIT_DURATION_MS = 150;
 
 export function CitationDrawer({ isOpen, ...props }: CitationDrawerProps): React.ReactNode {
-  // Keep the drawer mounted during exit animation. When isOpen transitions
-  // false→true we mount immediately; when true→false we set isClosing and
-  // delay unmount until the exit animation completes.
+  // Keep the drawer mounted during exit animation.
+  // Initial value matches isOpen so SSR/initial-render is unaffected.
   const [shouldRender, setShouldRender] = useState(isOpen);
-  const [isClosing, setIsClosing] = useState(false);
 
+  // isClosing is derived, not separate state: drawer renders but isOpen is false.
+  const isClosing = shouldRender && !isOpen;
+
+  // Handle both transitions with deferred setState — no synchronous setState in effect body
+  // (which the React Compiler flags), and no setState-during-render.
+  // Mount: one rAF delay (~16ms) is imperceptible given the enter animation.
+  // Unmount: waits for the exit animation to complete.
   useEffect(() => {
     if (isOpen) {
-      setShouldRender(true);
-      setIsClosing(false);
-    } else if (shouldRender) {
-      setIsClosing(true);
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-        setIsClosing(false);
-      }, DRAWER_EXIT_DURATION_MS);
-      return () => clearTimeout(timer);
+      const id = requestAnimationFrame(() => setShouldRender(true));
+      return () => cancelAnimationFrame(id);
     }
-  }, [isOpen, shouldRender]);
+    const timer = setTimeout(() => setShouldRender(false), DRAWER_EXIT_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   if (!shouldRender) return null;
   return <OpenCitationDrawer {...props} isClosing={isClosing} />;

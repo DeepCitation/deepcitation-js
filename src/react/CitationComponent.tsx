@@ -485,18 +485,16 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       [experimentalHaptics, isMobile],
     );
 
-    // Lock body scroll when the popover is open (ref-counted so overlapping
-    // instances don't leave the page permanently locked). See acquireScrollLock().
-    //
-    // On mobile: only lock for expanded-page (full-screen). Summary and
-    // expanded-evidence are small overlays — locking there blocks page scroll
-    // and traps users when the popover is partially off-screen.
+    // Lock body scroll only for expanded-page (full-viewport). Summary and
+    // expanded-evidence are small overlays where scroll should pass through to
+    // the page behind — locking there "eats" scroll when the popover content
+    // isn't scrollable, trapping users. See acquireScrollLock().
     useEffect(() => {
       if (!isHovering) return;
-      if (isMobile && popoverViewState !== "expanded-page") return;
+      if (popoverViewState !== "expanded-page") return;
       acquireScrollLock();
       return () => releaseScrollLock();
-    }, [isHovering, isMobile, popoverViewState]);
+    }, [isHovering, popoverViewState]);
 
     // A.5.1 Focus trap: set `inert` on background content when the popover is
     // opened via keyboard. This prevents Tab from escaping the popover into
@@ -581,13 +579,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       isAnyOverlayOpenRef.current = isAnyOverlayOpen;
     }, [isHovering, isAnyOverlayOpen]);
 
-    // Ref for the popover content element (for mobile click-outside dismiss detection)
-    const popoverContentRef = useRef<HTMLElement | null>(null);
-
-    // Callback ref for setting the popover content element
-    const setPopoverContentRef = useCallback((element: HTMLElement | null) => {
-      popoverContentRef.current = element;
-    }, []);
+    // Ref for the popover content element (for mobile click-outside dismiss detection).
+    // Object ref (not callback ref) so the React Compiler can optimize this component —
+    // callback refs that mutate .current trigger "cannot modify local variables after render".
+    const popoverContentRef = useRef<HTMLDivElement | null>(null);
 
     // Ref for the trigger element (for mobile click-outside dismiss detection)
     // We need our own ref in addition to the forwarded ref to reliably check click targets
@@ -1314,7 +1309,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               </span>
             </PopoverTrigger>
             <PopoverContent
-              ref={setPopoverContentRef}
+              ref={popoverContentRef}
               id={popoverId}
               side={lockedSide}
               sideOffset={expandedPageSideOffset}
@@ -1352,10 +1347,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               style={
                 popoverViewState === "expanded-page"
                   ? {
-                      // Override base maxWidth (480px) to allow full-viewport expansion.
-                      // Uses the guard's JS-measured viewport width when available,
-                      // falling back to CSS viewport units for SSR/pre-guard.
-                      width: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
+                      // maxWidth lifts the base 480px cap so the inner PopoverLayoutShell
+                      // can size to the image width. No explicit `width` — the Radix w-fit
+                      // class lets content determine the popover's actual width, keeping it
+                      // centered on the trigger instead of snapping to full viewport.
                       maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
                       // Explicit height gives the flex chain a definite reference size
                       // so flex-1 min-h-0 children can grow into available space.

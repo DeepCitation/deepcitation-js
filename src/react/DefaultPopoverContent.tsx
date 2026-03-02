@@ -250,15 +250,15 @@ function PopoverLayoutShell({
   children: ReactNode;
 }) {
   // Both expanded-evidence and expanded-page size to the image once its width is known,
-  // via getExpandedPopoverWidth() → max(320px, min(imageW + 32px, 100dvw - 2rem)).
-  // Before the image reports its width: expanded-page falls back to full viewport so
-  // width and height snap in the same frame; expanded-evidence stays at summaryWidth
-  // to avoid a jarring jump to the mid-width fallback.
+  // via getExpandedPopoverWidth() → max(320px, min(imageW + 26px, 100dvw - 2rem)).
+  // Before the image reports its width: use the mid-width fallback (responsive clamp)
+  // so the popover grows toward the image's actual width instead of snapping to full
+  // viewport. Expanded-evidence stays at summaryWidth to avoid a jarring jump.
   const shellWidth =
     (isFullPage || isExpanded) && expandedNaturalWidth !== null
       ? getExpandedPopoverWidth(expandedNaturalWidth)
       : isFullPage
-        ? "calc(100dvw - 2rem)"
+        ? getExpandedPopoverWidth(null)
         : summaryWidth;
   return (
     <Activity>
@@ -366,7 +366,8 @@ function EvidenceZone({
   evidenceSrc,
   expandedImage,
   onViewStateChange,
-  handleExpandedImageLoad,
+  handleEvidenceImageLoad,
+  handlePageImageLoad,
   prevBeforeExpandedPageRef,
   verification,
   summaryContent,
@@ -375,7 +376,8 @@ function EvidenceZone({
   evidenceSrc: string | null;
   expandedImage: { src: string; renderScale?: { x: number; y: number } | null } | null;
   onViewStateChange?: (viewState: PopoverViewState) => void;
-  handleExpandedImageLoad: (width: number, height: number) => void;
+  handleEvidenceImageLoad: (width: number, height: number) => void;
+  handlePageImageLoad: (width: number, height: number) => void;
   prevBeforeExpandedPageRef: RefObject<"summary" | "expanded-evidence">;
   verification: Verification | null;
   summaryContent: ReactNode;
@@ -383,11 +385,13 @@ function EvidenceZone({
   // Track previous view state to detect re-entry transitions.
   // When returning to summary from an expanded state, we apply a brief fade-in
   // so the swap doesn't feel like the UI "snaps" backward.
-  const prevViewStateRef = useRef(viewState);
-  const isReenteringSummary = viewState === "summary" && prevViewStateRef.current !== "summary";
-  useEffect(() => {
-    prevViewStateRef.current = viewState;
-  });
+  // Using setState-during-render (React-approved pattern) instead of ref so the
+  // React Compiler can optimize this component (refs read during render cause a bailout).
+  const [prevViewState, setPrevViewState] = useState<PopoverViewState>(viewState);
+  if (prevViewState !== viewState) {
+    setPrevViewState(viewState);
+  }
+  const isReenteringSummary = viewState === "summary" && prevViewState !== "summary";
 
   return (
     <>
@@ -403,7 +407,7 @@ function EvidenceZone({
             src={evidenceSrc}
             onCollapse={() => onViewStateChange?.("summary")}
             verification={verification}
-            onNaturalSize={handleExpandedImageLoad}
+            onNaturalSize={handleEvidenceImageLoad}
           />
         </div>
       )}
@@ -420,7 +424,7 @@ function EvidenceZone({
             onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
             verification={verification}
             fill
-            onNaturalSize={handleExpandedImageLoad}
+            onNaturalSize={handlePageImageLoad}
             renderScale={expandedImage.renderScale}
           />
         </div>
@@ -583,26 +587,28 @@ export function DefaultPopoverContent({
   const searchStatus = verification?.status;
 
   // A.5.3 Track previous pending state so we can announce transitions to screen readers.
-  // The ref captures whether the component was in a pending state before the current render.
-  const wasPendingRef = useRef(isPending);
-  const [statusAnnouncement, setStatusAnnouncement] = useState("");
+  // Uses a ref (not state) to track previous isPending — avoids setState-during-render
+  // which the React Compiler doesn't support. DOM mutation of the aria-live region is an
+  // external system sync (the correct useEffect use case), not React state.
+  const prevIsPendingRef = useRef(isPending);
+  const liveRegionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (wasPendingRef.current && !isPending) {
+    const el = liveRegionRef.current;
+    if (!el) return;
+    if (prevIsPendingRef.current && !isPending) {
+      // Pending → resolved: announce the verification result
       if (isVerified && !isPartialMatch && !isMiss) {
-        setStatusAnnouncement("Citation verified — exact match found");
+        el.textContent = "Citation verified — exact match found";
       } else if (isMiss) {
-        setStatusAnnouncement("Verification complete — citation not found in source");
+        el.textContent = "Verification complete — citation not found in source";
       } else if (isPartialMatch) {
-        setStatusAnnouncement("Verification complete — partial match found");
+        el.textContent = "Verification complete — partial match found";
       }
+    } else if (!prevIsPendingRef.current && isPending) {
+      // Resolved → pending (retry): clear so next resolution triggers a new announcement.
+      el.textContent = "";
     }
-    // Clear when entering pending state so the next transition can re-announce
-    // (React skips state updates with identical values, so clearing is required
-    // for a second pending→resolved transition to trigger a new announcement).
-    if (isPending) {
-      setStatusAnnouncement("");
-    }
-    wasPendingRef.current = isPending;
+    prevIsPendingRef.current = isPending;
   }, [isPending, isVerified, isPartialMatch, isMiss]);
 
   // Save/restore scroll position for back navigation
@@ -631,55 +637,38 @@ export function DefaultPopoverContent({
 
   const summaryWidth = useMemo(() => getSummaryPopoverWidth(keyholeDisplayedWidth), [keyholeDisplayedWidth]);
 
-  // Track the natural width of the currently displayed expanded image.
-  // Pre-set from known dimensions when entering an expanded state; confirmed by
-  // InlineExpandedImage onLoad. Used to clamp the inner container width so the
-  // popover doesn't stretch wider than the image.
-  const [expandedNaturalWidth, setExpandedNaturalWidth] = useState<number | null>(null);
-  const cachedPageWidthRef = useRef<number | null>(null);
+  // Split state for evidence and page image natural widths.
+  // Each only updates from image onLoad events (event handlers, not effects).
+  // Triple always-render keeps images mounted, so onLoad fires once and state persists
+  // across viewState transitions (no re-mount, no stale-cache problem).
+  const [evidenceNaturalWidth, setEvidenceNaturalWidth] = useState<number | null>(null);
+  const [pageNaturalWidth, setPageNaturalWidth] = useState<number | null>(null);
 
-  // Helper: update local state AND report to parent in one step.
-  const setWidth = useCallback(
-    (w: number | null) => {
-      setExpandedNaturalWidth(w);
-      onExpandedWidthChange?.(w);
-    },
-    [onExpandedWidthChange],
-  );
+  // Fallback width from verification document dimensions (available before image loads).
+  const verificationWidth = verification?.document?.verificationImageDimensions?.width ?? null;
 
-  // Cache the last known page-image width so it survives collapse→re-expand cycles.
-  // Because of the triple always-render pattern, InlineExpandedImage stays mounted and
-  // its onLoad/onNaturalSize won't re-fire when toggling from display:none back to visible.
+  // Derive expandedNaturalWidth from the current viewState and loaded widths — no setState.
+  const expandedNaturalWidth = useMemo(() => {
+    if (viewState === "summary") return null;
+    if (viewState === "expanded-evidence") return evidenceNaturalWidth ?? verificationWidth;
+    if (viewState === "expanded-page") return pageNaturalWidth;
+    return null;
+  }, [viewState, evidenceNaturalWidth, pageNaturalWidth, verificationWidth]);
+
+  // Notify parent when expandedNaturalWidth changes — calls only the prop callback,
+  // not a React setter, so this useEffect is React Compiler-compatible.
   useEffect(() => {
-    if (viewState === "expanded-page" && expandedNaturalWidth !== null) {
-      cachedPageWidthRef.current = expandedNaturalWidth;
-    }
-  }, [viewState, expandedNaturalWidth]);
+    onExpandedWidthChange?.(expandedNaturalWidth);
+  }, [expandedNaturalWidth, onExpandedWidthChange]);
 
-  // Pre-set width from known dimensions when the view state or verification width changes.
-  // Runs as an effect (not during render) to avoid calling the parent's onExpandedWidthChange
-  // during this component's render phase — doing so triggers a React warning and also causes
-  // a React Compiler bailout from render-time ref mutations.
-  const verificationWidth = verification?.document?.verificationImageDimensions?.width;
-  useEffect(() => {
-    const newWidth =
-      viewState === "summary"
-        ? null
-        : viewState === "expanded-evidence" && verificationWidth
-          ? verificationWidth
-          : viewState === "expanded-page" && cachedPageWidthRef.current !== null
-            ? cachedPageWidthRef.current
-            : undefined; // undefined = no change
-    if (newWidth !== undefined) setWidth(newWidth);
-  }, [viewState, verificationWidth, setWidth]);
+  // Callbacks for InlineExpandedImage onLoad — set the appropriate state slot.
+  const handleEvidenceImageLoad = useCallback((width: number, _height: number) => {
+    setEvidenceNaturalWidth(width);
+  }, []);
 
-  // Callback for InlineExpandedImage onLoad — confirms/corrects the pre-set width.
-  const handleExpandedImageLoad = useCallback(
-    (width: number, _height: number) => {
-      setWidth(width);
-    },
-    [setWidth],
-  );
+  const handlePageImageLoad = useCallback((width: number, _height: number) => {
+    setPageNaturalWidth(width);
+  }, []);
 
   // Note: morphTransition was removed. CSS width morphing on content-heavy
   // containers causes visible reflow (text re-wrapping, image rescaling) on every
@@ -694,18 +683,17 @@ export function DefaultPopoverContent({
   const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
   const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef and cachedPageWidthRef are stable ref identities — including them causes a React Compiler bailout (value modification after hook)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef is a stable ref identity — including it causes a React Compiler bailout (value modification after hook)
   const handleExpand = useCallback(() => {
     if (!canExpandToPage) return;
     // Only record origin state when first entering expanded-page (not on redundant calls)
     if (viewState !== "expanded-page") {
       prevBeforeExpandedPageRef.current = viewState === "expanded-evidence" ? "expanded-evidence" : "summary";
     }
-    // Pre-set width from cached dimensions so React batches it with viewState change —
-    // PopoverLayoutShell gets the correct width on the first frame.
-    if (cachedPageWidthRef.current !== null) setWidth(cachedPageWidthRef.current);
+    // pageNaturalWidth is already set by onLoad (triple always-render keeps image mounted),
+    // so PopoverLayoutShell gets the correct width via expandedNaturalWidth useMemo.
     onViewStateChange?.("expanded-page");
-  }, [canExpandToPage, onViewStateChange, viewState, setWidth]);
+  }, [canExpandToPage, onViewStateChange, viewState]);
 
   // Resolve the evidence image src once at this level (used by handleKeyholeClick and Zone 3).
   const evidenceSrc = useMemo(() => {
@@ -742,9 +730,10 @@ export function DefaultPopoverContent({
       return;
     }
     if (!evidenceSrc) return;
-    if (verificationWidth) setWidth(verificationWidth);
+    // evidenceNaturalWidth is already set by onLoad (triple always-render keeps image mounted),
+    // so PopoverLayoutShell gets the correct width via expandedNaturalWidth useMemo.
     onViewStateChange?.("expanded-evidence");
-  }, [viewState, evidenceSrc, onViewStateChange, verificationWidth, setWidth]);
+  }, [viewState, evidenceSrc, onViewStateChange]);
 
   // Get page info (document citations only)
   const expectedPage = !isUrlCitation(citation) ? citation.pageNumber : undefined;
@@ -783,11 +772,8 @@ export function DefaultPopoverContent({
   // Always rendered (even when empty) so it's in the DOM before content changes —
   // screen readers only announce changes within an already-mounted aria-live container.
   // A newly-inserted container with pre-populated content is not reliably announced.
-  const statusLiveRegion = (
-    <div aria-live="polite" aria-atomic="true" className="sr-only">
-      {statusAnnouncement}
-    </div>
-  );
+  // Content is mutated imperatively via liveRegionRef (external DOM sync via useEffect).
+  const statusLiveRegion = <div ref={liveRegionRef} aria-live="polite" aria-atomic="true" className="sr-only" />;
 
   // Loading/pending state view — skeleton mirrors resolved layout shape
   if (isLoading || isPending) {
@@ -857,7 +843,8 @@ export function DefaultPopoverContent({
             evidenceSrc={evidenceSrc}
             expandedImage={expandedImage}
             onViewStateChange={onViewStateChange}
-            handleExpandedImageLoad={handleExpandedImageLoad}
+            handleEvidenceImageLoad={handleEvidenceImageLoad}
+            handlePageImageLoad={handlePageImageLoad}
             prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
             verification={verification}
             summaryContent={
@@ -960,7 +947,8 @@ export function DefaultPopoverContent({
             evidenceSrc={evidenceSrc}
             expandedImage={expandedImage}
             onViewStateChange={onViewStateChange}
-            handleExpandedImageLoad={handleExpandedImageLoad}
+            handleEvidenceImageLoad={handleEvidenceImageLoad}
+            handlePageImageLoad={handlePageImageLoad}
             prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
             verification={verification}
             summaryContent={summaryContent}

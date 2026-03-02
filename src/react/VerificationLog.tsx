@@ -1152,20 +1152,28 @@ export function VerificationLogTimeline({
       id="verification-log-timeline"
       role={onCollapse ? "button" : undefined}
       tabIndex={onCollapse ? 0 : undefined}
-      onClick={e => {
-        // Stop propagation so parent handlers (e.g. page-expand) don't fire
-        e.stopPropagation();
-        // Don't collapse if the user is selecting text
-        if (window.getSelection()?.isCollapsed === false) return;
-        onCollapse?.();
-      }}
-      onKeyDown={e => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          e.stopPropagation();
-          onCollapse?.();
-        }
-      }}
+      onClick={
+        onCollapse
+          ? e => {
+              // Stop propagation so parent handlers (e.g. page-expand) don't fire
+              e.stopPropagation();
+              // Don't collapse if the user is selecting text
+              if (window.getSelection()?.isCollapsed === false) return;
+              onCollapse();
+            }
+          : undefined
+      }
+      onKeyDown={
+        onCollapse
+          ? e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onCollapse();
+              }
+            }
+          : undefined
+      }
       className={cn(onCollapse && "cursor-pointer")}
     >
       <AuditSearchDisplay

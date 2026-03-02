@@ -20,6 +20,13 @@ export function FileUpload({ onUpload, uploadedFiles }: FileUploadProps) {
     fileInputRef.current?.click();
   };
 
+  // Extracted so the React Compiler can analyze it without try/catch interference.
+  // (Compiler limitation: complex value blocks inside try/catch trigger a bailout.)
+  const resetInput = () => {
+    const el = fileInputRef.current;
+    if (el) el.value = "";
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -30,9 +37,7 @@ export function FileUpload({ onUpload, uploadedFiles }: FileUploadProps) {
     } finally {
       setIsUploading(false);
       // Reset input so the same file can be uploaded again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      resetInput();
     }
   };
 

@@ -35,27 +35,30 @@ export default function Home() {
     formData.append("file", file);
     setUploadError(null);
 
+    // Fetch result extracted so complex conditionals stay outside try/catch.
+    // (React Compiler limitation: can't handle value blocks inside try/catch.)
+    let uploadResult: { res: Response; data: Record<string, unknown> } | null = null;
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = (await res.json()) as Record<string, unknown>;
+      uploadResult = { res, data };
+    } catch (err) {
+      setUploadError("Network error - check if the server is running");
+      console.error("Upload failed:", err);
+    }
 
-      const data = await res.json();
-
+    if (uploadResult) {
+      const { res, data } = uploadResult;
       if (res.ok && data.fileDataPart) {
         setFileDataParts(prev => [...prev, data.fileDataPart]);
         if (data.deepTextPromptPortion) {
           setDeepTextPromptPortions(prev => [...prev, data.deepTextPromptPortion]);
         }
       } else {
-        const errorMsg = data.details || data.error || "Upload failed";
+        const errorMsg = String(data.details ?? data.error ?? "Upload failed");
         setUploadError(errorMsg);
         console.error("Upload failed:", errorMsg);
       }
-    } catch (err) {
-      setUploadError("Network error - check if the server is running");
-      console.error("Upload failed:", err);
     }
   };
 
