@@ -938,7 +938,7 @@ export function EvidenceTray({
       ) : isMiss && isValidProofImageSrc(proofImageSrc) ? (
         <AnchorTextFocusedImage
           key="keyhole-miss"
-          src={proofImageSrc!}
+          src={proofImageSrc}
           onImageClick={onImageClick}
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}

@@ -16,11 +16,14 @@ export { Citation } from "./Citation.js";
 // Citation Annotation Overlay Types
 export type { AdditionalHighlight } from "./CitationAnnotationOverlay.js";
 // Components
+// URL Citation Component - For displaying URL citations
 export {
   CitationComponent,
   type CitationComponentProps,
   type CitationVariant,
   MemoizedCitationComponent,
+  MemoizedUrlCitationComponent,
+  UrlCitationComponent,
 } from "./CitationComponent.js";
 // Citation Drawer (ChatGPT-style bottom sheet)
 export {
@@ -211,11 +214,6 @@ export type {
   UrlFetchStatus,
   UrlVerificationMeta,
 } from "./types.js";
-// URL Citation Component - For displaying URL citations
-export {
-  MemoizedUrlCitationComponent,
-  UrlCitationComponent,
-} from "./UrlCitationComponent.js";
 // URL Status utilities
 export {
   isAccessibleStatus,

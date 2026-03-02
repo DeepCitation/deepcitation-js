@@ -2,6 +2,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
+import { UrlCitationComponent } from "./CitationComponent.js";
 import {
   DOT_COLORS,
   FOCUS_RING_CLASSES,
@@ -23,7 +24,6 @@ import {
   XIcon,
 } from "./icons.js";
 import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
-import { UrlCitationComponent } from "./UrlCitationComponent.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
 import { buildSearchSummary, countUniqueSearchTexts } from "./searchSummaryUtils.js";

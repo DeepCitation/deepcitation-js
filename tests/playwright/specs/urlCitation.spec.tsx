@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/experimental-ct-react";
 import type { UrlCitationMeta, UrlFetchStatus } from "../../../src/react/types";
-import { UrlCitationComponent } from "../../../src/react/UrlCitationComponent";
+import { UrlCitationComponent } from "../../../src/react/CitationComponent";
 
 // =============================================================================
 // TEST FIXTURES
