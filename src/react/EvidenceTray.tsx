@@ -893,6 +893,7 @@ export function EvidenceTray({
 }) {
   const resolvedEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
   const isMiss = status.isMiss;
+  const isPartialMatch = status.isPartialMatch;
   const searchAttempts = verification?.searchAttempts ?? [];
   const borderClass = isMiss ? EVIDENCE_TRAY_BORDER_DASHED : EVIDENCE_TRAY_BORDER_SOLID;
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -906,18 +907,21 @@ export function EvidenceTray({
   // must gate the action here.
   const trayMouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Search log toggle state (miss states only)
+  // Search log toggle state (miss and partial states)
   const [showSearchLog, setShowSearchLog] = useState(false);
-  const searchCount = useMemo(() => (isMiss ? countUniqueSearchTexts(searchAttempts) : 0), [isMiss, searchAttempts]);
+  const searchCount = useMemo(
+    () => (isMiss || isPartialMatch ? countUniqueSearchTexts(searchAttempts) : 0),
+    [isMiss, isPartialMatch, searchAttempts],
+  );
 
   // Footer element — shared across top/bottom placement
   const footerEl = (
     <EvidenceTrayFooter
       verifiedAt={verification?.verifiedAt}
       onPageClick={onExpand}
-      searchCount={isMiss ? searchCount : undefined}
+      searchCount={isMiss || isPartialMatch ? searchCount : undefined}
       isSearchLogOpen={showSearchLog}
-      onToggleSearchLog={isMiss ? () => setShowSearchLog(prev => !prev) : undefined}
+      onToggleSearchLog={isMiss || isPartialMatch ? () => setShowSearchLog(prev => !prev) : undefined}
     />
   );
 
@@ -935,7 +939,7 @@ export function EvidenceTray({
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}
         />
-      ) : isMiss && isValidProofImageSrc(proofImageSrc) ? (
+      ) : (isMiss || isPartialMatch) && isValidProofImageSrc(proofImageSrc) ? (
         <AnchorTextFocusedImage
           key="keyhole-miss"
           src={proofImageSrc}
@@ -944,43 +948,41 @@ export function EvidenceTray({
           onScrollCapture={onScrollCapture}
         />
       ) : null}
-      {/* Miss-specific: search analysis and collapsible search log (only when there are search attempts) */}
-      {isMiss && searchAttempts.length > 0 ? (
-        <div key="miss-analysis">
+      {/* Miss/partial: search analysis and collapsible search log (only when there are search attempts) */}
+      {(isMiss || isPartialMatch) && searchAttempts.length > 0 ? (
+        <div key="analysis">
           <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
           {footerEl}
-          {searchAttempts.length > 0 && (
-            <div
-              className="grid transition-[grid-template-rows]"
-              style={{
-                gridTemplateRows: showSearchLog ? "1fr" : "0fr",
-                ...(prefersReducedMotion
-                  ? { transitionDuration: "0ms" }
-                  : {
-                      transitionDuration: showSearchLog ? "200ms" : "120ms",
-                      transitionTimingFunction: showSearchLog ? EASE_EXPAND : EASE_COLLAPSE,
-                    }),
-              }}
-            >
-              <div className="overflow-hidden" style={{ minHeight: 0 }}>
-                <div className="border-t border-gray-200 dark:border-gray-700">
-                  <VerificationLogTimeline
-                    searchAttempts={searchAttempts}
-                    fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
-                    anchorText={verification?.citation?.anchorText ?? verification?.verifiedAnchorText ?? undefined}
-                    status="not_found"
-                    onCollapse={() => setShowSearchLog(false)}
-                  />
-                </div>
+          <div
+            className="grid transition-[grid-template-rows]"
+            style={{
+              gridTemplateRows: showSearchLog ? "1fr" : "0fr",
+              ...(prefersReducedMotion
+                ? { transitionDuration: "0ms" }
+                : {
+                    transitionDuration: showSearchLog ? "200ms" : "120ms",
+                    transitionTimingFunction: showSearchLog ? EASE_EXPAND : EASE_COLLAPSE,
+                  }),
+            }}
+          >
+            <div className="overflow-hidden" style={{ minHeight: 0 }}>
+              <div className="border-t border-gray-200 dark:border-gray-700">
+                <VerificationLogTimeline
+                  searchAttempts={searchAttempts}
+                  fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
+                  anchorText={verification?.citation?.anchorText ?? verification?.verifiedAnchorText ?? undefined}
+                  status={verification?.status ?? "not_found"}
+                  onCollapse={() => setShowSearchLog(false)}
+                />
               </div>
             </div>
-          )}
+          </div>
         </div>
       ) : null}
 
-      {/* Footer — for non-miss states, and miss states without search attempts
-          (miss states with searchAttempts render footer inside the miss-analysis block above) */}
-      {(!isMiss || (isMiss && searchAttempts.length === 0)) && footerEl}
+      {/* Footer — for success states and miss/partial without search attempts
+          (miss/partial with searchAttempts render footer inside the analysis block above) */}
+      {(!(isMiss || isPartialMatch) || searchAttempts.length === 0) && footerEl}
     </>
   );
 

@@ -786,7 +786,7 @@ describe("SourceContextHeader", () => {
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
     });
 
-    it("renders download button for URL citation when onSourceDownload is provided", () => {
+    it("does not render download button for URL citation without converted PDF metadata", () => {
       const citation: Citation = {
         type: "url",
         url: "https://example.com/article",
@@ -795,7 +795,26 @@ describe("SourceContextHeader", () => {
       };
       const onSourceDownload = () => {};
 
-      const { getByRole } = render(<SourceContextHeader citation={citation} onSourceDownload={onSourceDownload} />);
+      const { queryByRole } = render(<SourceContextHeader citation={citation} onSourceDownload={onSourceDownload} />);
+      expect(queryByRole("button", { name: /download source/i })).toBeNull();
+    });
+
+    it("renders download button for URL citation when converted PDF metadata exists", () => {
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        domain: "example.com",
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        attachmentId: "att-url-123",
+        label: "example.com.pdf",
+      };
+      const onSourceDownload = () => {};
+
+      const { getByRole } = render(
+        <SourceContextHeader citation={citation} verification={verification} onSourceDownload={onSourceDownload} />,
+      );
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
     });
 

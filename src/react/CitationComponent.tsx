@@ -437,7 +437,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           const a = document.createElement("a");
           a.href = downloadUrl;
           a.download = "";
+          document.body.appendChild(a);
           a.click();
+          document.body.removeChild(a);
         };
       }
       return undefined;

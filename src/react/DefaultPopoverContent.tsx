@@ -809,7 +809,8 @@ export function DefaultPopoverContent({
     // Unified summaryContent: success shows keyhole with onImageClick; miss/partial shows
     // keyhole or search analysis depending on what's available.
     const summaryContent =
-      (hasImage || (isMiss && (verification?.searchAttempts?.length || canExpandToPage))) && verification ? (
+      (hasImage || ((isMiss || isPartialMatch) && (verification?.searchAttempts?.length || canExpandToPage))) &&
+      verification ? (
         <EvidenceTray
           verification={verification}
           status={status}

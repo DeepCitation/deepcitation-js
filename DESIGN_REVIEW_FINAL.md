@@ -24,7 +24,7 @@ The specification is ambitious and well-structured as an interaction design docu
 **What actually exists:** Three view states within the same popover:
 
 ```
-summary ──→ expanded-evidence ──→ expanded-page
+summary ──→ expanded-keyhole ──→ expanded-page
    ↑              ↑                     │
    └──────────────┴─────────────────────┘
                  (Escape navigates back)
@@ -307,7 +307,7 @@ The actual state model is fundamentally different:
 │ Popover (Radix)                                          │
 │                                                          │
 │  ┌──────────┐    click     ┌───────────────────┐         │
-│  │ summary  │───────────→ │ expanded-evidence  │         │
+│  │ summary  │───────────→ │ expanded-keyhole  │         │
 │  │          │ ←───────────│                    │         │
 │  └──────────┘   Escape    └───────────────────┘         │
 │       │                           │                      │
@@ -325,7 +325,7 @@ The actual state model is fundamentally different:
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Escape navigates backward through states:** `expanded-page → expanded-evidence → summary → close`. Each step uses `prevBeforeExpandedPageRef` to remember the return path.
+**Escape navigates backward through states:** `expanded-page → expanded-keyhole → summary → close`. Each step uses `prevBeforeExpandedPageRef` to remember the return path.
 
 The spec must document this state machine — it's the core interaction model.
 
@@ -580,7 +580,7 @@ The spec treats this as a binary: "mobile" vs "desktop." The codebase handles th
 
 | Priority | Item | Description |
 |----------|------|-------------|
-| **Critical** | View state machine | `summary → expanded-evidence → expanded-page` with two-stage Escape |
+| **Critical** | View state machine | `summary → expanded-keyhole → expanded-page` with two-stage Escape |
 | **Critical** | CitationDrawer | Bottom sheet, accordion, stagger animation, drag-to-close |
 | **Critical** | Width morphing | Content-adaptive widths, snap transitions (no CSS morph) |
 | **High** | Three-layer positioning | How positioning works, what cannot be animated |
@@ -623,7 +623,7 @@ The following sections fill the gaps identified in the review above. Each is a c
 ### State Definition
 
 ```typescript
-type PopoverViewState = "summary" | "expanded-evidence" | "expanded-page";
+type PopoverViewState = "summary" | "expanded-keyhole" | "expanded-page";
 ```
 
 Three states within a **single Radix Popover** (no separate modal):
@@ -631,7 +631,7 @@ Three states within a **single Radix Popover** (no separate modal):
 | State | Width | Height | Content |
 |-------|-------|--------|---------|
 | `summary` | `clamp(320px, keyholeWidth + 32px, 480px)` | `auto` | Header + quote + keyhole strip |
-| `expanded-evidence` | `max(320px, min(imageWidth + 26px, 100dvw - 2rem))` | `auto` | Header + quote + inline expanded image |
+| `expanded-keyhole` | `max(320px, min(imageWidth + 26px, 100dvw - 2rem))` | `auto` | Header + quote + inline expanded image |
 | `expanded-page` | `var(--dc-guard-max-width, calc(100dvw - 2rem))` | `calc(100dvh - 2rem)` | Header + full-page image viewer with zoom toolbar |
 
 ### Transition Diagram
@@ -639,7 +639,7 @@ Three states within a **single Radix Popover** (no separate modal):
 ```
                         click keyhole
          ┌──────────┐ ───────────────→ ┌───────────────────┐
-         │ summary  │                  │ expanded-evidence │
+         │ summary  │                  │ expanded-keyhole │
          │ (default)│ ←─────────────── │                   │
          └────┬─────┘    Escape        └────────┬──────────┘
               │                                  │
@@ -650,7 +650,7 @@ Three states within a **single Radix Popover** (no separate modal):
          │           expanded-page                  │
          │                                          │
          │  Escape → return to origin state         │
-         │  (summary or expanded-evidence)          │
+         │  (summary or expanded-keyhole)          │
          └──────────────────────────────────────────┘
 ```
 
@@ -661,8 +661,8 @@ The system remembers which state the user came from via `prevBeforeExpandedPageR
 | Current State | First Escape | Second Escape |
 |---------------|-------------|---------------|
 | `expanded-page` (from summary) | → `summary` | → Close popover |
-| `expanded-page` (from expanded-evidence) | → `expanded-evidence` | → `summary`, then close |
-| `expanded-evidence` | → `summary` | → Close popover |
+| `expanded-page` (from expanded-keyhole) | → `expanded-keyhole` | → `summary`, then close |
+| `expanded-keyhole` | → `summary` | → Close popover |
 | `summary` | → Close popover | N/A |
 
 ### Width Transition Policy

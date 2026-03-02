@@ -344,6 +344,9 @@ export function SourceContextHeader({
   const showPagePill = !!onExpand || !!onClose;
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
+  const hasConvertedUrlPdf =
+    !!verification?.attachmentId || (typeof verification?.label === "string" && /\.pdf$/i.test(verification.label));
+  const shouldShowDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
 
   // Display name for document citations (never show attachmentId to users)
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
@@ -388,7 +391,7 @@ export function SourceContextHeader({
       </div>
       {/* Right: Download + Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-3">
-        {onSourceDownload && (
+        {shouldShowDownloadButton && (
           <button
             type="button"
             aria-label="Download source"
@@ -396,7 +399,7 @@ export function SourceContextHeader({
             className="shrink-0 size-8 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
             onClick={e => {
               e.stopPropagation();
-              onSourceDownload(citation);
+              onSourceDownload?.(citation);
             }}
           >
             <span className="size-3.5 block">
@@ -1019,15 +1022,16 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
 
 /**
  * Audit-focused search display.
- * - For found/partial: Shows only the successful match details
- * - For not_found: Shows all search attempts to help debug
+ * - For exact matches ("found", "found_phrase_missed_anchor_text"): Shows only the successful match details
+ * - For all other statuses (not_found, partial): Shows all search attempts to help debug
  */
 function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: AuditSearchDisplayProps) {
-  const isMiss = status === "not_found";
+  // Show all searches for anything that isn't a fully-verified exact match
+  const showAll = status !== "found" && status !== "found_phrase_missed_anchor_text";
   const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
 
-  // Query-centric summary for miss state
-  const summary = useMemo(() => (isMiss ? buildSearchSummary(searchAttempts) : null), [searchAttempts, isMiss]);
+  // Query-centric summary for all-search display (miss and partial)
+  const summary = useMemo(() => (showAll ? buildSearchSummary(searchAttempts) : null), [searchAttempts, showAll]);
 
   // If no search attempts, fall back to citation data
   if (searchAttempts.length === 0) {
@@ -1058,8 +1062,8 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
     );
   }
 
-  // For found/partial states: show only the successful match details
-  if (!isMiss && successfulAttempt) {
+  // For exact matches: show only the successful match details
+  if (!showAll && successfulAttempt) {
     const displayPhrase = truncatePhrase(successfulAttempt.searchPhrase);
 
     const methodName = METHOD_DISPLAY_NAMES[successfulAttempt.method] ?? successfulAttempt.method ?? "Search";
@@ -1093,7 +1097,7 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
     );
   }
 
-  // For not_found: flatten all unique texts (phrases + variations) into a single list
+  // For not_found / partial: flatten all unique texts (phrases + variations) into a single list
   const groups = summary?.queryGroups ?? [];
 
   // Flatten: collect all unique texts (phrases + variations) as individual rows
@@ -1136,8 +1140,8 @@ interface VerificationLogTimelineProps {
 
 /**
  * Scrollable timeline showing search attempts.
- * - For found/partial: Shows only the successful match details
- * - For not_found: Shows all search attempts with clear count
+ * - For exact matches ("found", "found_phrase_missed_anchor_text"): Shows only the successful match
+ * - For not_found and all partial statuses: Shows all search attempts with clear count
  *
  * Clicking the area collapses it (unless the user is selecting text).
  */
