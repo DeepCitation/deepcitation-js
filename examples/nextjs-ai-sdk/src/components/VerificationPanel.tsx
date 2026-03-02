@@ -153,9 +153,12 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                       </a>
                       <button
                         onClick={async () => {
+                          // Guard outside try/catch: React Compiler can't handle optional
+                          // chaining or conditionals inside try/catch blocks (current limitation).
+                          const url = v.proof?.proofUrl;
+                          if (!url) return;
                           try {
-                            if (!v.proof?.proofUrl) return;
-                            await navigator.clipboard.writeText(v.proof.proofUrl);
+                            await navigator.clipboard.writeText(url);
                             setCopiedKey(key);
                             setTimeout(() => setCopiedKey(null), 2000);
                           } catch {

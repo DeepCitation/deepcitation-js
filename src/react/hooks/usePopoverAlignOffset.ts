@@ -2,6 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
+import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
 
 /**
  * Computes an alignOffset that prevents the popover from overflowing the
@@ -15,9 +16,13 @@ import type { PopoverViewState } from "../DefaultPopoverContent.js";
  * Uses useLayoutEffect (runs before paint) so the offset is applied before the
  * popover is visible — no flash of wrong position.
  *
- * Reactivity: window resize listener catches viewport width changes.
- * Content reflow (image loads) is handled by the viewport boundary guard
- * (Layer 3) which uses a debounced ResizeObserver.
+ * Reactivity:
+ * - Window resize: viewport width changes.
+ * - ResizeObserver (inline size only): reacts immediately when the popover's
+ *   width changes mid-state (e.g., keyhole image load, keyhole expand,
+ *   expandedNaturalWidth confirmation). This prevents overflow that would
+ *   otherwise persist until the guard's 300ms debounce fires.
+ * - popoverViewState: view-state changes via useLayoutEffect.
  *
  * Math (with align="center"):
  *   idealLeft  = triggerCenter - popoverWidth / 2
@@ -67,7 +72,13 @@ export function usePopoverAlignOffset(
     if (idealLeft < VIEWPORT_MARGIN_PX) {
       setOffset(VIEWPORT_MARGIN_PX - idealLeft);
     } else if (idealRight > viewportWidth - VIEWPORT_MARGIN_PX) {
-      setOffset(viewportWidth - VIEWPORT_MARGIN_PX - idealRight);
+      const rawOffset = viewportWidth - VIEWPORT_MARGIN_PX - idealRight;
+      // Clamp: don't overshoot left. When the popover is close to maxWidth,
+      // subpixel measurement differences can make rawOffset fractionally too
+      // negative, landing the left edge outside the margin while the right is
+      // exactly at the margin. Math.max ensures the left edge stays at or above
+      // VIEWPORT_MARGIN_PX; remaining right overflow is handled by the guard.
+      setOffset(Math.max(rawOffset, VIEWPORT_MARGIN_PX - idealLeft));
     } else {
       setOffset(0);
     }
@@ -79,20 +90,51 @@ export function usePopoverAlignOffset(
     recompute();
   }, [recompute, popoverViewState]);
 
-  // Window resize listener for viewport width changes.
+  // Window resize and layout-shift listeners for viewport geometry changes.
+  // Scroll-lock transitions can shift page layout without firing `resize`.
   useEffect(() => {
     if (!isOpen) return;
 
     let rafId = 0;
-    const onResize = () => {
+    const onGeometryChange = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => recompute());
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onGeometryChange);
+    window.addEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
     return () => {
       cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onGeometryChange);
+      window.removeEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
     };
+  }, [isOpen, recompute]);
+
+  // Width-change observer: recompute alignment whenever the popover's inline
+  // size changes mid-state. Handles shellWidth updates from image load
+  // (onKeyholeWidth), keyhole expand, or expandedNaturalWidth confirmation.
+  // Sentinel prevInlineSize=-1 ensures a recompute on first observation,
+  // covering cases where useLayoutEffect ran with width=0 (ref not yet set).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: popoverContentRef has stable identity
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = popoverContentRef.current;
+    if (!el) return;
+
+    let prevInlineSize = -1;
+
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const inlineSize = entry.borderBoxSize?.[0]?.inlineSize ?? el.getBoundingClientRect().width;
+        if (inlineSize !== prevInlineSize) {
+          prevInlineSize = inlineSize;
+          recompute();
+          break;
+        }
+      }
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [isOpen, recompute]);
 
   return offset;

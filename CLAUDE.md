@@ -56,7 +56,7 @@ src/
 │   └── promptCompression.ts
 ├── react/
 │   ├── index.ts              # Public API types + consumer-facing exports
-│   ├── CitationComponent.tsx       # Main component, popover wiring
+│   ├── CitationComponent.tsx       # Document citation (popover wiring) + URL citation (UrlCitationComponent, MemoizedUrlCitationComponent)
 │   ├── CitationContentDisplay.tsx  # Variant rendering (chip, superscript, badge, etc.)
 │   ├── CitationErrorBoundary.tsx   # Error boundary for citation components
 │   ├── CitationStatusIndicator.tsx # Status indicators (verified/partial/miss/pending dots & icons)
@@ -65,7 +65,6 @@ src/
 │   ├── EvidenceTray.tsx            # Evidence display, keyhole viewer, InlineExpandedImage (expanded page + zoom + arrow-key pan)
 │   ├── SearchAnalysisSummary.tsx   # Search attempt display
 │   ├── SourcesListComponent.tsx
-│   ├── UrlCitationComponent.tsx
 │   ├── citationStatus.ts          # Status derivation, isPartialSearchStatus(), getTrustLevel()
 │   ├── citationVariants.cva.ts    # Variant class resolvers, status styles
 │   ├── constants.ts      # MISS_WAVY_UNDERLINE_STYLE, DOT_INDICATOR_*_STYLE, CARET_INDICATOR_SIZE_STYLE, CARET_PILL_STYLE, isValidProofImageSrc(), getPortalContainer()
@@ -270,6 +269,8 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `getInteractionClasses()` | `src/react/CitationContentDisplay.utils.ts` | Hover/active interaction classes for citation triggers |
 | `VARIANTS_WITH_OWN_HOVER` | `src/react/CitationContentDisplay.utils.ts` | Set of variants handling own hover styling |
 | `openedViaKeyboardRef` | `src/react/CitationComponent.tsx` | Tracks keyboard vs mouse/touch open (focus trap + focus return) |
+| `UrlCitationComponent` | `src/react/CitationComponent.tsx` | URL citation display (badge/chip/inline/bracket variants) — co-located with CitationComponent |
+| `MemoizedUrlCitationComponent` | `src/react/CitationComponent.tsx` | Memoized URL citation component |
 | `AnimatedHeightWrapper` | `src/react/DefaultPopoverContent.tsx` | Height morph wrapper (keep DOM, never Fragment) |
 
 ### Example

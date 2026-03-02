@@ -54,8 +54,8 @@ const Activity = ({ children }: { children: ReactNode }) => <>{children}</>;
 // TYPES
 // =============================================================================
 
-/** Popover view state: summary (default), evidence image expanded in-place, or full proof page */
-export type PopoverViewState = "summary" | "expanded-evidence" | "expanded-page";
+/** Popover view state: summary (default), keyhole image expanded in viewer, or full proof page */
+export type PopoverViewState = "summary" | "expanded-keyhole" | "expanded-page";
 
 export interface PopoverContentProps {
   citation: BaseCitationProps["citation"];
@@ -83,7 +83,7 @@ export interface PopoverContentProps {
   /** Reports the expanded image's natural width (or null on collapse) so the parent can size PopoverContent. */
   onExpandedWidthChange?: (width: number | null) => void;
   /** Ref tracking which state preceded expanded-page, for correct Escape back-navigation. */
-  prevBeforeExpandedPageRef?: RefObject<"summary" | "expanded-evidence">;
+  prevBeforeExpandedPageRef?: RefObject<"summary" | "expanded-keyhole">;
   /**
    * Callback when the user clicks the download button in the popover header.
    * The button only renders when this prop is provided.
@@ -232,9 +232,9 @@ function PopoverSnippetZone({ snippets }: { snippets: MatchSnippet[] }) {
  * rescale through non-integer sizes, and flex layouts redistribute space. The
  * intermediate frames are never visually coherent for a content-heavy container.
  *
- * The industry standard (Linear, Notion, Vercel) is to snap content-heavy containers
- * to their target layout and rely on component-level transitions (image onLoad,
- * spinner staging, stagger delays) for visual orchestration.
+ * Layout snaps to target width to avoid text/image reflow artifacts during
+ * view-state changes. Any visual motion should be handled by inner evidence/content
+ * components rather than morphing the outer popover container.
  */
 function PopoverLayoutShell({
   isExpanded,
@@ -249,16 +249,16 @@ function PopoverLayoutShell({
   summaryWidth: string;
   children: ReactNode;
 }) {
-  // Both expanded-evidence and expanded-page size to the image once its width is known,
-  // via getExpandedPopoverWidth() → max(320px, min(imageW + 32px, 100dvw - 2rem)).
-  // Before the image reports its width: expanded-page falls back to full viewport so
-  // width and height snap in the same frame; expanded-evidence stays at summaryWidth
-  // to avoid a jarring jump to the mid-width fallback.
+  // Both expanded-keyhole and expanded-page size to the image once its width is known,
+  // via getExpandedPopoverWidth() → max(320px, min(imageW + 26px, 100dvw - 2rem)).
+  // Before the image reports its width: use the mid-width fallback (responsive clamp)
+  // so the popover grows toward the image's actual width instead of snapping to full
+  // viewport. Expanded-evidence stays at summaryWidth to avoid a jarring jump.
   const shellWidth =
     (isFullPage || isExpanded) && expandedNaturalWidth !== null
       ? getExpandedPopoverWidth(expandedNaturalWidth)
       : isFullPage
-        ? "calc(100dvw - 2rem)"
+        ? getExpandedPopoverWidth(null)
         : summaryWidth;
   return (
     <Activity>
@@ -356,75 +356,95 @@ function AnimatedHeightWrapper({ viewState, children }: { viewState: PopoverView
 /**
  * Zone 3: Triple always-render evidence display pattern.
  *
- * Renders all three view states (summary, expanded-evidence, expanded-page)
- * simultaneously, hiding inactive ones with display:none. This keeps the hook
- * tree stable — React 19's StrictMode corrupts the fiber effect linked list
- * when conditionally swapping components with different hook counts inside a portal.
+ * Renders three slots simultaneously, hiding inactive ones with display:none:
+ * - Slot A (summary): EvidenceTray keyhole strip
+ * - Slot B (expanded-keyhole): InlineExpandedImage with the keyhole's own image source
+ * - Slot C (expanded-page): InlineExpandedImage fill=true
+ *
+ * This keeps the hook tree stable — React 19's StrictMode corrupts the fiber effect linked
+ * list when conditionally swapping components with different hook counts inside a portal.
  */
 function EvidenceZone({
   viewState,
   evidenceSrc,
   expandedImage,
   onViewStateChange,
-  handleExpandedImageLoad,
+  onExpandToPage,
+  handlePageImageLoad,
+  handleKeyholeImageLoad,
   prevBeforeExpandedPageRef,
   verification,
   summaryContent,
+  keyholeInitialScroll,
 }: {
   viewState: PopoverViewState;
   evidenceSrc: string | null;
   expandedImage: { src: string; renderScale?: { x: number; y: number } | null } | null;
   onViewStateChange?: (viewState: PopoverViewState) => void;
-  handleExpandedImageLoad: (width: number, height: number) => void;
-  prevBeforeExpandedPageRef: RefObject<"summary" | "expanded-evidence">;
+  /** When provided, renders a "View page ›" CTA in the expanded-keyhole footer. */
+  onExpandToPage?: () => void;
+  handlePageImageLoad: (width: number, height: number) => void;
+  handleKeyholeImageLoad: (width: number, height: number) => void;
+  prevBeforeExpandedPageRef: RefObject<"summary" | "expanded-keyhole">;
   verification: Verification | null;
   summaryContent: ReactNode;
+  /** Natural-pixel scroll position captured from the keyhole strip on last expand click. */
+  keyholeInitialScroll?: { left: number; top: number } | null;
 }) {
-  // Track previous view state to detect re-entry transitions.
-  // When returning to summary from an expanded state, we apply a brief fade-in
-  // so the swap doesn't feel like the UI "snaps" backward.
-  const prevViewStateRef = useRef(viewState);
-  const isReenteringSummary = viewState === "summary" && prevViewStateRef.current !== "summary";
-  useEffect(() => {
-    prevViewStateRef.current = viewState;
-  });
+  // Track previous view state to detect re-entry from expanded-page.
+  // When returning to any keyhole state (summary or expanded-keyhole), apply a brief
+  // fade-in so the swap doesn't feel like the UI "snaps" backward.
+  // Using setState-during-render (React-approved pattern) instead of ref so the
+  // React Compiler can optimize this component (refs read during render cause a bailout).
+  const [prevViewState, setPrevViewState] = useState<PopoverViewState>(viewState);
+  if (prevViewState !== viewState) {
+    setPrevViewState(viewState);
+  }
+  const isReenteringKeyhole =
+    (viewState === "summary" || viewState === "expanded-keyhole") && prevViewState === "expanded-page";
 
   return (
     <>
+      {/* Slot A: summary — EvidenceTray keyhole strip */}
       <div
         style={viewState !== "summary" ? { display: "none" } : undefined}
-        className={isReenteringSummary ? "animate-in fade-in-0 duration-100" : undefined}
+        className={isReenteringKeyhole ? "animate-in fade-in-0 duration-100" : undefined}
       >
         {summaryContent}
       </div>
-      {evidenceSrc && (
-        <div style={viewState !== "expanded-evidence" ? { display: "none" } : undefined}>
+      {/* Slot B: expanded-keyhole — wrapper div always rendered for React 19 fiber
+          stability (constant fiber position). InlineExpandedImage mounts inside once
+          evidenceSrc is available (null→mount, never remounts). */}
+      <div style={viewState !== "expanded-keyhole" ? { display: "none" } : undefined}>
+        {evidenceSrc && (
           <InlineExpandedImage
             src={evidenceSrc}
             onCollapse={() => onViewStateChange?.("summary")}
+            onExpand={onExpandToPage}
+            onNaturalSize={handleKeyholeImageLoad}
             verification={verification}
-            onNaturalSize={handleExpandedImageLoad}
+            initialScroll={keyholeInitialScroll ?? undefined}
           />
-        </div>
-      )}
-      {expandedImage?.src && (
-        // flex-1 min-h-0 flex flex-col: propagates the bounded height from the flex-column
-        // PopoverLayoutShell so InlineExpandedImage's own flex-1 min-h-0 can take effect.
-        // display:none on inactive view (style overrides the flex classes when hidden).
-        <div
-          className="flex-1 min-h-0 flex flex-col"
-          style={viewState !== "expanded-page" ? { display: "none" } : undefined}
-        >
+        )}
+      </div>
+      {/* Slot C: expanded-page — wrapper div always rendered for React 19 fiber
+          stability (constant fiber position). InlineExpandedImage mounts inside once
+          expandedImage is resolved. */}
+      <div
+        className="flex-1 min-h-0 flex flex-col"
+        style={viewState !== "expanded-page" ? { display: "none" } : undefined}
+      >
+        {expandedImage?.src && (
           <InlineExpandedImage
             src={expandedImage.src}
             onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
             verification={verification}
             fill
-            onNaturalSize={handleExpandedImageLoad}
+            onNaturalSize={handlePageImageLoad}
             renderScale={expandedImage.renderScale}
           />
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }
@@ -583,26 +603,28 @@ export function DefaultPopoverContent({
   const searchStatus = verification?.status;
 
   // A.5.3 Track previous pending state so we can announce transitions to screen readers.
-  // The ref captures whether the component was in a pending state before the current render.
-  const wasPendingRef = useRef(isPending);
-  const [statusAnnouncement, setStatusAnnouncement] = useState("");
+  // Uses a ref (not state) to track previous isPending — avoids setState-during-render
+  // which the React Compiler doesn't support. DOM mutation of the aria-live region is an
+  // external system sync (the correct useEffect use case), not React state.
+  const prevIsPendingRef = useRef(isPending);
+  const liveRegionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (wasPendingRef.current && !isPending) {
+    const el = liveRegionRef.current;
+    if (!el) return;
+    if (prevIsPendingRef.current && !isPending) {
+      // Pending → resolved: announce the verification result
       if (isVerified && !isPartialMatch && !isMiss) {
-        setStatusAnnouncement("Citation verified — exact match found");
+        el.textContent = "Citation verified — exact match found";
       } else if (isMiss) {
-        setStatusAnnouncement("Verification complete — citation not found in source");
+        el.textContent = "Verification complete — citation not found in source";
       } else if (isPartialMatch) {
-        setStatusAnnouncement("Verification complete — partial match found");
+        el.textContent = "Verification complete — partial match found";
       }
+    } else if (!prevIsPendingRef.current && isPending) {
+      // Resolved → pending (retry): clear so next resolution triggers a new announcement.
+      el.textContent = "";
     }
-    // Clear when entering pending state so the next transition can re-announce
-    // (React skips state updates with identical values, so clearing is required
-    // for a second pending→resolved transition to trigger a new announcement).
-    if (isPending) {
-      setStatusAnnouncement("");
-    }
-    wasPendingRef.current = isPending;
+    prevIsPendingRef.current = isPending;
   }, [isPending, isVerified, isPartialMatch, isMiss]);
 
   // Save/restore scroll position for back navigation
@@ -631,83 +653,35 @@ export function DefaultPopoverContent({
 
   const summaryWidth = useMemo(() => getSummaryPopoverWidth(keyholeDisplayedWidth), [keyholeDisplayedWidth]);
 
-  // Track the natural width of the currently displayed expanded image.
-  // Pre-set from known dimensions when entering an expanded state; confirmed by
-  // InlineExpandedImage onLoad. Used to clamp the inner container width so the
-  // popover doesn't stretch wider than the image.
-  const [expandedNaturalWidth, setExpandedNaturalWidth] = useState<number | null>(null);
-  const cachedPageWidthRef = useRef<number | null>(null);
+  // Page image natural width — set from onLoad, persists across viewState transitions
+  // (triple always-render keeps the image mounted so onLoad fires once and state is stable).
+  const [pageNaturalWidth, setPageNaturalWidth] = useState<number | null>(null);
 
-  // Helper: update local state AND report to parent in one step.
-  const setWidth = useCallback(
-    (w: number | null) => {
-      setExpandedNaturalWidth(w);
-      onExpandedWidthChange?.(w);
-    },
-    [onExpandedWidthChange],
-  );
+  // Keyhole image natural width when expanded — set from onLoad in expanded-keyhole state.
+  const [keyholeImageNaturalWidth, setKeyholeImageNaturalWidth] = useState<number | null>(null);
 
-  // Cache the last known page-image width so it survives collapse→re-expand cycles.
-  // Because of the triple always-render pattern, InlineExpandedImage stays mounted and
-  // its onLoad/onNaturalSize won't re-fire when toggling from display:none back to visible.
+  // Expanded popover width — needed for both full-page and expanded-keyhole views.
+  const expandedNaturalWidth = useMemo(() => {
+    if (viewState === "expanded-page") return pageNaturalWidth;
+    if (viewState === "expanded-keyhole") return keyholeImageNaturalWidth;
+    return null;
+  }, [viewState, pageNaturalWidth, keyholeImageNaturalWidth]);
+
+  // Notify parent when expandedNaturalWidth changes — calls only the prop callback,
+  // not a React setter, so this useEffect is React Compiler-compatible.
   useEffect(() => {
-    if (viewState === "expanded-page" && expandedNaturalWidth !== null) {
-      cachedPageWidthRef.current = expandedNaturalWidth;
-    }
-  }, [viewState, expandedNaturalWidth]);
+    onExpandedWidthChange?.(expandedNaturalWidth);
+  }, [expandedNaturalWidth, onExpandedWidthChange]);
 
-  // Pre-set width from known dimensions when the view state or verification width changes.
-  // Runs as an effect (not during render) to avoid calling the parent's onExpandedWidthChange
-  // during this component's render phase — doing so triggers a React warning and also causes
-  // a React Compiler bailout from render-time ref mutations.
-  const verificationWidth = verification?.document?.verificationImageDimensions?.width;
-  useEffect(() => {
-    const newWidth =
-      viewState === "summary"
-        ? null
-        : viewState === "expanded-evidence" && verificationWidth
-          ? verificationWidth
-          : viewState === "expanded-page" && cachedPageWidthRef.current !== null
-            ? cachedPageWidthRef.current
-            : undefined; // undefined = no change
-    if (newWidth !== undefined) setWidth(newWidth);
-  }, [viewState, verificationWidth, setWidth]);
+  const handlePageImageLoad = useCallback((width: number, _height: number) => {
+    setPageNaturalWidth(width);
+  }, []);
 
-  // Callback for InlineExpandedImage onLoad — confirms/corrects the pre-set width.
-  const handleExpandedImageLoad = useCallback(
-    (width: number, _height: number) => {
-      setWidth(width);
-    },
-    [setWidth],
-  );
+  const handleKeyholeImageLoad = useCallback((width: number, _height: number) => {
+    setKeyholeImageNaturalWidth(width);
+  }, []);
 
-  // Note: morphTransition was removed. CSS width morphing on content-heavy
-  // containers causes visible reflow (text re-wrapping, image rescaling) on every
-  // animation frame. Layout now snaps to target; component-level transitions
-  // (image onLoad, stagger delays) handle visual orchestration.
-
-  // Tracks which state we entered expanded-page from, so onCollapse can return there.
-  // "expanded-evidence" → expanded-page → back: returns to expanded-evidence (no InlineExpandedImage remount, no animation).
-  // "summary" → expanded-page → back: returns to summary.
-  // The ref may be lifted from the parent (CitationComponent) so that onEscapeKeyDown on
-  // <PopoverContent> can read the same value. Fall back to a local ref for the prefetch instance.
-  const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-evidence">("summary");
-  const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef and cachedPageWidthRef are stable ref identities — including them causes a React Compiler bailout (value modification after hook)
-  const handleExpand = useCallback(() => {
-    if (!canExpandToPage) return;
-    // Only record origin state when first entering expanded-page (not on redundant calls)
-    if (viewState !== "expanded-page") {
-      prevBeforeExpandedPageRef.current = viewState === "expanded-evidence" ? "expanded-evidence" : "summary";
-    }
-    // Pre-set width from cached dimensions so React batches it with viewState change —
-    // PopoverLayoutShell gets the correct width on the first frame.
-    if (cachedPageWidthRef.current !== null) setWidth(cachedPageWidthRef.current);
-    onViewStateChange?.("expanded-page");
-  }, [canExpandToPage, onViewStateChange, viewState, setWidth]);
-
-  // Resolve the evidence image src once at this level (used by handleKeyholeClick and Zone 3).
+  // Resolve the evidence image src — used by handleKeyholeClick and the prefetch effect.
   const evidenceSrc = useMemo(() => {
     if (verification?.document?.verificationImageSrc) {
       const s = verification.document.verificationImageSrc;
@@ -723,6 +697,35 @@ export function DefaultPopoverContent({
     }
   }, [verification]);
 
+  // Scroll position captured from the keyhole strip, applied to InlineExpandedImage on expand.
+  const [keyholeInitialScroll, setKeyholeInitialScroll] = useState<{ left: number; top: number } | null>(null);
+  const handleKeyholeScrollCapture = useCallback((left: number, top: number) => {
+    setKeyholeInitialScroll({ left, top });
+  }, []);
+
+  // Toggles the keyhole expanded view. Clicking when already expanded collapses back to summary.
+  const handleKeyholeClick = useCallback(() => {
+    if (viewState === "expanded-keyhole") {
+      onViewStateChange?.("summary");
+      return;
+    }
+    if (!evidenceSrc) return;
+    onViewStateChange?.("expanded-keyhole");
+  }, [viewState, evidenceSrc, onViewStateChange]);
+
+  // Tracks which state we entered expanded-page from, so onCollapse can return there.
+  const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
+  const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef is a stable ref identity — including it causes a React Compiler bailout (value modification after hook)
+  const handleExpand = useCallback(() => {
+    if (!canExpandToPage) return;
+    if (viewState !== "expanded-page") {
+      prevBeforeExpandedPageRef.current = viewState === "expanded-keyhole" ? "expanded-keyhole" : "summary";
+    }
+    onViewStateChange?.("expanded-page");
+  }, [canExpandToPage, onViewStateChange, viewState]);
+
   // Prefetch images imperatively when the popover becomes visible.
   // Keyhole image: preload as soon as the popover opens (user is hovering).
   // Page image: preload now so it's ready when the user clicks to expand.
@@ -732,19 +735,6 @@ export function DefaultPopoverContent({
     const pageSrc = expandedImage?.src;
     if (pageSrc && isValidProofImageSrc(pageSrc)) new Image().src = pageSrc;
   }, [isVisible, evidenceSrc, expandedImage?.src]);
-
-  // Toggles the keyhole image expansion in Zone 3. Clicking when already expanded collapses.
-  // Pre-sets width before viewState change so React batches both into one render —
-  // PopoverLayoutShell gets the correct width on the first frame, no mid-width flash.
-  const handleKeyholeClick = useCallback(() => {
-    if (viewState === "expanded-evidence") {
-      onViewStateChange?.("summary");
-      return;
-    }
-    if (!evidenceSrc) return;
-    if (verificationWidth) setWidth(verificationWidth);
-    onViewStateChange?.("expanded-evidence");
-  }, [viewState, evidenceSrc, onViewStateChange, verificationWidth, setWidth]);
 
   // Get page info (document citations only)
   const expectedPage = !isUrlCitation(citation) ? citation.pageNumber : undefined;
@@ -783,11 +773,8 @@ export function DefaultPopoverContent({
   // Always rendered (even when empty) so it's in the DOM before content changes —
   // screen readers only announce changes within an already-mounted aria-live container.
   // A newly-inserted container with pre-populated content is not reliably announced.
-  const statusLiveRegion = (
-    <div aria-live="polite" aria-atomic="true" className="sr-only">
-      {statusAnnouncement}
-    </div>
-  );
+  // Content is mutated imperatively via liveRegionRef (external DOM sync via useEffect).
+  const statusLiveRegion = <div ref={liveRegionRef} aria-live="polite" aria-atomic="true" className="sr-only" />;
 
   // Loading/pending state view — skeleton mirrors resolved layout shape
   if (isLoading || isPending) {
@@ -805,101 +792,33 @@ export function DefaultPopoverContent({
   }
 
   // ==========================================================================
-  // SUCCESS STATE (Green) - Three-zone layout: Header + Claim + Evidence
+  // THREE-ZONE LAYOUT: Success (green), Partial (amber), or Miss (red)
   // ==========================================================================
-  if (isVerified && !isPartialMatch && !isMiss && hasImage && verification) {
-    const isExpanded = viewState === "expanded-evidence" || viewState === "expanded-page";
-    const isFullPage = viewState === "expanded-page";
-    const validProofUrl =
-      isFullPage && verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
-    return (
-      <>
-        {statusLiveRegion}
-        <PopoverLayoutShell
-          isExpanded={isExpanded}
-          isFullPage={isFullPage}
-          expandedNaturalWidth={expandedNaturalWidth}
-          summaryWidth={summaryWidth}
-        >
-          {/* Zone 1: Metadata Header */}
-          <SourceContextHeader
-            citation={citation}
-            verification={verification}
-            status={searchStatus}
-            sourceLabel={sourceLabel}
-            onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
-            onClose={isFullPage ? () => onViewStateChange?.(prevBeforeExpandedPageRef.current) : undefined}
-            proofUrl={validProofUrl}
-            onSourceDownload={onSourceDownload}
-          />
-          {/* Zone 2: Claim Body — Status + highlighted phrase */}
-          <StatusHeader
-            status={searchStatus}
-            foundPage={foundPage}
-            expectedPage={expectedPage ?? undefined}
-            hidePageBadge
-            anchorText={anchorText}
-            indicatorVariant={indicatorVariant}
-          />
-          <AnimatedHeightWrapper viewState={viewState}>
-            {fullPhrase && (
-              <ClaimQuote
-                fullPhrase={fullPhrase}
-                anchorText={anchorText}
-                isMiss={isMiss}
-                borderColor="border-green-500 dark:border-green-600"
-              />
-            )}
-          </AnimatedHeightWrapper>
-          {/* Zone 3: Evidence */}
-          <EvidenceZone
-            viewState={viewState}
-            evidenceSrc={evidenceSrc}
-            expandedImage={expandedImage}
-            onViewStateChange={onViewStateChange}
-            handleExpandedImageLoad={handleExpandedImageLoad}
-            prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
-            verification={verification}
-            summaryContent={
-              <EvidenceTray
-                verification={verification}
-                status={status}
-                onExpand={canExpandToPage ? handleExpand : undefined}
-                onImageClick={handleKeyholeClick}
-                onKeyholeWidth={setKeyholeDisplayedWidth}
-              />
-            }
-          />
-        </PopoverLayoutShell>
-      </>
-    );
-  }
-
-  // ==========================================================================
-  // PARTIAL/DISPLACED STATE (Amber) or NOT FOUND (Red) - Three-zone layout
-  // ==========================================================================
-  if (isMiss || isPartialMatch) {
-    const isExpanded = viewState === "expanded-evidence" || viewState === "expanded-page";
+  if ((isVerified && !isPartialMatch && !isMiss && hasImage && verification) || isMiss || isPartialMatch) {
+    const isExpanded = viewState === "expanded-keyhole" || viewState === "expanded-page";
     const isFullPage = viewState === "expanded-page";
     const validProofUrl =
       isFullPage && verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
 
-    // Summary content differs from success: conditional EvidenceTray based on image/search state
+    const claimBorderColor = isMiss
+      ? "border-red-500 dark:border-red-400"
+      : isPartialMatch
+        ? "border-amber-500 dark:border-amber-400"
+        : "border-green-500 dark:border-green-600";
+
+    // Unified summaryContent: success shows keyhole with onImageClick; miss/partial shows
+    // keyhole or search analysis depending on what's available.
+    // When null (no image, no search attempts, no expandable page), EvidenceZone renders
+    // an empty Slot A — only Zones 1 (header) and 2 (claim body) are populated.
     const summaryContent =
-      hasImage && verification ? (
+      (hasImage || ((isMiss || isPartialMatch) && (verification?.searchAttempts?.length || canExpandToPage))) &&
+      verification ? (
         <EvidenceTray
           verification={verification}
           status={status}
           onExpand={canExpandToPage ? handleExpand : undefined}
-          onImageClick={handleKeyholeClick}
-          proofImageSrc={expandedImage?.src}
-          onKeyholeWidth={setKeyholeDisplayedWidth}
-        />
-      ) : isMiss && (verification?.searchAttempts?.length || canExpandToPage) && verification ? (
-        <EvidenceTray
-          verification={verification}
-          status={status}
-          onExpand={canExpandToPage ? handleExpand : undefined}
+          onImageClick={evidenceSrc ? handleKeyholeClick : canExpandToPage ? handleExpand : undefined}
+          onScrollCapture={evidenceSrc ? handleKeyholeScrollCapture : undefined}
           proofImageSrc={expandedImage?.src}
           onKeyholeWidth={setKeyholeDisplayedWidth}
         />
@@ -934,36 +853,41 @@ export function DefaultPopoverContent({
             anchorText={anchorText}
             indicatorVariant={indicatorVariant}
           />
-          {/* URL access explanation (for URL citations with access failures) */}
-          {urlAccessExplanation && <UrlAccessExplanationSection explanation={urlAccessExplanation} />}
-          {/* Snippet display for document partial matches */}
-          {!urlAccessExplanation && intentSnippets.length > 0 && <PopoverSnippetZone snippets={intentSnippets} />}
-          {/* Humanizing message fallback for URL citations */}
-          {!urlAccessExplanation && intentSnippets.length === 0 && humanizingMessage && (
+          {/* Partial/miss-specific sections (absent in success) */}
+          {(isMiss || isPartialMatch) && urlAccessExplanation && (
+            <UrlAccessExplanationSection explanation={urlAccessExplanation} />
+          )}
+          {(isMiss || isPartialMatch) && !urlAccessExplanation && intentSnippets.length > 0 && (
+            <PopoverSnippetZone snippets={intentSnippets} />
+          )}
+          {(isMiss || isPartialMatch) && !urlAccessExplanation && intentSnippets.length === 0 && humanizingMessage && (
             <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">
               {humanizingMessage}
             </div>
           )}
-          {fullPhrase && (
-            <AnimatedHeightWrapper viewState={viewState}>
+          <AnimatedHeightWrapper viewState={viewState}>
+            {fullPhrase && (
               <ClaimQuote
                 fullPhrase={fullPhrase}
                 anchorText={anchorText}
                 isMiss={isMiss}
-                borderColor={isMiss ? "border-red-500 dark:border-red-400" : "border-amber-500 dark:border-amber-400"}
+                borderColor={claimBorderColor}
               />
-            </AnimatedHeightWrapper>
-          )}
+            )}
+          </AnimatedHeightWrapper>
           {/* Zone 3: Evidence */}
           <EvidenceZone
             viewState={viewState}
             evidenceSrc={evidenceSrc}
             expandedImage={expandedImage}
             onViewStateChange={onViewStateChange}
-            handleExpandedImageLoad={handleExpandedImageLoad}
+            onExpandToPage={canExpandToPage ? handleExpand : undefined}
+            handlePageImageLoad={handlePageImageLoad}
+            handleKeyholeImageLoad={handleKeyholeImageLoad}
             prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
             verification={verification}
             summaryContent={summaryContent}
+            keyholeInitialScroll={keyholeInitialScroll}
           />
         </PopoverLayoutShell>
       </>

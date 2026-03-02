@@ -2,6 +2,8 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
+import { safeTest } from "../utils/regexSafety.js";
+import { UrlCitationComponent } from "./CitationComponent.js";
 import {
   DOT_COLORS,
   FOCUS_RING_CLASSES,
@@ -23,11 +25,22 @@ import {
   XIcon,
 } from "./icons.js";
 import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
-import { UrlCitationComponent } from "./UrlCitationComponent.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
 import { buildSearchSummary, countUniqueSearchTexts } from "./searchSummaryUtils.js";
 import { cn, isImageSource, isUrlCitation } from "./utils.js";
+
+/** Pattern for detecting converted PDF labels on URL citations */
+const PDF_LABEL_PATTERN = /\.pdf$/i;
+
+/**
+ * Statuses that show only the successful hit (not the full search trail).
+ * Everything else — miss, partial, and transient (loading/pending) — shows all attempts.
+ */
+const SHOW_ONLY_HIT_STATUSES: ReadonlySet<SearchStatus> = new Set<SearchStatus>([
+  "found",
+  "found_phrase_missed_anchor_text",
+]);
 
 // =============================================================================
 // CONSTANTS
@@ -344,6 +357,10 @@ export function SourceContextHeader({
   const showPagePill = !!onExpand || !!onClose;
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
+  const hasConvertedUrlPdf =
+    !!verification?.attachmentId ||
+    (typeof verification?.label === "string" && safeTest(PDF_LABEL_PATTERN, verification.label));
+  const shouldShowDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
 
   // Display name for document citations (never show attachmentId to users)
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
@@ -388,14 +405,15 @@ export function SourceContextHeader({
       </div>
       {/* Right: Download + Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-3">
-        {onSourceDownload && (
+        {shouldShowDownloadButton && (
           <button
             type="button"
             aria-label="Download source"
+            title={`Download ${displayName ?? url}`}
             className="shrink-0 size-8 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
             onClick={e => {
               e.stopPropagation();
-              onSourceDownload(citation);
+              onSourceDownload?.(citation);
             }}
           >
             <span className="size-3.5 block">
@@ -1018,15 +1036,41 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
 
 /**
  * Audit-focused search display.
- * - For found/partial: Shows only the successful match details
- * - For not_found: Shows all search attempts to help debug
+ * - For exact matches ("found", "found_phrase_missed_anchor_text"): Shows only the successful match details
+ * - For all other statuses (not_found, partial): Shows all search attempts to help debug
  */
 function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: AuditSearchDisplayProps) {
-  const isMiss = status === "not_found";
+  // Show all searches unless the status is a confirmed exact match.
+  // Transient statuses (loading, pending) show partial attempts as they arrive.
+  // Null/undefined status is treated as "unknown" — show all searches.
+  const showAll = status == null || !SHOW_ONLY_HIT_STATUSES.has(status);
   const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
 
-  // Query-centric summary for miss state
-  const summary = useMemo(() => (isMiss ? buildSearchSummary(searchAttempts) : null), [searchAttempts, isMiss]);
+  // Query-centric summary for all-search display (miss and partial)
+  const summary = useMemo(() => (showAll ? buildSearchSummary(searchAttempts) : null), [searchAttempts, showAll]);
+
+  // For not_found / partial / transient: flatten all unique texts (phrases + variations)
+  // into a single list, ordered with failures first and the successful hit last.
+  // Returns [] when showAll is false (exact-match statuses) — intentional no-op.
+  const orderedTexts = useMemo(() => {
+    if (!showAll) return [];
+    const groups = summary?.queryGroups ?? [];
+    const flat: Array<{ text: string; success: boolean }> = [];
+    const seen = new Set<string>();
+    for (const group of groups) {
+      if (group.searchPhrase && !seen.has(group.searchPhrase)) {
+        seen.add(group.searchPhrase);
+        flat.push({ text: group.searchPhrase, success: group.anySuccess });
+      }
+      for (const v of group.variations) {
+        if (!seen.has(v)) {
+          seen.add(v);
+          flat.push({ text: v, success: false });
+        }
+      }
+    }
+    return [...flat.filter(t => !t.success), ...flat.filter(t => t.success)];
+  }, [showAll, summary]);
 
   // If no search attempts, fall back to citation data
   if (searchAttempts.length === 0) {
@@ -1057,8 +1101,8 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
     );
   }
 
-  // For found/partial states: show only the successful match details
-  if (!isMiss && successfulAttempt) {
+  // For exact matches: show only the successful match details
+  if (!showAll && successfulAttempt) {
     const displayPhrase = truncatePhrase(successfulAttempt.searchPhrase);
 
     const methodName = METHOD_DISPLAY_NAMES[successfulAttempt.method] ?? successfulAttempt.method ?? "Search";
@@ -1092,28 +1136,9 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
     );
   }
 
-  // For not_found: flatten all unique texts (phrases + variations) into a single list
-  const groups = summary?.queryGroups ?? [];
-
-  // Flatten: collect all unique texts (phrases + variations) as individual rows
-  const flatTexts: Array<{ text: string; success: boolean }> = [];
-  const seen = new Set<string>();
-  for (const group of groups) {
-    if (group.searchPhrase && !seen.has(group.searchPhrase)) {
-      seen.add(group.searchPhrase);
-      flatTexts.push({ text: group.searchPhrase, success: group.anySuccess });
-    }
-    for (const v of group.variations) {
-      if (!seen.has(v)) {
-        seen.add(v);
-        flatTexts.push({ text: v, success: false });
-      }
-    }
-  }
-
   return (
     <div className="px-4 py-2 space-y-0 text-sm">
-      {flatTexts.map(({ text, success }) => (
+      {orderedTexts.map(({ text, success }) => (
         <SearchTextRow key={text} text={text} success={success} />
       ))}
     </div>
@@ -1135,8 +1160,8 @@ interface VerificationLogTimelineProps {
 
 /**
  * Scrollable timeline showing search attempts.
- * - For found/partial: Shows only the successful match details
- * - For not_found: Shows all search attempts with clear count
+ * - For exact matches ("found", "found_phrase_missed_anchor_text"): Shows only the successful match
+ * - For not_found and all partial statuses: Shows all search attempts with clear count
  *
  * Clicking the area collapses it (unless the user is selecting text).
  */
@@ -1152,20 +1177,28 @@ export function VerificationLogTimeline({
       id="verification-log-timeline"
       role={onCollapse ? "button" : undefined}
       tabIndex={onCollapse ? 0 : undefined}
-      onClick={e => {
-        // Stop propagation so parent handlers (e.g. page-expand) don't fire
-        e.stopPropagation();
-        // Don't collapse if the user is selecting text
-        if (window.getSelection()?.isCollapsed === false) return;
-        onCollapse?.();
-      }}
-      onKeyDown={e => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          e.stopPropagation();
-          onCollapse?.();
-        }
-      }}
+      onClick={
+        onCollapse
+          ? e => {
+              // Stop propagation so parent handlers (e.g. page-expand) don't fire
+              e.stopPropagation();
+              // Don't collapse if the user is selecting text
+              if (window.getSelection()?.isCollapsed === false) return;
+              onCollapse();
+            }
+          : undefined
+      }
+      onKeyDown={
+        onCollapse
+          ? e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onCollapse();
+              }
+            }
+          : undefined
+      }
       className={cn(onCollapse && "cursor-pointer")}
     >
       <AuditSearchDisplay

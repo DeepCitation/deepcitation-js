@@ -49,22 +49,18 @@ describe("normalizeScreenshotSrc", () => {
     });
 
     it("should throw on null input", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc(null as any)).toThrow("expected non-empty string");
     });
 
     it("should throw on undefined input", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc(undefined as any)).toThrow("expected non-empty string");
     });
 
     it("should throw on non-string input (number)", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc(123 as any)).toThrow("expected non-empty string");
     });
 
     it("should throw on non-string input (object)", () => {
-      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       expect(() => normalizeScreenshotSrc({} as any)).toThrow("expected non-empty string");
     });
   });
@@ -88,6 +84,18 @@ describe("normalizeScreenshotSrc", () => {
 
     it("should throw on base64 with invalid characters mixed in", () => {
       expect(() => normalizeScreenshotSrc("VGVz~dA==")).toThrow("Invalid base64 format detected");
+    });
+  });
+
+  describe("Security: Size limit", () => {
+    it("should throw on input exceeding 10 MB limit", () => {
+      const oversized = "A".repeat(10 * 1024 * 1024 + 1);
+      expect(() => normalizeScreenshotSrc(oversized)).toThrow("exceeds 10 MB limit");
+    });
+
+    it("should accept input exactly at 10 MB limit", () => {
+      const atLimit = "A".repeat(10 * 1024 * 1024);
+      expect(() => normalizeScreenshotSrc(atLimit)).not.toThrow();
     });
   });
 

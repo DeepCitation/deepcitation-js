@@ -100,9 +100,10 @@ export default function Home() {
 
   // Detect when streaming completes (isLoading: true → false) and verify.
   // Uses setState-during-render instead of useEffect to avoid React Compiler bailout.
+  // pendingVerify state replaces the previous pendingVerifyRef + verifySignal pattern
+  // so the React Compiler can optimize this component (ref mutations during render cause bailout).
   const [prevIsLoading, setPrevIsLoading] = useState(false);
-  const pendingVerifyRef = useRef<{ id: string; content: string } | null>(null);
-  const [verifySignal, setVerifySignal] = useState(0);
+  const [pendingVerify, setPendingVerify] = useState<{ id: string; content: string } | null>(null);
 
   if (isLoading !== prevIsLoading) {
     setPrevIsLoading(isLoading);
@@ -110,7 +111,6 @@ export default function Home() {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage?.role === "assistant" && !messageVerifications[lastMessage.id]) {
         console.log("[render] Stream finished, verifying...");
-        setIsVerifying(true);
         const messageContent =
           lastMessage.content ||
           lastMessage.parts
@@ -118,19 +118,18 @@ export default function Home() {
             .map(p => p.text)
             .join("") ||
           "";
-        pendingVerifyRef.current = { id: lastMessage.id, content: messageContent };
-        setVerifySignal(s => s + 1);
+        setPendingVerify({ id: lastMessage.id, content: messageContent });
+        setIsVerifying(true);
       }
     }
   }
 
   // Flush pending verification (side effects must live in useEffect, not render body)
   useEffect(() => {
-    const pending = pendingVerifyRef.current;
-    if (!pending) return;
-    pendingVerifyRef.current = null;
-    onVerifyMessage(pending.id, pending.content);
-  }, [verifySignal]);
+    if (!pendingVerify) return;
+    setPendingVerify(null);
+    onVerifyMessage(pendingVerify.id, pendingVerify.content);
+  }, [pendingVerify, onVerifyMessage]);
 
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -139,28 +138,30 @@ export default function Home() {
     formData.append("file", file);
     setUploadError(null);
 
+    // Fetch result extracted so complex conditionals stay outside try/catch.
+    // (React Compiler limitation: can't handle value blocks inside try/catch.)
+    let uploadResult: { res: Response; data: Record<string, unknown> } | null = null;
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = (await res.json()) as Record<string, unknown>;
+      uploadResult = { res, data };
+    } catch (error) {
+      setUploadError("Network error - check if the server is running");
+      console.error("Upload failed:", error);
+    }
 
-      const data = await res.json();
-
+    if (uploadResult) {
+      const { res, data } = uploadResult;
       if (res.ok && data.fileDataPart) {
         setFileDataParts(prev => [...prev, data.fileDataPart]);
         if (data.deepTextPromptPortion) {
           setDeepTextPromptPortions(prev => [...prev, data.deepTextPromptPortion]);
         }
       } else {
-        // Show error to user
-        const errorMsg = data.details || data.error || "Upload failed";
+        const errorMsg = String(data.details ?? data.error ?? "Upload failed");
         setUploadError(errorMsg);
         console.error("Upload failed:", errorMsg);
       }
-    } catch (error) {
-      setUploadError("Network error - check if the server is running");
-      console.error("Upload failed:", error);
     }
   };
 

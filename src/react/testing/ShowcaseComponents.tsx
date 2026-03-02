@@ -3,14 +3,13 @@ import { useState } from "react";
 import type { Citation } from "../../types/citation";
 import type { SearchAttempt } from "../../types/search";
 import type { Verification } from "../../types/verification";
-import { CitationComponent } from "../CitationComponent";
+import { CitationComponent, UrlCitationComponent } from "../CitationComponent";
 import { CitationDrawer, CitationDrawerItemComponent } from "../CitationDrawer";
 import type { CitationDrawerItem } from "../CitationDrawer.types";
 import { groupCitationsBySource } from "../CitationDrawer.utils";
 import { CitationDrawerTrigger } from "../CitationDrawerTrigger";
 import { SpinnerIcon } from "../icons";
 import type { UrlCitationMeta } from "../types";
-import { UrlCitationComponent } from "../UrlCitationComponent";
 import { QuoteBox, StatusHeader, VerificationLog } from "../VerificationLog";
 import { allUrlStatuses, allVerificationStatuses, urlAccessFailureFixtures } from "./ShowcaseFixtures";
 

@@ -43,7 +43,7 @@ The spec doesn't mention the existing three-layer positioning defense. Several a
 
 ### 1.4 The spec proposes a "fullscreen modal" — the codebase uses inline expanded states
 
-The spec describes a separate fullscreen modal with its own lifecycle. The actual architecture uses **view state transitions within the same popover**: `summary` → `expanded-evidence` → `expanded-page`. This is a critical difference:
+The spec describes a separate fullscreen modal with its own lifecycle. The actual architecture uses **view state transitions within the same popover**: `summary` → `expanded-keyhole` → `expanded-page`. This is a critical difference:
 
 - The popover stays mounted; its content morphs via `useAnimatedHeight`
 - Width adapts via `getExpandedPopoverWidth()` / `EXPANDED_POPOVER_MID_WIDTH`
@@ -277,7 +277,7 @@ The spec treats mobile as "touch" and desktop as "mouse." The codebase handles a
 
 ## 8. What Should Be Added to the Spec
 
-1. **View state machine** — The spec doesn't document the `summary → expanded-evidence → expanded-page` transitions or the two-stage Escape pattern. This is the core interaction model.
+1. **View state machine** — The spec doesn't document the `summary → expanded-keyhole → expanded-page` transitions or the two-stage Escape pattern. This is the core interaction model.
 
 2. **Width morphing** — The popover changes width between states (`getSummaryPopoverWidth` → `getExpandedPopoverWidth`). The spec only discusses height/fullscreen.
 

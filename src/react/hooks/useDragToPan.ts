@@ -208,7 +208,14 @@ export function useDragToPan(options: { direction?: "x" | "xy" } = {}): {
   const finishDrag = useCallback(() => {
     if (!isPressed.current) return;
     isPressed.current = false;
-    if (dragDistance.current > DRAG_THRESHOLD) {
+    // Suppress click if the mouse moved beyond the drag threshold OR if the
+    // container actually scrolled (even 1px). The scroll check catches slow,
+    // deliberate pans that move the image but keep mouse movement under DRAG_THRESHOLD.
+    const el = containerRef.current;
+    const scrollMoved =
+      el &&
+      (el.scrollLeft !== startScrollLeft.current || (direction === "xy" && el.scrollTop !== startScrollTop.current));
+    if (dragDistance.current > DRAG_THRESHOLD || scrollMoved) {
       wasDraggingRef.current = true;
     }
     setIsDragging(false);

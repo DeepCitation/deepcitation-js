@@ -2,6 +2,7 @@ import type React from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { GUARD_MAX_WIDTH_VAR, POPOVER_MORPH_EXPAND_MS, VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
+import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
 
 /**
  * Hard viewport boundary guard for popover positioning (Layer 3 safety net).
@@ -57,9 +58,13 @@ export function useViewportBoundaryGuard(
   const rafIdRef = useRef<number>(0);
   const moRef = useRef<MutationObserver | null>(null);
   const timerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Timestamp (ms) after which the active morph transition is considered done.
+   *  Set by the post-render useEffect on every view-state change so the
+   *  ResizeObserver can skip debouncing once the animation window has passed. */
+  const transitionEndsAtRef = useRef(0);
 
-  // Unified layout effect: clamps on initial open and on view-state transitions.
-  // Uses prevViewStateRef to distinguish the two cases.
+  // Unified layout effect: handles initial open, view-state transitions, and
+  // re-renders within the same state. Uses prevViewStateRef to distinguish.
   // biome-ignore lint/correctness/useExhaustiveDependencies: popoverContentRef has stable identity — refs should not be in deps per React docs
   useLayoutEffect(() => {
     // Cancel any pending rAF from a previous rapid view-state toggle.
@@ -77,18 +82,34 @@ export function useViewportBoundaryGuard(
       return;
     }
 
-    const isViewStateChange = prevViewStateRef.current !== null && prevViewStateRef.current !== popoverViewState;
+    const isInitialOpen = prevViewStateRef.current === null;
+    const isViewStateChange = !isInitialOpen && prevViewStateRef.current !== popoverViewState;
     prevViewStateRef.current = popoverViewState;
 
     if (isViewStateChange) {
-      // Clear stale correction immediately (before paint). The useEffect
-      // below re-clamps after React has committed all batched state updates
-      // from sibling hooks.
-      el.style.translate = "";
+      // Re-clamp immediately (before paint) to avoid a one-frame jump where
+      // clearing translate can push the popover outside viewport.
+      // A post-render re-clamp still runs below once sibling hooks settle.
+      clamp(el);
       return;
     }
 
-    // Initial open: clamp before first paint (no flash).
+    if (isInitialOpen) {
+      // On initial open, Floating UI hasn't positioned the wrapper yet — its
+      // computePosition() runs in a separate effect cycle. Measuring
+      // getBoundingClientRect() now returns the pre-positioned rect (left:0,
+      // top:0), producing a wrong translate correction that fights with the
+      // transform Floating UI applies later. Only set the max-width constraint
+      // here; the useEffect + rAF below handles the first translate correction
+      // after Floating UI has positioned. The fade-in-0 animation (opacity: 0
+      // start) keeps the pre-positioned element invisible until positioned.
+      const vw = getVisibleViewportWidth();
+      el.style.setProperty(GUARD_MAX_WIDTH_VAR, `${vw - 2 * VIEWPORT_MARGIN_PX}px`);
+      return;
+    }
+
+    // Same view state, subsequent render: full clamp (Floating UI has
+    // already positioned the wrapper by now).
     clamp(el);
   }, [isOpen, popoverViewState]);
 
@@ -98,18 +119,37 @@ export function useViewportBoundaryGuard(
   // trigger a batched re-render; by the time this useEffect runs, Radix has
   // repositioned the wrapper with the final offsets. The rAF then measures
   // the settled position and applies the guard correction.
+  //
+  // Also marks the active transition window so the ResizeObserver debounces
+  // during morph animations but fires immediately outside them.
   // biome-ignore lint/correctness/useExhaustiveDependencies: popoverContentRef has stable identity — refs should not be in deps per React docs
   useEffect(() => {
     if (!isOpen) return;
     const el = popoverContentRef.current;
     if (!el) return;
 
+    // Mark active transition window so ResizeObserver debounces during morph animation.
+    transitionEndsAtRef.current = Date.now() + SETTLE_MS;
+
     rafIdRef.current = requestAnimationFrame(() => {
       const current = popoverContentRef.current;
       if (current) clamp(current);
     });
 
-    return () => cancelAnimationFrame(rafIdRef.current);
+    // Safety-net re-clamp: if the MutationObserver or ResizeObserver misses
+    // Floating UI repositioning (e.g., wrapper replacement during re-render),
+    // this guaranteed timeout catches up after the morph animation settles.
+    // clamp() is idempotent — the extra getBoundingClientRect() call is free
+    // when the guard already clamped correctly via MO/RO.
+    const safetyTimer = setTimeout(() => {
+      const current = popoverContentRef.current;
+      if (current) clamp(current);
+    }, SETTLE_MS);
+
+    return () => {
+      cancelAnimationFrame(rafIdRef.current);
+      clearTimeout(safetyTimer);
+    };
   }, [isOpen, popoverViewState]);
 
   // Reactive clamping from three independent sources:
@@ -143,8 +183,13 @@ export function useViewportBoundaryGuard(
     // Safety: wrapper is always a *parent* of el (Radix wraps content in an
     // absolutely-positioned div). We observe wrapper's style mutations and
     // modify el's CSS translate — different elements → no infinite loop.
+    // Guard flag: MutationObserver callbacks queued before disconnect() may still
+    // fire after the effect cleanup runs. Checking this flag at the top of the
+    // callback prevents stale `clamp(el)` calls on an already-unmounted element.
+    let moDisconnected = false;
     if (wrapper && wrapper !== el) {
       moRef.current = new MutationObserver(mutations => {
+        if (moDisconnected) return;
         for (const m of mutations) {
           if (m.oldValue !== wrapper.getAttribute("style")) {
             // Cancel any pending rAF from a previous cycle so the guard
@@ -159,37 +204,45 @@ export function useViewportBoundaryGuard(
       moRef.current.observe(wrapper, { attributes: true, attributeFilter: ["style"], attributeOldValue: true });
     }
 
-    // ResizeObserver: debounced to avoid fighting CSS morph transitions.
+    // ResizeObserver: debounce only during active morph transitions; fire
+    // immediately (next event-loop turn) once the animation window has passed.
+    // This prevents visible overflow from image-load width changes (which happen
+    // outside any transition window) while still avoiding jitter during morphs.
     const debouncedClamp = () => {
       if (timerIdRef.current !== null) clearTimeout(timerIdRef.current);
-      timerIdRef.current = setTimeout(() => clamp(el), SETTLE_MS);
+      const delay = Date.now() < transitionEndsAtRef.current ? SETTLE_MS : 0;
+      timerIdRef.current = setTimeout(() => clamp(el), delay);
     };
     const ro = new ResizeObserver(debouncedClamp);
     ro.observe(el);
 
-    // Window resize: rAF-deferred so measurement happens after @floating-ui's
-    // async computePosition() resolves. Uses a local rafId (not the shared
-    // rafIdRef) to avoid canceling post-render clamps from the useEffect above.
-    let resizeRafId = 0;
-    const onResize = () => {
-      cancelAnimationFrame(resizeRafId);
-      resizeRafId = requestAnimationFrame(() => clamp(el));
+    // Geometry shifts (window resize + scroll-lock style changes): rAF-deferred
+    // so measurement happens after @floating-ui's async computePosition() resolves.
+    // Uses a local rafId (not the shared rafIdRef) to avoid canceling post-render
+    // clamps from the useEffect above.
+    let geometryRafId = 0;
+    const onGeometryChange = () => {
+      cancelAnimationFrame(geometryRafId);
+      geometryRafId = requestAnimationFrame(() => clamp(el));
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onGeometryChange);
+    window.addEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
 
     return () => {
       cancelAnimationFrame(rafIdRef.current);
-      cancelAnimationFrame(resizeRafId);
+      cancelAnimationFrame(geometryRafId);
       if (timerIdRef.current !== null) {
         clearTimeout(timerIdRef.current);
         timerIdRef.current = null;
       }
+      moDisconnected = true;
       if (moRef.current) {
         moRef.current.disconnect();
         moRef.current = null;
       }
       ro.disconnect();
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onGeometryChange);
+      window.removeEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, onGeometryChange as EventListener);
       // Clean up guard overrides so they don't persist to next open cycle.
       el.style.translate = "";
       el.style.removeProperty(GUARD_MAX_WIDTH_VAR);
