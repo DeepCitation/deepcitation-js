@@ -461,7 +461,12 @@ export function SourceContextHeader({
       role="presentation"
       className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-200 dark:border-gray-700"
       onClick={e => e.stopPropagation()}
-      onKeyDown={e => e.stopPropagation()}
+      onKeyDown={e => {
+        // Let Escape propagate to the document-level handler so the popover
+        // can still be dismissed when focus is inside this header (e.g. after
+        // clicking a download button). Stop other keys to avoid side effects.
+        if (e.key !== "Escape") e.stopPropagation();
+      }}
     >
       {/* Left: Icon + source name */}
       <div className="flex items-center gap-2 min-w-0 flex-1">

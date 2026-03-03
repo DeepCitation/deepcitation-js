@@ -310,6 +310,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   onExpandedWidthChange,
   prevBeforeExpandedPageRef,
   onSourceDownload,
+  escapeInterceptRef,
 }: {
   renderPopoverContent?: CitationComponentProps["renderPopoverContent"];
   citation: BaseCitationProps["citation"];
@@ -325,6 +326,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   onExpandedWidthChange?: (width: number | null, source?: "expanded-keyhole" | "expanded-page" | null) => void;
   prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-keyhole">;
   onSourceDownload?: (citation: Citation) => void;
+  escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   if (renderPopoverContent) {
     const CustomContent = renderPopoverContent;
@@ -350,6 +352,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
         onExpandedWidthChange={onExpandedWidthChange}
         prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
         onSourceDownload={onSourceDownload}
+        escapeInterceptRef={escapeInterceptRef}
       />
     </CitationErrorBoundary>
   );
@@ -473,6 +476,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Tracks which state preceded expanded-page so Escape can navigate back correctly.
     // Lifted here (from DefaultPopoverContent) so onEscapeKeyDown on <PopoverContent> can read it.
     const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
+
+    // Set by sub-components (e.g. EvidenceTray search log) when they have an expanded
+    // section that should consume Escape before the popover closes.
+    const escapeInterceptRef = useRef<(() => void) | null>(null);
 
     // Ref kept in sync with popoverViewState so setViewStateWithHaptics can read
     // the current value inside callbacks without stale closure issues.
@@ -1362,6 +1369,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           onExpandedWidthChange={handleExpandedWidthChange}
           prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
           onSourceDownload={effectiveOnSourceDownload}
+          escapeInterceptRef={escapeInterceptRef}
         />
       );
 
@@ -1418,6 +1426,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                 // popoverViewStateRef (not the closure value) ensures correctness
                 // even if the ref trails the latest render by one effect cycle.
                 e.preventDefault();
+
+                // Let sub-components (e.g. expanded search log) consume Escape first.
+                if (escapeInterceptRef.current) {
+                  escapeInterceptRef.current();
+                  return;
+                }
+
                 const vs = popoverViewStateRef.current;
                 if (vs === "summary") {
                   // Already at summary: close the popover.

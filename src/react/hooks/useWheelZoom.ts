@@ -84,14 +84,21 @@ export function useWheelZoom({
 
   // Stable ref mirror of zoom for use in wheel handler (avoids stale closures).
   const zoomRef = useRef(zoom);
-  useEffect(() => {
-    zoomRef.current = zoom;
-  });
 
   const gestureZoomRef = useRef<number | null>(null);
   const internalGestureAnchorRef = useRef<{ mx: number; my: number; sx: number; sy: number } | null>(null);
   const gestureAnchorRef = externalGestureAnchorRef ?? internalGestureAnchorRef;
   const commitTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tracks the zoom level committed via debounce timeout but not yet reflected
+  // in React state. Prevents snap-back when a new gesture starts between the
+  // commit timeout and React's render (where zoomRef would still be stale).
+  const committedZoomRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    committedZoomRef.current = null; // React caught up — no pending commit
+  });
 
   // Hover tracking via pointer events on the container.
   useEffect(() => {
@@ -142,9 +149,12 @@ export function useWheelZoom({
       const normalizedDeltaY = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 100 : e.deltaY;
       const delta = -normalizedDeltaY * sensitivity;
 
-      // First event of gesture: initialize from committed zoom and capture anchor
+      // First event of gesture: initialize from committed zoom and capture anchor.
+      // Use committedZoomRef if a debounce commit fired but React hasn't rendered yet —
+      // zoomRef would still be stale in that window, causing a visual snap-back.
       if (gestureZoomRef.current === null) {
-        gestureZoomRef.current = zoomRef.current;
+        gestureZoomRef.current = committedZoomRef.current ?? zoomRef.current;
+        committedZoomRef.current = null;
         const rect = el.getBoundingClientRect();
         gestureAnchorRef.current = {
           mx: e.clientX - rect.left,
@@ -170,8 +180,10 @@ export function useWheelZoom({
         commitTimeoutIdRef.current = null;
         const finalZoom = gestureZoomRef.current;
         if (finalZoom === null) return;
+        const clamped = clampZoomRef.current(finalZoom);
+        committedZoomRef.current = clamped;
         gestureZoomRef.current = null;
-        onZoomCommitRef.current(clampZoomRef.current(finalZoom));
+        onZoomCommitRef.current(clamped);
         wrapper.style.willChange = "";
       }, 150);
     };

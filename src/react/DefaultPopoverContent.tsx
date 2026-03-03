@@ -95,6 +95,12 @@ export interface PopoverContentProps {
    * The button only renders when this prop is provided.
    */
   onSourceDownload?: (citation: Citation) => void;
+  /**
+   * Ref that sub-components set to a collapse function when they have an
+   * expanded section (e.g. search log) that should consume Escape before the
+   * popover closes. The parent's onEscapeKeyDown checks this ref first.
+   */
+  escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 // =============================================================================
@@ -603,6 +609,7 @@ export function DefaultPopoverContent({
   onPageExpandOriginCapture,
   onPageExpandOriginConsumed,
   onSourceDownload,
+  escapeInterceptRef,
 }: PopoverContentProps) {
   const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
@@ -926,6 +933,7 @@ export function DefaultPopoverContent({
           onScrollCapture={evidenceSrc ? handleKeyholeScrollCapture : undefined}
           proofImageSrc={expandedImage?.src}
           onKeyholeWidth={setKeyholeDisplayedWidth}
+          escapeInterceptRef={escapeInterceptRef}
         />
       ) : null;
 

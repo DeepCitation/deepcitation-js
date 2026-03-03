@@ -1110,6 +1110,7 @@ export function EvidenceTray({
   onKeyholeWidth,
   onScrollCapture,
   onExpandOriginCapture,
+  escapeInterceptRef,
 }: {
   verification: Verification | null;
   status: CitationStatus;
@@ -1123,6 +1124,8 @@ export function EvidenceTray({
   onScrollCapture?: (left: number, top: number) => void;
   /** Called with a viewport rect used as the shared-origin source for expand-to-page. */
   onExpandOriginCapture?: (rect: SharedOriginRect) => void;
+  /** Ref the parent reads in its Escape handler — set to a collapse fn when the search log is open. */
+  escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const resolvedEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
   const isMiss = status.isMiss;
@@ -1170,6 +1173,16 @@ export function EvidenceTray({
   useEffect(() => {
     searchLogMountedRef.current = isSearchLogMounted;
   }, [isSearchLogMounted]);
+
+  // Sync escape intercept ref: when search log is open, Escape should collapse
+  // the log instead of closing the popover.
+  useEffect(() => {
+    if (!escapeInterceptRef) return;
+    escapeInterceptRef.current = showSearchLog ? () => setShowSearchLog(false) : null;
+    return () => {
+      escapeInterceptRef.current = null;
+    };
+  }, [showSearchLog, escapeInterceptRef]);
 
   useEffect(() => {
     const clearScheduled = () => {
@@ -1325,6 +1338,13 @@ export function EvidenceTray({
                   <div
                     ref={searchLogViewportRef}
                     className="max-h-[min(44dvh,420px)] overflow-y-auto overscroll-contain"
+                    onKeyDown={e => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowSearchLog(false);
+                      }
+                    }}
                   >
                     <VerificationLogTimeline
                       searchAttempts={searchAttempts}
@@ -1431,7 +1451,7 @@ function applyGestureTransform(
  *
  * When `fill` is true (expanded-page mode), includes subtle zoom controls
  * (−/slider/+) for both desktop and mobile. Mobile defaults to fit-to-screen.
- * Supports pinch-to-zoom on touch devices and trackpad pinch (Ctrl+wheel).
+ * Supports pinch-to-zoom on touch devices and scroll-to-zoom on desktop.
  */
 export function InlineExpandedImage({
   src,
@@ -1803,7 +1823,7 @@ export function InlineExpandedImage({
   }, [fill]);
 
   // ---------------------------------------------------------------------------
-  // GPU-accelerated Ctrl+wheel zoom (expanded page requires Ctrl — bare scroll pans).
+  // GPU-accelerated wheel zoom (scroll-to-zoom, drag-to-pan).
   // Uses useWheelZoom hook: CSS transform during gesture, commits on 150ms debounce.
   // ---------------------------------------------------------------------------
   useWheelZoom({
