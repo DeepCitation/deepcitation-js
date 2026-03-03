@@ -756,10 +756,6 @@ export const KEYHOLE_ZOOM_STEP = 0.15;
 export const KEYHOLE_WHEEL_ZOOM_SENSITIVITY = 0.008;
 
 // =============================================================================
-// ZOOM HINT
-// =============================================================================
-
-// =============================================================================
 // SCROLLBAR HIDING
 // =============================================================================
 
@@ -769,6 +765,10 @@ export const HIDE_SCROLLBAR_STYLE: React.CSSProperties = {
   scrollbarWidth: "none",
   msOverflowStyle: "none",
 };
+
+// =============================================================================
+// ZOOM HINT
+// =============================================================================
 
 /** Delay (ms) before showing "Scroll to zoom" hint on hover. */
 export const ZOOM_HINT_DELAY_MS = 5000;
