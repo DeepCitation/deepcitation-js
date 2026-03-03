@@ -7,7 +7,14 @@ export interface GroupedSearchAttempt {
 }
 
 function normalizePhrase(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  const canonical = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  return canonical.length > 0 ? canonical : "(empty)";
 }
 
 function resolveAttemptPage(attempt: SearchAttempt): number {
@@ -15,7 +22,7 @@ function resolveAttemptPage(attempt: SearchAttempt): number {
 }
 
 /**
- * Groups attempts by normalized phrase + page.
+ * Groups attempts by canonicalized phrase + page.
  * Method-level retries (same phrase on the same page) are treated as one logical
  * search so the audit list doesn't flood with near-duplicate rows.
  */
