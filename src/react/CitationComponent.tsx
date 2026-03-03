@@ -25,7 +25,7 @@ import {
 } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
-import { getExpandedPopoverWidthPx, getSummaryPopoverWidthPx } from "./expandedWidthPolicy.js";
+import { getExpandedPopoverWidthPx } from "./expandedWidthPolicy.js";
 import { triggerHaptic } from "./haptics.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
@@ -663,11 +663,15 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const projectedPopoverWidthPx = useMemo(() => {
       if (!isHovering || typeof document === "undefined") return null;
       const viewportWidth = document.documentElement.clientWidth;
-      if (
-        popoverViewState === "expanded-page" &&
-        expandedWidthSourceForPosition === "expanded-page" &&
-        expandedNaturalWidthForPosition !== null
-      ) {
+      if (expandedNaturalWidthForPosition === null) return null;
+
+      const shouldProjectExpandedWidth =
+        (popoverViewState === "expanded-keyhole" && expandedWidthSourceForPosition === "expanded-keyhole") ||
+        (popoverViewState === "expanded-page" &&
+          (expandedWidthSourceForPosition === "expanded-page" ||
+            expandedWidthSourceForPosition === "expanded-keyhole"));
+
+      if (shouldProjectExpandedWidth) {
         return getExpandedPopoverWidthPx(expandedNaturalWidthForPosition, viewportWidth);
       }
       return null;
@@ -1417,28 +1421,18 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
                       maxHeight: "calc(100dvh - 2rem)",
                       // The inner InlineExpandedImage handles its own scrolling (with hidden
-                      // scrollbars). Override PopoverContent's default overflow-y-auto to
-                      // prevent a redundant outer scrollbar from appearing.
-                      overflowY: "hidden" as const,
-                      // Disable CSS transitions on this element during view-state changes.
-                      // Tailwind's data-[state=open]:duration-200 sets transition-duration
-                      // on ALL properties (transition-property defaults to "all"). Without
-                      // this override, width/height changes transition over 200ms instead
-                      // of snapping instantly, causing usePopoverAlignOffset and
-                      // useViewportBoundaryGuard to measure stale intermediate widths.
-                      // Entry/exit animations use @keyframes (animate-in/out), not CSS
-                      // transitions, so they are unaffected. The inner useAnimatedHeight
-                      // wrapper manages its own transition property.
-                      transitionProperty: "none",
+                      // scrollbars). Override PopoverContent's default overflow behavior to
+                      // prevent redundant outer scrollbars from appearing during transitions.
+                      overflow: "hidden" as const,
                     }
                   : popoverViewState === "expanded-keyhole"
                     ? {
                         maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
-                        // Prevent Tailwind's duration-200 from transitioning width
-                        // changes — hooks need instant measurement (see expanded-page).
-                        transitionProperty: "none",
+                        // The inner InlineExpandedImage handles scrolling, so hide outer
+                        // overflow to avoid transient shell scrollbars during transitions.
+                        overflow: "hidden" as const,
                       }
-                    : { transitionProperty: "none" }
+                    : undefined
               }
               onClick={(e: React.MouseEvent) => {
                 // Clicking directly on the popover backdrop (not on inner content) dismisses it.

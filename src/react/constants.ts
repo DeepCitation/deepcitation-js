@@ -524,7 +524,7 @@ export const EXPANDED_POPOVER_HEIGHT = "calc(100dvh - 2rem)";
 // Slow              ANIM_SLOW_MS          350ms     duration-[350ms] Full-page transitions, coordinated
 //
 // Expand/collapse morphs use separate constants + asymmetric easing:
-//   POPOVER_MORPH_EXPAND_MS   200ms  EASE_EXPAND   (fast start, gentle stop, slight overshoot)
+//   POPOVER_MORPH_EXPAND_MS   200ms  BLINK_ENTER_EASING   (fast start, gentle settle)
 //   POPOVER_MORPH_COLLAPSE_MS 100ms  EASE_COLLAPSE (aggressive start, soft landing)
 //
 // NOTE: Tailwind duration-* classes in JSX must remain as literal strings for
@@ -594,12 +594,6 @@ export const POPOVER_MORPH_EXPAND_MS = 200;
 export const POPOVER_MORPH_COLLAPSE_MS = 100;
 
 /**
- * Easing for expand transitions — spring-like with ~6% overshoot.
- * Bézier: fast start (0.34), slight overshoot (1.06), soft landing (0.64, 1).
- * Gives perceptible liveness without visible bounce.
- */
-export const EASE_EXPAND = "cubic-bezier(0.34, 1.06, 0.64, 1)";
-/**
  * Easing for collapse transitions — decisive decelerate.
  * Bézier: starts with velocity (0.2), then eases into final state (0, 1).
  */
@@ -625,11 +619,18 @@ export const BLINK_ENTER_STEP_MS = 55;
 export const BLINK_EXIT_TOTAL_MS = 90;
 
 /** Total enter duration (ms) for row reveal/collapse surfaces. */
-export const BLINK_ROW_ENTER_TOTAL_MS = 100;
+export const BLINK_ROW_ENTER_TOTAL_MS = 450;
 /** Mid-step threshold (ms) for row reveal enter stages. */
-export const BLINK_ROW_ENTER_STEP_MS = 50;
+export const BLINK_ROW_ENTER_STEP_MS = 260;
 /** Total exit duration (ms) for row reveal close stages. */
-export const BLINK_ROW_EXIT_TOTAL_MS = 80;
+export const BLINK_ROW_EXIT_TOTAL_MS = 350;
+
+/** Fast row profile enter duration (ms) for sidebar-like quick expansions. */
+export const BLINK_ROW_FAST_ENTER_TOTAL_MS = 180;
+/** Fast row profile mid-step threshold (ms). */
+export const BLINK_ROW_FAST_ENTER_STEP_MS = 100;
+/** Fast row profile exit duration (ms). */
+export const BLINK_ROW_FAST_EXIT_TOTAL_MS = 120;
 
 /** Blink enter easing — near-linear with tiny settle. */
 export const BLINK_ENTER_EASING = "cubic-bezier(0.25, 0.25, 0.5, 1)";
@@ -657,12 +658,12 @@ export const BLINK_ENTER_Y_B_PX = 0.5;
 /** Container close vertical offset (px) for Blink exit. */
 export const BLINK_EXIT_Y_PX = 0.5;
 
-/** Row stage A opacity (0–1) for Blink reveal. */
-export const BLINK_ROW_OPACITY_A = 0.3;
-/** Row stage B opacity (0–1) for Blink reveal. */
-export const BLINK_ROW_OPACITY_B = 0.75;
+/** Row stage A opacity (0–1) for Blink reveal (first burst: medium/high). */
+export const BLINK_ROW_OPACITY_A = 0.72;
+/** Row stage B opacity (0–1) for Blink reveal (near-full but still light). */
+export const BLINK_ROW_OPACITY_B = 0.42;
 /** Row close opacity (0–1) for Blink hide. */
-export const BLINK_ROW_EXIT_OPACITY = 0.15;
+export const BLINK_ROW_EXIT_OPACITY = 0.32;
 
 /** Row stage A inset (px) for Blink reveal. */
 export const BLINK_ROW_INSET_A_PX = 4;

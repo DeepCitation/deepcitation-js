@@ -21,10 +21,12 @@ import {
 import { StackedStatusIcons } from "./CitationDrawerTrigger.js";
 import { CitationErrorBoundary } from "./CitationErrorBoundary.js";
 import {
+  BLINK_ROW_FAST_ENTER_STEP_MS,
+  BLINK_ROW_FAST_ENTER_TOTAL_MS,
+  BLINK_ROW_FAST_EXIT_TOTAL_MS,
   DRAWER_STAGGER_DELAY_MS,
   DRAWER_STAGGER_MAX_MS,
   EASE_COLLAPSE,
-  EASE_EXPAND,
   getPortalContainer,
   Z_INDEX_BACKDROP_DEFAULT,
   Z_INDEX_DRAWER_BACKDROP_VAR,
@@ -33,12 +35,13 @@ import {
 } from "./constants.js";
 import { EvidenceTray, InlineExpandedImage, resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
+import { useBlinkMotionStage } from "./hooks/useBlinkMotionStage.js";
 import { useDrawerDragToClose } from "./hooks/useDrawerDragToClose.js";
-import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { acquireScrollLock, releaseScrollLock } from "./scrollLock.js";
 import type { IndicatorVariant } from "./types.js";
 import { cn } from "./utils.js";
 import { FaviconImage, PagePill } from "./VerificationLog.js";
+import { getBlinkRowMotionStyle } from "./motion/blinkAnimation.js";
 
 // HighlightedPhrase — imported from ./HighlightedPhrase.js (canonical location)
 // EvidenceTray, InlineExpandedImage — imported from ./EvidenceTray.js (canonical location)
@@ -235,7 +238,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   className,
   indicatorVariant = "icon",
   defaultExpanded = false,
-  animationDelay,
+  animationDelay: _animationDelay,
 }: CitationDrawerItemProps) {
   const { citation, verification } = item;
   const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
@@ -274,7 +277,11 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     setPrevDefaultExpanded(false);
   }
 
-  const prefersReducedMotion = usePrefersReducedMotion();
+  const { mounted: isDetailMounted, stage: detailStage, prefersReducedMotion } = useBlinkMotionStage(
+    isExpanded,
+    "row",
+    "fast",
+  );
 
   const anchorText = citation.anchorText?.toString();
   const fullPhrase = citation.fullPhrase;
@@ -322,12 +329,11 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     <div
       data-dc-item={citationKey}
       className={cn(
-        "cursor-pointer transition-colors border-l-[3px] animate-in fade-in-0 slide-in-from-bottom-2 duration-[160ms] fill-mode-backwards",
+        "cursor-pointer transition-colors border-l-[3px]",
         !isLast && "border-b border-gray-200 dark:border-gray-700",
         isExpanded ? statusBorderColor : "border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50",
         className,
       )}
-      style={animationDelay ? { animationDelay: `${animationDelay}ms` } : undefined}
     >
       {/* Clickable summary row */}
       <div
@@ -389,39 +395,35 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
         </div>
       </div>
 
-      {/* Expanded detail view — CSS grid animation for smooth height transition.
-          Asymmetric timing: 200ms expand (content reveal), 120ms collapse (get out of the way). */}
-      <div
-        className="grid transition-[grid-template-rows]"
-        style={{
-          gridTemplateRows: isExpanded ? "1fr" : "0fr",
-          ...(prefersReducedMotion
-            ? { transitionDuration: "0ms" }
-            : {
-                transitionDuration: isExpanded ? "200ms" : "120ms",
-                transitionTimingFunction: isExpanded ? EASE_EXPAND : EASE_COLLAPSE,
-              }),
-        }}
-      >
-        <div className="overflow-hidden" style={{ minHeight: 0 }}>
-          <div
-            className={cn(
-              "border-t border-gray-100 dark:border-gray-800",
-              wasAutoExpanded && isNotFound && "animate-[dc-pulse-once_800ms_ease-out]",
-            )}
-            onAnimationEnd={() => setWasAutoExpanded(false)}
-          >
-            {/* Evidence area: keyhole for found, thumbnail+analysis for miss */}
-            <EvidenceTray
-              verification={verification ?? null}
-              status={citationStatus}
-              onImageClick={evidenceSrc || proofImage ? handleExpand : undefined}
-              onExpand={proofImage ? handleExpand : undefined}
-              proofImageSrc={proofImage ?? undefined}
-            />
+      {/* Expanded detail view — Blink inset settle (instant reveal + subtle settle). */}
+      {isDetailMounted ? (
+        <div
+          style={getBlinkRowMotionStyle(detailStage, prefersReducedMotion, {
+            enterStepMs: BLINK_ROW_FAST_ENTER_STEP_MS,
+            enterTotalMs: BLINK_ROW_FAST_ENTER_TOTAL_MS,
+            exitMs: BLINK_ROW_FAST_EXIT_TOTAL_MS,
+          })}
+        >
+          <div className="overflow-hidden" style={{ minHeight: 0 }}>
+            <div
+              className={cn(
+                "border-t border-gray-100 dark:border-gray-800",
+                wasAutoExpanded && isNotFound && "animate-[dc-pulse-once_800ms_ease-out]",
+              )}
+              onAnimationEnd={() => setWasAutoExpanded(false)}
+            >
+              {/* Evidence area: keyhole for found, thumbnail+analysis for miss */}
+              <EvidenceTray
+                verification={verification ?? null}
+                status={citationStatus}
+                onImageClick={evidenceSrc || proofImage ? handleExpand : undefined}
+                onExpand={proofImage ? handleExpand : undefined}
+                proofImageSrc={proofImage ?? undefined}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Inline keyframe for not-found pulse highlight — scoped, no global CSS needed */}
       {wasAutoExpanded && isNotFound && (
@@ -1126,7 +1128,7 @@ function OpenCitationDrawer({
 
         {/* Header inline panel — full-page proof image triggered by page badge or item row */}
         {headerInline && (
-          <div className="shrink-0 border-b border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in-0 zoom-in-[0.98] duration-150">
+          <div className="shrink-0 border-b border-gray-200 dark:border-gray-700 overflow-hidden">
             <CitationErrorBoundary>
               <InlineExpandedImage
                 src={headerInline.src}

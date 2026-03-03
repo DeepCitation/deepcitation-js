@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { GUARD_MAX_WIDTH_VAR, POPOVER_MORPH_EXPAND_MS, VIEWPORT_MARGIN_PX } from "../constants.js";
+import { BLINK_ENTER_TOTAL_MS, GUARD_MAX_WIDTH_VAR, VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
 import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
 
@@ -36,9 +36,9 @@ import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
  */
 
 /** Debounce delay for ResizeObserver callbacks only.
- *  Must exceed POPOVER_MORPH_EXPAND_MS + overshoot settling time (~100ms)
- *  so the guard never fires during CSS transitions. */
-const SETTLE_MS = POPOVER_MORPH_EXPAND_MS + 100;
+ *  Keep near the Blink settle window so guard correction lands quickly
+ *  after snap-based view-state changes (no late "second jump"). */
+const SETTLE_MS = BLINK_ENTER_TOTAL_MS + 16;
 
 /**
  * Returns the visible viewport width excluding the scrollbar.
@@ -102,8 +102,7 @@ export function useViewportBoundaryGuard(
       // the pre-positioned rect (left:0, top:0) and clamp() would compute
       // a wrong correction. Only set the max-width constraint here; the
       // post-render useEffect + rAF below handles the first translate
-      // correction after layout is committed. The fade-in-0 animation
-      // (opacity: 0 start) keeps the element invisible until positioned.
+      // correction after layout is committed.
       const vw = getVisibleViewportWidth();
       el.style.setProperty(GUARD_MAX_WIDTH_VAR, `${vw - 2 * VIEWPORT_MARGIN_PX}px`);
       return;

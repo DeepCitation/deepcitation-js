@@ -492,6 +492,10 @@ describe("CitationComponent behaviorConfig", () => {
       // Custom action: portal overlay renders in expanded-page state (no role="dialog" on portal div)
       // SourceContextHeader's PagePill renders in close mode with this title
       expect(document.querySelector("button[title='Close expanded view (Esc)']")).toBeInTheDocument();
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 140));
+      });
+      expect((document.querySelector("[role='dialog']") as HTMLElement | null)?.style.overflowY).toBe("hidden");
     });
 
     it("can apply setImageExpanded with string src", async () => {

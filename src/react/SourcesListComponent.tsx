@@ -676,7 +676,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
             ref={containerRef}
             className={classNames(
               "absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl",
-              "transform transition-transform duration-200 ease-[cubic-bezier(0.34,1.06,0.64,1)]",
+              "transform transition-transform duration-200 ease-out",
               isOpen ? "translate-y-0" : "translate-y-full",
               "max-h-[80vh] flex flex-col",
               className,
@@ -694,7 +694,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
             ref={containerRef}
             className={classNames(
               "relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl",
-              "transform transition-all ease-[cubic-bezier(0.34,1.06,0.64,1)]",
+              "transform transition-all ease-out",
               "opacity-100 scale-100 duration-200",
               "w-full max-w-md max-h-[80vh] flex flex-col mx-4",
               className,

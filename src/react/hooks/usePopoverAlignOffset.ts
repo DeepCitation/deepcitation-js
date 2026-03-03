@@ -88,7 +88,7 @@ export function usePopoverAlignOffset(
 
     const triggerRect = triggerRef.current?.getBoundingClientRect();
     if (!triggerRect) {
-      setOffset(0);
+      // Keep last known offset until geometry is measurable again.
       return;
     }
 
@@ -103,7 +103,8 @@ export function usePopoverAlignOffset(
         ? projectedWidthPx
         : (popoverContentRef.current?.getBoundingClientRect().width ?? 0);
     if (popoverWidth <= 0) {
-      setOffset(0);
+      // Preserve the previous offset to avoid a one-frame left snap while
+      // the popover is remeasuring after a view-state change.
       return;
     }
     setOffset(computeAlignOffset(viewportWidth, triggerRect.left, triggerRect.width, popoverWidth));
