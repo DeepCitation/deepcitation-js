@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type React from "react";
 import { createRef } from "react";
 import { EvidenceTray, InlineExpandedImage, resolveExpandedImageForPage } from "../react/EvidenceTray";
@@ -68,8 +68,7 @@ describe("EvidenceTray interaction styles", () => {
     expect(queryByRole("button", { name: /1 search/i })).not.toBeInTheDocument();
   });
 
-  it("collapses the search log when an attempt row is clicked instead of opening the page", () => {
-    jest.useFakeTimers();
+  it("collapses the search log when an attempt row is clicked instead of opening the page", async () => {
     const missStatus: CitationStatus = {
       isVerified: false,
       isMiss: true,
@@ -104,10 +103,9 @@ describe("EvidenceTray interaction styles", () => {
     fireEvent.click(attemptRowText);
 
     expect(onExpand).not.toHaveBeenCalled();
-    act(() => {
-      jest.runAllTimers();
+    await waitFor(() => {
+      expect(queryByText("alpha")).not.toBeInTheDocument();
     });
-    expect(queryByText("alpha")).not.toBeInTheDocument();
   });
 
   it("sets escapeInterceptRef to a collapse function when search log is open", () => {
