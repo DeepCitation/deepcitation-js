@@ -55,12 +55,17 @@ const MAX_ANCHOR_TEXT_PREVIEW_LENGTH = 50;
 
 /** Maximum length for phrase display in search attempt rows */
 const MAX_PHRASE_DISPLAY_LENGTH = 60;
+const TRUNCATED_PHRASE_PREFIX_LENGTH = 42;
+const TRUNCATED_PHRASE_SUFFIX_LENGTH = 14;
 
 /** Truncate a search phrase for display, showing "(empty)" for blank input. */
 function truncatePhrase(raw: string | undefined | null): string {
   const phrase = raw ?? "";
   if (phrase.length === 0) return "(empty)";
-  return phrase.length > MAX_PHRASE_DISPLAY_LENGTH ? `${phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH)}...` : phrase;
+  if (phrase.length <= MAX_PHRASE_DISPLAY_LENGTH) return phrase;
+  const prefix = phrase.slice(0, TRUNCATED_PHRASE_PREFIX_LENGTH);
+  const suffix = phrase.slice(-TRUNCATED_PHRASE_SUFFIX_LENGTH);
+  return `${prefix}...${suffix}`;
 }
 
 /** Maximum length for URL display in popover header */
