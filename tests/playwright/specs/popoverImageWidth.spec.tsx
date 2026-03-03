@@ -502,6 +502,11 @@ test.describe("Image Click to Expand", () => {
     await expect(expandedView).not.toBeVisible();
     await expect(popover).toBeVisible();
 
+    // Brief settle after the first Escape completes the collapse animation and
+    // React flushes the viewState update — ensures the document-level Escape
+    // handler sees "summary" (not "expanded-evidence") on the next keypress.
+    await page.waitForTimeout(100);
+
     // Second Escape closes the popover
     await page.keyboard.press("Escape");
     await expect(popover).not.toBeVisible();

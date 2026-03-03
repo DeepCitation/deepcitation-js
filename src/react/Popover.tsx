@@ -60,8 +60,8 @@ function computePosition(
   sideOffset: number,
   alignOffset: number,
 ): Coords {
-  let x = triggerRect.left;
-  let y = triggerRect.bottom + sideOffset;
+  let x: number;
+  let y: number;
 
   if (side === "top" || side === "bottom") {
     if (align === "center") {

@@ -510,6 +510,16 @@ test.describe("Expanded-Page Popover Sizing", () => {
     );
 
     const { expandedView } = await expandToFullPage(page);
+
+    // Zoom in first so the image overflows the container in both axes.
+    // At initial fit-to-screen zoom, the image width matches the container width,
+    // leaving zero horizontal scroll room.
+    const initBox = await expandedView.boundingBox();
+    expect(initBox).toBeTruthy();
+    await dispatchCtrlWheel(expandedView, initBox!.x + initBox!.width / 2, initBox!.y + initBox!.height / 2, -200);
+    await dispatchCtrlWheel(expandedView, initBox!.x + initBox!.width / 2, initBox!.y + initBox!.height / 2, -200);
+    await page.waitForTimeout(250);
+
     await expandedView.evaluate(el => {
       const node = el as HTMLElement;
       node.scrollLeft = 220;
