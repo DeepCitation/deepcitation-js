@@ -6,6 +6,7 @@ import {
   FaviconImage,
   LookingForSection,
   SourceContextHeader,
+  VerificationLogTimeline,
 } from "../react/VerificationLog";
 import { getVariationLabel } from "../react/variationLabels";
 import type { Citation } from "../types/citation";
@@ -269,6 +270,72 @@ describe("LookingForSection", () => {
       const matches = container.textContent?.match(/same text/g);
       expect(matches?.length).toBe(1);
     });
+  });
+});
+
+describe("VerificationLogTimeline attempts table", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders attempt rows with muted/strong location styling for non-exact outcomes", () => {
+    const searchAttempts = [
+      {
+        method: "exact_line_match" as const,
+        success: false,
+        searchPhrase: "Revenue increased by 15% in Q4 2024.",
+        pageSearched: 5,
+      },
+      {
+        method: "anchor_text_fallback" as const,
+        success: true,
+        searchPhrase: "increased by 15%",
+        pageSearched: 7,
+      },
+    ];
+
+    const { getByText } = render(
+      <VerificationLogTimeline
+        searchAttempts={searchAttempts}
+        status="found_on_other_page"
+        fullPhrase="Revenue increased by 15% in Q4 2024."
+        expectedPage={5}
+        expectedLine={12}
+      />,
+    );
+
+    expect(getByText("Revenue increased by 15% in Q4 2024.")).toBeInTheDocument();
+    expect(getByText("increased by 15%")).toBeInTheDocument();
+
+    const mutedLocation = getByText("p.5");
+    expect(mutedLocation.className).toContain("text-gray-400");
+
+    const highlightedLocation = getByText("p.7");
+    expect(highlightedLocation.className).toContain("font-semibold");
+  });
+
+  it("bolds successful hit location when page or line differs from expected", () => {
+    const searchAttempts = [
+      {
+        method: "line_with_buffer" as const,
+        success: true,
+        searchPhrase: "increased by 15%",
+        foundLocation: { page: 7, line: 22 },
+      },
+    ];
+
+    const { getByText } = render(
+      <VerificationLogTimeline
+        searchAttempts={searchAttempts}
+        status="found_on_other_line"
+        fullPhrase="Revenue increased by 15% in Q4 2024."
+        expectedPage={5}
+        expectedLine={12}
+      />,
+    );
+
+    const unexpectedLocation = getByText("p.7 · l.22");
+    expect(unexpectedLocation.className).toContain("font-semibold");
   });
 });
 
@@ -854,6 +921,96 @@ describe("SourceContextHeader", () => {
 
       expect(onSourceDownload).toHaveBeenCalledTimes(1);
       expect(parentClick).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Image download button", () => {
+    it("renders image download button when verification image exists", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        document: {
+          verificationImageSrc:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+
+      const { getByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
+      expect(getByRole("button", { name: /download image/i })).toBeInTheDocument();
+    });
+
+    it("does not render image download button when no evidence image exists", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+
+      const { queryByRole } = render(<SourceContextHeader citation={citation} />);
+      expect(queryByRole("button", { name: /download image/i })).toBeNull();
+    });
+
+    it("stops propagation when image download button is clicked", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        document: {
+          verificationImageSrc:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+      const parentClick = jest.fn();
+
+      const { getByRole } = render(
+        // biome-ignore lint/a11y/useKeyWithClickEvents: test-only wrapper
+        <div onClick={parentClick}>
+          <SourceContextHeader citation={citation} verification={verification} />
+        </div>,
+      );
+      fireEvent.click(getByRole("button", { name: /download image/i }));
+
+      expect(parentClick).not.toHaveBeenCalled();
+    });
+
+    it("starts image download without navigating the current view", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        document: {
+          verificationImageSrc:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+
+      const appendChildSpy = jest.spyOn(document.body, "appendChild");
+      const { getByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
+      fireEvent.click(getByRole("button", { name: /download image/i }));
+
+      const appendedBackgroundFrame = appendChildSpy.mock.calls
+        .map(([node]) => node)
+        .find(
+          node => node instanceof HTMLIFrameElement && node.getAttribute("data-deepcitation-download-frame") === "true",
+        );
+      const appendedFallbackAnchor = appendChildSpy.mock.calls
+        .map(([node]) => node)
+        .find(node => node instanceof HTMLAnchorElement && node.getAttribute("target") === "_blank");
+
+      expect(appendedBackgroundFrame ?? appendedFallbackAnchor).toBeTruthy();
+      appendChildSpy.mockRestore();
+      document.querySelector("iframe[data-deepcitation-download-frame='true']")?.remove();
     });
   });
 });

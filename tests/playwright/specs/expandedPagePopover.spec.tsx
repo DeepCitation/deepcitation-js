@@ -50,7 +50,7 @@ async function expandToFullPage(page: import("@playwright/test").Page) {
   const citation = page.locator("[data-citation-id]");
   await citation.click();
 
-  const popover = page.locator("[data-radix-popper-content-wrapper]");
+  const popover = page.locator("[data-dc-popover-wrapper]");
   await expect(popover).toBeVisible();
 
   // The content element (role="dialog") is the one that receives the viewport
@@ -91,6 +91,29 @@ async function expectPopoverInViewport(
   expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + tolerance);
 }
 
+/** Dispatch Ctrl+wheel from a specific viewport point. */
+async function dispatchCtrlWheel(
+  locator: import("@playwright/test").Locator,
+  clientX: number,
+  clientY: number,
+  deltaY: number,
+) {
+  await locator.evaluate(
+    (el, args) => {
+      const event = new WheelEvent("wheel", {
+        deltaY: args.deltaY,
+        clientX: args.clientX,
+        clientY: args.clientY,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      el.dispatchEvent(event);
+    },
+    { clientX, clientY, deltaY },
+  );
+}
+
 // =============================================================================
 // BASIC SCENARIOS — image loading, rendering, and scroll container sizing
 // =============================================================================
@@ -114,6 +137,24 @@ test.describe("Expanded-Page Basics", () => {
 
     const renderedWidth = await img.evaluate(el => (el as HTMLImageElement).getBoundingClientRect().width);
     expect(renderedWidth).toBeGreaterThan(600);
+  });
+
+  test("expanded page surface uses contrasted canvas background in light mode", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+      </div>,
+    );
+
+    const { expandedView } = await expandToFullPage(page);
+
+    const backgroundColor = await expandedView.evaluate(el => window.getComputedStyle(el as HTMLElement).backgroundColor);
+    expect(backgroundColor).toBe("rgb(243, 244, 246)");
+
+    const expandedImage = expandedView.locator("img").first();
+    await expect(expandedImage).toBeVisible();
+    const hasEdgeRing = await expandedImage.evaluate(el => el.classList.contains("ring-1"));
+    expect(hasEdgeRing).toBe(true);
   });
 
   test("scroll container has usable height, not collapsed to content", async ({ mount, page }) => {
@@ -148,6 +189,23 @@ test.describe("Expanded-Page Basics", () => {
 
     expect(scrollHeight).toBeGreaterThan(clientHeight);
     expect(scrollHeight / clientHeight).toBeGreaterThan(1.5);
+  });
+});
+
+test.describe("Expanded-Page Basics - Dark Mode", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("expanded page surface uses contrasted canvas background in dark mode", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+      </div>,
+    );
+
+    const { expandedView } = await expandToFullPage(page);
+
+    const backgroundColor = await expandedView.evaluate(el => window.getComputedStyle(el as HTMLElement).backgroundColor);
+    expect(backgroundColor).toBe("rgb(31, 41, 55)");
   });
 });
 
@@ -419,6 +477,79 @@ test.describe("Expanded-Page Popover Sizing", () => {
     expect(widened).toBeGreaterThan(narrowed);
     expect(widened).toBeLessThanOrEqual(1280 - 32 + 2);
   });
+
+  test("popover shell width stays stable during wheel zoom", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+      </div>,
+    );
+
+    const { popoverContent, expandedView } = await expandToFullPage(page);
+    const beforeWidth = await popoverContent.evaluate(el => el.getBoundingClientRect().width);
+
+    const box = await expandedView.boundingBox();
+    expect(box).toBeTruthy();
+
+    const x = box!.x + box!.width * 0.65;
+    const y = box!.y + box!.height * 0.35;
+
+    await dispatchCtrlWheel(expandedView, x, y, -140);
+    await dispatchCtrlWheel(expandedView, x, y, -140);
+    await page.waitForTimeout(250);
+
+    const afterWidth = await popoverContent.evaluate(el => el.getBoundingClientRect().width);
+    expect(Math.abs(afterWidth - beforeWidth)).toBeLessThanOrEqual(2);
+  });
+
+  test("wheel zoom preserves non-zero viewport scroll (no top-left reset)", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+      </div>,
+    );
+
+    const { expandedView } = await expandToFullPage(page);
+
+    // Zoom in first so the image overflows the container in both axes.
+    // At initial fit-to-screen zoom, the image width matches the container width,
+    // leaving zero horizontal scroll room.
+    const initBox = await expandedView.boundingBox();
+    expect(initBox).toBeTruthy();
+    await dispatchCtrlWheel(expandedView, initBox!.x + initBox!.width / 2, initBox!.y + initBox!.height / 2, -200);
+    await dispatchCtrlWheel(expandedView, initBox!.x + initBox!.width / 2, initBox!.y + initBox!.height / 2, -200);
+    await page.waitForTimeout(250);
+
+    await expandedView.evaluate(el => {
+      const node = el as HTMLElement;
+      node.scrollLeft = 220;
+      node.scrollTop = 220;
+    });
+    await page.waitForTimeout(50);
+
+    const before = await expandedView.evaluate(el => ({
+      left: (el as HTMLElement).scrollLeft,
+      top: (el as HTMLElement).scrollTop,
+    }));
+    expect(before.left).toBeGreaterThan(100);
+    expect(before.top).toBeGreaterThan(100);
+
+    const box = await expandedView.boundingBox();
+    expect(box).toBeTruthy();
+    const x = box!.x + box!.width * 0.6;
+    const y = box!.y + box!.height * 0.4;
+
+    await dispatchCtrlWheel(expandedView, x, y, -160);
+    await page.waitForTimeout(250);
+
+    const after = await expandedView.evaluate(el => ({
+      left: (el as HTMLElement).scrollLeft,
+      top: (el as HTMLElement).scrollTop,
+    }));
+
+    expect(after.left).toBeGreaterThan(80);
+    expect(after.top).toBeGreaterThan(80);
+  });
 });
 
 // =============================================================================
@@ -436,7 +567,7 @@ test.describe("Expanded-Page Regression: Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     const strip = popover.locator("[data-dc-keyhole]");

@@ -120,8 +120,10 @@ export const PENDING_COLOR_DEFAULT = "#9ca3af";
  * ```
  */
 export const POPOVER_WIDTH_VAR = "--dc-popover-width";
+/** Default popover width in pixels */
+export const POPOVER_WIDTH_DEFAULT_PX = 480;
 /** Default popover width */
-export const POPOVER_WIDTH_DEFAULT = "480px";
+export const POPOVER_WIDTH_DEFAULT = `${POPOVER_WIDTH_DEFAULT_PX}px`;
 /** Resolved popover width CSS value. Customizable via `--dc-popover-width`. */
 export const POPOVER_WIDTH = `var(${POPOVER_WIDTH_VAR}, ${POPOVER_WIDTH_DEFAULT})`;
 /** Extra px beyond image natural width for the expanded popover shell (mx-3 24px + shell border 2px). */
@@ -147,6 +149,15 @@ export const SUMMARY_IMAGE_SHELL_PX = 32;
 export const VERIFICATION_IMAGE_MAX_WIDTH = "min(70vw, 480px)";
 /** Default max height for verification images (responsive with fallback) */
 export const VERIFICATION_IMAGE_MAX_HEIGHT = "min(50vh, 360px)";
+/** Optional CSS variable for light-mode proof image canvas background. */
+export const DOCUMENT_CANVAS_BG_LIGHT_VAR = "--dc-document-canvas-bg-light";
+/** Optional CSS variable for dark-mode proof image canvas background. */
+export const DOCUMENT_CANVAS_BG_DARK_VAR = "--dc-document-canvas-bg-dark";
+/** Neutral canvas behind page images so white documents stay visually bounded. */
+export const DOCUMENT_CANVAS_BG_CLASSES =
+  "bg-[var(--dc-document-canvas-bg-light,rgb(243_244_246))] dark:bg-[var(--dc-document-canvas-bg-dark,rgb(31_41_55))]";
+/** Subtle outline around document images to preserve edge contrast on light canvases. */
+export const DOCUMENT_IMAGE_EDGE_CLASSES = "ring-1 ring-black/10 dark:ring-white/15";
 
 // =============================================================================
 // KEYHOLE IMAGE STRIP
@@ -298,7 +309,7 @@ export const DOT_INDICATOR_FIXED_SIZE_STYLE: React.CSSProperties = {
 //
 // Layer                        CSS custom property             Default
 // ────────────────────────────────────────────────────────────────────
-// Popover (Radix portal)       --dc-z-popover                  9998
+// Popover (portal)              --dc-z-popover                  9998
 // Drawer backdrop              --dc-z-drawer-backdrop           9998
 // Drawer container             --dc-z-drawer                    9999
 // Image overlay                --dc-z-image-overlay             9999
@@ -503,7 +514,7 @@ export const EXPANDED_POPOVER_WIDTH_VAR = "--dc-expanded-width";
 export const EXPANDED_POPOVER_WIDTH_DEFAULT = "calc(100dvw - 2rem)";
 /** Maximum expanded popover width */
 export const EXPANDED_POPOVER_MAX_WIDTH = "calc(100dvw - 2rem)";
-/** Default expanded popover height — uses Radix's available height CSS var when present */
+/** Default expanded popover height — fixed viewport-relative cap. */
 export const EXPANDED_POPOVER_HEIGHT = "calc(100dvh - 2rem)";
 
 // =============================================================================
@@ -522,7 +533,7 @@ export const EXPANDED_POPOVER_HEIGHT = "calc(100dvh - 2rem)";
 // Slow              ANIM_SLOW_MS          350ms     duration-[350ms] Full-page transitions, coordinated
 //
 // Expand/collapse morphs use separate constants + asymmetric easing:
-//   POPOVER_MORPH_EXPAND_MS   200ms  EASE_EXPAND   (fast start, gentle stop, slight overshoot)
+//   POPOVER_MORPH_EXPAND_MS   200ms  BLINK_ENTER_EASING   (fast start, gentle settle)
 //   POPOVER_MORPH_COLLAPSE_MS 100ms  EASE_COLLAPSE (aggressive start, soft landing)
 //
 // NOTE: Tailwind duration-* classes in JSX must remain as literal strings for
@@ -592,12 +603,6 @@ export const POPOVER_MORPH_EXPAND_MS = 200;
 export const POPOVER_MORPH_COLLAPSE_MS = 100;
 
 /**
- * Easing for expand transitions — spring-like with ~6% overshoot.
- * Bézier: fast start (0.34), slight overshoot (1.06), soft landing (0.64, 1).
- * Gives perceptible liveness without visible bounce.
- */
-export const EASE_EXPAND = "cubic-bezier(0.34, 1.06, 0.64, 1)";
-/**
  * Easing for collapse transitions — decisive decelerate.
  * Bézier: starts with velocity (0.2), then eases into final state (0, 1).
  */
@@ -607,6 +612,92 @@ export const EASE_COLLAPSE = "cubic-bezier(0.2, 0, 0, 1)";
  * 30ms is tight enough to avoid an empty-container flash while still letting the shell
  * establish its new dimensions before content appears. */
 export const CONTENT_STAGGER_DELAY_MS = 30;
+
+// =============================================================================
+// BLINK ANIMATION PROFILE
+// =============================================================================
+//
+// "Blink" = mostly-final immediately, then tiny settle frames.
+// Standard envelope is 120ms enter / 80ms exit.
+
+/** Total enter duration (ms) for container-level Blink animations. */
+export const BLINK_ENTER_TOTAL_MS = 120;
+/** Mid-step threshold (ms) for 2-step enter stages. */
+export const BLINK_ENTER_STEP_MS = 60;
+/** Total exit duration (ms) for container-level Blink animations. */
+export const BLINK_EXIT_TOTAL_MS = 80;
+
+/** Total enter duration (ms) for row reveal/collapse surfaces. */
+export const BLINK_ROW_ENTER_TOTAL_MS = 450;
+/** Mid-step threshold (ms) for row reveal enter stages. */
+export const BLINK_ROW_ENTER_STEP_MS = 260;
+/** Total exit duration (ms) for row reveal close stages. */
+export const BLINK_ROW_EXIT_TOTAL_MS = 350;
+
+/** Fast row profile enter duration (ms) for sidebar-like quick expansions. */
+export const BLINK_ROW_FAST_ENTER_TOTAL_MS = 180;
+/** Fast row profile mid-step threshold (ms). */
+export const BLINK_ROW_FAST_ENTER_STEP_MS = 100;
+/** Fast row profile exit duration (ms). */
+export const BLINK_ROW_FAST_EXIT_TOTAL_MS = 120;
+
+/** EvidenceTray search-attempt list enter duration (ms). */
+export const EVIDENCE_LIST_EXPAND_TOTAL_MS = 120;
+/** EvidenceTray search-attempt list enter settle threshold (ms). */
+export const EVIDENCE_LIST_EXPAND_STEP_MS = 60;
+/** EvidenceTray search-attempt list collapse duration (ms). */
+export const EVIDENCE_LIST_COLLAPSE_TOTAL_MS = 80;
+
+/** Blink enter easing — near-linear with tiny settle. */
+export const BLINK_ENTER_EASING = "cubic-bezier(0.25, 0.25, 0.5, 1)";
+/** Blink exit easing — quick settle-out. */
+export const BLINK_EXIT_EASING = "cubic-bezier(0.3, 0.2, 0.5, 1)";
+
+/** Container stage A opacity (0–1) for Blink enter. */
+export const BLINK_ENTER_OPACITY_A = 0.22;
+/** Container stage B opacity (0–1) for Blink enter. */
+export const BLINK_ENTER_OPACITY_B = 0.78;
+/** Container exit opacity (0–1) for Blink close. */
+export const BLINK_EXIT_OPACITY = 0.08;
+
+/** Container stage A scale for Blink enter. */
+export const BLINK_ENTER_SCALE_A = 0.992;
+/** Container stage B scale for Blink enter. */
+export const BLINK_ENTER_SCALE_B = 0.997;
+/** Container close scale for Blink exit. */
+export const BLINK_EXIT_SCALE = 0.996;
+
+/** Container stage A vertical offset (px) for Blink enter. */
+export const BLINK_ENTER_Y_A_PX = 0;
+/** Container stage B vertical offset (px) for Blink enter. */
+export const BLINK_ENTER_Y_B_PX = 0;
+/** Container close vertical offset (px) for Blink exit. */
+export const BLINK_EXIT_Y_PX = 0;
+
+/** Row stage A opacity (0–1) for Blink reveal (first burst: medium/high). */
+export const BLINK_ROW_OPACITY_A = 0.72;
+/** Row stage B opacity (0–1) for Blink reveal (near-full but still light). */
+export const BLINK_ROW_OPACITY_B = 0.42;
+/** Row close opacity (0–1) for Blink hide. */
+export const BLINK_ROW_EXIT_OPACITY = 0.32;
+
+/** Row stage A inset (px) for Blink reveal. */
+export const BLINK_ROW_INSET_A_PX = 4;
+/** Row stage B inset (px) for Blink reveal. */
+export const BLINK_ROW_INSET_B_PX = 2;
+
+// ── Shared-Origin Expand Transition ─────────────────────────────────────────
+// Controls how much of the raw source→target delta is applied when the
+// expanded-page image "grows from" the keyhole/annotation rect.
+
+/** Blend factor (0–1) applied to raw translate/scale delta. Lower = subtler. */
+export const SHARED_ORIGIN_BLEND = 0.22;
+/** Maximum translate offset (px) after blending, clamped in both axes. */
+export const SHARED_ORIGIN_TRANSLATE_LIMIT_PX = 36;
+/** Minimum scale factor after blending (prevents over-shrink). */
+export const SHARED_ORIGIN_MIN_SCALE = 0.9;
+/** Maximum scale factor after blending (prevents over-grow). */
+export const SHARED_ORIGIN_MAX_SCALE = 1.08;
 
 // =============================================================================
 // TIME TO CERTAINTY (TtC) DISPLAY

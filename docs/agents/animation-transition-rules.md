@@ -62,6 +62,70 @@ Content that appears *after* a container expands uses `CONTENT_STAGGER_DELAY_MS`
 
 ---
 
+## Blink Standard Pattern
+
+Use this as the default for popover/card show-hide and expanded-page step transitions:
+
+- Enter: `BLINK_ENTER_TOTAL_MS` = 120ms
+- Exit: `BLINK_EXIT_TOTAL_MS` = 80ms
+- Motion type: opacity + very subtle scale settle (no directional travel)
+
+Phase shape (reference sequence):
+
+1. Initial: hidden.
+2. Enter A (instant): mostly-final size, low opacity.
+3. Enter B: subtle settle toward final scale, near-full opacity.
+4. Steady: full size, full opacity.
+5. Exit: opacity drops quickly with tiny scale change.
+6. Unmount.
+
+Implementation rules:
+
+- Do not use top-to-bottom reveals (`gridTemplateRows`, padding grow) for this pattern.
+- Do not use directional translation as the dominant motion cue.
+- Keep motion subtle; readability should stay stable throughout.
+- Keep durations asymmetric (expand slower than collapse).
+- Use constants from `src/react/constants.ts`; never inline timing/easing.
+
+---
+
+## Evidence List Pattern
+
+For `EvidenceTray` search-attempt list expansion/collapse (toggle + caret):
+
+- Expand: `EVIDENCE_LIST_EXPAND_TOTAL_MS` = 120ms
+- Expand settle step: `EVIDENCE_LIST_EXPAND_STEP_MS` = 60ms
+- Collapse: `EVIDENCE_LIST_COLLAPSE_TOTAL_MS` = 80ms
+
+The evidence list uses an inlined motion state machine in `EvidenceTray.tsx` (not `useBlinkMotionStage`) because it needs proportional height reveal from measured `scrollHeight` and per-stage multi-property CSS transitions.
+
+### Expand frame sequence (120ms)
+
+| Stage | Reveal | Opacity | Transition | Visual |
+|---|---|---|---|---|
+| `idle` | 0% | 0 | — | List hidden, caret at 0° |
+| `enter-a` (instant, 1 frame) | 20% | 0.72 | none | ~2/11 items, medium/high opacity, 4px pad + 1px shift |
+| → `enter-b` (CSS 60ms) | 95% | 0.88 | 60ms BLINK_ENTER | ~10/11 items, light opacity (nearly visible) |
+| → `steady` (CSS 60ms settle) | 100% | 1.0 | 60ms BLINK_ENTER | All items, full opacity, bottom pixels settle |
+
+### Collapse frame sequence (80ms)
+
+| Stage | Reveal | Opacity | Transition | Visual |
+|---|---|---|---|---|
+| `exit-a` (instant, 1 frame) | 70% | 0.65 | none | ~7/11 items, moderate fade, caret starts rotating |
+| → `exit-b` (CSS 80ms) | 0% | 0.06 | 80ms BLINK_EXIT | Items shrink to hidden, barely visible |
+| → `idle` (setTimeout) | 0% | 0 | — | Unmounted, caret at 0° |
+
+The two-phase exit (`exit-a` → `exit-b`) forces the browser to paint the initial collapse state before starting the CSS transition. Without this, the browser may batch both style changes and skip the transition entirely.
+
+### Rules
+
+- Caret rotation uses the same 120/80 envelope and easing curves in the footer toggle.
+- Large lists must remain reachable via inner scroll (`max-height + overflow-y:auto`), not by clipping.
+- Opacity must increase during expand (0.72 → 0.88 → 1.0) — items become more visible as they reveal, never less.
+
+---
+
 ## Popover View State Machine
 
 The popover has three states: `"summary"` → `"expanded-keyhole"` → `"expanded-page"`.
@@ -120,7 +184,7 @@ This applies to the `EvidenceZone` component in `DefaultPopoverContent.tsx`. If 
 ### Wheel/Trackpad Zoom (`useWheelZoom`)
 - GPU `transform: scale()` during gesture — zero layout reflow.
 - Commits zoom to React state after 150ms debounce (prevents thrashing).
-- Expanded-page requires `Ctrl` key (`requireCtrl: true`). Keyhole does not.
+- Both keyhole and expanded-page use scroll-to-zoom (no `Ctrl` key required). `requireCtrl` defaults to `false`.
 - Sensitivities: `KEYHOLE_WHEEL_ZOOM_SENSITIVITY` = 0.008, `WHEEL_ZOOM_SENSITIVITY` = 0.005.
 - Zoom limits: keyhole 1.0–2.5, expanded 0.5–3.0. Clamp before setting state.
 

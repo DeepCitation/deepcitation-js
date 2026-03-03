@@ -83,6 +83,18 @@ export interface UploadFileResponse {
   /** Signed download URL for the stored file. Expires after 7 days. */
   downloadUrl?: string;
   /**
+   * Pre-assigned page structure with dimensions and storage paths.
+   * For PDFs, images are generated asynchronously after upload (check pagesGenerationStatus).
+   * For images, contains a single completed page entry.
+   */
+  pages?: SourcePage[];
+  /**
+   * Status of page image generation.
+   * - "pending": Page images are being generated asynchronously (PDFs).
+   * - "completed": All page images are available (images, or after async generation finishes).
+   */
+  pagesGenerationStatus?: "pending" | "completed";
+  /**
    * Cache information for URL-based requests.
    * Only present when the request was for a URL (not file upload).
    */
@@ -169,6 +181,8 @@ export interface UrlSourceInfo {
 export interface VerifyCitationsResponse {
   /** Map of citation keys to their verification results */
   verifications: Record<string, Verification>;
+  /** Signed download URL for the source file. Expires after 7 days. */
+  downloadUrl?: string;
 }
 
 /**
@@ -408,6 +422,8 @@ export interface AttachmentResponse {
   textByteSize?: number;
   /** Extracted page data with text and geometry */
   pages: SourcePage[];
+  /** Status of page image generation: pending, generating, completed, or failed */
+  pagesGenerationStatus?: "pending" | "generating" | "completed" | "failed";
   /** Verification results keyed by citation key */
   verifications: Record<string, Verification>;
   /** Deep text items by page index (Phase 1: from verification results) */

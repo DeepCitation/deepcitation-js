@@ -236,14 +236,14 @@ test.describe("Drawer - Evidence vs Full-Page Click Routing", () => {
     await expect(dialog.getByLabel(/close page 3 view/i)).toBeVisible();
   });
 
-  test("clicking InlineExpandedImage collapses back to EvidenceTray", async ({ mount, page }) => {
+  test("closing header panel InlineExpandedImage returns to drawer list", async ({ mount, page }) => {
     await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // Open inline image via page pill (reliable way to reach Level 3)
-    const item = await expandToLevel3ViaPagePill(dialog, 3, "cite-page3");
+    // Open inline image via page pill (goes directly to header panel, Level 3)
+    await expandToLevel3ViaPagePill(dialog, 3, "cite-page3");
 
     // InlineExpandedImage is in the header panel, not inside the item
     const inlineExpanded = dialog.locator("[data-dc-inline-expanded]");
@@ -252,9 +252,14 @@ test.describe("Drawer - Evidence vs Full-Page Click Routing", () => {
     // Click the expanded image to collapse
     await inlineExpanded.click();
 
-    // Should return to EvidenceTray (keyhole visible, inline-expanded gone)
+    // Header panel should close — drawer returns to the citation list (Level 1)
     await expect(inlineExpanded).not.toBeVisible({ timeout: 3000 });
-    await expect(item.locator("[data-dc-keyhole]")).toBeVisible({ timeout: 3000 });
+    // Drawer itself stays open, no accordion items expanded
+    await expect(dialog).toBeVisible();
+    const allItems = dialog.locator("[data-citation-key]");
+    for (const item of await allItems.all()) {
+      await expect(item).toHaveAttribute("aria-expanded", "false");
+    }
   });
 });
 

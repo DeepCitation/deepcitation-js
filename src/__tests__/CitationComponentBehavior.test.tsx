@@ -492,6 +492,12 @@ describe("CitationComponent behaviorConfig", () => {
       // Custom action: portal overlay renders in expanded-page state (no role="dialog" on portal div)
       // SourceContextHeader's PagePill renders in close mode with this title
       expect(document.querySelector("button[title='Close expanded view (Esc)']")).toBeInTheDocument();
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 140));
+      });
+      // CitationComponent sets overflow: "hidden" (shorthand) on the popover dialog for
+      // expanded-page state. happy-dom doesn't expand shorthand → check overflow not overflowY.
+      expect((document.querySelector("[role='dialog']") as HTMLElement | null)?.style.overflow).toBe("hidden");
     });
 
     it("can apply setImageExpanded with string src", async () => {
@@ -623,7 +629,9 @@ describe("CitationComponent behaviorConfig", () => {
       await act(async () => {
         fireEvent.click(overlay as HTMLElement);
       });
-      expect(document.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      // The popover uses an 80ms exit animation delay before unmounting.
+      // Check data-state rather than DOM presence to avoid happy-dom stale-ref quirks.
+      expect(document.querySelector("[role='dialog'][data-state='open']")).toBeNull();
     });
 
     it("still calls eventHandlers.onClick when custom handler returns actions", async () => {
@@ -1017,7 +1025,9 @@ describe("CitationComponent behaviorConfig", () => {
         fireEvent.click(citation as HTMLElement);
       });
       expect(contexts[1].isImageExpanded).toBe(true);
-      expect(document.querySelector("[role='dialog']")).not.toBeInTheDocument();
+      // The popover uses an 80ms exit animation delay before unmounting.
+      // Check data-state rather than DOM presence to avoid happy-dom stale-ref quirks.
+      expect(document.querySelector("[role='dialog'][data-state='open']")).toBeNull();
     });
   });
 
@@ -1518,7 +1528,6 @@ describe("CitationComponent mobile/touch detection", () => {
             pageNumber: 1,
             lineIds: [1],
             method: "exact",
-            searchVariations: ["unfound citation"],
             foundMatch: false,
           },
         ],

@@ -114,7 +114,7 @@ async function expandToFullPage(page: import("@playwright/test").Page) {
   const citation = page.locator("[data-citation-id]");
   await citation.click();
 
-  const popover = page.locator("[data-radix-popper-content-wrapper]");
+  const popover = page.locator("[data-dc-popover-wrapper]");
   await expect(popover).toBeVisible();
 
   // Use .first() to handle the triple always-render EvidenceZone pattern where

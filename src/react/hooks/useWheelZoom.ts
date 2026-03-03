@@ -34,22 +34,30 @@ export interface UseWheelZoomOptions {
   /** When true, only zoom on Ctrl+wheel (expanded page behavior). Defaults to false. */
   requireCtrl?: boolean;
   /**
-   * When true, redirect primarily-vertical scroll events to `window.scrollBy` instead of
-   * letting the container's `overflow-x` consume them. Use on horizontal-only scroll
-   * containers (the keyhole strip) where Chrome may route vertical trackpad deltaY to the
-   * element's x-axis even though `overflow-y: hidden` is set.
-   *
-   * The listener is attached even when `enabled=false` so protection is active before
-   * the image loads / before zoom eligibility is determined.
+   * Optional external ref for the gesture anchor. When provided, the hook writes
+   * anchor data here instead of creating an internal ref. Allows consumers to
+   * declare the ref before effects that reset it (avoids temporal dead zone /
+   * React Compiler "used before declaration" errors).
    */
-  passVerticalScroll?: boolean;
+  gestureAnchorRef?: React.MutableRefObject<WheelZoomAnchor | null>;
+}
+
+export interface WheelZoomAnchor {
+  /** Anchor point in viewport-local container coordinates. */
+  mx: number;
+  my: number;
+  /** Scroll offsets at gesture start. */
+  sx: number;
+  sy: number;
+  /** Committed zoom at gesture start. */
+  startZoom: number;
 }
 
 export interface UseWheelZoomReturn {
   /** Whether the pointer is currently hovering over the container. */
   isHovering: boolean;
   /** Gesture anchor ref — consumer reads this in useLayoutEffect for scroll correction. */
-  gestureAnchorRef: React.MutableRefObject<{ mx: number; my: number; sx: number; sy: number } | null>;
+  gestureAnchorRef: React.MutableRefObject<WheelZoomAnchor | null>;
   /** Active gesture zoom level (null = no gesture). Consumer reads for transform cleanup. */
   gestureZoomRef: React.MutableRefObject<number | null>;
 }
@@ -63,8 +71,9 @@ function applyGestureTransform(
   wrapper: HTMLDivElement,
   gestureZoom: number,
   committedZoom: number,
-  anchor: { mx: number; my: number; sx: number; sy: number },
+  anchor: WheelZoomAnchor,
 ): void {
+  if (committedZoom === 0) return;
   const s = gestureZoom / committedZoom;
   const cx = anchor.mx + anchor.sx;
   const cy = anchor.my + anchor.sy;
@@ -81,19 +90,27 @@ export function useWheelZoom({
   clampZoom,
   onZoomCommit,
   requireCtrl = false,
-  passVerticalScroll = false,
+  gestureAnchorRef: externalGestureAnchorRef,
 }: UseWheelZoomOptions): UseWheelZoomReturn {
   const [isHovering, setIsHovering] = useState(false);
 
   // Stable ref mirror of zoom for use in wheel handler (avoids stale closures).
   const zoomRef = useRef(zoom);
-  useEffect(() => {
-    zoomRef.current = zoom;
-  });
 
   const gestureZoomRef = useRef<number | null>(null);
-  const gestureAnchorRef = useRef<{ mx: number; my: number; sx: number; sy: number } | null>(null);
+  const internalGestureAnchorRef = useRef<WheelZoomAnchor | null>(null);
+  const gestureAnchorRef = externalGestureAnchorRef ?? internalGestureAnchorRef;
   const commitTimeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tracks the zoom level committed via debounce timeout but not yet reflected
+  // in React state. Prevents snap-back when a new gesture starts between the
+  // commit timeout and React's render (where zoomRef would still be stale).
+  const committedZoomRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    committedZoomRef.current = null; // React caught up — no pending commit
+  });
 
   // Hover tracking via pointer events on the container.
   useEffect(() => {
@@ -125,24 +142,14 @@ export function useWheelZoom({
     onZoomCommitRef.current = onZoomCommit;
   });
 
-  // Wheel zoom handler — Ctrl+wheel to zoom; optional vertical-scroll pass-through.
+  // Wheel zoom handler — intercepts wheel events for zoom when active.
   useEffect(() => {
-    // Attach when zoom is active OR when pass-through protection is needed.
-    if (!enabled && !passVerticalScroll) return;
+    if (!enabled) return;
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (requireCtrl && !e.ctrlKey) {
-        // Redirect primarily-vertical scroll to the page so the overflow-x container
-        // doesn't eat it. Chrome may route deltaY to the element's x-axis on
-        // horizontal-only scroll containers even with overflow-y:hidden set.
-        if (passVerticalScroll && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-          e.preventDefault();
-          window.scrollBy(0, e.deltaY);
-        }
-        return;
-      }
-      if (!enabled) return; // No zoom when disabled (pass-through only mode)
+      if (e.deltaY === 0) return; // Horizontal-only — let native handle (keyhole pan)
+      if (requireCtrl && !e.ctrlKey) return;
       e.preventDefault(); // Block page scroll — zoom active
 
       const wrapper = wrapperRef.current;
@@ -154,15 +161,20 @@ export function useWheelZoom({
       const normalizedDeltaY = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 100 : e.deltaY;
       const delta = -normalizedDeltaY * sensitivity;
 
-      // First event of gesture: initialize from committed zoom and capture anchor
+      // First event of gesture: initialize from committed zoom and capture anchor.
+      // Use committedZoomRef if a debounce commit fired but React hasn't rendered yet —
+      // zoomRef would still be stale in that window, causing a visual snap-back.
       if (gestureZoomRef.current === null) {
-        gestureZoomRef.current = zoomRef.current;
+        const gestureStartZoom = committedZoomRef.current ?? zoomRef.current;
+        gestureZoomRef.current = gestureStartZoom;
+        committedZoomRef.current = null;
         const rect = el.getBoundingClientRect();
         gestureAnchorRef.current = {
           mx: e.clientX - rect.left,
           my: e.clientY - rect.top,
           sx: el.scrollLeft,
           sy: el.scrollTop,
+          startZoom: gestureStartZoom,
         };
         wrapper.style.willChange = "transform";
         wrapper.style.transformOrigin = "0 0";
@@ -173,7 +185,12 @@ export function useWheelZoom({
 
       // Apply transform directly to DOM — no React render
       if (gestureAnchorRef.current) {
-        applyGestureTransform(wrapper, gestureZoomRef.current, zoomRef.current, gestureAnchorRef.current);
+        applyGestureTransform(
+          wrapper,
+          gestureZoomRef.current,
+          gestureAnchorRef.current.startZoom,
+          gestureAnchorRef.current,
+        );
       }
 
       // Debounce commit: after 150ms of no events, flush to React state
@@ -182,8 +199,10 @@ export function useWheelZoom({
         commitTimeoutIdRef.current = null;
         const finalZoom = gestureZoomRef.current;
         if (finalZoom === null) return;
+        const clamped = clampZoomRef.current(finalZoom);
+        committedZoomRef.current = clamped;
         gestureZoomRef.current = null;
-        onZoomCommitRef.current(clampZoomRef.current(finalZoom));
+        onZoomCommitRef.current(clamped);
         wrapper.style.willChange = "";
       }, 150);
     };
@@ -206,7 +225,7 @@ export function useWheelZoom({
         }
       }
     };
-  }, [enabled, sensitivity, containerRef, wrapperRef, requireCtrl, passVerticalScroll]);
+  }, [enabled, sensitivity, containerRef, wrapperRef, requireCtrl, gestureAnchorRef]);
 
   return { isHovering, gestureAnchorRef, gestureZoomRef };
 }

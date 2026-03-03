@@ -15,14 +15,18 @@ import { shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt } from "../types/search.js";
-import type { Verification } from "../types/verification.js";
+import type { Verification, VerificationPage } from "../types/verification.js";
 import { CitationAnnotationOverlay } from "./CitationAnnotationOverlay.js";
 import { computeKeyholeOffset } from "./computeKeyholeOffset.js";
 import {
+  BLINK_ENTER_EASING,
+  BLINK_EXIT_EASING,
   buildKeyholeMaskImage,
-  CONTENT_STAGGER_DELAY_MS,
-  EASE_COLLAPSE,
-  EASE_EXPAND,
+  DOCUMENT_CANVAS_BG_CLASSES,
+  DOCUMENT_IMAGE_EDGE_CLASSES,
+  EVIDENCE_LIST_COLLAPSE_TOTAL_MS,
+  EVIDENCE_LIST_EXPAND_STEP_MS,
+  EVIDENCE_LIST_EXPAND_TOTAL_MS,
   EVIDENCE_TRAY_BORDER_DASHED,
   EVIDENCE_TRAY_BORDER_SOLID,
   EXPANDED_IMAGE_SHELL_PX,
@@ -42,6 +46,7 @@ import {
   KEYHOLE_ZOOM_MIN,
   KEYHOLE_ZOOM_MIN_SIZE_RATIO,
   MIN_PAN_OVERFLOW_PX,
+  POPOVER_MORPH_EXPAND_MS,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
   TERTIARY_ACTION_IDLE_CLASSES,
@@ -52,11 +57,18 @@ import {
 import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
-import { useWheelZoom } from "./hooks/useWheelZoom.js";
+import {
+  isValidSharedOriginRect,
+  type SharedOriginRect,
+  toSharedOriginRect,
+  useSharedOriginExpandTransition,
+} from "./hooks/useSharedOriginExpandTransition.js";
+import { useWheelZoom, type WheelZoomAnchor } from "./hooks/useWheelZoom.js";
 import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
-import { computeAnnotationOriginPercent, computeAnnotationScrollTarget } from "./overlayGeometry.js";
-import { buildIntentSummary, countUniqueSearchTexts } from "./searchSummaryUtils.js";
+import { computeAnnotationOriginPercent, computeAnnotationScrollTarget, toPercentRect } from "./overlayGeometry.js";
+import { getUniqueSearchAttemptCount } from "./searchAttemptGrouping.js";
+import { buildIntentSummary } from "./searchSummaryUtils.js";
 import { cn } from "./utils.js";
 import { VerificationLogTimeline } from "./VerificationLog.js";
 import { ZoomToolbar } from "./ZoomToolbar.js";
@@ -71,6 +83,116 @@ import { ZoomToolbar } from "./ZoomToolbar.js";
  *  to catch intentional user panning. */
 const DRIFT_THRESHOLD_PX = 15;
 
+/**
+ * Scroll an element to a target scrollLeft over `POPOVER_MORPH_EXPAND_MS` using
+ * an ease-out curve. Much faster than `behavior: "smooth"` (~500-800ms browser default).
+ * Returns a cancel function to abort the in-flight animation.
+ */
+function animateScrollLeft(el: HTMLElement, targetLeft: number): () => void {
+  const start = el.scrollLeft;
+  const delta = targetLeft - start;
+  let cancelled = false;
+  if (delta === 0) return () => {};
+  const t0 = performance.now();
+  const step = (now: number) => {
+    if (cancelled) return;
+    const elapsed = now - t0;
+    if (elapsed >= POPOVER_MORPH_EXPAND_MS) {
+      el.scrollLeft = targetLeft;
+      return;
+    }
+    // ease-out: 1 - (1 - t)^3
+    const t = elapsed / POPOVER_MORPH_EXPAND_MS;
+    el.scrollLeft = start + delta * (1 - (1 - t) ** 3);
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  return () => {
+    cancelled = true;
+  };
+}
+
+function parsePercent(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function intersectRects(a: SharedOriginRect, b: SharedOriginRect): SharedOriginRect | null {
+  const left = Math.max(a.left, b.left);
+  const top = Math.max(a.top, b.top);
+  const right = Math.min(a.left + a.width, b.left + b.width);
+  const bottom = Math.min(a.top + a.height, b.top + b.height);
+  const width = right - left;
+  const height = bottom - top;
+  if (width <= 0 || height <= 0) return null;
+  return { left, top, width, height };
+}
+
+function computeDeepItemViewportRect(
+  item: DeepTextItem,
+  renderScale: { x: number; y: number },
+  imageNaturalWidth: number,
+  imageNaturalHeight: number,
+  imageViewportRect: SharedOriginRect,
+): SharedOriginRect | null {
+  const percentRect = toPercentRect(item, renderScale, imageNaturalWidth, imageNaturalHeight);
+  if (!percentRect) return null;
+  const left = imageViewportRect.left + (parsePercent(percentRect.left) / 100) * imageViewportRect.width;
+  const top = imageViewportRect.top + (parsePercent(percentRect.top) / 100) * imageViewportRect.height;
+  const width = (parsePercent(percentRect.width) / 100) * imageViewportRect.width;
+  const height = (parsePercent(percentRect.height) / 100) * imageViewportRect.height;
+  const rect = { left, top, width, height };
+  return isValidSharedOriginRect(rect) ? rect : null;
+}
+
+// Evidence list expand/collapse uses an inlined motion state machine instead of
+// useBlinkMotionStage because it needs proportional height reveal (measuring
+// actual scrollHeight via searchLogViewportRef) and per-stage CSS property
+// transitions (paddingTop, transform, willChange) that the generic hook doesn't support.
+type EvidenceListMotionStage = "idle" | "enter-a" | "enter-b" | "steady" | "exit-a" | "exit-b";
+
+function resolveEvidenceListRevealRatio(stage: EvidenceListMotionStage): number {
+  if (stage === "idle") return 0;
+  if (stage === "enter-a") return 0.2;
+  if (stage === "enter-b") return 0.95;
+  if (stage === "exit-a") return 0.7;
+  if (stage === "exit-b") return 0;
+  return 1;
+}
+
+function resolveEvidenceListOpacity(stage: EvidenceListMotionStage): number {
+  if (stage === "idle") return 0;
+  if (stage === "enter-a") return 0.72;
+  if (stage === "enter-b") return 0.88;
+  if (stage === "exit-a") return 0.65;
+  if (stage === "exit-b") return 0.06;
+  return 1;
+}
+
+function resolveEvidenceListPaddingTop(stage: EvidenceListMotionStage): string {
+  if (stage === "enter-a") return "4px";
+  if (stage === "enter-b" || stage === "exit-a") return "2px";
+  return "0px";
+}
+
+function resolveEvidenceListTransform(stage: EvidenceListMotionStage): string {
+  if (stage === "enter-a") return "translate3d(0, 1px, 0)";
+  if (stage === "enter-b" || stage === "exit-a") return "translate3d(0, 0.5px, 0)";
+  return "translate3d(0, 0, 0)";
+}
+
+function resolveEvidenceListTransition(stage: EvidenceListMotionStage): string {
+  if (stage === "enter-a" || stage === "idle" || stage === "exit-a") return "none";
+  if (stage === "enter-b") {
+    return `max-height ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}, opacity ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}, padding-top ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}, transform ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}`;
+  }
+  if (stage === "steady") {
+    const settleMs = Math.max(16, EVIDENCE_LIST_EXPAND_TOTAL_MS - EVIDENCE_LIST_EXPAND_STEP_MS);
+    return `max-height ${settleMs}ms ${BLINK_ENTER_EASING}, opacity ${settleMs}ms ${BLINK_ENTER_EASING}, padding-top ${settleMs}ms ${BLINK_ENTER_EASING}, transform ${settleMs}ms ${BLINK_ENTER_EASING}`;
+  }
+  return `max-height ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}, opacity ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}, padding-top ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}, transform ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}`;
+}
+
 // =============================================================================
 // EXPANDED IMAGE RESOLVER
 // =============================================================================
@@ -82,6 +204,16 @@ export interface ExpandedImageSource {
   highlightBox?: ScreenBox | null;
   renderScale?: { x: number; y: number } | null;
   textItems?: DeepTextItem[];
+}
+
+function toExpandedImageSource(page: VerificationPage): ExpandedImageSource {
+  return {
+    src: page.source,
+    dimensions: page.dimensions,
+    highlightBox: page.highlightBox ?? null,
+    renderScale: page.renderScale ?? null,
+    textItems: page.textItems ?? [],
+  };
 }
 
 /**
@@ -169,13 +301,7 @@ export function resolveExpandedImage(verification: Verification | null | undefin
   // 1. Best: matching page from verification.pages array
   const matchPage = verification.pages?.find(p => p.isMatchPage);
   if (matchPage?.source && isValidProofImageSrc(matchPage.source)) {
-    return {
-      src: matchPage.source,
-      dimensions: matchPage.dimensions,
-      highlightBox: matchPage.highlightBox ?? null,
-      renderScale: matchPage.renderScale ?? null,
-      textItems: matchPage.textItems ?? [],
-    };
+    return toExpandedImageSource(matchPage);
   }
 
   // 2. Good: CDN-hosted proof image
@@ -191,13 +317,7 @@ export function resolveExpandedImage(verification: Verification | null | undefin
   // 2b. Non-match page fallback (for not_found — pages exist but none is a match)
   const anyPage = verification.pages?.[0];
   if (anyPage?.source && isValidProofImageSrc(anyPage.source)) {
-    return {
-      src: anyPage.source,
-      dimensions: anyPage.dimensions,
-      highlightBox: null,
-      renderScale: anyPage.renderScale ?? null,
-      textItems: anyPage.textItems ?? [],
-    };
+    return toExpandedImageSource(anyPage);
   }
 
   // 3. URL screenshot — base64-encoded page screenshot (URL citations)
@@ -224,6 +344,25 @@ export function resolveExpandedImage(verification: Verification | null | undefin
   }
 
   return null;
+}
+
+/**
+ * Resolve an expanded image for a specific page number.
+ * Falls back to resolveExpandedImage() when an exact page image isn't present.
+ */
+export function resolveExpandedImageForPage(
+  verification: Verification | null | undefined,
+  pageNumber: number | null | undefined,
+): ExpandedImageSource | null {
+  const normalizedPage = Number(pageNumber);
+  if (verification?.pages && Number.isFinite(normalizedPage) && normalizedPage > 0) {
+    const exactPage = verification.pages.find(p => {
+      const pNum = Number(p.pageNumber);
+      return Number.isFinite(pNum) && pNum === normalizedPage && isValidProofImageSrc(p.source);
+    });
+    if (exactPage) return toExpandedImageSource(exactPage);
+  }
+  return resolveExpandedImage(verification);
 }
 
 // =============================================================================
@@ -288,7 +427,7 @@ function ZoomHint({
       aria-hidden="true"
       className="absolute bottom-2 right-2 text-[10px] text-white/90 bg-black/60 backdrop-blur-sm rounded-md px-1.5 py-0.5 pointer-events-none select-none animate-in fade-in-0 duration-150"
     >
-      Ctrl+scroll to zoom
+      Scroll to zoom
     </div>
   );
 }
@@ -315,6 +454,7 @@ export function AnchorTextFocusedImage({
   onImageClick,
   onKeyholeWidth,
   onScrollCapture,
+  onExpandOriginCapture,
 }: {
   src: string;
   verification?: Verification | null;
@@ -322,6 +462,8 @@ export function AnchorTextFocusedImage({
   onKeyholeWidth?: (width: number) => void;
   /** Called with natural-pixel scroll coords just before onImageClick fires. */
   onScrollCapture?: (left: number, top: number) => void;
+  /** Called with a viewport rect used as the shared-origin source for expand-to-page. */
+  onExpandOriginCapture?: (rect: SharedOriginRect) => void;
 }) {
   // Anchor item and renderScale for scroll positioning.
   // Uses anchorTextMatchDeepItems[0] (specific cited word) with phraseMatchDeepItem fallback.
@@ -336,6 +478,12 @@ export function AnchorTextFocusedImage({
     if (!renderScale) return null;
     return { anchorItem, renderScale };
   }, [verification]);
+  const phraseItem = verification?.document?.phraseMatchDeepItem ?? null;
+  const anchorItem = verification?.document?.anchorTextMatchDeepItems?.[0] ?? null;
+  const sourceRenderScale = verification?.pages?.find(p => p.isMatchPage)?.renderScale ?? null;
+  const shouldUseAnchorOrigin =
+    !!anchorItem && shouldHighlightAnchorText(verification?.verifiedAnchorText, verification?.verifiedFullPhrase);
+  const sourceOriginItem = shouldUseAnchorOrigin ? anchorItem : phraseItem;
 
   // Drag-to-pan hook for mouse interaction (xy enables vertical pan for width-fit tall images;
   // when no vertical overflow exists, scrollTop stays 0 — no visible effect on normal crops).
@@ -357,10 +505,17 @@ export function AnchorTextFocusedImage({
   // Computed once on image load — images must be ≥ 3× container in at least one axis.
   const [zoomEligible, setZoomEligible] = useState(false);
   const imageWrapperRef = useRef<HTMLDivElement>(null);
-  const keyholeZoomRef = useRef(keyholeZoom);
+  /** Cancel handle for the current `animateScrollLeft` rAF loop (if any). */
+  const cancelPanRef = useRef<(() => void) | null>(null);
+  const keyholeInitAppliedRef = useRef(false);
   useEffect(() => {
-    keyholeZoomRef.current = keyholeZoom;
-  });
+    keyholeInitAppliedRef.current = false;
+    setImageLoaded(false);
+    setImageFitInfo(null);
+    setZoomEligible(false);
+    setKeyholeZoom(1.0);
+    setHasZoomed(false);
+  }, [src]);
 
   const clampKeyholeZoom = useCallback(
     (z: number) => Math.max(KEYHOLE_ZOOM_MIN, Math.min(KEYHOLE_ZOOM_MAX, Math.round(z * 100) / 100)),
@@ -370,8 +525,6 @@ export function AnchorTextFocusedImage({
 
   const { isHovering, gestureAnchorRef } = useWheelZoom({
     enabled: imageLoaded && zoomEligible,
-    requireCtrl: true,
-    passVerticalScroll: true,
     sensitivity: KEYHOLE_WHEEL_ZOOM_SENSITIVITY,
     containerRef: containerRef as React.RefObject<HTMLElement | null>,
     wrapperRef: imageWrapperRef,
@@ -386,8 +539,7 @@ export function AnchorTextFocusedImage({
 
   // Scroll correction after zoom commit — runs before paint so the
   // anchor point stays visually stable when the image resizes.
-  // keyholeZoomRef still holds the OLD zoom during useLayoutEffect
-  // (useEffect hasn't updated it yet), giving us the ratio we need.
+  // Uses gesture start zoom captured by useWheelZoom to avoid stale old/new zoom races.
   // biome-ignore lint/correctness/useExhaustiveDependencies: gestureAnchorRef and containerRef are stable ref objects
   useLayoutEffect(() => {
     const wrapper = imageWrapperRef.current;
@@ -400,9 +552,8 @@ export function AnchorTextFocusedImage({
       return;
     }
 
-    const oldZoom = keyholeZoomRef.current;
-    if (oldZoom > 0) {
-      const ratio = keyholeZoom / oldZoom;
+    if (anchor.startZoom > 0) {
+      const ratio = keyholeZoom / anchor.startZoom;
       el.scrollLeft = (anchor.mx + anchor.sx) * ratio - anchor.mx;
       el.scrollTop = (anchor.my + anchor.sy) * ratio - anchor.my;
     }
@@ -415,6 +566,7 @@ export function AnchorTextFocusedImage({
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef and imageRef are stable refs that never change identity; useLayoutEffect guarantees the DOM nodes they point to are ready
   useLayoutEffect(() => {
     if (!imageLoaded) return;
+    if (keyholeInitAppliedRef.current) return;
     const container = containerRef.current;
     const img = imageRef.current;
     if (!container || !img) return;
@@ -517,6 +669,7 @@ export function AnchorTextFocusedImage({
 
     // Trigger scroll event so useDragToPan updates fade state for initial position
     container.dispatchEvent(new Event("scroll"));
+    keyholeInitAppliedRef.current = true;
   }, [imageLoaded, anchorScrollData]);
 
   // Compute fade mask based on scroll state
@@ -541,6 +694,54 @@ export function AnchorTextFocusedImage({
   // When the image fits entirely in the keyhole, expanding would show nothing new — suppress affordances.
   const canExpand = !imageFitInfo?.imageFitsCompletely && !!onImageClick;
 
+  const captureExpandOriginRect = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const fallbackRect = toSharedOriginRect(container.getBoundingClientRect());
+    let captured: SharedOriginRect | null = null;
+
+    const img = imageRef.current;
+    if (
+      img &&
+      sourceOriginItem &&
+      sourceRenderScale &&
+      img.naturalWidth > 0 &&
+      img.naturalHeight > 0 &&
+      Number.isFinite(sourceRenderScale.x) &&
+      Number.isFinite(sourceRenderScale.y) &&
+      sourceRenderScale.x > 0 &&
+      sourceRenderScale.y > 0
+    ) {
+      const stripHeight = container.clientHeight;
+      const displayedScale =
+        imageFitInfo?.isWidthFit && img.naturalWidth > 0
+          ? imageFitInfo.displayedWidth / img.naturalWidth
+          : img.naturalHeight > 0
+            ? (keyholeZoom * stripHeight) / img.naturalHeight
+            : 1;
+
+      if (Number.isFinite(displayedScale) && displayedScale > 0) {
+        const containerRect = toSharedOriginRect(container.getBoundingClientRect());
+        const imageViewportRect: SharedOriginRect = {
+          left: containerRect.left - container.scrollLeft,
+          top: containerRect.top - container.scrollTop,
+          width: img.naturalWidth * displayedScale,
+          height: img.naturalHeight * displayedScale,
+        };
+        const deepRect = computeDeepItemViewportRect(
+          sourceOriginItem,
+          sourceRenderScale,
+          img.naturalWidth,
+          img.naturalHeight,
+          imageViewportRect,
+        );
+        captured = deepRect ? intersectRects(deepRect, containerRect) : null;
+      }
+    }
+
+    onExpandOriginCapture?.(isValidSharedOriginRect(captured) ? captured : fallbackRect);
+  }, [containerRef, imageFitInfo, keyholeZoom, onExpandOriginCapture, sourceOriginItem, sourceRenderScale]);
+
   return (
     <div className="relative">
       {/* Keyhole strip container — clickable to expand, draggable to pan.
@@ -561,10 +762,12 @@ export function AnchorTextFocusedImage({
             if (!el) return;
             if (e.key === "ArrowLeft") {
               e.preventDefault();
-              el.scrollTo({ left: el.scrollLeft - Math.max(el.clientWidth * 0.5, 80), behavior: "smooth" });
+              cancelPanRef.current?.();
+              cancelPanRef.current = animateScrollLeft(el, el.scrollLeft - Math.max(el.clientWidth * 0.5, 80));
             } else if (e.key === "ArrowRight") {
               e.preventDefault();
-              el.scrollTo({ left: el.scrollLeft + Math.max(el.clientWidth * 0.5, 80), behavior: "smooth" });
+              cancelPanRef.current?.();
+              cancelPanRef.current = animateScrollLeft(el, el.scrollLeft + Math.max(el.clientWidth * 0.5, 80));
             }
           }}
           onClick={e => {
@@ -576,6 +779,7 @@ export function AnchorTextFocusedImage({
               return;
             }
             if (canExpand) {
+              captureExpandOriginRect();
               // Capture scroll position in natural-pixel coords before handing off to expanded view
               const img = imageRef.current;
               const container = containerRef.current;
@@ -602,7 +806,10 @@ export function AnchorTextFocusedImage({
           <div
             ref={containerRef}
             data-dc-keyhole=""
-            className={isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"}
+            className={cn(
+              DOCUMENT_CANVAS_BG_CLASSES,
+              isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden",
+            )}
             style={{
               height: stripHeightStyle,
               // Fade mask only applies in height-fit mode (horizontal overflow).
@@ -625,7 +832,10 @@ export function AnchorTextFocusedImage({
                 ref={imageRef}
                 src={imageSrc}
                 alt="Citation verification"
-                className={isWidthFit ? "block select-none" : "block w-auto max-w-none select-none"}
+                className={cn(
+                  DOCUMENT_IMAGE_EDGE_CLASSES,
+                  isWidthFit ? "block select-none" : "block w-auto max-w-none select-none",
+                )}
                 style={
                   isWidthFit
                     ? { width: imageFitInfo?.displayedWidth, height: "auto", maxWidth: "none" }
@@ -651,7 +861,8 @@ export function AnchorTextFocusedImage({
                 e.stopPropagation();
                 const el = containerRef.current;
                 if (!el) return;
-                el.scrollTo({ left: el.scrollLeft - Math.max(el.clientWidth * 0.5, 80), behavior: "smooth" });
+                cancelPanRef.current?.();
+                cancelPanRef.current = animateScrollLeft(el, el.scrollLeft - Math.max(el.clientWidth * 0.5, 80));
               }}
             >
               <span className="text-sm font-bold text-white bg-black/50 w-7 h-7 flex items-center justify-center rounded-full leading-none">
@@ -669,7 +880,8 @@ export function AnchorTextFocusedImage({
                 e.stopPropagation();
                 const el = containerRef.current;
                 if (!el) return;
-                el.scrollTo({ left: el.scrollLeft + Math.max(el.clientWidth * 0.5, 80), behavior: "smooth" });
+                cancelPanRef.current?.();
+                cancelPanRef.current = animateScrollLeft(el, el.scrollLeft + Math.max(el.clientWidth * 0.5, 80));
               }}
             >
               <span className="text-sm font-bold text-white bg-black/50 w-7 h-7 flex items-center justify-center rounded-full leading-none">
@@ -726,6 +938,7 @@ export function AnchorTextFocusedImage({
 function EvidenceTrayFooter({
   verifiedAt,
   onPageClick,
+  pageNumberForCta,
   searchCount,
   isSearchLogOpen,
   onToggleSearchLog,
@@ -734,7 +947,9 @@ function EvidenceTrayFooter({
   verifiedAt?: Date | string | null;
   /** When provided, renders a "View page" CTA button */
   onPageClick?: () => void;
-  /** Number of unique search texts (toggle hidden when 0 or absent) */
+  /** Optional page number to include in the CTA label (drawer context). */
+  pageNumberForCta?: number | null;
+  /** Number of grouped search attempts (toggle hidden when 0 or absent) */
   searchCount?: number;
   /** Whether the search log is currently expanded */
   isSearchLogOpen?: boolean;
@@ -746,6 +961,8 @@ function EvidenceTrayFooter({
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
   const showToggle = onToggleSearchLog && searchCount != null && searchCount > 0;
+  const hasPageForCta = pageNumberForCta != null && pageNumberForCta > 0;
+  const pageCtaLabel = hasPageForCta ? `View page ${pageNumberForCta}` : "View page";
 
   return (
     <div className="px-3 py-2 min-h-[44px] flex items-center text-[11px] text-gray-400 dark:text-gray-500">
@@ -767,13 +984,18 @@ function EvidenceTrayFooter({
               }}
             >
               <span
-                className="size-3 shrink-0 transition-transform duration-150"
-                style={isSearchLogOpen ? { transform: "rotate(90deg)" } : undefined}
+                className="size-3 shrink-0"
+                style={{
+                  transform: isSearchLogOpen ? "rotate(90deg)" : undefined,
+                  transitionProperty: "transform",
+                  transitionDuration: `${isSearchLogOpen ? EVIDENCE_LIST_EXPAND_TOTAL_MS : EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms`,
+                  transitionTimingFunction: isSearchLogOpen ? BLINK_ENTER_EASING : BLINK_EXIT_EASING,
+                }}
               >
                 <ChevronRightIcon />
               </span>
               <span>
-                {searchCount} search{searchCount === 1 ? "" : "es"}
+                {searchCount} attempt{searchCount === 1 ? "" : "s"}
                 {locationLabel && <> · {locationLabel}</>}
               </span>
             </button>
@@ -794,8 +1016,9 @@ function EvidenceTrayFooter({
               e.stopPropagation();
               onPageClick();
             }}
+            aria-label={pageCtaLabel}
           >
-            <span>View page</span>
+            <span>{pageCtaLabel}</span>
             <span className="size-3 shrink-0">
               <ChevronRightIcon />
             </span>
@@ -888,17 +1111,26 @@ export function EvidenceTray({
   onExpand,
   onImageClick,
   proofImageSrc,
+  pageNumberForCta,
   onKeyholeWidth,
   onScrollCapture,
+  onExpandOriginCapture,
+  escapeInterceptRef,
 }: {
   verification: Verification | null;
   status: CitationStatus;
   onExpand?: () => void;
   onImageClick?: () => void;
   proofImageSrc?: string;
+  /** Optional page number shown in "View page N" CTA for drawer context. */
+  pageNumberForCta?: number | null;
   onKeyholeWidth?: (width: number) => void;
   /** Called with natural-pixel scroll coords when the keyhole is clicked to expand. */
   onScrollCapture?: (left: number, top: number) => void;
+  /** Called with a viewport rect used as the shared-origin source for expand-to-page. */
+  onExpandOriginCapture?: (rect: SharedOriginRect) => void;
+  /** Ref the parent reads in its Escape handler — set to a collapse fn when the search log is open. */
+  escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const resolvedEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
   const isMiss = status.isMiss;
@@ -915,11 +1147,158 @@ export function EvidenceTray({
   // common ancestor of the mousedown and mouseup targets — which is this tray div — so we
   // must gate the action here.
   const trayMouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const trayRootRef = useRef<HTMLDivElement>(null);
+
+  const captureTrayOriginRect = useCallback(() => {
+    if (!onExpandOriginCapture) return;
+    const keyhole = trayRootRef.current?.querySelector<HTMLElement>("[data-dc-keyhole]");
+    if (keyhole) {
+      onExpandOriginCapture(toSharedOriginRect(keyhole.getBoundingClientRect()));
+      return;
+    }
+    const root = trayRootRef.current;
+    if (root) onExpandOriginCapture(toSharedOriginRect(root.getBoundingClientRect()));
+  }, [onExpandOriginCapture]);
+
+  const handlePageExpand = useCallback(() => {
+    captureTrayOriginRect();
+    onExpand?.();
+  }, [captureTrayOriginRect, onExpand]);
 
   // Search log toggle state (miss and partial states)
   const [showSearchLog, setShowSearchLog] = useState(false);
+  const [isSearchLogMounted, setIsSearchLogMounted] = useState(showSearchLog);
+  const [searchLogStage, setSearchLogStage] = useState<EvidenceListMotionStage>(showSearchLog ? "steady" : "idle");
+  const searchLogMountedRef = useRef(isSearchLogMounted);
+  const searchLogEnterRafRef = useRef<number>(0);
+  const searchLogExitRafRef = useRef<number>(0);
+  const searchLogSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchLogExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    searchLogMountedRef.current = isSearchLogMounted;
+  }, [isSearchLogMounted]);
+
+  // Sync escape intercept ref: when search log is open, Escape should collapse
+  // the log instead of closing the popover.
+  useEffect(() => {
+    if (!escapeInterceptRef) return;
+    // Each effect run creates a fresh arrow function, so the identity-equality
+    // guard in the cleanup is safe as a "did this effect's value get replaced?"
+    // check — two runs never share the same function reference.
+    const collapseFn = showSearchLog ? () => setShowSearchLog(false) : null;
+    escapeInterceptRef.current = collapseFn;
+    return () => {
+      // Only clear if we still own the ref — prevents stomping a value set
+      // by a concurrent effect run during rapid state transitions.
+      if (escapeInterceptRef.current === collapseFn) {
+        escapeInterceptRef.current = null;
+      }
+    };
+  }, [showSearchLog, escapeInterceptRef]);
+
+  useEffect(() => {
+    const clearScheduled = () => {
+      cancelAnimationFrame(searchLogEnterRafRef.current);
+      searchLogEnterRafRef.current = 0;
+      cancelAnimationFrame(searchLogExitRafRef.current);
+      searchLogExitRafRef.current = 0;
+      if (searchLogSettleTimerRef.current) {
+        clearTimeout(searchLogSettleTimerRef.current);
+        searchLogSettleTimerRef.current = null;
+      }
+      if (searchLogExitTimerRef.current) {
+        clearTimeout(searchLogExitTimerRef.current);
+        searchLogExitTimerRef.current = null;
+      }
+    };
+
+    clearScheduled();
+
+    if (prefersReducedMotion) {
+      setIsSearchLogMounted(showSearchLog);
+      setSearchLogStage(showSearchLog ? "steady" : "idle");
+      return clearScheduled;
+    }
+
+    if (showSearchLog) {
+      if (!searchLogMountedRef.current) {
+        setIsSearchLogMounted(true);
+      }
+      setSearchLogStage("enter-a");
+      // Two RAFs guarantee a painted frame at enter-a before we begin the 95% reveal.
+      searchLogEnterRafRef.current = requestAnimationFrame(() => {
+        searchLogEnterRafRef.current = requestAnimationFrame(() => {
+          setSearchLogStage("enter-b");
+          searchLogSettleTimerRef.current = setTimeout(() => {
+            setSearchLogStage("steady");
+            searchLogSettleTimerRef.current = null;
+          }, EVIDENCE_LIST_EXPAND_STEP_MS);
+        });
+      });
+      return clearScheduled;
+    }
+
+    if (!searchLogMountedRef.current) {
+      setSearchLogStage("idle");
+      return clearScheduled;
+    }
+
+    setSearchLogStage("exit-a");
+    // Match expand behavior: force one painted 70% frame before collapsing to 0%.
+    searchLogExitRafRef.current = requestAnimationFrame(() => {
+      searchLogExitRafRef.current = requestAnimationFrame(() => {
+        setSearchLogStage("exit-b");
+      });
+    });
+    searchLogExitTimerRef.current = setTimeout(() => {
+      setIsSearchLogMounted(false);
+      setSearchLogStage("idle");
+      searchLogExitTimerRef.current = null;
+    }, EVIDENCE_LIST_COLLAPSE_TOTAL_MS);
+
+    return clearScheduled;
+  }, [showSearchLog, prefersReducedMotion]);
+
+  const searchLogViewportRef = useRef<HTMLDivElement>(null);
+  const [searchLogContentHeight, setSearchLogContentHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!isSearchLogMounted) return;
+    const viewport = searchLogViewportRef.current;
+    if (!viewport) return;
+
+    const resolvedMaxHeight = Number.parseFloat(window.getComputedStyle(viewport).maxHeight);
+    const maxHeightLimit = Number.isFinite(resolvedMaxHeight) ? resolvedMaxHeight : viewport.scrollHeight;
+    const nextHeight = Math.max(0, Math.min(viewport.scrollHeight, maxHeightLimit));
+    setSearchLogContentHeight(prev => (Math.abs(prev - nextHeight) > 0.5 ? nextHeight : prev));
+  }, [isSearchLogMounted]);
+  const searchLogMotionStyle = useMemo<React.CSSProperties>(() => {
+    const revealRatio = resolveEvidenceListRevealRatio(searchLogStage);
+    const revealHeightPx = Math.round(searchLogContentHeight * revealRatio);
+    if (prefersReducedMotion) {
+      return {
+        display: "block",
+        overflow: "hidden",
+        maxHeight: `${Math.max(0, revealHeightPx)}px`,
+        opacity: showSearchLog ? 1 : 0,
+        paddingTop: "0px",
+        transform: "translate3d(0, 0, 0)",
+        transition: "none",
+      };
+    }
+    return {
+      display: "block",
+      overflow: "hidden",
+      maxHeight: `${Math.max(0, revealHeightPx)}px`,
+      opacity: resolveEvidenceListOpacity(searchLogStage),
+      paddingTop: resolveEvidenceListPaddingTop(searchLogStage),
+      transform: resolveEvidenceListTransform(searchLogStage),
+      transition: resolveEvidenceListTransition(searchLogStage),
+      willChange: searchLogStage === "steady" ? undefined : "transform, padding-top, max-height, opacity",
+    };
+  }, [searchLogContentHeight, searchLogStage, prefersReducedMotion, showSearchLog]);
   const searchCount = useMemo(
-    () => (isMiss || isPartialMatch ? countUniqueSearchTexts(searchAttempts) : 0),
+    () => ((isMiss || isPartialMatch) && searchAttempts.length > 0 ? getUniqueSearchAttemptCount(searchAttempts) : 0),
     [isMiss, isPartialMatch, searchAttempts],
   );
 
@@ -927,7 +1306,8 @@ export function EvidenceTray({
   const footerEl = (
     <EvidenceTrayFooter
       verifiedAt={verification?.verifiedAt}
-      onPageClick={onExpand}
+      onPageClick={onExpand ? handlePageExpand : undefined}
+      pageNumberForCta={pageNumberForCta}
       searchCount={isMiss || isPartialMatch ? searchCount : undefined}
       isSearchLogOpen={showSearchLog}
       onToggleSearchLog={isMiss || isPartialMatch ? () => setShowSearchLog(prev => !prev) : undefined}
@@ -947,6 +1327,7 @@ export function EvidenceTray({
           onImageClick={onImageClick}
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}
+          onExpandOriginCapture={onExpandOriginCapture}
         />
       ) : (isMiss || isPartialMatch) && isValidProofImageSrc(proofImageSrc) ? (
         <AnchorTextFocusedImage
@@ -955,6 +1336,7 @@ export function EvidenceTray({
           onImageClick={onImageClick}
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}
+          onExpandOriginCapture={onExpandOriginCapture}
         />
       ) : null}
       {/* Miss/partial: search analysis and collapsible search log (only when there are search attempts) */}
@@ -962,30 +1344,28 @@ export function EvidenceTray({
         <div key="analysis">
           <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
           {footerEl}
-          <div
-            className="grid transition-[grid-template-rows]"
-            style={{
-              gridTemplateRows: showSearchLog ? "1fr" : "0fr",
-              ...(prefersReducedMotion
-                ? { transitionDuration: "0ms" }
-                : {
-                    transitionDuration: showSearchLog ? "200ms" : "120ms",
-                    transitionTimingFunction: showSearchLog ? EASE_EXPAND : EASE_COLLAPSE,
-                  }),
-            }}
-          >
-            <div className="overflow-hidden" style={{ minHeight: 0 }}>
-              <div className="border-t border-gray-200 dark:border-gray-700">
-                <VerificationLogTimeline
-                  searchAttempts={searchAttempts}
-                  fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
-                  anchorText={verification?.citation?.anchorText ?? verification?.verifiedAnchorText ?? undefined}
-                  status={verification?.status ?? "not_found"}
-                  onCollapse={() => setShowSearchLog(false)}
-                />
+          {isSearchLogMounted ? (
+            <div style={searchLogMotionStyle}>
+              <div className="overflow-hidden" style={{ minHeight: 0 }}>
+                <div className="border-t border-gray-200 dark:border-gray-700">
+                  <div
+                    ref={searchLogViewportRef}
+                    className="max-h-[min(44dvh,420px)] overflow-y-auto overscroll-contain"
+                  >
+                    <VerificationLogTimeline
+                      searchAttempts={searchAttempts}
+                      fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
+                      anchorText={verification?.citation?.anchorText ?? verification?.verifiedAnchorText ?? undefined}
+                      status={verification?.status ?? "not_found"}
+                      expectedPage={verification?.citation?.pageNumber ?? undefined}
+                      expectedLine={verification?.citation?.lineIds?.[0] ?? undefined}
+                      onCollapse={() => setShowSearchLog(false)}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -996,7 +1376,7 @@ export function EvidenceTray({
   );
 
   return (
-    <div className="mx-3 mb-3">
+    <div ref={trayRootRef} className="mx-3 mb-3">
       {trayAction ? (
         /* Interactive: clickable with hover CTA */
         <div
@@ -1077,7 +1457,7 @@ function applyGestureTransform(
  *
  * When `fill` is true (expanded-page mode), includes subtle zoom controls
  * (−/slider/+) for both desktop and mobile. Mobile defaults to fit-to-screen.
- * Supports pinch-to-zoom on touch devices and trackpad pinch (Ctrl+wheel).
+ * Supports pinch-to-zoom on touch devices and scroll-to-zoom on desktop.
  */
 export function InlineExpandedImage({
   src,
@@ -1085,6 +1465,8 @@ export function InlineExpandedImage({
   verification,
   fill = false,
   onExpand,
+  pageNumberForCta,
+  onExpandOriginCapture,
   onNaturalSize,
   renderScale,
   highlightItem,
@@ -1092,6 +1474,8 @@ export function InlineExpandedImage({
   initialOverlayHidden = false,
   showOverlay,
   initialScroll,
+  expandFromRect,
+  onExpandFromRectConsumed,
 }: {
   src: string;
   onCollapse: () => void;
@@ -1100,6 +1484,10 @@ export function InlineExpandedImage({
   fill?: boolean;
   /** When provided, renders a "View page ›" CTA in the non-fill footer. */
   onExpand?: () => void;
+  /** Optional page number shown in "View page N" CTA for non-fill mode. */
+  pageNumberForCta?: number | null;
+  /** Called with a viewport rect used as the shared-origin source for expand-to-page. */
+  onExpandOriginCapture?: (rect: SharedOriginRect) => void;
   /** Called after image load with natural pixel dimensions. */
   onNaturalSize?: (width: number, height: number) => void;
   /** Scale factors for converting DeepTextItem PDF coords to image pixels. */
@@ -1121,8 +1509,11 @@ export function InlineExpandedImage({
    * where the keyhole strip was scrolled to. A new object reference = re-apply.
    */
   initialScroll?: { left: number; top: number };
+  /** Shared-origin source rect captured from the prior keyhole/annotation state. */
+  expandFromRect?: SharedOriginRect | null;
+  /** Called once a shared-origin rect is consumed (transition completed or skipped). */
+  onExpandFromRectConsumed?: () => void;
 }) {
-  const prefersReducedMotion = usePrefersReducedMotion();
   const { containerRef, isDragging, handlers: panHandlers, wasDraggingRef } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
@@ -1178,11 +1569,16 @@ export function InlineExpandedImage({
   // div (GPU-composited, zero layout reflow). On gesture end, the final zoom is
   // committed to React state → width reflow → transform removed in one paint frame.
   // ---------------------------------------------------------------------------
+  const animatedShellRef = useRef<HTMLDivElement>(null);
   const imageWrapperRef = useRef<HTMLDivElement>(null);
   // Touch pinch gesture zoom (separate from wheel zoom hook).
   const touchGestureZoomRef = useRef<number | null>(null);
   // Touch pinch anchor — used by applyGestureTransform and useLayoutEffect for scroll correction.
-  const touchGestureAnchorRef = useRef<{ mx: number; my: number; sx: number; sy: number } | null>(null);
+  const touchGestureAnchorRef = useRef<WheelZoomAnchor | null>(null);
+  // Wheel zoom gesture anchor — declared here (before the src-reset effect) and
+  // passed into useWheelZoom so the hook writes to this ref. Avoids a temporal
+  // dead zone reference that the React Compiler flags as "used before declaration".
+  const expandedWheelAnchorRef = useRef<WheelZoomAnchor | null>(null);
 
   // Effective annotation items: override props take precedence, then verification.document, then null.
   const effectivePhraseItem = highlightItem ?? verification?.document?.phraseMatchDeepItem ?? null;
@@ -1433,10 +1829,11 @@ export function InlineExpandedImage({
   }, [fill]);
 
   // ---------------------------------------------------------------------------
-  // GPU-accelerated Ctrl+wheel zoom (expanded page requires Ctrl — bare scroll pans).
+  // GPU-accelerated wheel zoom (scroll-to-zoom).
+  // Drag-to-pan is handled separately by useDragToPan.
   // Uses useWheelZoom hook: CSS transform during gesture, commits on 150ms debounce.
   // ---------------------------------------------------------------------------
-  const { gestureAnchorRef: expandedWheelAnchorRef } = useWheelZoom({
+  useWheelZoom({
     enabled: fill && imageLoaded,
     sensitivity: WHEEL_ZOOM_SENSITIVITY,
     containerRef: containerRef as React.RefObject<HTMLElement | null>,
@@ -1444,11 +1841,11 @@ export function InlineExpandedImage({
     zoom,
     clampZoomRaw,
     clampZoom,
+    gestureAnchorRef: expandedWheelAnchorRef,
     onZoomCommit: (z: number) => {
       hasManualZoomRef.current = true;
       setZoom(z);
     },
-    requireCtrl: true,
   });
 
   // ---------------------------------------------------------------------------
@@ -1521,6 +1918,7 @@ export function InlineExpandedImage({
         my: mid.y - rect.top,
         sx: el.scrollLeft,
         sy: el.scrollTop,
+        startZoom: initialZoom,
       };
 
       // Apply transform directly to DOM — zero React renders during gesture
@@ -1564,7 +1962,7 @@ export function InlineExpandedImage({
   // 2. Compute scroll correction from the gesture anchor
   // Both happen in the same paint frame — no visual flash.
   // ---------------------------------------------------------------------------
-  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef/imageWrapperRef/expandedWheelAnchorRef are stable ref objects — their identity never changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef/imageWrapperRef/expandedWheelAnchorRef/touchGestureAnchorRef are stable ref objects
   useLayoutEffect(() => {
     const wrapper = imageWrapperRef.current;
     // Always clear any residual transform when zoom commits
@@ -1580,10 +1978,9 @@ export function InlineExpandedImage({
     }
 
     // Compute scroll correction: keep the anchor point visually stable.
-    // zoomRef.current still holds the OLD committed zoom (useEffect hasn't fired yet).
-    const oldZoom = zoomRef.current;
-    if (oldZoom > 0) {
-      const ratio = zoom / oldZoom;
+    const startZoom = anchor.startZoom;
+    if (startZoom > 0) {
+      const ratio = zoom / startZoom;
       el.scrollLeft = (anchor.mx + anchor.sx) * ratio - anchor.mx;
       el.scrollTop = (anchor.my + anchor.sy) * ratio - anchor.my;
     }
@@ -1621,21 +2018,60 @@ export function InlineExpandedImage({
     annotationOriginItem && renderScale && naturalWidth && naturalHeight
       ? computeAnnotationOriginPercent(annotationOriginItem, renderScale, naturalWidth, naturalHeight)
       : null;
+  const resolveExpandTargetRect = useCallback((): SharedOriginRect | null => {
+    const wrapper = imageWrapperRef.current;
+    if (!wrapper) return null;
+    return toSharedOriginRect(wrapper.getBoundingClientRect());
+  }, []);
+
+  const captureExpandOriginRect = useCallback(() => {
+    if (!onExpandOriginCapture) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const fallbackRect = toSharedOriginRect(container.getBoundingClientRect());
+    let captured: SharedOriginRect | null = null;
+    if (annotationOriginItem && renderScale && naturalWidth && naturalHeight && imageWrapperRef.current) {
+      const imageRect = toSharedOriginRect(imageWrapperRef.current.getBoundingClientRect());
+      const deepRect = computeDeepItemViewportRect(
+        annotationOriginItem,
+        renderScale,
+        naturalWidth,
+        naturalHeight,
+        imageRect,
+      );
+      captured = deepRect ? intersectRects(deepRect, fallbackRect) : null;
+    }
+    onExpandOriginCapture(isValidSharedOriginRect(captured) ? captured : fallbackRect);
+  }, [annotationOriginItem, containerRef, naturalHeight, naturalWidth, onExpandOriginCapture, renderScale]);
+
+  const handleExpandToPage = useCallback(() => {
+    captureExpandOriginRect();
+    onExpand?.();
+  }, [captureExpandOriginRect, onExpand]);
+
+  useSharedOriginExpandTransition(
+    fill,
+    expandFromRect ?? null,
+    resolveExpandTargetRect,
+    animatedShellRef,
+    containerRef,
+    onExpandFromRectConsumed,
+  );
 
   const footerEl = (
     <div className="bg-white dark:bg-gray-900 rounded-b-sm border border-t-0 border-gray-200 dark:border-gray-700">
-      <EvidenceTrayFooter verifiedAt={verification?.verifiedAt} onPageClick={fill ? undefined : onExpand} />
+      <EvidenceTrayFooter
+        verifiedAt={verification?.verifiedAt}
+        onPageClick={fill ? undefined : handleExpandToPage}
+        pageNumberForCta={pageNumberForCta}
+      />
     </div>
   );
 
   return (
     <div
       ref={outerRef}
-      className={cn(
-        "relative mx-3 mb-3",
-        !fill && "animate-in fade-in-0 duration-150",
-        fill && "flex-1 min-h-0 flex flex-col",
-      )}
+      className={cn("relative mx-3 mb-3", fill && "flex flex-col flex-1 min-h-0")}
       style={
         fill
           ? undefined // fill mode: container fills popover width, image scrolls inside
@@ -1649,7 +2085,7 @@ export function InlineExpandedImage({
       }
     >
       {/* Wrapper: relative so zoom controls can be positioned absolutely over the scroll area */}
-      <div className={cn("relative", fill && "flex-1 min-h-0 flex flex-col")}>
+      <div className={cn("relative", fill && "flex flex-col flex-1 min-h-0")}>
         {/* Scrollable image area — click (no drag) collapses */}
         <div
           ref={containerRef}
@@ -1658,7 +2094,8 @@ export function InlineExpandedImage({
           tabIndex={0}
           aria-label="Expanded verification image. Press Escape or Enter to collapse. Use arrow keys to pan."
           className={cn(
-            "relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm",
+            "relative select-none overflow-auto rounded-t-sm",
+            DOCUMENT_CANVAS_BG_CLASSES,
             // Top+sides border completes the box started by the footer's border-t-0.
             // Matches EvidenceTray's EVIDENCE_TRAY_BORDER_SOLID so the transition is seamless.
             !fill && "border border-b-0 border-gray-200 dark:border-gray-700",
@@ -1681,11 +2118,16 @@ export function InlineExpandedImage({
           }}
           onKeyDown={e => {
             if (e.key === "Escape") {
-              // Collapse the expanded image. e.preventDefault() suppresses the default
-              // browser action. Radix's DismissableLayer still receives the event, but
-              // CitationComponent's onEscapeKeyDown handler reads popoverViewStateRef
-              // and steps back one level instead of closing — so no double-close.
+              // Collapse the expanded image and stop event propagation.
+              // preventDefault() prevents the browser's default Escape action.
+              // stopPropagation() prevents the native event from reaching the
+              // document-level listener in Popover.tsx.  Without this, React 18
+              // flushes the viewState→"summary" update synchronously (discrete
+              // event batch), and by the time the document handler fires, the
+              // ref reads "summary" — hitting the "close popover" branch instead
+              // of the "step back" branch.
               e.preventDefault();
+              e.stopPropagation();
               onCollapse();
               return;
             }
@@ -1721,26 +2163,15 @@ export function InlineExpandedImage({
           {...panHandlers}
         >
           <style>{`[data-dc-inline-expanded]::-webkit-scrollbar { display: none; }`}</style>
-          {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page).
+          {/* Keyed on src: remounts on image swaps (evidence ↔ page).
               In fill mode with an annotation, the scale animation originates from the annotation
               position via transform-origin, creating a "zoom from annotation" visual effect. */}
           <div
             key={src}
-            className={cn(
-              "animate-in fade-in-0",
-              fill && annotationOrigin
-                ? "zoom-in-95 duration-180"
-                : fill
-                  ? "zoom-in-[0.97] duration-150"
-                  : "duration-150",
-              fill && "fill-mode-backwards",
-            )}
+            ref={animatedShellRef}
             style={{
               ...(annotationOrigin
                 ? { transformOrigin: `${annotationOrigin.xPercent}% ${annotationOrigin.yPercent}%` }
-                : undefined),
-              ...(fill && !prefersReducedMotion
-                ? { animationDelay: `${CONTENT_STAGGER_DELAY_MS}ms`, animationTimingFunction: EASE_EXPAND }
                 : undefined),
             }}
           >
@@ -1765,7 +2196,7 @@ export function InlineExpandedImage({
               <img
                 src={isValidProofImageSrc(src) ? src : undefined}
                 alt="Verification evidence"
-                className={cn("block", !imageLoaded && "hidden")}
+                className={cn("block", DOCUMENT_IMAGE_EDGE_CLASSES, !imageLoaded && "hidden")}
                 style={zoomedWidth !== undefined ? { width: zoomedWidth, maxWidth: "none" } : { maxWidth: "none" }}
                 onLoad={e => {
                   const w = e.currentTarget.naturalWidth;

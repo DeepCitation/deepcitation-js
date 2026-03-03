@@ -18,6 +18,7 @@ import {
   DOT_INDICATOR_FIXED_SIZE_STYLE,
   GUARD_MAX_WIDTH_VAR,
   isValidProofImageSrc,
+  KEYHOLE_STRIP_HEIGHT_DEFAULT,
   MISS_WAVY_UNDERLINE_STYLE,
   SPINNER_TIMEOUT_MS,
   TAP_SLOP_PX,
@@ -25,6 +26,7 @@ import {
 } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
+import { getExpandedPopoverWidthPx, getSummaryPopoverWidthPx } from "./expandedWidthPolicy.js";
 import { triggerHaptic } from "./haptics.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
@@ -305,8 +307,10 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   viewState,
   onViewStateChange,
   expandedImageSrcOverride,
+  onExpandedWidthChange,
   prevBeforeExpandedPageRef,
   onSourceDownload,
+  escapeInterceptRef,
 }: {
   renderPopoverContent?: CitationComponentProps["renderPopoverContent"];
   citation: BaseCitationProps["citation"];
@@ -319,8 +323,10 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   viewState: PopoverViewState;
   onViewStateChange: (viewState: PopoverViewState) => void;
   expandedImageSrcOverride: string | null;
+  onExpandedWidthChange?: (width: number | null, source?: "expanded-keyhole" | "expanded-page" | null) => void;
   prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-keyhole">;
   onSourceDownload?: (citation: Citation) => void;
+  escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   if (renderPopoverContent) {
     const CustomContent = renderPopoverContent;
@@ -343,8 +349,10 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
         viewState={viewState}
         onViewStateChange={onViewStateChange}
         expandedImageSrcOverride={expandedImageSrcOverride}
+        onExpandedWidthChange={onExpandedWidthChange}
         prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
         onSourceDownload={onSourceDownload}
+        escapeInterceptRef={escapeInterceptRef}
       />
     </CitationErrorBoundary>
   );
@@ -459,11 +467,19 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     }, [contentProp, variant]);
     const [isHovering, setIsHovering] = useState(false);
     const [popoverViewState, setPopoverViewState] = useState<PopoverViewState>("summary");
+    const [expandedNaturalWidthForPosition, setExpandedNaturalWidthForPosition] = useState<number | null>(null);
+    const [expandedWidthSourceForPosition, setExpandedWidthSourceForPosition] = useState<
+      "expanded-keyhole" | "expanded-page" | null
+    >(null);
     // Custom image src from behaviorConfig.onClick returning setImageExpanded: "<url>"
     const [customExpandedSrc, setCustomExpandedSrc] = useState<string | null>(null);
     // Tracks which state preceded expanded-page so Escape can navigate back correctly.
     // Lifted here (from DefaultPopoverContent) so onEscapeKeyDown on <PopoverContent> can read it.
     const prevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
+
+    // Set by sub-components (e.g. EvidenceTray search log) when they have an expanded
+    // section that should consume Escape before the popover closes.
+    const escapeInterceptRef = useRef<(() => void) | null>(null);
 
     // Ref kept in sync with popoverViewState so setViewStateWithHaptics can read
     // the current value inside callbacks without stale closure issues.
@@ -475,6 +491,19 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     useLayoutEffect(() => {
       popoverViewStateRef.current = popoverViewState;
     }, [popoverViewState]);
+    const handleExpandedWidthChange = useCallback(
+      (width: number | null, sourceOverride?: "expanded-keyhole" | "expanded-page" | null) => {
+        const source = sourceOverride ?? popoverViewStateRef.current;
+        if (source !== "expanded-keyhole" && source !== "expanded-page") {
+          setExpandedNaturalWidthForPosition(null);
+          setExpandedWidthSourceForPosition(null);
+          return;
+        }
+        setExpandedNaturalWidthForPosition(width);
+        setExpandedWidthSourceForPosition(source);
+      },
+      [],
+    );
 
     // View-state setter that fires haptic feedback on mobile for expand/collapse
     // transitions. Replaces direct setPopoverViewState calls in user-event handlers.
@@ -494,6 +523,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           const isCollapsing = newState === "summary" && (prev === "expanded-page" || prev === "expanded-keyhole");
           if (isExpanding) triggerHaptic("expand");
           else if (isCollapsing) triggerHaptic("collapse");
+        }
+        if (newState === "summary") {
+          setExpandedNaturalWidthForPosition(null);
+          setExpandedWidthSourceForPosition(null);
         }
         setPopoverViewState(newState);
       },
@@ -519,9 +552,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // When <main> exists, we set inert on it (the popover portal is a sibling
     // of <main> inside document.body, so it stays interactive).
     // When no <main> exists, we cannot set inert on document.body because the
-    // Radix portal renders inside body — that would make the popover itself
-    // inert. Instead, we inert each direct child of body except the one
-    // containing the popover.
+    // The popover portal renders inside body — that would make the popover
+    // itself inert. Instead, we inert each direct child of body except the
+    // one containing the popover.
     useEffect(() => {
       if (!isHovering || !openedViaKeyboardRef.current) return;
       const main = document.querySelector("main");
@@ -530,7 +563,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         return () => main.removeAttribute("inert");
       }
       // Fallback: inert all body children except the popover portal.
-      // Defer with rAF so the Radix portal is in the DOM before we scan.
+      // Defer with rAF so the portal is in the DOM before we scan.
       const inerted: Element[] = [];
       const rafId = requestAnimationFrame(() => {
         const popoverEl = popoverContentRef.current;
@@ -549,13 +582,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       };
     }, [isHovering]);
 
-    // Dismiss the popover and reset its view state in one step.
-    // Replaces the old useEffect that watched isHovering — moving the reset into
-    // the event handler avoids an extra render cycle (flash).
+    // Dismiss the popover.
+    // Keep view/layout state intact during the exit animation; resetting to
+    // summary here causes a visible jump before fade-out.
     const closePopover = useCallback(() => {
       setIsHovering(false);
-      setPopoverViewState("summary");
-      setCustomExpandedSrc(null);
     }, []);
 
     // Track if popover was already open before current interaction (for mobile/lazy mode).
@@ -567,8 +598,20 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Track whether the popover was opened via keyboard (Enter/Space) vs mouse/touch.
     // Used by:
     // - A.5.1 Focus trap: only set `inert` on background when keyboard-opened
-    // - A.5.2 Focus return: only allow Radix to return focus when keyboard-opened
+    // - A.5.2 Focus return: only return focus to trigger when keyboard-opened
     const openedViaKeyboardRef = useRef(false);
+
+    // A.5.2 Conditional focus return: keyboard users need focus returned to the
+    // trigger so they can continue navigating. Mouse/touch users don't — returning
+    // focus would scroll the trigger into view, disorienting users who scrolled away.
+    // Extracted from inline JSX to avoid mutating ref.current in render scope
+    // (React Compiler: "This value cannot be modified").
+    const handleCloseAutoFocus = useCallback((e: Event) => {
+      if (!openedViaKeyboardRef.current) {
+        e.preventDefault();
+      }
+      openedViaKeyboardRef.current = false;
+    }, []);
 
     const wasPopoverOpenBeforeTap = useRef(false);
 
@@ -618,14 +661,54 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       [ref],
     );
 
-    // Lock the popover side (top/bottom) on open so scroll doesn't cause Radix's
-    // flip middleware to jump the popover between sides. Also isolated for compiler.
+    // Lock the popover side (top/bottom) on open so the popover doesn't jump
+    // between sides during scroll. Also isolated for compiler.
     const lockedSide = useLockedPopoverSide(isHovering, popoverPosition === "top" ? "top" : "bottom", triggerRef);
 
     // Isolated into separate hooks so the React Compiler can optimize CitationComponent
     // (setState in useLayoutEffect causes a compiler bailout for the entire component).
     const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef, lockedSide);
-    const popoverAlignOffset = usePopoverAlignOffset(isHovering, popoverViewState, triggerRef, popoverContentRef);
+    const projectedSummaryKeyholeWidth = useMemo(() => {
+      const dims = verification?.document?.verificationImageDimensions;
+      if (!dims) return null;
+      const width = dims.width;
+      const height = dims.height;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+      return width * (KEYHOLE_STRIP_HEIGHT_DEFAULT / height);
+    }, [verification?.document?.verificationImageDimensions]);
+    const projectedPopoverWidthPx = useMemo(() => {
+      if (!isHovering || typeof document === "undefined") return null;
+      const viewportWidth = document.documentElement.clientWidth;
+      if (popoverViewState === "summary") {
+        return getSummaryPopoverWidthPx(projectedSummaryKeyholeWidth, viewportWidth);
+      }
+
+      if (expandedNaturalWidthForPosition === null) return null;
+
+      const shouldProjectExpandedWidth =
+        (popoverViewState === "expanded-keyhole" && expandedWidthSourceForPosition === "expanded-keyhole") ||
+        (popoverViewState === "expanded-page" &&
+          (expandedWidthSourceForPosition === "expanded-page" ||
+            expandedWidthSourceForPosition === "expanded-keyhole"));
+
+      if (shouldProjectExpandedWidth) {
+        return getExpandedPopoverWidthPx(expandedNaturalWidthForPosition, viewportWidth);
+      }
+      return null;
+    }, [
+      isHovering,
+      popoverViewState,
+      projectedSummaryKeyholeWidth,
+      expandedNaturalWidthForPosition,
+      expandedWidthSourceForPosition,
+    ]);
+    const popoverAlignOffset = usePopoverAlignOffset(
+      isHovering,
+      popoverViewState,
+      triggerRef,
+      popoverContentRef,
+      projectedPopoverWidthPx,
+    );
 
     // Layer 3: hard viewport boundary guard. Observes the popover's actual
     // rendered rect and applies corrective CSS `translate` if any edge overflows.
@@ -826,6 +909,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         // Execute the requested action
         switch (action) {
           case "showPopover":
+            // Reset to summary on open (not on close) so exit animations retain
+            // the geometry of the state the user was viewing.
+            setPopoverViewState("summary");
+            setExpandedNaturalWidthForPosition(null);
+            setCustomExpandedSrc(null);
             setIsHovering(true);
             break;
           case "hidePopover":
@@ -921,18 +1009,17 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       eventHandlers?.onMouseLeave?.(citation, citationKey);
     }, [eventHandlers, behaviorConfig, citation, citationKey, getBehaviorContext]);
 
-    // Escape key handling is managed by Radix Popover via onOpenChange and onEscapeKeyDown props
+    // Escape key handling is managed by PopoverContent via onEscapeKeyDown prop
 
     // Mobile click-outside dismiss handler
     //
     // On mobile, tapping outside the citation trigger or popover should dismiss the popover.
     // Desktop uses a document-level mousedown listener (below) for click-outside dismiss.
     //
-    // Why custom handling instead of Radix's built-in click-outside behavior:
-    // The PopoverContent has onPointerDownOutside and onInteractOutside handlers that call
-    // e.preventDefault() to give us full control over popover state. This is necessary for
-    // the two-tap mobile interaction pattern (first tap shows popover, second tap opens image).
-    // However, it means we need custom touch handling to dismiss the popover on outside taps.
+    // Custom touch handling for the two-tap mobile interaction pattern (first tap
+    // shows popover, second tap opens image). Outside-click dismiss is handled here
+    // rather than in the generic Popover component so we can integrate overlay
+    // awareness, tap-vs-scroll detection, and the two-tap flow.
     //
     // Event order when tapping the trigger while popover is open:
     // 1. handleOutsideTouch (capture phase, document) - checks .contains(), returns early
@@ -941,8 +1028,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // The .contains() check in step 1 ensures we don't dismiss when tapping the trigger,
     // allowing the normal two-tap flow to proceed.
     //
-    // Portal note: popoverContentRef works with portaled content because Radix renders
-    // the popover content as a child of document.body, but we hold a direct ref to that
+    // Portal note: popoverContentRef works with portaled content because the
+    // popover renders inside document.body and we hold a direct ref to that
     // DOM element, so .contains() correctly detects touches inside it.
     //
     // Cleanup: The listener only attaches when isMobile AND isHovering are both true.
@@ -1264,7 +1351,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       onTouchEndCapture: isMobile ? handleTouchEnd : undefined,
     };
 
-    // Render with Radix Popover
+    // Render with Popover
     if (shouldShowPopover) {
       const popoverContentElement = (
         <PopoverContentRenderer
@@ -1279,8 +1366,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           viewState={popoverViewState}
           onViewStateChange={setViewStateWithHaptics}
           expandedImageSrcOverride={customExpandedSrc}
+          onExpandedWidthChange={handleExpandedWidthChange}
           prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
           onSourceDownload={effectiveOnSourceDownload}
+          escapeInterceptRef={escapeInterceptRef}
         />
       );
 
@@ -1327,33 +1416,23 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               ref={popoverContentRef}
               id={popoverId}
               side={lockedSide}
+              align="start"
               sideOffset={expandedPageSideOffset}
               alignOffset={popoverAlignOffset}
-              // Collision avoidance always off — the locked side handles vertical
-              // placement and usePopoverAlignOffset handles horizontal clamping.
-              // CSS maxWidth/maxHeight (calc(100dvw/dvh - 2rem)) constrains size.
-              avoidCollisions={false}
-              onCloseAutoFocus={(e: Event) => {
-                // A.5.2 Conditional focus return: keyboard users need focus returned
-                // to the trigger so they can continue navigating. Mouse/touch users
-                // don't — returning focus would scroll the trigger into view, which
-                // is disorienting when the user has scrolled away before dismissing.
-                if (!openedViaKeyboardRef.current) {
-                  e.preventDefault();
-                }
-                openedViaKeyboardRef.current = false;
-              }}
-              onPointerDownOutside={(e: Event) => e.preventDefault()}
-              onInteractOutside={(e: Event) => e.preventDefault()}
+              onCloseAutoFocus={handleCloseAutoFocus}
               onEscapeKeyDown={e => {
-                // Always take ownership — e.preventDefault() prevents Radix's
-                // DismissableLayer from calling onDismiss() → onOpenChange(false).
-                // Read popoverViewStateRef (not the closure value) so this handler
-                // is correct even if Radix's useCallbackRef still holds a stale
-                // closure from before the most recent setViewStateWithHaptics call.
-                // (useCallbackRef syncs via useEffect — deferred — whereas
-                // popoverViewStateRef is kept current by useLayoutEffect — sync.)
+                // Take ownership — e.preventDefault() tells Popover.tsx's document
+                // keydown listener to skip calling onOpenChange(false). Reading
+                // popoverViewStateRef (not the closure value) ensures correctness
+                // even if the ref trails the latest render by one effect cycle.
                 e.preventDefault();
+
+                // Let sub-components (e.g. expanded search log) consume Escape first.
+                if (escapeInterceptRef.current) {
+                  escapeInterceptRef.current();
+                  return;
+                }
+
                 const vs = popoverViewStateRef.current;
                 if (vs === "summary") {
                   // Already at summary: close the popover.
@@ -1374,33 +1453,20 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       // Expanded-page keeps adaptive width when space allows and is
                       // clamped to viewport bounds via maxWidth + guard variable.
                       maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
-                      // Explicit height gives the flex chain a definite reference size
-                      // so flex-1 min-h-0 children can grow into available space.
-                      height: "calc(100dvh - 2rem)",
                       maxHeight: "calc(100dvh - 2rem)",
                       // The inner InlineExpandedImage handles its own scrolling (with hidden
-                      // scrollbars). Override PopoverContent's default overflow-y-auto to
-                      // prevent a redundant outer scrollbar from appearing.
-                      overflowY: "hidden" as const,
-                      // Disable CSS transitions on this element during view-state changes.
-                      // Tailwind's data-[state=open]:duration-200 sets transition-duration
-                      // on ALL properties (transition-property defaults to "all"). Without
-                      // this override, width/height changes transition over 200ms instead
-                      // of snapping instantly, causing usePopoverAlignOffset and
-                      // useViewportBoundaryGuard to measure stale intermediate widths.
-                      // Entry/exit animations use @keyframes (animate-in/out), not CSS
-                      // transitions, so they are unaffected. The inner useAnimatedHeight
-                      // wrapper manages its own transition property.
-                      transitionProperty: "none",
+                      // scrollbars). Override PopoverContent's default overflow behavior to
+                      // prevent redundant outer scrollbars from appearing during transitions.
+                      overflow: "hidden" as const,
                     }
                   : popoverViewState === "expanded-keyhole"
                     ? {
                         maxWidth: `var(${GUARD_MAX_WIDTH_VAR}, calc(100dvw - 2rem))`,
-                        // Prevent Tailwind's duration-200 from transitioning width
-                        // changes — hooks need instant measurement (see expanded-page).
-                        transitionProperty: "none",
+                        // The inner InlineExpandedImage handles scrolling, so hide outer
+                        // overflow to avoid transient shell scrollbars during transitions.
+                        overflow: "hidden" as const,
                       }
-                    : { transitionProperty: "none" }
+                    : undefined
               }
               onClick={(e: React.MouseEvent) => {
                 // Clicking directly on the popover backdrop (not on inner content) dismisses it.

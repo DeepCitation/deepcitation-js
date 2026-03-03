@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { act, cleanup, render } from "@testing-library/react";
-import { EvidenceTray, InlineExpandedImage } from "../react/EvidenceTray";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import type React from "react";
+import { createRef } from "react";
+import { EvidenceTray, InlineExpandedImage, resolveExpandedImageForPage } from "../react/EvidenceTray";
 import type { CitationStatus } from "../types/citation";
 import type { Verification } from "../types/verification";
 
@@ -20,6 +22,7 @@ const baseVerification: Verification = {
 
 describe("EvidenceTray interaction styles", () => {
   afterEach(() => {
+    jest.useRealTimers();
     cleanup();
   });
 
@@ -32,6 +35,143 @@ describe("EvidenceTray interaction styles", () => {
     expect(viewPageButton.className).toContain("text-gray-600");
     expect(viewPageButton.className).toContain("hover:text-blue-600");
     expect(viewPageButton.className).toContain("focus-visible:ring-2");
+  });
+
+  it("uses Attempts wording in miss-state search toggle", () => {
+    const missStatus: CitationStatus = {
+      isVerified: false,
+      isMiss: true,
+      isPartialMatch: false,
+      isPending: false,
+    };
+    const missVerification: Verification = {
+      status: "not_found",
+      citation: {
+        fullPhrase: "Revenue increased by 15% in Q4 2024.",
+        anchorText: "increased by 15%",
+        pageNumber: 5,
+        lineIds: [12],
+      },
+      searchAttempts: [
+        {
+          method: "exact_line_match",
+          success: false,
+          searchPhrase: "Revenue increased by 15% in Q4 2024.",
+          pageSearched: 5,
+        },
+      ],
+    };
+
+    const { getByRole, queryByRole } = render(<EvidenceTray verification={missVerification} status={missStatus} />);
+
+    expect(getByRole("button", { name: /1 attempt/i })).toBeInTheDocument();
+    expect(queryByRole("button", { name: /1 search/i })).not.toBeInTheDocument();
+  });
+
+  it("collapses the search log when an attempt row is clicked instead of opening the page", async () => {
+    const missStatus: CitationStatus = {
+      isVerified: false,
+      isMiss: true,
+      isPartialMatch: false,
+      isPending: false,
+    };
+    const onExpand = jest.fn<() => void>();
+    const missVerification: Verification = {
+      status: "not_found",
+      citation: {
+        fullPhrase: "alpha",
+        anchorText: "alpha",
+        pageNumber: 2,
+        lineIds: [4],
+      },
+      searchAttempts: [
+        {
+          method: "exact_line_match",
+          success: false,
+          searchPhrase: "alpha",
+          pageSearched: 2,
+        },
+      ],
+    };
+
+    const { getByRole, getByText, queryByText } = render(
+      <EvidenceTray verification={missVerification} status={missStatus} onExpand={onExpand} />,
+    );
+
+    fireEvent.click(getByRole("button", { name: /1 attempt/i }));
+    const attemptRowText = getByText("alpha");
+    fireEvent.click(attemptRowText);
+
+    expect(onExpand).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(queryByText("alpha")).not.toBeInTheDocument();
+    });
+  });
+
+  it("sets escapeInterceptRef to a collapse function when search log is open", () => {
+    const missStatus: CitationStatus = {
+      isVerified: false,
+      isMiss: true,
+      isPartialMatch: false,
+      isPending: false,
+    };
+    const missVerification: Verification = {
+      status: "not_found",
+      citation: {
+        fullPhrase: "beta phrase",
+        anchorText: "beta",
+        pageNumber: 1,
+        lineIds: [2],
+      },
+      searchAttempts: [
+        {
+          method: "exact_line_match",
+          success: false,
+          searchPhrase: "beta phrase",
+          pageSearched: 1,
+        },
+      ],
+    };
+
+    const escapeInterceptRef = createRef<(() => void) | null>() as React.MutableRefObject<(() => void) | null>;
+    escapeInterceptRef.current = null;
+
+    const { getByRole } = render(
+      <EvidenceTray verification={missVerification} status={missStatus} escapeInterceptRef={escapeInterceptRef} />,
+    );
+
+    // Before opening: ref should be null
+    expect(escapeInterceptRef.current).toBeNull();
+
+    // Open search log
+    fireEvent.click(getByRole("button", { name: /1 attempt/i }));
+
+    // Ref should now be a collapse function
+    expect(typeof escapeInterceptRef.current).toBe("function");
+
+    // Call the intercept — triggers setShowSearchLog(false).
+    // The useEffect on showSearchLog synchronously clears the ref.
+    act(() => {
+      escapeInterceptRef.current!();
+    });
+
+    // Ref should be cleared (showSearchLog is now false)
+    expect(escapeInterceptRef.current).toBeNull();
+  });
+
+  it("resolves exact page image when verification pageNumber values are numeric strings", () => {
+    const page1Src = "https://proof.deepcitation.com/page1.png";
+    const page5Src = "https://proof.deepcitation.com/page5.png";
+    const verificationWithStringPages = {
+      status: "found",
+      pages: [
+        { pageNumber: "1", source: page1Src, dimensions: { width: 1000, height: 1400 } },
+        { pageNumber: "5", source: page5Src, dimensions: { width: 1000, height: 1400 } },
+      ],
+    } as unknown as Verification;
+
+    const resolved = resolveExpandedImageForPage(verificationWithStringPages, 5);
+    expect(resolved?.src).toBe(page5Src);
   });
 });
 

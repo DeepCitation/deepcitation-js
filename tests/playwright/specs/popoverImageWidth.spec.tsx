@@ -44,6 +44,8 @@ const verificationWithMiss: Verification = {
   },
 };
 
+const POPOVER_SIDE_GUTTER_TOTAL_PX = 32; // 2rem total (16px left + 16px right)
+
 // =============================================================================
 // POPOVER IMAGE — KEYHOLE STRIP TESTS
 // =============================================================================
@@ -59,7 +61,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Find the inner popover container
@@ -84,7 +86,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Find the keyhole strip container (has data-dc-keyhole attribute)
@@ -98,6 +100,23 @@ test.describe("Popover Image Keyhole Strip", () => {
     expect(stripHeight).toBe(120);
   });
 
+  test("keyhole strip uses contrasted canvas background in light mode", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.click();
+
+    const strip = page.locator("[data-dc-keyhole]");
+    await expect(strip).toBeVisible();
+
+    const backgroundColor = await strip.evaluate(el => window.getComputedStyle(el as HTMLElement).backgroundColor);
+    expect(backgroundColor).toBe("rgb(243, 244, 246)");
+  });
+
   test("image renders at natural scale (not squashed)", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
@@ -108,7 +127,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Use keyhole-strip img — triple always-render pattern puts extra imgs in DOM (display:none)
@@ -122,6 +141,10 @@ test.describe("Popover Image Keyhole Strip", () => {
     // Image should NOT use object-fit (no squashing)
     const objectFit = await image.evaluate(el => (el as HTMLElement).style.objectFit);
     expect(objectFit).toBe("");
+
+    // White documents need an explicit edge treatment against light canvases.
+    const hasEdgeRing = await image.evaluate(el => el.classList.contains("ring-1"));
+    expect(hasEdgeRing).toBe(true);
   });
 
   test("strip container has horizontal overflow scroll", async ({ mount, page }) => {
@@ -134,7 +157,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Find the keyhole strip container
@@ -164,7 +187,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     const strip = popover.locator("[data-dc-keyhole]");
@@ -175,6 +198,152 @@ test.describe("Popover Image Keyhole Strip", () => {
       window.getComputedStyle(el as HTMLElement).scrollbarWidth
     );
     expect(scrollbarWidth).toBe("none");
+  });
+});
+
+test.describe("Popover Image Keyhole Strip - Dark Mode", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("keyhole strip uses contrasted canvas background in dark mode", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.click();
+
+    const strip = page.locator("[data-dc-keyhole]");
+    await expect(strip).toBeVisible();
+
+    const backgroundColor = await strip.evaluate(el => window.getComputedStyle(el as HTMLElement).backgroundColor);
+    expect(backgroundColor).toBe("rgb(31, 41, 55)");
+  });
+});
+
+// =============================================================================
+// PRE-RENDER BOUNDARY ALIGNMENT
+// =============================================================================
+
+test.describe("Pre-render boundary alignment", () => {
+  test.use({ viewport: { width: 700, height: 900 } });
+
+  test("summary opens without first-frame position snap", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "320px", display: "flex", justifyContent: "center" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    await page.evaluate(() => {
+      (window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples = [];
+      const sample = () => {
+        const wrapper = document.querySelector<HTMLElement>("[data-dc-popover-wrapper]");
+        if (wrapper) {
+          const matrix = new DOMMatrixReadOnly(window.getComputedStyle(wrapper).transform);
+          (window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples?.push({
+            x: matrix.m41,
+            y: matrix.m42,
+          });
+        }
+        if (
+          ((window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples
+            ?.length ?? 0) < 4
+        ) {
+          requestAnimationFrame(sample);
+        }
+      };
+      requestAnimationFrame(sample);
+    });
+
+    await page.locator("[data-citation-id]").click();
+    await page.waitForTimeout(80);
+
+    const samples = await page.evaluate(
+      () => (window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples ?? [],
+    );
+    expect(samples.length).toBeGreaterThanOrEqual(2);
+    expect(Math.abs(samples[1]!.x - samples[0]!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(samples[1]!.y - samples[0]!.y)).toBeLessThanOrEqual(1);
+  });
+
+  test("summary near right edge stays in bounds without guard translation", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "320px", display: "flex", justifyContent: "flex-end", paddingRight: "8px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    await page.locator("[data-citation-id]").click();
+
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+
+    const box = await popover.boundingBox();
+    expect(box).toBeTruthy();
+
+    const viewport = page.viewportSize();
+    expect(viewport).toBeTruthy();
+    // Allow ±2px tolerance for sub-pixel rounding across rendering engines.
+    expect(box!.x).toBeGreaterThanOrEqual(13);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width - 13);
+
+    const guardTranslate = await popover.evaluate(el => (el as HTMLElement).style.translate || "");
+    expect(guardTranslate).toBe("");
+  });
+
+  test("expanded-keyhole near right edge stays in bounds without guard translation", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "320px", display: "flex", justifyContent: "flex-end", paddingRight: "8px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    await page.locator("[data-citation-id]").click();
+
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+
+    const keyholeStrip = popover.locator("[data-dc-keyhole]");
+    await expect(keyholeStrip).toBeVisible();
+    await keyholeStrip.click();
+
+    const expandedView = popover.locator("[data-dc-inline-expanded]").filter({ visible: true });
+    await expect(expandedView).toBeVisible({ timeout: 5000 });
+
+    const box = await popover.boundingBox();
+    expect(box).toBeTruthy();
+    const viewport = page.viewportSize();
+    expect(viewport).toBeTruthy();
+    expect(box!.x).toBeGreaterThanOrEqual(15);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width - 15);
+
+    const guardTranslate = await popover.evaluate(el => (el as HTMLElement).style.translate || "");
+    expect(guardTranslate).toBe("");
+  });
+
+  test("summary width remains adaptive (not forced full usable width)", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "48px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    await page.locator("[data-citation-id]").click();
+
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+    const container = popover.locator(".shadow-md.rounded-lg");
+    await expect(container).toBeVisible();
+
+    const containerWidth = await container.evaluate(el => el.getBoundingClientRect().width);
+    const fullUsableWidth = 700 - POPOVER_SIDE_GUTTER_TOTAL_PX;
+    // Allow small cross-platform/sub-pixel variance while still enforcing
+    // "near default width" (not collapsed to a narrow adaptive width).
+    expect(containerWidth).toBeGreaterThanOrEqual(470);
+    expect(containerWidth).toBeLessThanOrEqual(500);
+    expect(containerWidth).toBeLessThan(fullUsableWidth - 50);
   });
 });
 
@@ -294,7 +463,7 @@ test.describe("Image Click to Expand", () => {
     await citation.click();
 
     // Wait for popover to appear
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Click the keyhole strip to expand (the strip is the interactive area, not the img directly)
@@ -319,7 +488,7 @@ test.describe("Image Click to Expand", () => {
     await citation.click();
 
     // Wait for popover and click keyhole strip to expand
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
     const keyholeStrip = popover.locator("[data-dc-keyhole]");
     await keyholeStrip.click();
@@ -332,6 +501,11 @@ test.describe("Image Click to Expand", () => {
     await page.keyboard.press("Escape");
     await expect(expandedView).not.toBeVisible();
     await expect(popover).toBeVisible();
+
+    // Brief settle after the first Escape completes the collapse animation and
+    // React flushes the viewState update — ensures the document-level Escape
+    // handler sees "summary" (not "expanded-evidence") on the next keypress.
+    await page.waitForTimeout(100);
 
     // Second Escape closes the popover
     await page.keyboard.press("Escape");

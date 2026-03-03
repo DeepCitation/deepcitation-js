@@ -8,6 +8,7 @@ import {
   DOT_COLORS,
   FOCUS_RING_CLASSES,
   HITBOX_EXTEND_8x14,
+  isValidProofImageSrc,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
   TERTIARY_ACTION_IDLE_CLASSES,
@@ -24,10 +25,10 @@ import {
   XCircleIcon,
   XIcon,
 } from "./icons.js";
+import { getUniqueSearchAttemptCount, groupSearchAttempts } from "./searchAttemptGrouping.js";
 import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
-import { buildSearchSummary, countUniqueSearchTexts } from "./searchSummaryUtils.js";
 import { cn, isImageSource, isUrlCitation } from "./utils.js";
 
 /** Pattern for detecting converted PDF labels on URL citations */
@@ -54,12 +55,17 @@ const MAX_ANCHOR_TEXT_PREVIEW_LENGTH = 50;
 
 /** Maximum length for phrase display in search attempt rows */
 const MAX_PHRASE_DISPLAY_LENGTH = 60;
+const TRUNCATED_PHRASE_PREFIX_LENGTH = 42;
+const TRUNCATED_PHRASE_SUFFIX_LENGTH = 14;
 
 /** Truncate a search phrase for display, showing "(empty)" for blank input. */
 function truncatePhrase(raw: string | undefined | null): string {
   const phrase = raw ?? "";
   if (phrase.length === 0) return "(empty)";
-  return phrase.length > MAX_PHRASE_DISPLAY_LENGTH ? `${phrase.slice(0, MAX_PHRASE_DISPLAY_LENGTH)}...` : phrase;
+  if (phrase.length <= MAX_PHRASE_DISPLAY_LENGTH) return phrase;
+  const prefix = phrase.slice(0, TRUNCATED_PHRASE_PREFIX_LENGTH);
+  const suffix = phrase.slice(-TRUNCATED_PHRASE_SUFFIX_LENGTH);
+  return `${prefix}...${suffix}`;
 }
 
 /** Maximum length for URL display in popover header */
@@ -166,6 +172,89 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
       const _exhaustiveCheck: never = status;
       return _exhaustiveCheck;
     }
+  }
+}
+
+function resolveImageDownloadUrl(verification: Verification | null | undefined): string | null {
+  const proofImageUrl = verification?.proof?.proofImageUrl;
+  if (proofImageUrl && isValidProofImageSrc(proofImageUrl)) {
+    return proofImageUrl;
+  }
+
+  const verificationImageSrc = verification?.document?.verificationImageSrc;
+  if (verificationImageSrc && isValidProofImageSrc(verificationImageSrc)) {
+    return verificationImageSrc;
+  }
+
+  const rawScreenshot = verification?.url?.webPageScreenshotBase64;
+  if (!rawScreenshot || typeof rawScreenshot !== "string") {
+    return null;
+  }
+
+  const screenshotSrc = rawScreenshot.startsWith("data:") ? rawScreenshot : `data:image/jpeg;base64,${rawScreenshot}`;
+  return isValidProofImageSrc(screenshotSrc) ? screenshotSrc : null;
+}
+
+const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
+const DOWNLOAD_IFRAME_CLEANUP_DELAY_MS = 30_000;
+
+/**
+ * Triggers a download in a background browsing context so the current view
+ * remains visible even when the browser ignores anchor `download`.
+ */
+function triggerBackgroundDownload(url: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const isHappyDom = typeof navigator !== "undefined" && /HappyDOM/i.test(navigator.userAgent);
+
+  const fallbackDownload = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    if (!isHappyDom) {
+      a.click();
+    }
+    a.remove();
+  };
+
+  if (isHappyDom) {
+    fallbackDownload();
+    return;
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.setAttribute(DOWNLOAD_IFRAME_DATA_ATTR, "true");
+
+  const cleanup = () => {
+    if (iframe.parentNode) {
+      iframe.remove();
+    }
+  };
+
+  const timeoutId = window.setTimeout(cleanup, DOWNLOAD_IFRAME_CLEANUP_DELAY_MS);
+  iframe.addEventListener("load", () => {
+    window.clearTimeout(timeoutId);
+    cleanup();
+  });
+  iframe.addEventListener("error", () => {
+    window.clearTimeout(timeoutId);
+    cleanup();
+  });
+
+  try {
+    iframe.src = url;
+    document.body.appendChild(iframe);
+  } catch {
+    window.clearTimeout(timeoutId);
+    cleanup();
+    fallbackDownload();
   }
 }
 
@@ -361,6 +450,8 @@ export function SourceContextHeader({
     !!verification?.attachmentId ||
     (typeof verification?.label === "string" && safeTest(PDF_LABEL_PATTERN, verification.label));
   const shouldShowDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
+  const imageDownloadUrl = resolveImageDownloadUrl(verification);
+  const shouldShowImageDownloadButton = !!imageDownloadUrl;
 
   // Display name for document citations (never show attachmentId to users)
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
@@ -370,7 +461,13 @@ export function SourceContextHeader({
       role="presentation"
       className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-200 dark:border-gray-700"
       onClick={e => e.stopPropagation()}
-      onKeyDown={e => e.stopPropagation()}
+      onKeyDown={e => {
+        // Let Escape propagate to the document-level handler where the
+        // escapeInterceptRef mechanism collapses the search log first; a
+        // second Escape then closes the popover. Stop other keys to avoid
+        // side effects.
+        if (e.key !== "Escape") e.stopPropagation();
+      }}
     >
       {/* Left: Icon + source name */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -405,6 +502,23 @@ export function SourceContextHeader({
       </div>
       {/* Right: Download + Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-3">
+        {shouldShowImageDownloadButton && (
+          <button
+            type="button"
+            aria-label="Download image"
+            title="Download evidence image"
+            className="shrink-0 size-8 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            onClick={e => {
+              e.stopPropagation();
+              if (!imageDownloadUrl) return;
+              triggerBackgroundDownload(imageDownloadUrl);
+            }}
+          >
+            <span className="size-3.5 block">
+              <DownloadIcon />
+            </span>
+          </button>
+        )}
         {shouldShowDownloadButton && (
           <button
             type="button"
@@ -857,16 +971,11 @@ interface VerificationLogSummaryProps {
  * Get a human-readable outcome summary for the collapsed state.
  * Shows what kind of match was found (or that nothing was found).
  */
-function getOutcomeSummary(
-  status: SearchStatus | null | undefined,
-  searchAttempts: SearchAttempt[],
-  queryGroupCount?: number,
-): string {
+function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttempts: SearchAttempt[]): string {
   // Early return for not_found - no need to search for successful attempt
   if (!status || status === "not_found") {
-    // Use the query group count (what the user sees as rows) rather than raw attempt count
-    const displayCount = queryGroupCount ?? searchAttempts.length;
-    return `${displayCount} ${displayCount === 1 ? "search" : "searches"} tried`;
+    const count = getUniqueSearchAttemptCount(searchAttempts);
+    return `${count} ${count === 1 ? "attempt" : "attempts"} tried`;
   }
 
   // Only search for successful attempt when we know something was found
@@ -924,12 +1033,7 @@ function VerificationLogSummary({
   verifiedAt,
 }: VerificationLogSummaryProps) {
   const isMiss = status === "not_found";
-  // Count total unique texts tried (phrases + variations) — shared with EvidenceTray
-  const queryGroupCount = useMemo(
-    () => (isMiss ? countUniqueSearchTexts(searchAttempts) : undefined),
-    [searchAttempts, isMiss],
-  );
-  const outcomeSummary = getOutcomeSummary(status, searchAttempts, queryGroupCount);
+  const outcomeSummary = getOutcomeSummary(status, searchAttempts);
 
   // Format the verified date for display
   const formatted = formatCaptureDate(verifiedAt);
@@ -983,27 +1087,65 @@ interface AuditSearchDisplayProps {
   fullPhrase?: string;
   /** Citation's anchor text (for display) */
   anchorText?: string;
+  /** Expected page from the original citation location */
+  expectedPage?: number;
+  /** Expected line from the original citation location */
+  expectedLine?: number;
   /** Verification status (determines display mode) */
   status?: SearchStatus | null;
   /** Full verification object (for closest match extraction) */
   verification?: Verification | null;
 }
 
-/** Single flat row for one search text with a left-border status indicator. */
-function SearchTextRow({ text, success }: { text: string; success: boolean }) {
+function getFirstLine(line: number | number[] | undefined): number | undefined {
+  if (Array.isArray(line)) return line[0];
+  return line;
+}
+
+function formatLocationLabel(page?: number, line?: number): string {
+  const hasPage = page != null && page > 0;
+  const hasLine = line != null && line > 0;
+  if (hasPage && hasLine) return `p.${page} · l.${line}`;
+  if (hasPage) return `p.${page}`;
+  if (hasLine) return `l.${line}`;
+  return "unknown";
+}
+
+interface AttemptTableRowProps {
+  text: string;
+  locationText: string;
+  duplicateCount: number;
+  success: boolean;
+  isUnexpectedHit: boolean;
+}
+
+/** Compact row used by the attempts table for not-found and partial states. */
+function AttemptTableRow({ text, locationText, duplicateCount, success, isUnexpectedHit }: AttemptTableRowProps) {
   const isTruncated = (text ?? "").length > MAX_PHRASE_DISPLAY_LENGTH;
+  const showLocationMultiplicity = success && isUnexpectedHit && duplicateCount > 1;
+
+  // success here means we successfully found a partial match, exact match does not need attempt details as the result is self evident
   return (
     <div
       className={cn(
-        "py-1 px-2 text-xs font-mono truncate border-l-2",
+        "py-1 px-2 text-xs font-mono border-l-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2",
         success
-          ? "border-green-400 dark:border-green-500 text-gray-700 dark:text-gray-200"
+          ? "border-amber-400 dark:border-amber-500 text-gray-700 dark:text-gray-200"
           : "border-red-300 dark:border-red-500/60 text-gray-500 dark:text-gray-400",
-        "hover:bg-gray-100 dark:hover:bg-gray-700/40 hover:text-gray-800 dark:hover:text-gray-100 transition-colors",
       )}
-      title={isTruncated ? text : undefined}
     >
-      {text}
+      <span className="font-mono text-xxs truncate min-w-0" title={isTruncated ? text : undefined}>
+        {text}
+      </span>
+      <span
+        className={cn(
+          "text-[10px] whitespace-nowrap justify-self-end text-right self-center",
+          isUnexpectedHit ? "font-semibold text-gray-700 dark:text-gray-200" : "text-gray-500 dark:text-gray-400",
+        )}
+      >
+        {locationText}
+        {showLocationMultiplicity ? ` · ${duplicateCount} matching locations` : ""}
+      </span>
     </div>
   );
 }
@@ -1039,41 +1181,26 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
  * - For exact matches ("found", "found_phrase_missed_anchor_text"): Shows only the successful match details
  * - For all other statuses (not_found, partial): Shows all search attempts to help debug
  */
-function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: AuditSearchDisplayProps) {
+function AuditSearchDisplay({
+  searchAttempts,
+  fullPhrase,
+  anchorText,
+  expectedPage,
+  expectedLine,
+  status,
+}: AuditSearchDisplayProps) {
+  const groupedAttempts = useMemo(() => groupSearchAttempts(searchAttempts), [searchAttempts]);
   // Show all searches unless the status is a confirmed exact match.
   // Transient statuses (loading, pending) show partial attempts as they arrive.
   // Null/undefined status is treated as "unknown" — show all searches.
   const showAll = status == null || !SHOW_ONLY_HIT_STATUSES.has(status);
-  const successfulAttempt = useMemo(() => searchAttempts.find(a => a.success), [searchAttempts]);
-
-  // Query-centric summary for all-search display (miss and partial)
-  const summary = useMemo(() => (showAll ? buildSearchSummary(searchAttempts) : null), [searchAttempts, showAll]);
-
-  // For not_found / partial / transient: flatten all unique texts (phrases + variations)
-  // into a single list, ordered with failures first and the successful hit last.
-  // Returns [] when showAll is false (exact-match statuses) — intentional no-op.
-  const orderedTexts = useMemo(() => {
-    if (!showAll) return [];
-    const groups = summary?.queryGroups ?? [];
-    const flat: Array<{ text: string; success: boolean }> = [];
-    const seen = new Set<string>();
-    for (const group of groups) {
-      if (group.searchPhrase && !seen.has(group.searchPhrase)) {
-        seen.add(group.searchPhrase);
-        flat.push({ text: group.searchPhrase, success: group.anySuccess });
-      }
-      for (const v of group.variations) {
-        if (!seen.has(v)) {
-          seen.add(v);
-          flat.push({ text: v, success: false });
-        }
-      }
-    }
-    return [...flat.filter(t => !t.success), ...flat.filter(t => t.success)];
-  }, [showAll, summary]);
+  const successfulAttempt = useMemo(
+    () => groupedAttempts.find(group => group.attempt.success)?.attempt,
+    [groupedAttempts],
+  );
 
   // If no search attempts, fall back to citation data
-  if (searchAttempts.length === 0) {
+  if (groupedAttempts.length === 0) {
     const fallbackPhrases = [fullPhrase, anchorText].filter((p): p is string => Boolean(p));
     if (fallbackPhrases.length === 0) return null;
 
@@ -1136,10 +1263,50 @@ function AuditSearchDisplay({ searchAttempts, fullPhrase, anchorText, status }: 
     );
   }
 
+  const attemptRows = groupedAttempts.map(group => {
+    const { attempt, key, duplicateCount } = group;
+    const foundPage = attempt.foundLocation?.page ?? attempt.pageSearched;
+    const foundLine = attempt.foundLocation?.line ?? getFirstLine(attempt.lineSearched);
+    const locationText = formatLocationLabel(foundPage, foundLine);
+
+    const unexpectedPage =
+      attempt.success &&
+      expectedPage != null &&
+      expectedPage > 0 &&
+      foundPage != null &&
+      foundPage > 0 &&
+      foundPage !== expectedPage;
+    const unexpectedLine =
+      attempt.success &&
+      expectedLine != null &&
+      expectedLine > 0 &&
+      foundLine != null &&
+      foundLine > 0 &&
+      foundLine !== expectedLine;
+
+    return {
+      key,
+      text: truncatePhrase(attempt.searchPhrase),
+      success: attempt.success,
+      isUnexpectedHit: unexpectedPage || unexpectedLine,
+      locationText,
+      duplicateCount,
+    };
+  });
+
+  const orderedRows = [...attemptRows.filter(row => !row.success), ...attemptRows.filter(row => row.success)];
+
   return (
-    <div className="px-4 py-2 space-y-0 text-sm">
-      {orderedTexts.map(({ text, success }) => (
-        <SearchTextRow key={text} text={text} success={success} />
+    <div className="px-4 py-2 space-y-1.5 text-sm">
+      {orderedRows.map(row => (
+        <AttemptTableRow
+          key={row.key}
+          text={row.text}
+          duplicateCount={row.duplicateCount}
+          success={row.success}
+          isUnexpectedHit={row.isUnexpectedHit}
+          locationText={row.locationText}
+        />
       ))}
     </div>
   );
@@ -1153,6 +1320,8 @@ interface VerificationLogTimelineProps {
   searchAttempts: SearchAttempt[];
   fullPhrase?: string;
   anchorText?: string;
+  expectedPage?: number;
+  expectedLine?: number;
   status?: SearchStatus | null;
   /** Callback to collapse the expanded details. Skipped when the user is selecting text. */
   onCollapse?: () => void;
@@ -1169,6 +1338,8 @@ export function VerificationLogTimeline({
   searchAttempts,
   fullPhrase,
   anchorText,
+  expectedPage,
+  expectedLine,
   status,
   onCollapse,
 }: VerificationLogTimelineProps) {
@@ -1176,6 +1347,7 @@ export function VerificationLogTimeline({
     <div
       id="verification-log-timeline"
       role={onCollapse ? "button" : undefined}
+      aria-label={onCollapse ? "Collapse search log" : undefined}
       tabIndex={onCollapse ? 0 : undefined}
       onClick={
         onCollapse
@@ -1205,6 +1377,8 @@ export function VerificationLogTimeline({
         searchAttempts={searchAttempts}
         fullPhrase={fullPhrase}
         anchorText={anchorText}
+        expectedPage={expectedPage}
+        expectedLine={expectedLine}
         status={status}
       />
     </div>
@@ -1277,6 +1451,8 @@ export function VerificationLog({
           searchAttempts={searchAttempts}
           fullPhrase={fullPhrase}
           anchorText={anchorText}
+          expectedPage={expectedPage}
+          expectedLine={expectedLine}
           status={status}
           onCollapse={() => setIsExpanded(false)}
         />

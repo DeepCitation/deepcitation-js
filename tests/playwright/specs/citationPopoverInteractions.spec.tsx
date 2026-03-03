@@ -23,13 +23,11 @@ const verificationWithDetails: Verification = {
       method: "exact",
       success: false,
       searchPhrase: "25% revenue growth",
-      searchVariations: ["25% revenue growth"],
     },
     {
       method: "partial",
       success: false,
       searchPhrase: "revenue growth",
-      searchVariations: ["revenue growth"],
     },
   ],
 };
@@ -56,6 +54,33 @@ const verifiedVerification: Verification = {
   document: {
     verifiedPageNumber: 5,
     verificationImageSrc: testImageBase64,
+    verificationImageDimensions: { width: 400, height: 50 },
+  },
+};
+
+// Tall image to amplify summary -> expanded-keyhole geometry changes near viewport edges.
+const tallImageBase64 = (() => {
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 1600;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#dddddd";
+      ctx.fillRect(0, 0, 800, 1600);
+      return canvas.toDataURL("image/png");
+    }
+  }
+  // Fallback: valid 1x1 gray PNG
+  return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mO8cuXKfwYGBgYGAAi7Av7W3NgAAAAASUVORK5CYII=";
+})();
+
+const tallVerification: Verification = {
+  status: "found",
+  document: {
+    verifiedPageNumber: 5,
+    verificationImageSrc: tallImageBase64,
+    verificationImageDimensions: { width: 800, height: 1600 },
   },
 };
 
@@ -220,6 +245,214 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     // Second click closes
     await citation.click();
     await expect(popover).not.toBeVisible({ timeout: 1000 });
+  });
+
+  test("bottom-edge keyhole expand should not oscillate vertically", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "430px", paddingLeft: "80px" }}>
+        <CitationComponent citation={baseCitation} verification={tallVerification} />
+      </div>,
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.click();
+
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+    const initialRect = await popover.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      return { left: rect.left, width: rect.width };
+    });
+
+    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    await expect(expandButton).toBeVisible();
+    await expandButton.dispatchEvent("click");
+
+    const samples = await page.evaluate(async () => {
+      const dialog = document.querySelector("[role='dialog']") as HTMLElement | null;
+      if (!dialog) return { top: [], guardDy: [], left: [], width: [], inlineOpacity: [] };
+      const top: number[] = [];
+      const guardDy: number[] = [];
+      const left: number[] = [];
+      const width: number[] = [];
+      const inlineOpacity: number[] = [];
+      const start = performance.now();
+      await new Promise<void>(resolve => {
+        const tick = () => {
+          const rect = dialog.getBoundingClientRect();
+          top.push(rect.top);
+          left.push(rect.left);
+          width.push(rect.width);
+          const nums = dialog.style.translate.match(/-?\d*\.?\d+/g)?.map(Number) ?? [];
+          guardDy.push(nums[1] ?? 0);
+          const inlineFrame = dialog.querySelector("[data-dc-inline-expanded] > div") as HTMLElement | null;
+          const opacity = inlineFrame ? Number.parseFloat(getComputedStyle(inlineFrame).opacity) : 1;
+          inlineOpacity.push(Number.isFinite(opacity) ? opacity : 1);
+          if (performance.now() - start >= 450) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      return { top, guardDy, left, width, inlineOpacity };
+    });
+
+    const deltas = samples.top.slice(1).map((value, index) => value - samples.top[index]);
+    const significantDeltas = deltas.filter(delta => Math.abs(delta) >= 1.5);
+    const guardActiveFrameCount = samples.guardDy.filter(dy => Math.abs(dy) >= 0.5).length;
+
+    let previousSign = 0;
+    let reversals = 0;
+    for (const delta of significantDeltas) {
+      const sign = delta > 0 ? 1 : -1;
+      if (previousSign !== 0 && sign !== previousSign) reversals += 1;
+      previousSign = sign;
+    }
+
+    const sameWidthLeftTeleports = samples.left.filter((value, index) => {
+      const widthDiff = Math.abs((samples.width[index] ?? 0) - initialRect.width);
+      return widthDiff <= 2 && value < initialRect.left - 24;
+    }).length;
+    const minInlineOpacity = samples.inlineOpacity.length > 0 ? Math.min(...samples.inlineOpacity) : 1;
+
+    // Ensure this scenario actually hits viewport guard correction while expanding.
+    expect(guardActiveFrameCount).toBeGreaterThan(0);
+    // Allow a single direction change (settle) but prevent repeated up/down oscillation.
+    expect(reversals).toBeLessThanOrEqual(1);
+    // Prevent a "same-width teleport left" frame before width expansion starts.
+    expect(sameWidthLeftTeleports).toBe(0);
+    // Expanded keyhole content should not fade to near-blank during entry.
+    expect(minInlineOpacity).toBeGreaterThan(0.8);
+  });
+
+  test("center keyhole click should not left-snap at same width or spike quote gap", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "80px", paddingLeft: "220px" }}>
+        <CitationComponent citation={baseCitation} verification={tallVerification} />
+      </div>,
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.click();
+
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+    const initialRect = await popover.evaluate(el => {
+      const rect = el.getBoundingClientRect();
+      return { left: rect.left, width: rect.width };
+    });
+
+    const keyholeImage = popover.locator("[data-dc-keyhole] img");
+    await expect(keyholeImage).toBeVisible();
+    await keyholeImage.click();
+
+    const samples = await page.evaluate(async () => {
+      const dialog = document.querySelector("[role='dialog']") as HTMLElement | null;
+      if (!dialog) return { left: [], width: [], quoteGap: [] };
+      const left: number[] = [];
+      const width: number[] = [];
+      const quoteGap: number[] = [];
+      const start = performance.now();
+      await new Promise<void>(resolve => {
+        const tick = () => {
+          const rect = dialog.getBoundingClientRect();
+          left.push(rect.left);
+          width.push(rect.width);
+
+          const quoteEl = Array.from(dialog.querySelectorAll("div")).find(el =>
+            el.textContent?.includes("The company reported 25% revenue growth in Q4"),
+          ) as HTMLElement | undefined;
+          const keyhole = dialog.querySelector("[data-dc-inline-expanded]") as HTMLElement | null;
+          if (quoteEl && keyhole) {
+            const quoteBottom = quoteEl.getBoundingClientRect().bottom;
+            const keyholeTop = keyhole.getBoundingClientRect().top;
+            quoteGap.push(keyholeTop - quoteBottom);
+          } else {
+            quoteGap.push(0);
+          }
+
+          if (performance.now() - start >= 900) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      return { left, width, quoteGap };
+    });
+
+    const sameWidthLeftTeleports = samples.left.filter((value, index) => {
+      const widthDiff = Math.abs((samples.width[index] ?? 0) - initialRect.width);
+      return widthDiff <= 2 && value < initialRect.left - 24;
+    }).length;
+    const finalGap = samples.quoteGap[samples.quoteGap.length - 1] ?? 0;
+    const maxGap = samples.quoteGap.length > 0 ? Math.max(...samples.quoteGap) : finalGap;
+
+    expect(sameWidthLeftTeleports).toBe(0);
+    expect(maxGap - finalGap).toBeLessThanOrEqual(20);
+  });
+
+  test("expanded-page roundtrip should not left-snap or show transient right gap", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "120px", paddingLeft: "120px" }}>
+        <CitationComponent citation={baseCitation} verification={tallVerification} />
+      </div>,
+    );
+
+    const citation = page.locator("[data-citation-id]");
+    await citation.click();
+
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+
+    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    await expect(expandButton).toBeVisible();
+    await expandButton.dispatchEvent("click");
+
+    const toPageButton = popover.getByRole("button", { name: /Expand to full page/i }).first();
+    await expect(toPageButton).toBeVisible();
+
+    // keyhole -> expanded-page
+    await toPageButton.dispatchEvent("click");
+    const pageExpandSamples = await page.evaluate(async () => {
+      const dialog = document.querySelector("[role='dialog']") as HTMLElement | null;
+      if (!dialog) return { inlineOpacity: [] as number[] };
+      const inlineOpacity: number[] = [];
+      const start = performance.now();
+      await new Promise<void>(resolve => {
+        const tick = () => {
+          const visibleInline = Array.from(dialog.querySelectorAll("[data-dc-inline-expanded]")).find(
+            el => (el as HTMLElement).offsetParent !== null,
+          ) as HTMLElement | undefined;
+          if (visibleInline) {
+            const frame = visibleInline.querySelector(":scope > div") as HTMLElement | null;
+            const opacity = frame ? Number.parseFloat(getComputedStyle(frame).opacity) : 1;
+            inlineOpacity.push(Number.isFinite(opacity) ? opacity : 1);
+          }
+          if (performance.now() - start >= 420) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      return { inlineOpacity };
+    });
+    const minPageExpandOpacity =
+      pageExpandSamples.inlineOpacity.length > 0 ? Math.min(...pageExpandSamples.inlineOpacity) : 1;
+
+    // expanded-page -> keyhole
+    const backToKeyholeButton = popover.getByRole("button", { name: /Close (page|image)/i }).first();
+    await expect(backToKeyholeButton).toBeVisible();
+    await backToKeyholeButton.dispatchEvent("click");
+    const toPageButtonAfterCollapse = popover.getByRole("button", { name: /Expand to full page/i }).first();
+    await expect(toPageButtonAfterCollapse).toBeVisible();
+
+    expect(minPageExpandOpacity).toBeGreaterThan(0.8);
   });
 });
 
