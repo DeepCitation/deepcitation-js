@@ -934,7 +934,8 @@ describe("SourceContextHeader", () => {
       };
       const verification: Verification = {
         document: {
-          verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          verificationImageSrc:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
 
@@ -963,7 +964,8 @@ describe("SourceContextHeader", () => {
       };
       const verification: Verification = {
         document: {
-          verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          verificationImageSrc:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
       const parentClick = jest.fn();
@@ -988,7 +990,8 @@ describe("SourceContextHeader", () => {
       };
       const verification: Verification = {
         document: {
-          verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          verificationImageSrc:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
 
@@ -998,7 +1001,9 @@ describe("SourceContextHeader", () => {
 
       const appendedBackgroundFrame = appendChildSpy.mock.calls
         .map(([node]) => node)
-        .find(node => node instanceof HTMLIFrameElement && node.getAttribute("data-deepcitation-download-frame") === "true");
+        .find(
+          node => node instanceof HTMLIFrameElement && node.getAttribute("data-deepcitation-download-frame") === "true",
+        );
       const appendedFallbackAnchor = appendChildSpy.mock.calls
         .map(([node]) => node)
         .find(node => node instanceof HTMLAnchorElement && node.getAttribute("target") === "_blank");

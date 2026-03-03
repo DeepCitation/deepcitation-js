@@ -22,6 +22,8 @@ import {
   BLINK_ENTER_EASING,
   BLINK_EXIT_EASING,
   buildKeyholeMaskImage,
+  DOCUMENT_CANVAS_BG_CLASSES,
+  DOCUMENT_IMAGE_EDGE_CLASSES,
   EVIDENCE_LIST_COLLAPSE_TOTAL_MS,
   EVIDENCE_LIST_EXPAND_STEP_MS,
   EVIDENCE_LIST_EXPAND_TOTAL_MS,
@@ -53,7 +55,6 @@ import {
   ZOOM_HINT_SESSION_KEY,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
-import { useBlinkMotionStage } from "./hooks/useBlinkMotionStage.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import {
@@ -65,7 +66,6 @@ import {
 import { useWheelZoom } from "./hooks/useWheelZoom.js";
 import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
-import { getBlinkRowMotionStyle } from "./motion/blinkAnimation.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget, toPercentRect } from "./overlayGeometry.js";
 import { getUniqueSearchAttemptCount } from "./searchAttemptGrouping.js";
 import { buildIntentSummary } from "./searchSummaryUtils.js";
@@ -143,6 +143,50 @@ function computeDeepItemViewportRect(
   const height = (parsePercent(percentRect.height) / 100) * imageViewportRect.height;
   const rect = { left, top, width, height };
   return isValidSharedOriginRect(rect) ? rect : null;
+}
+
+type EvidenceListMotionStage = "idle" | "enter-a" | "enter-b" | "steady" | "exit-a" | "exit-b";
+
+function resolveEvidenceListRevealRatio(stage: EvidenceListMotionStage): number {
+  if (stage === "idle") return 0;
+  if (stage === "enter-a") return 0.2;
+  if (stage === "enter-b") return 0.95;
+  if (stage === "exit-a") return 0.7;
+  if (stage === "exit-b") return 0;
+  return 1;
+}
+
+function resolveEvidenceListOpacity(stage: EvidenceListMotionStage): number {
+  if (stage === "idle") return 0;
+  if (stage === "enter-a") return 0.72;
+  if (stage === "enter-b") return 0.42;
+  if (stage === "exit-a") return 0.32;
+  if (stage === "exit-b") return 0.02;
+  return 1;
+}
+
+function resolveEvidenceListPaddingTop(stage: EvidenceListMotionStage): string {
+  if (stage === "enter-a") return "4px";
+  if (stage === "enter-b" || stage === "exit-a") return "2px";
+  return "0px";
+}
+
+function resolveEvidenceListTransform(stage: EvidenceListMotionStage): string {
+  if (stage === "enter-a") return "translate3d(0, 1px, 0)";
+  if (stage === "enter-b" || stage === "exit-a") return "translate3d(0, 0.5px, 0)";
+  return "translate3d(0, 0, 0)";
+}
+
+function resolveEvidenceListTransition(stage: EvidenceListMotionStage): string {
+  if (stage === "enter-a" || stage === "idle" || stage === "exit-a") return "none";
+  if (stage === "enter-b") {
+    return `max-height ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}, opacity ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}, padding-top ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}, transform ${EVIDENCE_LIST_EXPAND_STEP_MS}ms ${BLINK_ENTER_EASING}`;
+  }
+  if (stage === "steady") {
+    const settleMs = Math.max(16, EVIDENCE_LIST_EXPAND_TOTAL_MS - EVIDENCE_LIST_EXPAND_STEP_MS);
+    return `max-height ${settleMs}ms ${BLINK_ENTER_EASING}, opacity ${settleMs}ms ${BLINK_ENTER_EASING}, padding-top ${settleMs}ms ${BLINK_ENTER_EASING}, transform ${settleMs}ms ${BLINK_ENTER_EASING}`;
+  }
+  return `max-height ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}, opacity ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}, padding-top ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}, transform ${EVIDENCE_LIST_COLLAPSE_TOTAL_MS}ms ${BLINK_EXIT_EASING}`;
 }
 
 // =============================================================================
@@ -754,7 +798,10 @@ export function AnchorTextFocusedImage({
           <div
             ref={containerRef}
             data-dc-keyhole=""
-            className={isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden"}
+            className={cn(
+              DOCUMENT_CANVAS_BG_CLASSES,
+              isWidthFit || keyholeZoom > 1 ? "overflow-auto" : "overflow-x-auto overflow-y-hidden",
+            )}
             style={{
               height: stripHeightStyle,
               // Fade mask only applies in height-fit mode (horizontal overflow).
@@ -777,7 +824,10 @@ export function AnchorTextFocusedImage({
                 ref={imageRef}
                 src={imageSrc}
                 alt="Citation verification"
-                className={isWidthFit ? "block select-none" : "block w-auto max-w-none select-none"}
+                className={cn(
+                  DOCUMENT_IMAGE_EDGE_CLASSES,
+                  isWidthFit ? "block select-none" : "block w-auto max-w-none select-none",
+                )}
                 style={
                   isWidthFit
                     ? { width: imageFitInfo?.displayedWidth, height: "auto", maxWidth: "none" }
@@ -1104,23 +1154,120 @@ export function EvidenceTray({
     onExpand?.();
   }, [captureTrayOriginRect, onExpand]);
 
-  const searchLogTiming = useMemo(
-    () => ({
-      enterStepMs: EVIDENCE_LIST_EXPAND_STEP_MS,
-      enterTotalMs: EVIDENCE_LIST_EXPAND_TOTAL_MS,
-      exitMs: EVIDENCE_LIST_COLLAPSE_TOTAL_MS,
-    }),
-    [],
-  );
-
   // Search log toggle state (miss and partial states)
   const [showSearchLog, setShowSearchLog] = useState(false);
-  const { mounted: isSearchLogMounted, stage: searchLogStage } = useBlinkMotionStage(
-    showSearchLog,
-    "row",
-    "slow",
-    searchLogTiming,
-  );
+  const [isSearchLogMounted, setIsSearchLogMounted] = useState(showSearchLog);
+  const [searchLogStage, setSearchLogStage] = useState<EvidenceListMotionStage>(showSearchLog ? "steady" : "idle");
+  const searchLogMountedRef = useRef(isSearchLogMounted);
+  const searchLogEnterRafRef = useRef<number>(0);
+  const searchLogExitRafRef = useRef<number>(0);
+  const searchLogSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchLogExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    searchLogMountedRef.current = isSearchLogMounted;
+  }, [isSearchLogMounted]);
+
+  useEffect(() => {
+    const clearScheduled = () => {
+      cancelAnimationFrame(searchLogEnterRafRef.current);
+      searchLogEnterRafRef.current = 0;
+      cancelAnimationFrame(searchLogExitRafRef.current);
+      searchLogExitRafRef.current = 0;
+      if (searchLogSettleTimerRef.current) {
+        clearTimeout(searchLogSettleTimerRef.current);
+        searchLogSettleTimerRef.current = null;
+      }
+      if (searchLogExitTimerRef.current) {
+        clearTimeout(searchLogExitTimerRef.current);
+        searchLogExitTimerRef.current = null;
+      }
+    };
+
+    clearScheduled();
+
+    if (prefersReducedMotion) {
+      setIsSearchLogMounted(showSearchLog);
+      setSearchLogStage(showSearchLog ? "steady" : "idle");
+      return clearScheduled;
+    }
+
+    if (showSearchLog) {
+      if (!searchLogMountedRef.current) {
+        setIsSearchLogMounted(true);
+      }
+      setSearchLogStage("enter-a");
+      // Two RAFs guarantee a painted frame at enter-a before we begin the 95% reveal.
+      searchLogEnterRafRef.current = requestAnimationFrame(() => {
+        searchLogEnterRafRef.current = requestAnimationFrame(() => {
+          setSearchLogStage("enter-b");
+          searchLogSettleTimerRef.current = setTimeout(() => {
+            setSearchLogStage("steady");
+            searchLogSettleTimerRef.current = null;
+          }, EVIDENCE_LIST_EXPAND_STEP_MS);
+        });
+      });
+      return clearScheduled;
+    }
+
+    if (!searchLogMountedRef.current) {
+      setSearchLogStage("idle");
+      return clearScheduled;
+    }
+
+    setSearchLogStage("exit-a");
+    // Match expand behavior: force one painted 70% frame before collapsing to 0%.
+    searchLogExitRafRef.current = requestAnimationFrame(() => {
+      searchLogExitRafRef.current = requestAnimationFrame(() => {
+        setSearchLogStage("exit-b");
+      });
+    });
+    searchLogExitTimerRef.current = setTimeout(() => {
+      setIsSearchLogMounted(false);
+      setSearchLogStage("idle");
+      searchLogExitTimerRef.current = null;
+    }, EVIDENCE_LIST_COLLAPSE_TOTAL_MS);
+
+    return clearScheduled;
+  }, [showSearchLog, prefersReducedMotion]);
+
+  const searchLogViewportRef = useRef<HTMLDivElement>(null);
+  const [searchLogContentHeight, setSearchLogContentHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!isSearchLogMounted) return;
+    const viewport = searchLogViewportRef.current;
+    if (!viewport) return;
+
+    const resolvedMaxHeight = Number.parseFloat(window.getComputedStyle(viewport).maxHeight);
+    const maxHeightLimit = Number.isFinite(resolvedMaxHeight) ? resolvedMaxHeight : viewport.scrollHeight;
+    const nextHeight = Math.max(0, Math.min(viewport.scrollHeight, maxHeightLimit));
+    setSearchLogContentHeight(prev => (Math.abs(prev - nextHeight) > 0.5 ? nextHeight : prev));
+  }, [isSearchLogMounted]);
+  const searchLogMotionStyle = useMemo<React.CSSProperties>(() => {
+    const revealRatio = resolveEvidenceListRevealRatio(searchLogStage);
+    const revealHeightPx = Math.round(searchLogContentHeight * revealRatio);
+    if (prefersReducedMotion) {
+      return {
+        display: "block",
+        overflow: "hidden",
+        maxHeight: `${Math.max(0, revealHeightPx)}px`,
+        opacity: showSearchLog ? 1 : 0,
+        paddingTop: "0px",
+        transform: "translate3d(0, 0, 0)",
+        transition: "none",
+      };
+    }
+    return {
+      display: "block",
+      overflow: "hidden",
+      maxHeight: `${Math.max(0, revealHeightPx)}px`,
+      opacity: resolveEvidenceListOpacity(searchLogStage),
+      paddingTop: resolveEvidenceListPaddingTop(searchLogStage),
+      transform: resolveEvidenceListTransform(searchLogStage),
+      transition: resolveEvidenceListTransition(searchLogStage),
+      willChange: searchLogStage === "steady" ? undefined : "transform, padding-top, max-height, opacity",
+    };
+  }, [searchLogContentHeight, searchLogStage, prefersReducedMotion, showSearchLog]);
   const searchCount = useMemo(
     () => ((isMiss || isPartialMatch) && searchAttempts.length > 0 ? getUniqueSearchAttemptCount(searchAttempts) : 0),
     [isMiss, isPartialMatch, searchAttempts],
@@ -1169,10 +1316,13 @@ export function EvidenceTray({
           <SearchAnalysisSummary searchAttempts={searchAttempts} verification={verification} />
           {footerEl}
           {isSearchLogMounted ? (
-            <div style={getBlinkRowMotionStyle(searchLogStage, prefersReducedMotion, searchLogTiming)}>
+            <div style={searchLogMotionStyle}>
               <div className="overflow-hidden" style={{ minHeight: 0 }}>
                 <div className="border-t border-gray-200 dark:border-gray-700">
-                  <div className="max-h-[min(44dvh,420px)] overflow-y-auto overscroll-contain">
+                  <div
+                    ref={searchLogViewportRef}
+                    className="max-h-[min(44dvh,420px)] overflow-y-auto overscroll-contain"
+                  >
                     <VerificationLogTimeline
                       searchAttempts={searchAttempts}
                       fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
@@ -1180,6 +1330,7 @@ export function EvidenceTray({
                       status={verification?.status ?? "not_found"}
                       expectedPage={verification?.citation?.pageNumber ?? undefined}
                       expectedLine={verification?.citation?.lineIds?.[0] ?? undefined}
+                      onCollapse={() => setShowSearchLog(false)}
                     />
                   </div>
                 </div>
@@ -1914,7 +2065,8 @@ export function InlineExpandedImage({
           tabIndex={0}
           aria-label="Expanded verification image. Press Escape or Enter to collapse. Use arrow keys to pan."
           className={cn(
-            "relative bg-gray-50 dark:bg-gray-900 select-none overflow-auto rounded-t-sm",
+            "relative select-none overflow-auto rounded-t-sm",
+            DOCUMENT_CANVAS_BG_CLASSES,
             // Top+sides border completes the box started by the footer's border-t-0.
             // Matches EvidenceTray's EVIDENCE_TRAY_BORDER_SOLID so the transition is seamless.
             !fill && "border border-b-0 border-gray-200 dark:border-gray-700",
@@ -2015,7 +2167,7 @@ export function InlineExpandedImage({
               <img
                 src={isValidProofImageSrc(src) ? src : undefined}
                 alt="Verification evidence"
-                className={cn("block", !imageLoaded && "hidden")}
+                className={cn("block", DOCUMENT_IMAGE_EDGE_CLASSES, !imageLoaded && "hidden")}
                 style={zoomedWidth !== undefined ? { width: zoomedWidth, maxWidth: "none" } : { maxWidth: "none" }}
                 onLoad={e => {
                   const w = e.currentTarget.naturalWidth;

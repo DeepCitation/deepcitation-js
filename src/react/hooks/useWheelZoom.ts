@@ -193,7 +193,7 @@ export function useWheelZoom({
         }
       }
     };
-  }, [enabled, sensitivity, containerRef, wrapperRef, requireCtrl]);
+  }, [enabled, sensitivity, containerRef, wrapperRef, requireCtrl, gestureAnchorRef]);
 
   return { isHovering, gestureAnchorRef, gestureZoomRef };
 }

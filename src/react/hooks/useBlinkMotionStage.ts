@@ -120,7 +120,7 @@ export function useBlinkMotionStage(
     }, timing.exitMs);
 
     return clearScheduled;
-  }, [active, profile, speed, prefersReducedMotion, timing.enterStepMs, timing.enterTotalMs, timing.exitMs]);
+  }, [active, prefersReducedMotion, timing.enterStepMs, timing.enterTotalMs, timing.exitMs]);
 
   return { mounted, stage, prefersReducedMotion };
 }

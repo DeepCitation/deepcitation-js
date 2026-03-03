@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { EvidenceTray, InlineExpandedImage, resolveExpandedImageForPage } from "../react/EvidenceTray";
 import type { CitationStatus } from "../types/citation";
 import type { Verification } from "../types/verification";
@@ -20,6 +20,7 @@ const baseVerification: Verification = {
 
 describe("EvidenceTray interaction styles", () => {
   afterEach(() => {
+    jest.useRealTimers();
     cleanup();
   });
 
@@ -63,6 +64,49 @@ describe("EvidenceTray interaction styles", () => {
 
     expect(getByRole("button", { name: /1 attempt/i })).toBeInTheDocument();
     expect(queryByRole("button", { name: /1 search/i })).not.toBeInTheDocument();
+  });
+
+  it("collapses the search log when an attempt row is clicked instead of opening the page", () => {
+    jest.useFakeTimers();
+    const missStatus: CitationStatus = {
+      isVerified: false,
+      isMiss: true,
+      isPartialMatch: false,
+      isPending: false,
+    };
+    const onExpand = jest.fn<() => void>();
+    const missVerification: Verification = {
+      status: "not_found",
+      citation: {
+        fullPhrase: "alpha",
+        anchorText: "alpha",
+        pageNumber: 2,
+        lineIds: [4],
+      },
+      searchAttempts: [
+        {
+          method: "exact_line_match",
+          success: false,
+          searchPhrase: "alpha",
+          pageSearched: 2,
+        },
+      ],
+    };
+
+    const { getByRole, getByText, queryByText } = render(
+      <EvidenceTray verification={missVerification} status={missStatus} onExpand={onExpand} />,
+    );
+
+    fireEvent.click(getByRole("button", { name: /1 attempt/i }));
+    const attemptRowText = getByText("alpha");
+    fireEvent.click(attemptRowText);
+
+    expect(onExpand).not.toHaveBeenCalled();
+    act(() => {
+      jest.advanceTimersByTime(120);
+    });
+    expect(queryByText("alpha")).not.toBeInTheDocument();
+    jest.useRealTimers();
   });
 
   it("resolves exact page image when verification pageNumber values are numeric strings", () => {

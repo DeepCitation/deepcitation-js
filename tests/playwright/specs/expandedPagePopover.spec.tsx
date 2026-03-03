@@ -116,6 +116,24 @@ test.describe("Expanded-Page Basics", () => {
     expect(renderedWidth).toBeGreaterThan(600);
   });
 
+  test("expanded page surface uses contrasted canvas background in light mode", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+      </div>,
+    );
+
+    const { expandedView } = await expandToFullPage(page);
+
+    const backgroundColor = await expandedView.evaluate(el => window.getComputedStyle(el as HTMLElement).backgroundColor);
+    expect(backgroundColor).toBe("rgb(243, 244, 246)");
+
+    const expandedImage = expandedView.locator("img").first();
+    await expect(expandedImage).toBeVisible();
+    const hasEdgeRing = await expandedImage.evaluate(el => el.classList.contains("ring-1"));
+    expect(hasEdgeRing).toBe(true);
+  });
+
   test("scroll container has usable height, not collapsed to content", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
@@ -148,6 +166,23 @@ test.describe("Expanded-Page Basics", () => {
 
     expect(scrollHeight).toBeGreaterThan(clientHeight);
     expect(scrollHeight / clientHeight).toBeGreaterThan(1.5);
+  });
+});
+
+test.describe("Expanded-Page Basics - Dark Mode", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("expanded page surface uses contrasted canvas background in dark mode", async ({ mount, page }) => {
+    await mount(
+      <div style={{ padding: "100px" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+      </div>,
+    );
+
+    const { expandedView } = await expandToFullPage(page);
+
+    const backgroundColor = await expandedView.evaluate(el => window.getComputedStyle(el as HTMLElement).backgroundColor);
+    expect(backgroundColor).toBe("rgb(31, 41, 55)");
   });
 });
 

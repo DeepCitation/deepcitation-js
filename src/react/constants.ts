@@ -149,6 +149,15 @@ export const SUMMARY_IMAGE_SHELL_PX = 32;
 export const VERIFICATION_IMAGE_MAX_WIDTH = "min(70vw, 480px)";
 /** Default max height for verification images (responsive with fallback) */
 export const VERIFICATION_IMAGE_MAX_HEIGHT = "min(50vh, 360px)";
+/** Optional CSS variable for light-mode proof image canvas background. */
+export const DOCUMENT_CANVAS_BG_LIGHT_VAR = "--dc-document-canvas-bg-light";
+/** Optional CSS variable for dark-mode proof image canvas background. */
+export const DOCUMENT_CANVAS_BG_DARK_VAR = "--dc-document-canvas-bg-dark";
+/** Neutral canvas behind page images so white documents stay visually bounded. */
+export const DOCUMENT_CANVAS_BG_CLASSES =
+  "bg-[var(--dc-document-canvas-bg-light,rgb(243_244_246))] dark:bg-[var(--dc-document-canvas-bg-dark,rgb(31_41_55))]";
+/** Subtle outline around document images to preserve edge contrast on light canvases. */
+export const DOCUMENT_IMAGE_EDGE_CLASSES = "ring-1 ring-black/10 dark:ring-white/15";
 
 // =============================================================================
 // KEYHOLE IMAGE STRIP

@@ -35,6 +35,10 @@ Override these CSS variables to theme all DeepCitation components at once:
 
   /* Popover dimensions */
   --dc-popover-width: 384px;      /* Popover container width */
+
+  /* Proof image canvas (keyhole + expanded page + drawer) */
+  --dc-document-canvas-bg-light: #f3f4f6; /* Light-mode neutral canvas */
+  --dc-document-canvas-bg-dark: #1f2937;  /* Dark-mode neutral canvas */
 }
 ```
 
@@ -51,6 +55,8 @@ Override these CSS variables to theme all DeepCitation components at once:
     --dc-linter-warning: #fbbf24;
     --dc-linter-error: #d47d7c;
     --dc-linter-pending: #6b7280;
+    --dc-document-canvas-bg-light: #f3f4f6;
+    --dc-document-canvas-bg-dark: #1f2937;
   }
 }
 
@@ -60,6 +66,8 @@ Override these CSS variables to theme all DeepCitation components at once:
   --dc-partial-color: #fbbf24;
   --dc-error-color: #f87171;
   --dc-pending-color: #6b7280;
+  --dc-document-canvas-bg-light: #f3f4f6;
+  --dc-document-canvas-bg-dark: #1f2937;
 }
 ```
 

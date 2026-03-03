@@ -1111,29 +1111,30 @@ interface AttemptTableRowProps {
 /** Compact row used by the attempts table for not-found and partial states. */
 function AttemptTableRow({ text, locationText, duplicateCount, success, isUnexpectedHit }: AttemptTableRowProps) {
   const isTruncated = (text ?? "").length > MAX_PHRASE_DISPLAY_LENGTH;
+  const showLocationMultiplicity = success && isUnexpectedHit && duplicateCount > 1;
 
   // success here means we successfully found a partial match, exact match does not need attempt details as the result is self evident
   return (
     <div
       className={cn(
-        "py-1 px-2 text-xs font-mono truncate border-l-2",
+        "py-1 px-2 text-xs font-mono border-l-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2",
         success
           ? "border-amber-400 dark:border-amber-500 text-gray-700 dark:text-gray-200"
           : "border-red-300 dark:border-red-500/60 text-gray-500 dark:text-gray-400",
         "hover:bg-gray-100 dark:hover:bg-gray-700/40 hover:text-gray-800 dark:hover:text-gray-100 transition-colors",
       )}
     >
-      <span className="font-mono text-xxs truncate" title={isTruncated ? text : undefined}>
+      <span className="font-mono text-xxs truncate min-w-0" title={isTruncated ? text : undefined}>
         {text}
       </span>
       <span
         className={cn(
-          "text-[10px] whitespace-nowrap self-center",
-          isUnexpectedHit ? "font-semibold text-gray-700 dark:text-gray-200" : "text-gray-400 dark:text-gray-500",
+          "text-[10px] whitespace-nowrap justify-self-end text-right self-center",
+          isUnexpectedHit ? "font-semibold text-gray-700 dark:text-gray-200" : "text-gray-500 dark:text-gray-400",
         )}
       >
         {locationText}
-        {duplicateCount > 1 ? ` · x${duplicateCount} locations` : ""}
+        {showLocationMultiplicity ? ` · ${duplicateCount} matching locations` : ""}
       </span>
     </div>
   );

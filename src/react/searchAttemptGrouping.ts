@@ -15,16 +15,16 @@ function resolveAttemptPage(attempt: SearchAttempt): number {
 }
 
 /**
- * Groups attempts by method + normalized phrase + page.
- * Intended for UI counts and compact timeline rows where line-level repeats on
- * the same page should collapse into one logical search.
+ * Groups attempts by normalized phrase + page.
+ * Method-level retries (same phrase on the same page) are treated as one logical
+ * search so the audit list doesn't flood with near-duplicate rows.
  */
 export function groupSearchAttempts(attempts: SearchAttempt[]): GroupedSearchAttempt[] {
   const grouped: GroupedSearchAttempt[] = [];
   const indexByKey = new Map<string, number>();
 
   for (const attempt of attempts) {
-    const key = `${attempt.method}|${normalizePhrase(attempt.searchPhrase)}|${resolveAttemptPage(attempt)}`;
+    const key = `${normalizePhrase(attempt.searchPhrase)}|${resolveAttemptPage(attempt)}`;
     const existingIndex = indexByKey.get(key);
 
     if (existingIndex == null) {
