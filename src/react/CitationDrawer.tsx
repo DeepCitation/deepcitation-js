@@ -94,9 +94,10 @@ function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
   const pages = new Set<number>();
   for (const group of groups) {
     for (const { citation, verification } of group.citations) {
-      const page =
+      const rawPage =
         (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
-      if (page != null && page > 0) pages.add(page);
+      const page = Number(rawPage);
+      if (Number.isFinite(page) && page > 0) pages.add(page);
     }
   }
   return Array.from(pages).sort((a, b) => a - b);
@@ -292,7 +293,12 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   const fullPhrase = citation.fullPhrase;
 
   const itemPageNumber = useMemo(
-    () => (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber ?? null,
+    () => {
+      const rawPage =
+        (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
+      const page = Number(rawPage);
+      return Number.isFinite(page) && page > 0 ? page : null;
+    },
     [citation, verification],
   );
 
@@ -326,18 +332,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
     [statusCategory],
   );
 
-  useEffect(() => {
-    if (!isExpanded) {
-      setInlineKeyholeSrc(null);
-      setInlineKeyholeInitialScroll(null);
-    }
-  }, [isExpanded]);
-
   const handleClick = useCallback(() => {
-    if (isExpanded) {
-      setInlineKeyholeSrc(null);
-      setInlineKeyholeInitialScroll(null);
-    }
+    // Always reset inline keyhole state before toggling accordion state.
+    setInlineKeyholeSrc(null);
+    setInlineKeyholeInitialScroll(null);
     if (escCtx) {
       escCtx.onItemExpand(isExpanded ? null : citationKey);
     } else {
@@ -893,9 +891,10 @@ function OpenCitationDrawer({
     for (const group of sortedGroups) {
       for (const item of group.citations) {
         const { citationKey, citation, verification } = item;
-        const page =
+        const rawPage =
           (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber;
-        if (page != null && page > 0) {
+        const page = Number(rawPage);
+        if (Number.isFinite(page) && page > 0) {
           k2p.set(citationKey, page);
           const existing = p2i.get(page) ?? [];
           existing.push(item);

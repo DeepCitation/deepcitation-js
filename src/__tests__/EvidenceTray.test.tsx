@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, cleanup, render } from "@testing-library/react";
-import { EvidenceTray, InlineExpandedImage } from "../react/EvidenceTray";
+import { EvidenceTray, InlineExpandedImage, resolveExpandedImageForPage } from "../react/EvidenceTray";
 import type { CitationStatus } from "../types/citation";
 import type { Verification } from "../types/verification";
 
@@ -63,6 +63,21 @@ describe("EvidenceTray interaction styles", () => {
 
     expect(getByRole("button", { name: /1 attempt/i })).toBeInTheDocument();
     expect(queryByRole("button", { name: /1 search/i })).not.toBeInTheDocument();
+  });
+
+  it("resolves exact page image when verification pageNumber values are numeric strings", () => {
+    const page1Src = "https://proof.deepcitation.com/page1.png";
+    const page5Src = "https://proof.deepcitation.com/page5.png";
+    const verificationWithStringPages = {
+      status: "found",
+      pages: [
+        { pageNumber: "1", source: page1Src, dimensions: { width: 1000, height: 1400 } },
+        { pageNumber: "5", source: page5Src, dimensions: { width: 1000, height: 1400 } },
+      ],
+    } as unknown as Verification;
+
+    const resolved = resolveExpandedImageForPage(verificationWithStringPages, 5);
+    expect(resolved?.src).toBe(page5Src);
   });
 });
 

@@ -50,7 +50,7 @@ async function expandToFullPage(page: import("@playwright/test").Page) {
   const citation = page.locator("[data-citation-id]");
   await citation.click();
 
-  const popover = page.locator("[data-radix-popper-content-wrapper]");
+  const popover = page.locator("[data-dc-popover-wrapper]");
   await expect(popover).toBeVisible();
 
   // The content element (role="dialog") is the one that receives the viewport
@@ -436,7 +436,7 @@ test.describe("Expanded-Page Regression: Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     const strip = popover.locator("[data-dc-keyhole]");

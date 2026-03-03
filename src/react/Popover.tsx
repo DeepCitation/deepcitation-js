@@ -208,6 +208,26 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       const el = localContentRef.current;
       if (!el || !isMounted) return;
 
+      // Find the page's actual scroll container by walking up from the trigger
+      // element (which sits in the page's normal document flow). This correctly
+      // handles SPAs where html/body have overflow:hidden and scroll lives on a
+      // wrapper div. Falls back to the viewport scrolling element.
+      let pageScrollEl: Element | null = null;
+      const findPageScrollEl = (): Element => {
+        if (pageScrollEl) return pageScrollEl;
+        let n: Element | null = triggerRef.current?.parentElement ?? null;
+        while (n) {
+          const oy = getComputedStyle(n).overflowY;
+          if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight) {
+            pageScrollEl = n;
+            return n;
+          }
+          n = n.parentElement;
+        }
+        pageScrollEl = document.scrollingElement ?? document.documentElement;
+        return pageScrollEl;
+      };
+
       const onWheel = (e: WheelEvent) => {
         if (e.deltaY === 0) return; // Purely horizontal — let native handle (keyhole pan)
 
@@ -228,13 +248,12 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         e.preventDefault();
         const pixelDelta =
           e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
-        const scrollEl = document.scrollingElement ?? document.documentElement;
-        scrollEl.scrollTop += pixelDelta;
+        findPageScrollEl().scrollTop += pixelDelta;
       };
 
       el.addEventListener("wheel", onWheel, { passive: false });
       return () => el.removeEventListener("wheel", onWheel);
-    }, [isMounted]);
+    }, [isMounted, triggerRef]);
 
     if (!isMounted) return null;
 

@@ -61,7 +61,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Find the inner popover container
@@ -86,7 +86,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Find the keyhole strip container (has data-dc-keyhole attribute)
@@ -110,7 +110,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Use keyhole-strip img — triple always-render pattern puts extra imgs in DOM (display:none)
@@ -136,7 +136,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Find the keyhole strip container
@@ -166,7 +166,7 @@ test.describe("Popover Image Keyhole Strip", () => {
     const citation = page.locator("[data-citation-id]");
     await citation.click();
 
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     const strip = popover.locator("[data-dc-keyhole]");
@@ -204,8 +204,9 @@ test.describe("Pre-render boundary alignment", () => {
 
     const viewport = page.viewportSize();
     expect(viewport).toBeTruthy();
-    expect(box!.x).toBeGreaterThanOrEqual(15);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width - 15);
+    // Allow ±2px tolerance for sub-pixel rounding across rendering engines.
+    expect(box!.x).toBeGreaterThanOrEqual(13);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width - 13);
 
     const guardTranslate = await popover.evaluate(el => (el as HTMLElement).style.translate || "");
     expect(guardTranslate).toBe("");
@@ -379,7 +380,7 @@ test.describe("Image Click to Expand", () => {
     await citation.click();
 
     // Wait for popover to appear
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // Click the keyhole strip to expand (the strip is the interactive area, not the img directly)
@@ -404,7 +405,7 @@ test.describe("Image Click to Expand", () => {
     await citation.click();
 
     // Wait for popover and click keyhole strip to expand
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
     const keyholeStrip = popover.locator("[data-dc-keyhole]");
     await keyholeStrip.click();

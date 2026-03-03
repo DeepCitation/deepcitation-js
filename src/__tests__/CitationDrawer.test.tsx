@@ -1372,4 +1372,109 @@ describe("CitationDrawer page badges", () => {
     expect(item1).toHaveAttribute("aria-expanded", "false");
     expect(item2).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("clicking each page pill opens that specific page image", () => {
+    const page1Src = "https://proof.deepcitation.com/page1.png";
+    const page2Src = "https://proof.deepcitation.com/page2.png";
+    const page5Src = "https://proof.deepcitation.com/page5.png";
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "Doc",
+        citations: [
+          {
+            citationKey: "c1",
+            citation: {
+              type: "document" as const,
+              pageNumber: 2,
+              anchorText: "first text",
+              fullPhrase: "First text on page 2",
+            },
+            verification: {
+              status: "found" as const,
+              pages: [
+                { pageNumber: 1, source: page1Src, dimensions: { width: 1000, height: 1400 } },
+                { pageNumber: 2, source: page2Src, dimensions: { width: 1000, height: 1400 } },
+              ],
+            },
+          },
+          {
+            citationKey: "c2",
+            citation: {
+              type: "document" as const,
+              pageNumber: 5,
+              anchorText: "second text",
+              fullPhrase: "Second text on page 5",
+            },
+            verification: {
+              status: "found" as const,
+              pages: [
+                { pageNumber: 1, source: page1Src, dimensions: { width: 1000, height: 1400 } },
+                { pageNumber: 5, source: page5Src, dimensions: { width: 1000, height: 1400 } },
+              ],
+            },
+          },
+        ],
+        additionalCount: 1,
+      },
+    ];
+
+    const { container } = render(<CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />);
+
+    const page5Button = container.querySelector("button[aria-label='Expand to full page 5']");
+    expect(page5Button).toBeInTheDocument();
+    if (page5Button) fireEvent.click(page5Button);
+
+    const inlineImage = container.querySelector("[data-dc-inline-expanded] img") as HTMLImageElement | null;
+    expect(inlineImage).toBeInTheDocument();
+    expect(inlineImage?.getAttribute("src")).toBe(page5Src);
+  });
+});
+
+describe("CitationDrawer evidence tray interactions", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows page number in drawer tray CTA and expands keyhole inline on click", () => {
+    const evidenceSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
+    const page4Src = "https://proof.deepcitation.com/page4.png";
+    const groups: SourceCitationGroup[] = [
+      {
+        sourceName: "Doc",
+        citations: [
+          {
+            citationKey: "c1",
+            citation: {
+              type: "document" as const,
+              pageNumber: 4,
+              anchorText: "test text",
+              fullPhrase: "This is test text on page 4",
+            },
+            verification: {
+              status: "found" as const,
+              document: { verificationImageSrc: evidenceSrc },
+              pages: [{ pageNumber: 4, source: page4Src, dimensions: { width: 1000, height: 1400 } }],
+            },
+          },
+        ],
+        additionalCount: 0,
+      },
+    ];
+
+    const { container } = render(<CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />);
+
+    const itemRow = container.querySelector("[data-citation-key='c1']");
+    expect(itemRow).toBeInTheDocument();
+    if (itemRow) fireEvent.click(itemRow);
+
+    const trayViewPageButton = container.querySelector("[data-dc-item='c1'] button[aria-label='View page 4']");
+    expect(trayViewPageButton).toBeInTheDocument();
+
+    const keyhole = container.querySelector("[data-dc-item='c1'] [data-dc-keyhole]");
+    expect(keyhole).toBeInTheDocument();
+    if (keyhole) fireEvent.click(keyhole);
+
+    const inlineInItem = container.querySelector("[data-dc-item='c1'] [data-dc-inline-expanded]");
+    expect(inlineInItem).toBeInTheDocument();
+  });
 });

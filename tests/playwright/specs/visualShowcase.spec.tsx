@@ -336,7 +336,7 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared (Radix renders via portal)
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
   });
 
@@ -354,7 +354,7 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // The popover should contain the "Not found" status header
@@ -375,7 +375,7 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // The popover should contain "Searching..." text
@@ -589,7 +589,7 @@ test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared (Radix renders via portal)
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
   });
 
@@ -607,7 +607,7 @@ test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
     await page.waitForTimeout(200);
 
     // Check that a popover appeared
-    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    const popover = page.locator("[data-dc-popover-wrapper]");
     await expect(popover).toBeVisible();
 
     // The popover should contain the "Not found" status header
