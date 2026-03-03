@@ -18,6 +18,7 @@ import {
   DOT_INDICATOR_FIXED_SIZE_STYLE,
   GUARD_MAX_WIDTH_VAR,
   isValidProofImageSrc,
+  KEYHOLE_STRIP_HEIGHT_DEFAULT,
   MISS_WAVY_UNDERLINE_STYLE,
   SPINNER_TIMEOUT_MS,
   TAP_SLOP_PX,
@@ -25,7 +26,7 @@ import {
 } from "./constants.js";
 import { DefaultPopoverContent, type PopoverViewState } from "./DefaultPopoverContent.js";
 import { resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
-import { getExpandedPopoverWidthPx } from "./expandedWidthPolicy.js";
+import { getExpandedPopoverWidthPx, getSummaryPopoverWidthPx } from "./expandedWidthPolicy.js";
 import { triggerHaptic } from "./haptics.js";
 import { useExpandedPageSideOffset } from "./hooks/useExpandedPageSideOffset.js";
 import { useIsTouchDevice } from "./hooks/useIsTouchDevice.js";
@@ -660,9 +661,21 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Isolated into separate hooks so the React Compiler can optimize CitationComponent
     // (setState in useLayoutEffect causes a compiler bailout for the entire component).
     const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef, lockedSide);
+    const projectedSummaryKeyholeWidth = useMemo(() => {
+      const dims = verification?.document?.verificationImageDimensions;
+      if (!dims) return null;
+      const width = dims.width;
+      const height = dims.height;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+      return width * (KEYHOLE_STRIP_HEIGHT_DEFAULT / height);
+    }, [verification?.document?.verificationImageDimensions]);
     const projectedPopoverWidthPx = useMemo(() => {
       if (!isHovering || typeof document === "undefined") return null;
       const viewportWidth = document.documentElement.clientWidth;
+      if (popoverViewState === "summary") {
+        return getSummaryPopoverWidthPx(projectedSummaryKeyholeWidth, viewportWidth);
+      }
+
       if (expandedNaturalWidthForPosition === null) return null;
 
       const shouldProjectExpandedWidth =
@@ -675,7 +688,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         return getExpandedPopoverWidthPx(expandedNaturalWidthForPosition, viewportWidth);
       }
       return null;
-    }, [isHovering, popoverViewState, expandedNaturalWidthForPosition, expandedWidthSourceForPosition]);
+    }, [
+      isHovering,
+      popoverViewState,
+      projectedSummaryKeyholeWidth,
+      expandedNaturalWidthForPosition,
+      expandedWidthSourceForPosition,
+    ]);
     const popoverAlignOffset = usePopoverAlignOffset(
       isHovering,
       popoverViewState,

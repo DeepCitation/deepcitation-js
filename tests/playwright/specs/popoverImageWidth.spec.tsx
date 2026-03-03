@@ -229,6 +229,36 @@ test.describe("Popover Image Keyhole Strip - Dark Mode", () => {
 test.describe("Pre-render boundary alignment", () => {
   test.use({ viewport: { width: 700, height: 900 } });
 
+  test("summary opens without first-frame horizontal snap", async ({ mount, page }) => {
+    await mount(
+      <div style={{ paddingTop: "320px", display: "flex", justifyContent: "center" }}>
+        <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
+      </div>,
+    );
+
+    await page.evaluate(() => {
+      (window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples = [];
+      const sample = () => {
+        const wrapper = document.querySelector<HTMLElement>("[data-dc-popover-wrapper]");
+        if (wrapper) {
+          const matrix = new DOMMatrixReadOnly(window.getComputedStyle(wrapper).transform);
+          (window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples?.push(matrix.m41);
+        }
+        if (((window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples?.length ?? 0) < 4) {
+          requestAnimationFrame(sample);
+        }
+      };
+      requestAnimationFrame(sample);
+    });
+
+    await page.locator("[data-citation-id]").click();
+    await page.waitForTimeout(80);
+
+    const samples = await page.evaluate(() => (window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples ?? []);
+    expect(samples.length).toBeGreaterThanOrEqual(2);
+    expect(Math.abs(samples[1]! - samples[0]!)).toBeLessThanOrEqual(1);
+  });
+
   test("summary near right edge stays in bounds without guard translation", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "320px", display: "flex", justifyContent: "flex-end", paddingRight: "8px" }}>
