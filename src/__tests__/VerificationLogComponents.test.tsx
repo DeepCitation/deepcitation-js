@@ -856,6 +856,91 @@ describe("SourceContextHeader", () => {
       expect(parentClick).not.toHaveBeenCalled();
     });
   });
+
+  describe("Image download button", () => {
+    it("renders image download button when verification image exists", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        document: {
+          verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+
+      const { getByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
+      expect(getByRole("button", { name: /download image/i })).toBeInTheDocument();
+    });
+
+    it("does not render image download button when no evidence image exists", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+
+      const { queryByRole } = render(<SourceContextHeader citation={citation} />);
+      expect(queryByRole("button", { name: /download image/i })).toBeNull();
+    });
+
+    it("stops propagation when image download button is clicked", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        document: {
+          verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+      const parentClick = jest.fn();
+
+      const { getByRole } = render(
+        // biome-ignore lint/a11y/useKeyWithClickEvents: test-only wrapper
+        <div onClick={parentClick}>
+          <SourceContextHeader citation={citation} verification={verification} />
+        </div>,
+      );
+      fireEvent.click(getByRole("button", { name: /download image/i }));
+
+      expect(parentClick).not.toHaveBeenCalled();
+    });
+
+    it("starts image download without navigating the current view", () => {
+      const citation: Citation = {
+        type: "document",
+        attachmentId: "abc123",
+        pageNumber: 1,
+        fullPhrase: "Test phrase",
+      };
+      const verification: Verification = {
+        document: {
+          verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+
+      const appendChildSpy = jest.spyOn(document.body, "appendChild");
+      const { getByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
+      fireEvent.click(getByRole("button", { name: /download image/i }));
+
+      const appendedBackgroundFrame = appendChildSpy.mock.calls
+        .map(([node]) => node)
+        .find(node => node instanceof HTMLIFrameElement && node.getAttribute("data-deepcitation-download-frame") === "true");
+      const appendedFallbackAnchor = appendChildSpy.mock.calls
+        .map(([node]) => node)
+        .find(node => node instanceof HTMLAnchorElement && node.getAttribute("target") === "_blank");
+
+      expect(appendedBackgroundFrame ?? appendedFallbackAnchor).toBeTruthy();
+      appendChildSpy.mockRestore();
+      document.querySelector("iframe[data-deepcitation-download-frame='true']")?.remove();
+    });
+  });
 });
 
 // =============================================================================

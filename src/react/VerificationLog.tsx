@@ -11,6 +11,7 @@ import {
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
   TERTIARY_ACTION_IDLE_CLASSES,
+  isValidProofImageSrc,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
 import {
@@ -166,6 +167,89 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
       const _exhaustiveCheck: never = status;
       return _exhaustiveCheck;
     }
+  }
+}
+
+function resolveImageDownloadUrl(verification: Verification | null | undefined): string | null {
+  const proofImageUrl = verification?.proof?.proofImageUrl;
+  if (proofImageUrl && isValidProofImageSrc(proofImageUrl)) {
+    return proofImageUrl;
+  }
+
+  const verificationImageSrc = verification?.document?.verificationImageSrc;
+  if (verificationImageSrc && isValidProofImageSrc(verificationImageSrc)) {
+    return verificationImageSrc;
+  }
+
+  const rawScreenshot = verification?.url?.webPageScreenshotBase64;
+  if (!rawScreenshot || typeof rawScreenshot !== "string") {
+    return null;
+  }
+
+  const screenshotSrc = rawScreenshot.startsWith("data:") ? rawScreenshot : `data:image/jpeg;base64,${rawScreenshot}`;
+  return isValidProofImageSrc(screenshotSrc) ? screenshotSrc : null;
+}
+
+const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
+const DOWNLOAD_IFRAME_CLEANUP_DELAY_MS = 30_000;
+
+/**
+ * Triggers a download in a background browsing context so the current view
+ * remains visible even when the browser ignores anchor `download`.
+ */
+function triggerBackgroundDownload(url: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const isHappyDom = typeof navigator !== "undefined" && /HappyDOM/i.test(navigator.userAgent);
+
+  const fallbackDownload = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    if (!isHappyDom) {
+      a.click();
+    }
+    a.remove();
+  };
+
+  if (isHappyDom) {
+    fallbackDownload();
+    return;
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.setAttribute(DOWNLOAD_IFRAME_DATA_ATTR, "true");
+
+  const cleanup = () => {
+    if (iframe.parentNode) {
+      iframe.remove();
+    }
+  };
+
+  const timeoutId = window.setTimeout(cleanup, DOWNLOAD_IFRAME_CLEANUP_DELAY_MS);
+  iframe.addEventListener("load", () => {
+    window.clearTimeout(timeoutId);
+    cleanup();
+  });
+  iframe.addEventListener("error", () => {
+    window.clearTimeout(timeoutId);
+    cleanup();
+  });
+
+  try {
+    iframe.src = url;
+    document.body.appendChild(iframe);
+  } catch {
+    window.clearTimeout(timeoutId);
+    cleanup();
+    fallbackDownload();
   }
 }
 
@@ -361,6 +445,8 @@ export function SourceContextHeader({
     !!verification?.attachmentId ||
     (typeof verification?.label === "string" && safeTest(PDF_LABEL_PATTERN, verification.label));
   const shouldShowDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
+  const imageDownloadUrl = resolveImageDownloadUrl(verification);
+  const shouldShowImageDownloadButton = !!imageDownloadUrl;
 
   // Display name for document citations (never show attachmentId to users)
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
@@ -405,6 +491,23 @@ export function SourceContextHeader({
       </div>
       {/* Right: Download + Proof link (expanded view) + Page pill */}
       <div className="flex items-center gap-3">
+        {shouldShowImageDownloadButton && (
+          <button
+            type="button"
+            aria-label="Download image"
+            title="Download evidence image"
+            className="shrink-0 size-8 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+            onClick={e => {
+              e.stopPropagation();
+              if (!imageDownloadUrl) return;
+              triggerBackgroundDownload(imageDownloadUrl);
+            }}
+          >
+            <span className="size-3.5 block">
+              <DownloadIcon />
+            </span>
+          </button>
+        )}
         {shouldShowDownloadButton && (
           <button
             type="button"
