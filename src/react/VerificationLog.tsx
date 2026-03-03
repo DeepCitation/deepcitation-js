@@ -1113,12 +1113,13 @@ interface AttemptTableRowProps {
 function AttemptTableRow({ text, locationText, success, isUnexpectedHit }: AttemptTableRowProps) {
   const isTruncated = (text ?? "").length > MAX_PHRASE_DISPLAY_LENGTH;
 
+  // success here means we successfully found a partial match, exact match does not need attempt details as the result is self evident
   return (
     <div
       className={cn(
         "py-1 px-2 text-xs font-mono truncate border-l-2",
         success
-          ? "border-green-400 dark:border-green-500 text-gray-700 dark:text-gray-200"
+          ? "border-amber-400 dark:border-amber-500 text-gray-700 dark:text-gray-200"
           : "border-red-300 dark:border-red-500/60 text-gray-500 dark:text-gray-400",
         "hover:bg-gray-100 dark:hover:bg-gray-700/40 hover:text-gray-800 dark:hover:text-gray-100 transition-colors",
       )}

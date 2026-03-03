@@ -20,7 +20,6 @@ import { CitationAnnotationOverlay } from "./CitationAnnotationOverlay.js";
 import { computeKeyholeOffset } from "./computeKeyholeOffset.js";
 import {
   buildKeyholeMaskImage,
-  CONTENT_STAGGER_DELAY_MS,
   EASE_COLLAPSE,
   EASE_EXPAND,
   EVIDENCE_TRAY_BORDER_DASHED,
@@ -1120,7 +1119,6 @@ export function InlineExpandedImage({
    */
   initialScroll?: { left: number; top: number };
 }) {
-  const prefersReducedMotion = usePrefersReducedMotion();
   const { containerRef, isDragging, handlers: panHandlers, wasDraggingRef } = useDragToPan({ direction: "xy" });
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
@@ -1634,11 +1632,7 @@ export function InlineExpandedImage({
   return (
     <div
       ref={outerRef}
-      className={cn(
-        "relative mx-3 mb-3",
-        !fill && "animate-in fade-in-0 duration-150",
-        fill && "flex flex-col",
-      )}
+      className={cn("relative mx-3 mb-3", fill && "flex flex-col")}
       style={
         fill
           ? undefined // fill mode: container fills popover width, image scrolls inside
@@ -1724,26 +1718,15 @@ export function InlineExpandedImage({
           {...panHandlers}
         >
           <style>{`[data-dc-inline-expanded]::-webkit-scrollbar { display: none; }`}</style>
-          {/* Keyed on src: remounts with a fade-in whenever the image swaps (evidence ↔ page).
+          {/* Keyed on src: remounts on image swaps (evidence ↔ page).
               In fill mode with an annotation, the scale animation originates from the annotation
               position via transform-origin, creating a "zoom from annotation" visual effect. */}
           <div
             key={src}
-            className={cn(
-              "animate-in fade-in-0",
-              fill && annotationOrigin
-                ? "zoom-in-95 duration-180"
-                : fill
-                  ? "zoom-in-[0.97] duration-150"
-                  : "duration-150",
-              fill && "fill-mode-backwards",
-            )}
+            className={undefined}
             style={{
               ...(annotationOrigin
                 ? { transformOrigin: `${annotationOrigin.xPercent}% ${annotationOrigin.yPercent}%` }
-                : undefined),
-              ...(fill && !prefersReducedMotion
-                ? { animationDelay: `${CONTENT_STAGGER_DELAY_MS}ms`, animationTimingFunction: EASE_EXPAND }
                 : undefined),
             }}
           >

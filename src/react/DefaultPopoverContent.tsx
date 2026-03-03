@@ -81,7 +81,7 @@ export interface PopoverContentProps {
   /** Override the expanded image src (from behaviorConfig.onClick returning setImageExpanded: "<url>") */
   expandedImageSrcOverride?: string | null;
   /** Reports the expanded image's natural width (or null on collapse) so the parent can size PopoverContent. */
-  onExpandedWidthChange?: (width: number | null) => void;
+  onExpandedWidthChange?: (width: number | null, source?: "expanded-keyhole" | "expanded-page" | null) => void;
   /** Ref tracking which state preceded expanded-page, for correct Escape back-navigation. */
   prevBeforeExpandedPageRef?: RefObject<"summary" | "expanded-keyhole">;
   /**
@@ -648,33 +648,29 @@ export function DefaultPopoverContent({
   });
 
   const summaryWidth = useMemo(() => getSummaryPopoverWidth(keyholeDisplayedWidth), [keyholeDisplayedWidth]);
+  const keyholeNaturalWidthSeed = useMemo(() => {
+    const width = verification?.document?.verificationImageDimensions?.width;
+    return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : null;
+  }, [verification?.document?.verificationImageDimensions?.width]);
+  const pageNaturalWidthSeed = useMemo(() => {
+    const width = expandedImage?.dimensions?.width;
+    return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : null;
+  }, [expandedImage?.dimensions?.width]);
 
   // Page image natural width — set from onLoad, persists across viewState transitions
   // (triple always-render keeps the image mounted so onLoad fires once and state is stable).
-  const [pageNaturalWidth, setPageNaturalWidth] = useState<number | null>(null);
-
-  // Keyhole image natural width when expanded — set from onLoad in expanded-keyhole state.
-  const [keyholeImageNaturalWidth, setKeyholeImageNaturalWidth] = useState<number | null>(null);
-
-  // Expanded popover width — needed for both full-page and expanded-keyhole views.
-  const expandedNaturalWidth = useMemo(() => {
-    if (viewState === "expanded-page") return pageNaturalWidth;
-    if (viewState === "expanded-keyhole") return keyholeImageNaturalWidth;
-    return null;
-  }, [viewState, pageNaturalWidth, keyholeImageNaturalWidth]);
-
-  // Notify parent when expandedNaturalWidth changes — calls only the prop callback,
-  // not a React setter, so this useEffect is React Compiler-compatible.
+  const [pageNaturalWidth, setPageNaturalWidth] = useState<number | null>(pageNaturalWidthSeed);
   useEffect(() => {
-    onExpandedWidthChange?.(expandedNaturalWidth);
-  }, [expandedNaturalWidth, onExpandedWidthChange]);
+    if (pageNaturalWidthSeed === null) return;
+    setPageNaturalWidth(prev => prev ?? pageNaturalWidthSeed);
+  }, [pageNaturalWidthSeed]);
+
+  // Last measured expanded-keyhole natural width keyed by evidence src.
+  // Keeping src+width together prevents stale widths from leaking across source changes.
+  const [keyholeImageNatural, setKeyholeImageNatural] = useState<{ src: string; width: number } | null>(null);
 
   const handlePageImageLoad = useCallback((width: number, _height: number) => {
     setPageNaturalWidth(width);
-  }, []);
-
-  const handleKeyholeImageLoad = useCallback((width: number, _height: number) => {
-    setKeyholeImageNaturalWidth(width);
   }, []);
 
   // Resolve the evidence image src — used by handleKeyholeClick and the prefetch effect.
@@ -693,6 +689,33 @@ export function DefaultPopoverContent({
     }
   }, [verification]);
 
+  const keyholeImageNaturalWidth =
+    evidenceSrc && keyholeImageNatural?.src === evidenceSrc ? keyholeImageNatural.width : null;
+
+  // Expanded popover width — needed for both full-page and expanded-keyhole views.
+  const expandedNaturalWidth = useMemo(() => {
+    if (viewState === "expanded-page") return pageNaturalWidth ?? keyholeImageNaturalWidth ?? keyholeNaturalWidthSeed;
+    if (viewState === "expanded-keyhole") return keyholeImageNaturalWidth ?? keyholeNaturalWidthSeed;
+    return null;
+  }, [viewState, pageNaturalWidth, keyholeImageNaturalWidth, keyholeNaturalWidthSeed]);
+
+  // Notify parent when expandedNaturalWidth changes — calls only the prop callback,
+  // not a React setter, so this useEffect is React Compiler-compatible.
+  useEffect(() => {
+    const source = viewState === "expanded-page" ? "expanded-page" : viewState === "expanded-keyhole" ? "expanded-keyhole" : null;
+    onExpandedWidthChange?.(expandedNaturalWidth, source);
+  }, [expandedNaturalWidth, onExpandedWidthChange, viewState]);
+
+  const handleKeyholeImageLoad = useCallback(
+    (width: number, _height: number) => {
+      if (!evidenceSrc || !Number.isFinite(width) || width <= 0) return;
+      setKeyholeImageNatural(prev =>
+        prev?.src === evidenceSrc && prev.width === width ? prev : { src: evidenceSrc, width },
+      );
+    },
+    [evidenceSrc],
+  );
+
   // Scroll position captured from the keyhole strip, applied to InlineExpandedImage on expand.
   const [keyholeInitialScroll, setKeyholeInitialScroll] = useState<{ left: number; top: number } | null>(null);
   const handleKeyholeScrollCapture = useCallback((left: number, top: number) => {
@@ -706,8 +729,19 @@ export function DefaultPopoverContent({
       return;
     }
     if (!evidenceSrc) return;
+    // Capture natural width synchronously from the currently visible keyhole image.
+    // This removes the intermediate "same-width but re-positioned" frame by letting
+    // expanded-keyhole sizing resolve in the same event batch as the view-state switch.
+    if (typeof document !== "undefined") {
+      const keyholeImg = document.querySelector("[data-dc-keyhole] img") as HTMLImageElement | null;
+      const width = keyholeImg?.naturalWidth ?? 0;
+      if (Number.isFinite(width) && width > 0) {
+        setKeyholeImageNatural(prev => (prev?.src === evidenceSrc && prev.width === width ? prev : { src: evidenceSrc, width }));
+        onExpandedWidthChange?.(width, "expanded-keyhole");
+      }
+    }
     onViewStateChange?.("expanded-keyhole");
-  }, [viewState, evidenceSrc, onViewStateChange]);
+  }, [viewState, evidenceSrc, onExpandedWidthChange, onViewStateChange]);
 
   // Tracks which state we entered expanded-page from, so onCollapse can return there.
   const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
@@ -719,17 +753,45 @@ export function DefaultPopoverContent({
     if (viewState !== "expanded-page") {
       prevBeforeExpandedPageRef.current = viewState === "expanded-keyhole" ? "expanded-keyhole" : "summary";
     }
+    const expandedPageWidth = pageNaturalWidth ?? keyholeImageNaturalWidth ?? keyholeNaturalWidthSeed;
+    onExpandedWidthChange?.(expandedPageWidth, "expanded-page");
     onViewStateChange?.("expanded-page");
-  }, [canExpandToPage, onViewStateChange, viewState]);
+  }, [
+    canExpandToPage,
+    keyholeImageNaturalWidth,
+    keyholeNaturalWidthSeed,
+    onExpandedWidthChange,
+    onViewStateChange,
+    pageNaturalWidth,
+    viewState,
+  ]);
 
   // Prefetch images imperatively when the popover becomes visible.
   // Keyhole image: preload as soon as the popover opens (user is hovering).
   // Page image: preload now so it's ready when the user clicks to expand.
   useEffect(() => {
     if (!isVisible) return;
-    if (evidenceSrc) new Image().src = evidenceSrc;
+    let disposed = false;
+    let keyholePreload: HTMLImageElement | null = null;
+    if (evidenceSrc) {
+      const preloadSrc = evidenceSrc;
+      keyholePreload = new Image();
+      keyholePreload.onload = () => {
+        if (disposed) return;
+        const width = keyholePreload?.naturalWidth ?? 0;
+        if (!Number.isFinite(width) || width <= 0) return;
+        setKeyholeImageNatural(prev =>
+          prev?.src === preloadSrc && prev.width === width ? prev : { src: preloadSrc, width },
+        );
+      };
+      keyholePreload.src = preloadSrc;
+    }
     const pageSrc = expandedImage?.src;
     if (pageSrc && isValidProofImageSrc(pageSrc)) new Image().src = pageSrc;
+    return () => {
+      disposed = true;
+      if (keyholePreload) keyholePreload.onload = null;
+    };
   }, [isVisible, evidenceSrc, expandedImage?.src]);
 
   // Get page info (document citations only)
@@ -861,7 +923,7 @@ export function DefaultPopoverContent({
               {humanizingMessage}
             </div>
           )}
-          <AnimatedHeightWrapper viewState={viewState}>
+          <AnimatedHeightWrapper viewState={viewState === "expanded-keyhole" ? "summary" : viewState}>
             {fullPhrase && (
               <ClaimQuote
                 fullPhrase={fullPhrase}

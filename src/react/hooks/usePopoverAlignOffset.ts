@@ -110,10 +110,16 @@ export function usePopoverAlignOffset(
   }, [isOpen, triggerRef, popoverContentRef, projectedWidthPx]);
 
   // Initial computation + re-run on viewState change (before paint).
+  // Also schedule one post-layout pass: initial open can measure width=0 when
+  // content ref assignment and layout settle after this first layout effect.
+  // The rAF pass picks up the real inline size before user interaction.
   // biome-ignore lint/correctness/useExhaustiveDependencies: recompute is stable via useCallback; popoverViewState triggers re-measurement
   useLayoutEffect(() => {
     recompute();
-  }, [recompute, popoverViewState]);
+    if (!isOpen) return;
+    const rafId = requestAnimationFrame(() => recompute());
+    return () => cancelAnimationFrame(rafId);
+  }, [recompute, popoverViewState, isOpen]);
 
   // Window resize and layout-shift listeners for viewport geometry changes.
   // Scroll-lock transitions can shift page layout without firing `resize`.
