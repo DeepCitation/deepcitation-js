@@ -1,4 +1,5 @@
 import type { SearchAttempt } from "../types/search.js";
+import { safeReplace } from "../utils/regexSafety.js";
 
 export interface GroupedSearchAttempt {
   key: string;
@@ -7,14 +8,10 @@ export interface GroupedSearchAttempt {
 }
 
 function normalizePhrase(value: string): string {
-  const canonical = value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/(\d)[,._](?=\d)/g, "$1")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
+  const stripped = safeReplace(value.normalize("NFKD"), /[\u0300-\u036f]/g, "").toLowerCase();
+  const noDigitSeps = safeReplace(stripped, /(\d)[,._](?=\d)/g, "$1");
+  const alphanumOnly = safeReplace(noDigitSeps, /[^a-z0-9]+/g, " ").trim();
+  const canonical = safeReplace(alphanumOnly, /\s+/g, " ");
   return canonical.length > 0 ? canonical : "(empty)";
 }
 

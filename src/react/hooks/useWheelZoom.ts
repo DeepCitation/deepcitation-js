@@ -129,6 +129,7 @@ export function useWheelZoom({
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return; // Horizontal-only — let native handle (keyhole pan)
       if (requireCtrl && !e.ctrlKey) return;
       e.preventDefault(); // Block page scroll — zoom active
 

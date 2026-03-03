@@ -234,6 +234,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       };
 
       const onWheel = (e: WheelEvent) => {
+        if (e.defaultPrevented) return; // Already handled (e.g. useWheelZoom zoom gesture)
         if (e.deltaY === 0) return; // Purely horizontal — let native handle (keyhole pan)
 
         // Walk from event target up to the popover content div, looking for any

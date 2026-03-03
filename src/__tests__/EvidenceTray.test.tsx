@@ -103,10 +103,9 @@ describe("EvidenceTray interaction styles", () => {
 
     expect(onExpand).not.toHaveBeenCalled();
     act(() => {
-      jest.advanceTimersByTime(120);
+      jest.runAllTimers();
     });
     expect(queryByText("alpha")).not.toBeInTheDocument();
-    jest.useRealTimers();
   });
 
   it("resolves exact page image when verification pageNumber values are numeric strings", () => {

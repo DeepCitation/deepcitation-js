@@ -229,7 +229,7 @@ test.describe("Popover Image Keyhole Strip - Dark Mode", () => {
 test.describe("Pre-render boundary alignment", () => {
   test.use({ viewport: { width: 700, height: 900 } });
 
-  test("summary opens without first-frame horizontal snap", async ({ mount, page }) => {
+  test("summary opens without first-frame position snap", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "320px", display: "flex", justifyContent: "center" }}>
         <CitationComponent citation={baseCitation} verification={verificationWithWideImage} />
@@ -237,14 +237,20 @@ test.describe("Pre-render boundary alignment", () => {
     );
 
     await page.evaluate(() => {
-      (window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples = [];
+      (window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples = [];
       const sample = () => {
         const wrapper = document.querySelector<HTMLElement>("[data-dc-popover-wrapper]");
         if (wrapper) {
           const matrix = new DOMMatrixReadOnly(window.getComputedStyle(wrapper).transform);
-          (window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples?.push(matrix.m41);
+          (window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples?.push({
+            x: matrix.m41,
+            y: matrix.m42,
+          });
         }
-        if (((window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples?.length ?? 0) < 4) {
+        if (
+          ((window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples
+            ?.length ?? 0) < 4
+        ) {
           requestAnimationFrame(sample);
         }
       };
@@ -254,9 +260,12 @@ test.describe("Pre-render boundary alignment", () => {
     await page.locator("[data-citation-id]").click();
     await page.waitForTimeout(80);
 
-    const samples = await page.evaluate(() => (window as Window & { __dcPopoverFrameSamples?: number[] }).__dcPopoverFrameSamples ?? []);
+    const samples = await page.evaluate(
+      () => (window as Window & { __dcPopoverFrameSamples?: Array<{ x: number; y: number }> }).__dcPopoverFrameSamples ?? [],
+    );
     expect(samples.length).toBeGreaterThanOrEqual(2);
-    expect(Math.abs(samples[1]! - samples[0]!)).toBeLessThanOrEqual(1);
+    expect(Math.abs(samples[1]!.x - samples[0]!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(samples[1]!.y - samples[0]!.y)).toBeLessThanOrEqual(1);
   });
 
   test("summary near right edge stays in bounds without guard translation", async ({ mount, page }) => {

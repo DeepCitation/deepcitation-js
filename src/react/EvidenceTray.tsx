@@ -145,6 +145,10 @@ function computeDeepItemViewportRect(
   return isValidSharedOriginRect(rect) ? rect : null;
 }
 
+// Evidence list expand/collapse uses an inlined motion state machine instead of
+// useBlinkMotionStage because it needs proportional height reveal (measuring
+// actual scrollHeight via searchLogViewportRef) and per-stage CSS property
+// transitions (paddingTop, transform, willChange) that the generic hook doesn't support.
 type EvidenceListMotionStage = "idle" | "enter-a" | "enter-b" | "steady" | "exit-a" | "exit-b";
 
 function resolveEvidenceListRevealRatio(stage: EvidenceListMotionStage): number {
@@ -159,9 +163,9 @@ function resolveEvidenceListRevealRatio(stage: EvidenceListMotionStage): number 
 function resolveEvidenceListOpacity(stage: EvidenceListMotionStage): number {
   if (stage === "idle") return 0;
   if (stage === "enter-a") return 0.72;
-  if (stage === "enter-b") return 0.42;
-  if (stage === "exit-a") return 0.32;
-  if (stage === "exit-b") return 0.02;
+  if (stage === "enter-b") return 0.88;
+  if (stage === "exit-a") return 0.65;
+  if (stage === "exit-b") return 0.06;
   return 1;
 }
 
@@ -423,7 +427,7 @@ function ZoomHint({
       aria-hidden="true"
       className="absolute bottom-2 right-2 text-[10px] text-white/90 bg-black/60 backdrop-blur-sm rounded-md px-1.5 py-0.5 pointer-events-none select-none animate-in fade-in-0 duration-150"
     >
-      Ctrl+scroll to zoom
+      Scroll to zoom
     </div>
   );
 }
@@ -516,7 +520,6 @@ export function AnchorTextFocusedImage({
 
   const { isHovering, gestureAnchorRef } = useWheelZoom({
     enabled: imageLoaded && zoomEligible,
-    requireCtrl: true,
     sensitivity: KEYHOLE_WHEEL_ZOOM_SENSITIVITY,
     containerRef: containerRef as React.RefObject<HTMLElement | null>,
     wrapperRef: imageWrapperRef,
@@ -1816,7 +1819,6 @@ export function InlineExpandedImage({
       hasManualZoomRef.current = true;
       setZoom(z);
     },
-    requireCtrl: true,
   });
 
   // ---------------------------------------------------------------------------

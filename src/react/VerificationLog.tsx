@@ -1126,7 +1126,6 @@ function AttemptTableRow({ text, locationText, duplicateCount, success, isUnexpe
         success
           ? "border-amber-400 dark:border-amber-500 text-gray-700 dark:text-gray-200"
           : "border-red-300 dark:border-red-500/60 text-gray-500 dark:text-gray-400",
-        "hover:bg-gray-100 dark:hover:bg-gray-700/40 hover:text-gray-800 dark:hover:text-gray-100 transition-colors",
       )}
     >
       <span className="font-mono text-xxs truncate min-w-0" title={isTruncated ? text : undefined}>
@@ -1342,6 +1341,7 @@ export function VerificationLogTimeline({
     <div
       id="verification-log-timeline"
       role={onCollapse ? "button" : undefined}
+      aria-label={onCollapse ? "Collapse search log" : undefined}
       tabIndex={onCollapse ? 0 : undefined}
       onClick={
         onCollapse
