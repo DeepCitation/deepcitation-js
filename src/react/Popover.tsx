@@ -23,14 +23,6 @@ import { assignRef } from "./refUtils.js";
 import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "./scrollLock.js";
 import { cn } from "./utils.js";
 
-/**
- * After the last page-level scroll event, wait this long before restoring
- * pointer-events on the popover wrapper. While the page is actively scrolling
- * the wrapper stays transparent (`pointer-events: none`) so wheel events pass
- * through to the page element underneath — native scroll continues.
- */
-const SCROLL_PASSTHROUGH_IDLE_MS = 500;
-
 type PopoverSide = "top" | "right" | "bottom" | "left";
 type PopoverAlign = "start" | "center" | "end";
 
@@ -253,44 +245,6 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       el.addEventListener("wheel", onWheel, { passive: false });
       return () => el.removeEventListener("wheel", onWheel);
     }, [isMounted, triggerRef]);
-
-    // Scroll passthrough: while the page is actively scrolling, make the
-    // popover wrapper transparent to pointer events so wheel events reach the
-    // page element underneath and native scroll continues uninterrupted.
-    // Without this, a cursor crossing the popover during a scroll gesture
-    // immediately switches to programmatic forwarding (above) which feels
-    // different from native scroll.  After scroll activity goes idle for
-    // SCROLL_PASSTHROUGH_IDLE_MS the wrapper regains pointer-events.
-    React.useEffect(() => {
-      const wrapper = wrapperRef.current;
-      if (!wrapper || !isMounted) return;
-
-      let idleTimer: ReturnType<typeof setTimeout> | null = null;
-
-      const onScroll = (e: Event) => {
-        // Ignore scroll events originating inside the popover (e.g. keyhole
-        // horizontal pan) — only page-level scroll should trigger passthrough.
-        const target = e.target;
-        if (target instanceof Node && wrapper.contains(target)) return;
-
-        wrapper.style.pointerEvents = "none";
-        if (idleTimer !== null) clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => {
-          if (!wrapper.isConnected) return;
-          wrapper.style.pointerEvents = "";
-          idleTimer = null;
-        }, SCROLL_PASSTHROUGH_IDLE_MS);
-      };
-
-      window.addEventListener("scroll", onScroll, { capture: true, passive: true });
-      return () => {
-        window.removeEventListener("scroll", onScroll, { capture: true });
-        if (idleTimer !== null) {
-          clearTimeout(idleTimer);
-          wrapper.style.pointerEvents = "";
-        }
-      };
-    }, [isMounted]);
 
     if (!isMounted) return null;
 

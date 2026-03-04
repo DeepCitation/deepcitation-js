@@ -75,12 +75,12 @@ The user's L2 question is: "Show me the evidence and tell me what happened."
 
 **Target**: Single compact header, evidence front and center.
 
-Changes in `VerificationLog.tsx` and `CitationComponent.tsx`:
+Changes in `VerificationLog.tsx` and `Citation.tsx`:
 1. **Unify page format to "p.N"**: Change `formatPageLineText()` from `"Page ${pageNumber}"` to `"p.${pageNumber}"`. Change `PageBadge` similarly. The drawer already uses "p.4" — the popover should match. This also saves horizontal space in the header.
 2. **Reduce header padding**: `SourceContextHeader` py-2 → py-1.5. `StatusHeader` py-2.5 → py-2. These two components stack vertically — together they currently consume ~36px of header. Reducing saves ~8px, which on a 384px-wide popover is meaningful.
 3. **Tighten loading state**: `DefaultPopoverContent` loading state padding p-3 → p-2. The loading spinner + "Searching..." text doesn't need generous whitespace.
 
-**Files**: `src/react/VerificationLog.tsx`, `src/react/CitationComponent.tsx`
+**Files**: `src/react/VerificationLog.tsx`, `src/react/Citation.tsx`
 
 ### D. Snapshot Updates
 
@@ -118,7 +118,7 @@ Run tests, update baselines, verify the new renders look correct.
 | `src/react/CitationDrawer.tsx` | Remove expand/collapse, red miss accents, reduce padding, proof hover |
 | `src/react/CitationDrawer.types.ts` | Deprecate `showMoreSection`/`maxVisibleItems` |
 | `src/react/VerificationLog.tsx` | `formatPageLineText` → "p.N", `PageBadge` → "p.N", reduce header padding |
-| `src/react/CitationComponent.tsx` | Reduce popover padding |
+| `src/react/Citation.tsx` | Reduce popover padding |
 | `tests/playwright/specs/__snapshots__/**` | Updated baselines |
 
 ## What We're NOT Changing

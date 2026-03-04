@@ -218,7 +218,7 @@ Added as `pages?: CitationPage[]` on the main `Verification` — not nested unde
 5. **`src/react/utils.ts`** — Update `isUrlCitation()` to type predicate; remove url-field fallback
 
 ### Consumer code (fix TS errors from union narrowing)
-6. **`src/react/CitationComponent.tsx`** — Wrap URL-field accesses in `isUrlCitation()` guards where missing
+6. **`src/react/Citation.tsx`** — Wrap URL-field accesses in `isUrlCitation()` guards where missing
 7. **`src/react/CitationDrawer.tsx`** — Same
 8. **`src/react/CitationDrawer.utils.tsx`** — Same
 9. **`src/react/VerificationLog.tsx`** — Same

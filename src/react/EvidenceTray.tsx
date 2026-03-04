@@ -3,7 +3,7 @@
  * display logic for the citation popover "proof zone".
  *
  * Contains all evidence-display components that were previously in
- * CitationComponent.tsx: image resolution, keyhole viewer, evidence tray,
+ * Citation.tsx: image resolution, keyhole viewer, evidence tray,
  * expanded page viewer, search analysis, and supporting utilities.
  *
  * @packageDocumentation

@@ -9,7 +9,7 @@ Add a new `"linter"` variant to the markdown output module that renders citation
 The markdown module (`src/markdown/`) outputs plain markdown text with 6 variants:
 - `inline`, `brackets`, `superscript`, `footnote`, `academic`, `minimal`
 
-None support styled underlines. The React component (`src/react/CitationComponent.tsx:2534-2615`) has a `linter` variant that uses semantic underlines via CSS `text-decoration`:
+None support styled underlines. The React component (`src/react/Citation.tsx:2534-2615`) has a `linter` variant that uses semantic underlines via CSS `text-decoration`:
 - **Verified**: solid green underline
 - **Partial**: dashed amber underline
 - **Not Found**: wavy red underline

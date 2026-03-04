@@ -2294,7 +2294,7 @@ describe("CitationComponent interactionMode", () => {
       await waitForPopoverDismissed(container);
     });
 
-    it("does not dismiss on outside click while scroll passthrough is active", async () => {
+    it("keeps popover wrapper interactive during page scroll activity", async () => {
       const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const trigger = container.querySelector("[data-citation-id]") as HTMLElement;
@@ -2309,24 +2309,17 @@ describe("CitationComponent interactionMode", () => {
       const wrapper = container.querySelector("[data-dc-popover-wrapper]") as HTMLElement;
       expect(wrapper).toBeInTheDocument();
 
-      // Simulate active page scroll to enter scroll passthrough mode.
+      // Simulate active page scroll while popover is open.
       await act(async () => {
         fireEvent.scroll(window);
       });
 
       await waitFor(() => {
-        expect(window.getComputedStyle(wrapper).pointerEvents).toBe("none");
+        expect(window.getComputedStyle(wrapper).pointerEvents).toBe("auto");
       });
-
-      // Outside click during passthrough should NOT dismiss.
-      await act(async () => {
-        fireEvent.mouseDown(document.body);
-      });
-
-      expect(container.querySelector('[data-state="open"]')).toBeInTheDocument();
     });
 
-    it("dismisses on outside click again after scroll passthrough ends", async () => {
+    it("still dismisses on outside click immediately after page scroll activity", async () => {
       const { container } = render(<CitationComponent citation={baseCitation} verification={verificationWithImage} />);
 
       const trigger = container.querySelector("[data-citation-id]") as HTMLElement;
@@ -2341,24 +2334,16 @@ describe("CitationComponent interactionMode", () => {
       const wrapper = container.querySelector("[data-dc-popover-wrapper]") as HTMLElement;
       expect(wrapper).toBeInTheDocument();
 
-      // Enter passthrough mode via page scroll.
+      // Simulate active page scroll while popover is open.
       await act(async () => {
         fireEvent.scroll(window);
       });
 
       await waitFor(() => {
-        expect(window.getComputedStyle(wrapper).pointerEvents).toBe("none");
+        expect(window.getComputedStyle(wrapper).pointerEvents).toBe("auto");
       });
 
-      // Wait for passthrough idle timer to restore pointer events.
-      await waitFor(
-        () => {
-          expect(window.getComputedStyle(wrapper).pointerEvents).not.toBe("none");
-        },
-        { timeout: 1200 },
-      );
-
-      // Outside click should dismiss once passthrough has ended.
+      // Outside click should dismiss immediately.
       await act(async () => {
         fireEvent.mouseDown(document.body);
       });

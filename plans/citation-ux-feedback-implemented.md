@@ -28,7 +28,7 @@ Organized by priority. Each item includes current behavior, what to change, and 
 
 For URL citations, prefer `citation.title` or `citation.siteName` over raw domain when available. The domain alone ("fitandwell.com") is much less useful than the article title.
 
-**Files:** `VerificationLog.tsx` (SourceContextHeader), `CitationComponent.tsx` (prop threading)
+**Files:** `VerificationLog.tsx` (SourceContextHeader), `Citation.tsx` (prop threading)
 
 ---
 
@@ -88,7 +88,7 @@ Apply as background on the `anchorText` substring within `fullPhrase`:
 
 Only show the highlight when `fullPhrase` has at least 2 more words than `anchorText` (matching the existing `MIN_WORD_DIFFERENCE` constant from `citationDrawing.ts`). When they're identical or near-identical, just show the text without highlight.
 
-**Files:** New `src/constants/proofStyles.ts`, `VerificationLog.tsx` (StatusHeader / SourceContextHeader), `CitationComponent.tsx` (popover content)
+**Files:** New `src/constants/proofStyles.ts`, `VerificationLog.tsx` (StatusHeader / SourceContextHeader), `Citation.tsx` (popover content)
 
 ---
 
@@ -270,7 +270,7 @@ Keep the two-level layout (collapsible header + items) only when a group has 2+ 
 
 If an accessible text fallback is needed for screen readers beyond the aria-label, use visually-hidden text inside the button rather than a visible link.
 
-**Files:** `CitationComponent.tsx` (image rendering section, remove Expand button)
+**Files:** `Citation.tsx` (image rendering section, remove Expand button)
 
 ---
 
@@ -359,7 +359,7 @@ The chip should feel like a button you can press, not a label you can read.
 
 **Use case context:** The user wants to open their own copy of the document and Ctrl+F to find the passage. The `fullPhrase` is more useful for this than the short `anchorText`.
 
-**Files:** `VerificationLog.tsx` (StatusHeader copy button), `CitationComponent.tsx` (quote box)
+**Files:** `VerificationLog.tsx` (StatusHeader copy button), `Citation.tsx` (quote box)
 
 ---
 
@@ -371,7 +371,7 @@ The chip should feel like a button you can press, not a label you can read.
 
 **Change:** Use `text-gray-300 dark:text-gray-300` (bump from 400 to 300 in dark mode only). Or use a pulsing `blue-400` for pending to differentiate it from the static gray of "no data" states.
 
-**Files:** `CitationVariants.tsx`, `CitationComponent.tsx` (pending indicator color classes)
+**Files:** `CitationVariants.tsx`, `Citation.tsx` (pending indicator color classes)
 
 ---
 

@@ -17,7 +17,7 @@ Remaining P2/P3 items from `DESIGN_FEEDBACK.md`. Most drawer tasks have been com
 
 ### Copy button on fullPhrase quote area (#18)
 
-**File:** `src/react/CitationComponent.tsx`
+**File:** `src/react/Citation.tsx`
 
 **Problem:** The copy button was removed from the StatusHeader (anchor text echo is gone). Users who want to Ctrl+F a phrase in their own document need a way to copy the `fullPhrase`.
 

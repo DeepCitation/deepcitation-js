@@ -20,7 +20,7 @@ Open this file before adding, modifying, or reviewing any animation, transition,
 | Hard viewport boundary guard (Layer 3) | `src/react/hooks/useViewportBoundaryGuard.ts` |
 | Popover view state machine + height morph wiring | `src/react/DefaultPopoverContent.tsx` |
 | Keyhole zoom, drag-to-pan, expanded-image viewer | `src/react/EvidenceTray.tsx` |
-| Scroll lock + haptics on popover open/close | `src/react/CitationComponent.tsx` |
+| Scroll lock + haptics on popover open/close | `src/react/Citation.tsx` |
 
 Do not define new timing values, easing strings, or gesture thresholds inline. Add them to `constants.ts` and import from there.
 

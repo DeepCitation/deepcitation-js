@@ -518,7 +518,7 @@ import { CitationComponent } from "deepcitation/react";
 
 ```
 src/react/
-├── CitationComponent.tsx   # Main component
+├── Citation.tsx   # Main component
 ├── Popover.tsx             # shadcn-style Popover
 ├── icons.tsx               # CheckIcon, WarningIcon
 ├── types.tsx               # TypeScript interfaces

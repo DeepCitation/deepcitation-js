@@ -940,7 +940,7 @@ This keeps the content point under the gesture anchor visually stable.
 **Fix:**
 
 ```typescript
-// In Popover.tsx or CitationComponent.tsx:
+// In Popover.tsx or Citation.tsx:
 // Option A: Use the `inert` attribute on background content
 useEffect(() => {
   if (!isOpen) return;

@@ -11,10 +11,6 @@
  * @packageDocumentation
  */
 
-// Citation Primitives Namespace (composable building blocks)
-export { Citation } from "./CitationPrimitives.js";
-// Citation Annotation Overlay Types
-export type { AdditionalHighlight } from "./CitationAnnotationOverlay.js";
 // Components
 // URL Citation Component - For displaying URL citations
 export {
@@ -25,6 +21,8 @@ export {
   MemoizedUrlCitationComponent,
   UrlCitationComponent,
 } from "./Citation.js";
+// Citation Annotation Overlay Types
+export type { AdditionalHighlight } from "./CitationAnnotationOverlay.js";
 // Citation Drawer (ChatGPT-style bottom sheet)
 export {
   CitationDrawer,
@@ -54,6 +52,8 @@ export {
   useCitationOverlay,
   useHasCitationOverlayProvider,
 } from "./CitationOverlayContext.js";
+// Citation Primitives Namespace (composable building blocks)
+export { Citation } from "./CitationPrimitives.js";
 // Constants - Shared styling and configuration
 export {
   COPY_FEEDBACK_DURATION_MS,
