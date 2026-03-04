@@ -2,7 +2,12 @@ import React, { forwardRef, memo, type ReactNode, useCallback, useMemo } from "r
 import { getCitationStatus } from "../parsing/parseCitation.js";
 import type { Citation, CitationStatus } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { MISS_WAVY_UNDERLINE_STYLE, PARTIAL_COLOR_STYLE, VERIFIED_COLOR_STYLE } from "./constants.js";
+import {
+  MISS_WAVY_UNDERLINE_STYLE,
+  PARTIAL_COLOR_STYLE,
+  SUPERSCRIPT_STYLE,
+  VERIFIED_COLOR_STYLE,
+} from "./constants.js";
 import { XIcon } from "./icons.js";
 import { StatusIndicatorWrapper } from "./StatusIndicatorWrapper.js";
 import type { BaseCitationProps, CitationEventHandlers, CitationVariant as CitationVariantType } from "./types.js";
@@ -20,6 +25,74 @@ const TWO_DOTS_THINKING_CONTENT = "..";
 // can safely reorder expressions (inline ArrowFunctionExpression defaults block optimization).
 const defaultRenderVerifiedIndicator = () => <DefaultVerifiedIndicator />;
 const defaultRenderPartialIndicator = () => <DefaultPartialIndicator />;
+
+interface ChipVisualClasses {
+  background: string;
+  border: string;
+  hover: string;
+  text: string;
+}
+
+function getStatusLabelSuffix(status: CitationStatus): string {
+  if (status.isMiss) return " (not found)";
+  if (status.isPartialMatch) return " (partial match)";
+  if (status.isVerified) return " (verified)";
+  if (status.isPending) return " (pending verification)";
+  return "";
+}
+
+function getChipVisualClasses(status: CitationStatus): ChipVisualClasses {
+  if (status.isPartialMatch) {
+    return {
+      background: "bg-amber-100 dark:bg-amber-900/30",
+      border: "border-amber-300 dark:border-amber-600 hover:border-amber-500 dark:hover:border-amber-500",
+      hover: "hover:bg-amber-700 hover:text-white dark:hover:bg-amber-200 dark:hover:text-amber-900",
+      text: "text-amber-600 dark:text-amber-400",
+    };
+  }
+
+  if (status.isMiss) {
+    return {
+      background: "bg-red-100 dark:bg-red-900/30",
+      border: "border-dashed border-red-300 dark:border-red-500 hover:border-red-500 dark:hover:border-red-400",
+      hover: "hover:bg-red-700 hover:text-white dark:hover:bg-red-200 dark:hover:text-red-900",
+      text: "text-red-600 dark:text-red-400",
+    };
+  }
+
+  if (status.isVerified) {
+    return {
+      background: "bg-green-100 dark:bg-green-900/30",
+      border: "border-green-300 dark:border-green-600 hover:border-green-600 dark:hover:border-green-500",
+      hover: "hover:bg-green-700 hover:text-white dark:hover:bg-green-200 dark:hover:text-green-900",
+      text: "text-green-600 dark:text-green-500",
+    };
+  }
+
+  if (status.isPending) {
+    return {
+      background: "bg-gray-100 dark:bg-gray-800",
+      border: "border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-500",
+      hover: "hover:bg-gray-700 hover:text-white dark:hover:bg-gray-200 dark:hover:text-gray-900",
+      text: "text-gray-500 dark:text-gray-400",
+    };
+  }
+
+  return {
+    background: "bg-blue-100 dark:bg-blue-900/30",
+    border: "border-blue-300 dark:border-blue-600 hover:border-blue-500 dark:hover:border-blue-500",
+    hover: "hover:bg-blue-700 hover:text-white dark:hover:bg-blue-200 dark:hover:text-blue-900",
+    text: "text-blue-600 dark:text-blue-400",
+  };
+}
+
+function getStatusToneClass(status: CitationStatus, defaultClass: string): string {
+  if (status.isPartialMatch) return "text-amber-500 dark:text-amber-400";
+  if (status.isMiss) return "text-red-500 dark:text-red-400";
+  if (status.isVerified) return "text-green-600 dark:text-green-500";
+  if (status.isPending) return "text-gray-400 dark:text-gray-500";
+  return defaultClass;
+}
 
 /**
  * Shared props for all citation variant components.
@@ -114,11 +187,15 @@ function useCitationEvents(
     [eventHandlers, citation, citationKey],
   );
 
+  const stopClickPropagation = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+  }, []);
+
   return {
     onMouseEnter: preventTooltips ? undefined : handleMouseEnter,
     onMouseLeave: preventTooltips ? undefined : handleMouseLeave,
     onMouseDown: handleClick,
-    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onClick: stopClickPropagation,
     onKeyDown: handleKeyDown,
   };
 }
@@ -199,8 +276,9 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
     ref,
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(citation, verification);
-    const { isVerified, isMiss, isPartialMatch, isPending } = status;
+    const { isMiss } = status;
     const events = useCitationEvents(citation, citationKey, eventHandlers, preventTooltips);
+    const chipClasses = getChipVisualClasses(status);
 
     // ChipCitation shows anchorText by default
     const displayText = useMemo(
@@ -208,55 +286,7 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
       [citation, fallbackDisplay],
     );
 
-    // Status-dependent styling classes with early returns for readability
-    // Note: Check partial before verified, since partial matches also have isVerified=true
-    const statusClass = useMemo(() => {
-      if (isPartialMatch) return "bg-amber-100 dark:bg-amber-900/30";
-      if (isMiss) return "bg-red-100 dark:bg-red-900/30";
-      if (isVerified) return "bg-green-100 dark:bg-green-900/30";
-      if (isPending) return "bg-gray-100 dark:bg-gray-800";
-      return "bg-blue-100 dark:bg-blue-900/30";
-    }, [isPartialMatch, isMiss, isVerified, isPending]);
-
-    const borderClass = useMemo(() => {
-      if (isPartialMatch)
-        return "border-amber-300 dark:border-amber-600 hover:border-amber-500 dark:hover:border-amber-500";
-      if (isMiss)
-        return "border-dashed border-red-300 dark:border-red-500 hover:border-red-500 dark:hover:border-red-400";
-      if (isVerified)
-        return "border-green-300 dark:border-green-600 hover:border-green-600 dark:hover:border-green-500";
-      if (isPending) return "border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-500";
-      return "border-blue-300 dark:border-blue-600 hover:border-blue-500 dark:hover:border-blue-500";
-    }, [isPartialMatch, isMiss, isVerified, isPending]);
-
-    // High-contrast hover states: light mode darkens, dark mode lightens
-    const hoverClass = useMemo(() => {
-      if (isPartialMatch)
-        return "hover:bg-amber-700 hover:text-white dark:hover:bg-amber-200 dark:hover:text-amber-900";
-      if (isMiss) return "hover:bg-red-700 hover:text-white dark:hover:bg-red-200 dark:hover:text-red-900";
-      if (isVerified) return "hover:bg-green-700 hover:text-white dark:hover:bg-green-200 dark:hover:text-green-900";
-      if (isPending) return "hover:bg-gray-700 hover:text-white dark:hover:bg-gray-200 dark:hover:text-gray-900";
-      return "hover:bg-blue-700 hover:text-white dark:hover:bg-blue-200 dark:hover:text-blue-900";
-    }, [isPartialMatch, isMiss, isVerified, isPending]);
-
-    const textColorClass = useMemo(() => {
-      if (isPartialMatch) return "text-amber-600 dark:text-amber-400";
-      if (isMiss) return "text-red-600 dark:text-red-400";
-      if (isVerified) return "text-green-600 dark:text-green-500";
-      if (isPending) return "text-gray-500 dark:text-gray-400";
-      return "text-blue-600 dark:text-blue-400";
-    }, [isPartialMatch, isMiss, isVerified, isPending]);
-
-    // Build accessible label that includes status for screen readers
-    const getStatusLabel = () => {
-      if (isMiss) return " (not found)";
-      if (isPartialMatch) return " (partial match)";
-      if (isVerified) return " (verified)";
-      if (isPending) return " (pending verification)";
-      return "";
-    };
-
-    const ariaLabel = displayText ? `Citation: ${displayText}${getStatusLabel()}` : undefined;
+    const ariaLabel = displayText ? `Citation: ${displayText}${getStatusLabelSuffix(status)}` : undefined;
 
     return (
       <>
@@ -271,16 +301,16 @@ export const ChipCitation = forwardRef<HTMLSpanElement, ChipCitationProps>(
           className={classNames(
             "inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full font-normal cursor-pointer transition-colors duration-150 text-[0.9em]",
             "border",
-            statusClass,
-            borderClass,
-            hoverClass,
+            chipClasses.background,
+            chipClasses.border,
+            chipClasses.hover,
             className,
           )}
           {...events}
           aria-label={ariaLabel}
         >
           {showIcon && (icon || <span className="text-[0.9em]">📄</span>)}
-          <span className={classNames(textColorClass, isMiss && "opacity-70")}>{displayText}</span>
+          <span className={classNames(chipClasses.text, isMiss && "opacity-70")}>{displayText}</span>
           <StatusIndicators
             status={status}
             pendingContent={pendingContent}
@@ -331,22 +361,12 @@ export const SuperscriptCitation = forwardRef<HTMLSpanElement, SuperscriptCitati
     ref,
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(citation, verification);
-    const { isPartialMatch, isMiss, isVerified, isPending } = status;
     const events = useCitationEvents(citation, citationKey, eventHandlers, preventTooltips);
 
     // SuperscriptCitation shows number by default
     const displayText = useMemo(() => getCitationNumber(citation), [citation]);
 
-    // Check partial first since isVerified is true when isPartialMatch is true
-    const statusClass = isPartialMatch
-      ? "text-amber-500 dark:text-amber-400"
-      : isMiss
-        ? "text-red-500 dark:text-red-400"
-        : isVerified
-          ? "text-green-600 dark:text-green-500"
-          : isPending
-            ? "text-gray-400 dark:text-gray-500"
-            : "text-blue-600 dark:text-blue-400";
+    const statusClass = getStatusToneClass(status, "text-blue-600 dark:text-blue-400");
 
     return (
       <>
@@ -359,7 +379,7 @@ export const SuperscriptCitation = forwardRef<HTMLSpanElement, SuperscriptCitati
           data-citation-instance={citationInstanceId}
           data-variant="superscript"
           className={classNames("cursor-pointer font-medium transition-colors hover:underline", statusClass, className)}
-          style={{ fontSize: "0.65em", lineHeight: 0, position: "relative", top: "-0.65em", verticalAlign: "baseline" }}
+          style={SUPERSCRIPT_STYLE}
           {...events}
           aria-label={`Citation ${displayText}`}
         >
@@ -421,7 +441,7 @@ export const FootnoteCitation = forwardRef<HTMLSpanElement, FootnoteCitationProp
     ref,
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(citation, verification);
-    const { isMiss, isPartialMatch, isVerified, isPending } = status;
+    const { isMiss } = status;
     const events = useCitationEvents(citation, citationKey, eventHandlers, preventTooltips);
 
     const displaySymbol = useMemo(() => {
@@ -435,16 +455,10 @@ export const FootnoteCitation = forwardRef<HTMLSpanElement, FootnoteCitationProp
       return "*";
     }, [symbolStyle, customSymbol, citation.citationNumber]);
 
-    // Check partial first since isVerified is true when isPartialMatch is true
-    const statusClass = isPartialMatch
-      ? "text-amber-500 dark:text-amber-400"
-      : isMiss
-        ? "text-red-500 dark:text-red-400"
-        : isVerified
-          ? "text-green-600 dark:text-green-500"
-          : isPending
-            ? "text-gray-400 dark:text-gray-500"
-            : "text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400";
+    const statusClass = getStatusToneClass(
+      status,
+      "text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400",
+    );
 
     return (
       <>
@@ -490,6 +504,13 @@ export interface InlineCitationProps extends CitationVariantProps {
   underlineStyle?: "solid" | "dotted" | "dashed" | "none";
 }
 
+const INLINE_UNDERLINE_CLASSES: Record<NonNullable<InlineCitationProps["underlineStyle"]>, string> = {
+  solid: "border-b border-current",
+  dotted: "border-b border-dotted border-current",
+  dashed: "border-b border-dashed border-current",
+  none: "",
+};
+
 /**
  * Inline style citation component.
  * Displays citation inline with subtle underline decoration.
@@ -518,7 +539,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
     ref,
   ) => {
     const { citationKey, citationInstanceId, status } = useCitationData(citation, verification);
-    const { isMiss, isPartialMatch, isVerified, isPending } = status;
+    const { isMiss } = status;
     const events = useCitationEvents(citation, citationKey, eventHandlers, preventTooltips);
 
     // InlineCitation shows anchorText by default
@@ -527,23 +548,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
       [citation, fallbackDisplay],
     );
 
-    // Check partial first since isVerified is true when isPartialMatch is true
-    const statusClass = isPartialMatch
-      ? "text-amber-500 dark:text-amber-400"
-      : isMiss
-        ? "text-red-500 dark:text-red-400"
-        : isVerified
-          ? "text-green-600 dark:text-green-500"
-          : isPending
-            ? "text-gray-400 dark:text-gray-500"
-            : "";
-
-    const underlineClasses = {
-      solid: "border-b border-current",
-      dotted: "border-b border-dotted border-current",
-      dashed: "border-b border-dashed border-current",
-      none: "",
-    };
+    const statusClass = getStatusToneClass(status, "");
 
     return (
       <>
@@ -557,7 +562,7 @@ export const InlineCitation = forwardRef<HTMLSpanElement, InlineCitationProps>(
           data-variant="inline"
           className={classNames(
             "cursor-pointer transition-colors hover:bg-blue-500/5 inline-flex items-baseline",
-            underlineClasses[underlineStyle],
+            INLINE_UNDERLINE_CLASSES[underlineStyle],
             statusClass,
             className,
           )}

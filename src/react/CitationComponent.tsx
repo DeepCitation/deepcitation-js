@@ -1717,9 +1717,7 @@ const UrlStatusIndicator = ({
 
   // Blocked: Lock icon
   if (isBlocked) {
-    if (renderBlockedIndicator) {
-      return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
-    }
+    if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
     return (
       <StatusIconWrapper className="text-amber-500 dark:text-amber-400" ariaLabel={statusInfo.label}>
         <LockIcon className="w-full h-full" />
@@ -1729,9 +1727,7 @@ const UrlStatusIndicator = ({
 
   // Error: X in circle icon (centered, not subscript)
   if (isError) {
-    if (renderBlockedIndicator) {
-      return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
-    }
+    if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
     return (
       <StatusIconWrapper className="text-red-500 dark:text-red-400" ariaLabel={statusInfo.label}>
         <XCircleIcon className="w-full h-full" />

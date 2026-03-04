@@ -1,36 +1,55 @@
+![DeepCitation cover](https://deepcitation.com/og-images/deepcitation-og-1200x630.png)
+
+
+<div align="center"><strong>DeepCitation</strong></div>
+
 <div align="center">
+Build Trusted AI Products. <br />
+Show proof for every AI citation.
+</div>
 
-# DeepCitation
 
-**Your RAG app cited page 47 -- but the doc only has 30 pages.**
-**Verify every citation. Show the source. Flag what's fabricated.**
-
-[![npm version](https://img.shields.io/npm/v/deepcitation.svg)](https://www.npmjs.com/package/deepcitation)
+<div align="center">
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Zero Dependencies](https://img.shields.io/badge/Zero%20Dependencies-trusted-green)](https://www.npmjs.com/package/deepcitation)
 [![< 25KB](https://img.shields.io/badge/gzip-<25KB-brightgreen)](https://bundlephobia.com/package/deepcitation)
 
-[Documentation](https://docs.deepcitation.com) · [Get API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Agent Integration](./INTEGRATION.md) · [Terms](https://deepcitation.com/legal/terms-of-service) · [Privacy](https://deepcitation.com/legal/privacy)
-
 </div>
+
 
 <div align="center">
-  <img
-    src="https://raw.githubusercontent.com/DeepCitation/deepcitation/main/examples/assets/deepcitation-og-1200x630.png"
-    alt="DeepCitation: Build trusted AI products with proof for every citation."
-    width="900"
-  />
+[Documentation](https://docs.deepcitation.com) · [Get API Key](https://deepcitation.com/signup) · [Examples](./examples) · [Agent Integration](./INTEGRATION.md) · [Terms](https://deepcitation.com/legal/terms-of-service) · [Privacy](https://deepcitation.com/legal/privacy)
 </div>
+
+We believe AI citations should follow **show, don't tell**; they should prove their citations so you don't have to blindly chase them down yourself. DeepCitation replaces 'trust me' citations with a deterministic verification layer.
 
 DeepCitation turns model citations into deterministic, inspectable proof.
 
 ## Install
 
-```bash
+#### With bun
+
+```sh
+bun add deepcitation
+```
+
+#### With npm
+
+```sh
 npm install deepcitation
 ```
 
-**Works with any LLM** -- OpenAI, Anthropic, Google, Mistral, local models, or any provider that returns text.
+#### With yarn
+
+```sh
+yarn add deepcitation
+```
+
+#### With pnpm
+
+```sh
+pnpm add deepcitation
+```
 
 ## Quick Start
 
@@ -38,10 +57,10 @@ npm install deepcitation
 import { DeepCitation, extractVisibleText, wrapCitationPrompt } from "deepcitation";
 
 const deepCitation = new DeepCitation({
-  apiKey: process.env.DEEPCITATION_API_KEY!,
+  apiKey: process.env.DEEPCITATION_API_KEY,
 });
 
-// 1) Upload files once
+// 1) Process documents 
 const { deepTextPromptPortion } = await deepCitation.prepareAttachments([
   { file: pdfBuffer, filename: "report.pdf" },
 ]);
@@ -68,49 +87,22 @@ const visibleText = extractVisibleText(response.content);
 > **Heads up:** `verifications` is a `Record<string, Verification>` object, not an array.
 > Use `Object.keys(verifications).length` to count results, not `.length`.
 
-## Why DeepCitation
 
-- Works with any LLM provider.
-- Verifies citations deterministically against uploaded sources.
-- Supports seven production-ready citation UI variants.
-- Supports local-only extraction and rendering without an API key.
+## Components
 
-## 7 Citation Display Variants
+A set of high-quality React components to help you build production-ready attribution systems. Skip the complexity of reading multiple file formats, rendering multiple formats, coordinate mapping, and visual proof generation.
 
-Use the variant that matches your UI, from chat chips to footnotes and inline linter-style underlines.
-Visual walkthrough images will be added back as production-ready assets become available.
+- [CitationComponent](https://github.com/DeepCitation/deepcitation/tree/main/src/react/CitationComponent.tsx)
+- [CitationDrawer](https://github.com/DeepCitation/deepcitation/tree/main/src/react/CitationDrawer.tsx)
 
-| Variant | Style | Best for |
-|---------|-------|----------|
-| `linter` | Inline underlines (like a spell-checker) | Long-form content, research tools |
-| `chip` | Pill badges | Chat interfaces |
-| `brackets` | `[text]` with status | Technical/academic |
-| `text` | Plain text with indicator | Minimal UI |
-| `superscript` | Footnote style `¹` | Articles, reports |
-| `footnote` | Clean neutral marker | Minimal footnotes |
-| `badge` | Source chip with favicon | ChatGPT-style source attribution |
 
-## Building with DeepCitation?
+## Support
 
-We're looking for design partners to showcase and help shape the future of citation verification.
+**Works with any LLM** -- OpenAI, Anthropic, Google, AI SDK, local models, or any leading model.
 
-**[Become a design partner →](https://github.com/DeepCitation/deepcitation/issues/new?labels=design-partner&template=design_partner.md)** Get early access, direct support, and influence the roadmap.
-
-## What Works Without an API Key
-
-Build locally first, add verification when ready.
-
-| Feature | API key needed? |
-|---------|----------------|
-| Citation extraction from LLM output | No -- fully local |
-| Markdown/Slack/GitHub/HTML/Terminal rendering | No -- fully local |
-| Prompt wrapping utilities | No -- fully local |
-| React display components | No -- fully local |
-| Source document upload & processing | **Yes** |
-| Citation verification against sources | **Yes** |
-| Visual proof image generation | **Yes** |
-
-[Get a free API key](https://deepcitation.com/signup)
+| <img src="https://deepcitation.com/logos/openai.svg" width="32" height="32" alt="OpenAI logo"> | <img src="https://deepcitation.com/logos/anthropic.svg" width="32" height="32" alt="Anthropic logo"> | <img src="https://deepcitation.com/logos/google.svg" width="32" height="32" alt="Google Gemini logo"> | <img src="https://deepcitation.com/logos/vercel.svg" width="32" height="32" alt="Vercel AI SDK logo"> |
+| --- | --- | --- | --- |
+| OpenAI ✔ | Anthropic ✔ | Gemini ✔ | AI SDK ✔ |
 
 ## Try it now
 
@@ -130,129 +122,6 @@ npm install && npm run dev
 - [Next.js AI SDK Chat App](./examples/nextjs-ai-sdk)
 - [URL Citations](./examples/url-example)
 
-## Works with anything your users upload
-
-PDF, DOCX, XLSX, PPTX, HTML, Images (JPG, PNG, TIFF, WebP, HEIC), URLs
-
-## React Components
-
-```bash
-npm install deepcitation react react-dom
-```
-
-> **Styling:** Requires Tailwind CSS, or import the bundled stylesheet:
-> ```typescript
-> import "deepcitation/styles.css";
-> ```
-
-| Component | Description |
-|-----------|-------------|
-| [`CitationComponent`](https://docs.deepcitation.com) | Inline citations with 7 variants and verification popovers |
-| [`UrlCitationComponent`](https://docs.deepcitation.com) | URL citations with favicon and status badges |
-| [`CitationDrawer`](https://docs.deepcitation.com) | ChatGPT-style bottom sheet grouping citations by source |
-| [`SourcesListComponent`](https://docs.deepcitation.com) | Aggregated sources panel with stacked favicons |
-
-### Advanced: Primitives (Experimental)
-
-For custom layouts, composable primitives are available. API may change:
-
-```tsx
-import { Citation } from "deepcitation/react";
-
-<Citation.Root citation={citation} verification={verification}>
-  <Citation.Trigger>
-    <Citation.AnchorText />
-    <Citation.Indicator />
-  </Citation.Trigger>
-</Citation.Root>
-```
-
-## Non-React Rendering
-
-Render citations anywhere -- no React required:
-
-```typescript
-import { renderCitationsForSlack } from "deepcitation/slack";
-import { renderCitationsForGitHub } from "deepcitation/github";
-import { renderCitationsAsHtml } from "deepcitation/html";
-import { renderCitationsForTerminal } from "deepcitation/terminal";
-```
-
-## Requirements
-
-| Requirement | Version |
-|-------------|---------|
-| Node.js | >= 20 |
-| React (optional, for components) | >= 19 |
-| Tailwind CSS (optional, or use `styles.css`) | >= 3 |
-| Browser target | ES2020+ |
-
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| `Error: API key is required` | Set `DEEPCITATION_API_KEY` env var or pass `apiKey` to constructor |
-| Citations not showing underlines/colors | Import `deepcitation/styles.css` or configure Tailwind |
-| `getAllCitationsFromLlmOutput` returns `{}` | Check that your LLM output contains `<cite ... />` tags or deferred JSON blocks -- use `wrapCitationPrompt` to add citation instructions |
-| `Object.keys(verifications).length` is 0 | Ensure the attachment was uploaded before the LLM call, and the LLM output contains citation references |
-
-## Error Handling
-
-```typescript
-import {
-  AuthenticationError,
-  RateLimitError,
-  NetworkError,
-  ValidationError,
-  ServerError,
-} from "deepcitation";
-
-try {
-  const { verifications } = await deepCitation.verify({ llmOutput: response.content });
-} catch (err) {
-  if (err instanceof AuthenticationError) {
-    // Invalid or missing API key
-    console.error("Check your DEEPCITATION_API_KEY");
-  } else if (err instanceof RateLimitError) {
-    // Hit rate limit -- safe to retry after delay
-    if (err.isRetryable) {
-      await new Promise(r => setTimeout(r, 1000)); // Implement exponential backoff
-      // retry verify()
-    }
-  } else if (err instanceof NetworkError) {
-    // Network timeout or temporary failure
-    if (err.isRetryable) {
-      // Safe to retry
-    }
-  } else if (err instanceof ValidationError) {
-    // Bad request (invalid citations, file format, etc.)
-    console.error("Check your input format");
-  } else if (err instanceof ServerError) {
-    // Server error (5xx)
-    if (err.isRetryable) {
-      // Safe to retry
-    }
-  }
-}
-```
-
-## Observability
-
-Connect to **Datadog, Sentry, CloudWatch, OpenTelemetry, or any logging service** via an optional logger interface:
-
-```typescript
-const deepCitation = new DeepCitation({
-  apiKey: process.env.DEEPCITATION_API_KEY,
-  logger: {
-    debug: (msg, data) => console.debug(msg, data),
-    info: (msg, data) => console.info(msg, data),
-    warn: (msg, data) => console.warn(msg, data),
-    error: (msg, data) => console.error(msg, data),
-  },
-});
-```
-
-The logger receives events for: file uploads, verification requests, cache hits/misses, and errors. Default is a no-op logger.
 
 ## Development
 

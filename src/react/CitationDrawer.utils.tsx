@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
 import { isPartialSearchStatus } from "./citationStatus.js";
@@ -15,6 +15,14 @@ import { isUrlCitation } from "./utils.js";
 // =========
 // Utilities: sourceLabelMap lookup
 // =========
+
+function hasSourceLabels(sourceLabelMap: Record<string, string> | undefined): sourceLabelMap is Record<string, string> {
+  if (!sourceLabelMap) return false;
+  for (const _key in sourceLabelMap) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Look up a friendly display label from the sourceLabelMap for a citation.
@@ -44,7 +52,8 @@ export function resolveGroupLabels(
   groups: SourceCitationGroup[],
   sourceLabelMap: Record<string, string> | undefined,
 ): SourceCitationGroup[] {
-  if (!sourceLabelMap || Object.keys(sourceLabelMap).length === 0) return groups;
+  if (!hasSourceLabels(sourceLabelMap)) return groups;
+
   return groups.map(group => {
     const firstCitation = group.citations[0]?.citation;
     const labelOverride = lookupSourceLabel(firstCitation, sourceLabelMap);
@@ -105,26 +114,29 @@ export function groupCitationsBySource(
       ? cit.domain || cit.siteName || cit.url || "unknown"
       : cit.attachmentId || item.verification?.label || "unknown-doc";
 
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, []);
+    const existing = groups.get(groupKey);
+    if (existing) {
+      existing.push(item);
+      continue;
     }
-    groups.get(groupKey)?.push(item);
+
+    groups.set(groupKey, [item]);
   }
 
   // Convert map to array of SourceCitationGroup
   const result = Array.from(groups.entries()).map(([_key, items]) => {
     const firstCitation = items[0].citation;
     const firstVerification = items[0].verification;
+    const isUrlSource = firstCitation.type === "url";
+    const sourceDomain = isUrlSource ? firstCitation.domain || extractDomain(firstCitation.url) : undefined;
+
     return {
-      sourceName:
-        firstCitation.type === "url"
-          ? firstCitation.siteName || firstCitation.domain || extractDomain(firstCitation.url) || "Unknown Source"
-          : firstVerification?.label || firstCitation.attachmentId || "Document",
-      sourceDomain: firstCitation.type === "url" ? firstCitation.domain || extractDomain(firstCitation.url) : undefined,
+      sourceName: isUrlSource
+        ? firstCitation.siteName || sourceDomain || "Unknown Source"
+        : firstVerification?.label || firstCitation.attachmentId || "Document",
+      sourceDomain,
       sourceFavicon:
-        firstVerification?.url?.verifiedFaviconUrl ||
-        (firstCitation.type === "url" ? firstCitation.faviconUrl : undefined) ||
-        undefined,
+        firstVerification?.url?.verifiedFaviconUrl || (isUrlSource ? firstCitation.faviconUrl : undefined) || undefined,
       citations: items,
       additionalCount: items.length - 1,
     };
@@ -165,14 +177,15 @@ export function getStatusInfo(
   const isPartial = isPartialSearchStatus(status);
 
   if (indicatorVariant === "none") {
-    const label =
-      !status || status === "pending" || status === "loading"
-        ? "Verifying"
-        : status === "not_found"
-          ? "Not found"
-          : isPartial
-            ? "Partial match"
-            : "Verified";
+    let label = "Verified";
+    if (!status || status === "pending" || status === "loading") {
+      label = "Verifying";
+    } else if (status === "not_found") {
+      label = "Not found";
+    } else if (isPartial) {
+      label = "Partial match";
+    }
+
     return { color: "", icon: null, label };
   }
 
@@ -349,8 +362,10 @@ export function sortGroupsByWorstStatus(groups: SourceCitationGroup[]): SourceCi
       ),
     }))
     .sort((a, b) => {
-      const worstA = a.citations.length > 0 ? Math.max(...a.citations.map(c => getStatusPriority(c.verification))) : 0;
-      const worstB = b.citations.length > 0 ? Math.max(...b.citations.map(c => getStatusPriority(c.verification))) : 0;
+      // citations are already sorted worst-first by the .map() above,
+      // so citations[0] holds the worst status — no need to recompute.
+      const worstA = a.citations.length > 0 ? getStatusPriority(a.citations[0].verification) : 0;
+      const worstB = b.citations.length > 0 ? getStatusPriority(b.citations[0].verification) : 0;
       return worstB - worstA;
     });
 }
@@ -427,6 +442,7 @@ export function groupCitationsByStatus(groups: SourceCitationGroup[]): StatusSec
 export function useCitationDrawer(sourceLabelMap?: Record<string, string>) {
   const [isOpen, setIsOpen] = useState(false);
   const [citations, setCitations] = useState<CitationDrawerItem[]>([]);
+  const citationKeysRef = useRef<Set<string>>(new Set());
 
   const openDrawer = useCallback(() => setIsOpen(true), []);
   const closeDrawer = useCallback(() => setIsOpen(false), []);
@@ -434,23 +450,29 @@ export function useCitationDrawer(sourceLabelMap?: Record<string, string>) {
 
   const addCitation = useCallback((item: CitationDrawerItem) => {
     setCitations(prev => {
-      // Don't add duplicates
-      if (prev.some(c => c.citationKey === item.citationKey)) {
-        return prev;
-      }
+      // Track keys in a Set so duplicate checks stay O(1) as the drawer grows.
+      if (citationKeysRef.current.has(item.citationKey)) return prev;
+      citationKeysRef.current.add(item.citationKey);
       return [...prev, item];
     });
   }, []);
 
   const removeCitation = useCallback((citationKey: string) => {
-    setCitations(prev => prev.filter(c => c.citationKey !== citationKey));
+    setCitations(prev => {
+      const next = prev.filter(c => c.citationKey !== citationKey);
+      if (next.length === prev.length) return prev;
+      citationKeysRef.current.delete(citationKey);
+      return next;
+    });
   }, []);
 
   const clearCitations = useCallback(() => {
+    citationKeysRef.current.clear();
     setCitations([]);
   }, []);
 
   const setCitationsList = useCallback((items: CitationDrawerItem[]) => {
+    citationKeysRef.current = new Set(items.map(item => item.citationKey));
     setCitations(items);
   }, []);
 

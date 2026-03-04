@@ -3,6 +3,69 @@ import type { CompressedResult } from "./types.js";
 const MIN_PREFIX_LENGTH = 4;
 const MIN_CHARACTERS_PER_PREFIX_WITH_AT_LEAST_ONE_DIGIT = 3;
 const MIN_CHARACTERS_PER_PREFIX_WITH_NO_DIGITS = 5;
+const DIGIT_ZERO_CODE = 48;
+const DIGIT_NINE_CODE = 57;
+const UPPER_A_CODE = 65;
+const UPPER_Z_CODE = 90;
+const LOWER_A_CODE = 97;
+const LOWER_Z_CODE = 122;
+const ID_ATTRIBUTE_KEYS = [
+  "attachmentId",
+  "attachment_id",
+  "attachment_ID",
+  "attachmentID",
+  "fileId",
+  "file_id",
+  "file_ID",
+  "fileID",
+  "fileid",
+] as const;
+const ID_ATTRIBUTE_KEY_PATTERN = ID_ATTRIBUTE_KEYS.join("|");
+const ID_ATTRIBUTE_QUOTE_PATTERN = "([\"'`])";
+
+/** Escape special regex characters in a string. Module-level to avoid per-call allocation. */
+const escapeRegex = (s: string): string => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+function countOccurrences(text: string, needle: string): number {
+  if (needle.length === 0) return 0;
+
+  let count = 0;
+  let searchIndex = 0;
+
+  while (searchIndex < text.length) {
+    const foundIndex = text.indexOf(needle, searchIndex);
+    if (foundIndex === -1) break;
+
+    count++;
+    searchIndex = foundIndex + needle.length;
+  }
+
+  return count;
+}
+
+function isAsciiDigit(charCode: number): boolean {
+  return charCode >= DIGIT_ZERO_CODE && charCode <= DIGIT_NINE_CODE;
+}
+
+function isAsciiLetter(charCode: number): boolean {
+  return (
+    (charCode >= UPPER_A_CODE && charCode <= UPPER_Z_CODE) || (charCode >= LOWER_A_CODE && charCode <= LOWER_Z_CODE)
+  );
+}
+
+function buildPrefixUsageCount(ids: string[]): Map<string, number> {
+  const usage = new Map<string, number>();
+
+  for (const id of ids) {
+    for (let len = MIN_PREFIX_LENGTH; len <= id.length; len++) {
+      const prefix = id.slice(0, len);
+      const currentCount = usage.get(prefix) ?? 0;
+      usage.set(prefix, currentCount + 1);
+    }
+  }
+
+  return usage;
+}
 
 /**
  * Build a map from each ID's minimal unique prefix to the full ID,
@@ -10,15 +73,28 @@ const MIN_CHARACTERS_PER_PREFIX_WITH_NO_DIGITS = 5;
  */
 function buildSafePrefixMap(ids: string[], prompt: string): Record<string, string> {
   const map: Record<string, string> = {};
+  const prefixUsageCount = buildPrefixUsageCount(ids);
+  const promptCountCache = new Map<string, number>();
+  const fullPromptCountById = new Map<string, number>();
 
   for (const id of ids) {
-    for (let len = MIN_PREFIX_LENGTH; len <= id.length; len++) {
+    fullPromptCountById.set(id, countOccurrences(prompt, id));
+  }
+
+  for (const id of ids) {
+    let found = false;
+    let digitCount = 0;
+    let letterCount = 0;
+
+    for (let len = 1; len <= id.length; len++) {
+      const charCode = id.charCodeAt(len - 1);
+      if (isAsciiDigit(charCode)) digitCount++;
+      if (isAsciiLetter(charCode)) letterCount++;
+      if (len < MIN_PREFIX_LENGTH) continue;
+
       const prefix = id.slice(0, len);
 
       // Check minimum requirements
-      const digitCount = (prefix.match(/\d/g) || []).length;
-      const letterCount = (prefix.match(/[a-zA-Z]/g) || []).length;
-
       if (
         prefix.length < MIN_PREFIX_LENGTH ||
         (digitCount > 0 && letterCount < MIN_CHARACTERS_PER_PREFIX_WITH_AT_LEAST_ONE_DIGIT) ||
@@ -28,23 +104,27 @@ function buildSafePrefixMap(ids: string[], prompt: string): Record<string, strin
       }
 
       // 1) Unique among IDs
-      if (ids.some(other => other !== id && other.startsWith(prefix))) {
+      if ((prefixUsageCount.get(prefix) ?? 0) > 1) {
         continue;
       }
 
       // 2) Only appears in prompt as part of the full ID
-      const esc = (s: string) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-      const prefixCount = (prompt.match(new RegExp(esc(prefix), "g")) || []).length;
-      const fullCount = (prompt.match(new RegExp(esc(id), "g")) || []).length;
+      let prefixCount = promptCountCache.get(prefix);
+      if (prefixCount === undefined) {
+        prefixCount = countOccurrences(prompt, prefix);
+        promptCountCache.set(prefix, prefixCount);
+      }
+      const fullCount = fullPromptCountById.get(id) ?? 0;
       if (prefixCount !== fullCount) {
         continue;
       }
 
       map[prefix] = id;
+      found = true;
       break;
     }
 
-    if (!Object.values(map).includes(id)) {
+    if (!found) {
       throw new Error(
         `Cannot find a safe unique prefix for ID "${id}" that meets the minimum requirements (length: ${MIN_PREFIX_LENGTH})`,
       );
@@ -73,8 +153,7 @@ export function compressPromptIds<T>(obj: T, ids: string[] | undefined): Compres
   let compressedText = text;
   for (const prefix of prefixes) {
     const full = prefixMap[prefix];
-    const escFull = full.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-    compressedText = compressedText.replace(new RegExp(escFull, "g"), prefix);
+    compressedText = compressedText.replaceAll(full, prefix);
   }
 
   return {
@@ -91,12 +170,16 @@ export function compressPromptIds<T>(obj: T, ids: string[] | undefined): Compres
  * If you pass in an object, it will JSON‑serialize and parse it back.
  */
 export function decompressPromptIds<T>(compressed: T | string, prefixMap: Record<string, string>): T | string {
-  if (!prefixMap || Object.keys(prefixMap).length === 0) {
+  if (!prefixMap) {
     return compressed;
   }
+  const prefixKeys = Object.keys(prefixMap);
+  if (prefixKeys.length === 0) return compressed;
 
   // Prepare sorted [prefix, full] entries (longest prefix first)
-  const entries = Object.entries(prefixMap).sort((a, b) => b[0].length - a[0].length);
+  const entries = prefixKeys
+    .map(prefix => [prefix, prefixMap[prefix]] as const)
+    .sort((a, b) => b[0].length - a[0].length);
 
   // Decide whether we're working on a string or an object
   let text: string;
@@ -109,41 +192,26 @@ export function decompressPromptIds<T>(compressed: T | string, prefixMap: Record
     shouldParseBack = true;
   }
 
-  const originalLength = text?.length;
+  const originalLength = text.length;
 
   // Perform all prefix → full-ID replacements
   for (const [prefix, full] of entries) {
-    const escPrefix = prefix.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-    text = text.replace(new RegExp(escPrefix, "g"), full);
+    text = text.replaceAll(prefix, full);
   }
 
   // Handle cases where the LLM may output ID in a different attribute format
   // We look for common ID attribute patterns and replace compressed prefixes within them
   // Note: fileId variants are supported for backwards compatibility with legacy citations
-  const idAttributeKeys = [
-    "attachmentId",
-    "attachment_id",
-    "attachment_ID",
-    "attachmentID",
-    "fileId",
-    "file_id",
-    "file_ID",
-    "fileID",
-    "fileid",
-  ];
-
   // For each prefix, look for it within ID attribute values and replace with full ID
   for (const [prefix, full] of entries) {
-    const escPrefix = prefix.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-    const keyPattern = idAttributeKeys.join("|");
-    const quotePattern = "([\"'`])";
+    const escPrefix = escapeRegex(prefix);
 
     // Match: attributeName = 'prefix' or attributeName="prefix" etc.
     // Only replace the prefix part, preserving the attribute name and quotes
-    const re = new RegExp(`(${keyPattern})(\\s*=\\s*)${quotePattern}${escPrefix}\\3`, "g");
+    const re = new RegExp(`(${ID_ATTRIBUTE_KEY_PATTERN})(\\s*=\\s*)${ID_ATTRIBUTE_QUOTE_PATTERN}${escPrefix}\\3`, "g");
     text = text.replace(re, `$1$2$3${full}$3`);
   }
-  const newLength = text?.length;
+  const newLength = text.length;
 
   const diff = originalLength - newLength;
   if (diff > 0) {

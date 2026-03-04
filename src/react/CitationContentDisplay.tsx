@@ -11,7 +11,7 @@ import type React from "react";
 import type { CitationStatus } from "../types/citation.js";
 import { getInteractionClasses } from "./CitationContentDisplay.utils.js";
 import { CitationStatusIndicator, type CitationStatusIndicatorProps } from "./CitationStatusIndicator.js";
-import { MISS_WAVY_UNDERLINE_STYLE } from "./constants.js";
+import { MISS_WAVY_UNDERLINE_STYLE, SUPERSCRIPT_STYLE } from "./constants.js";
 import { handleImageError } from "./imageUtils.js";
 import type { CitationContent, CitationRenderProps, CitationVariant } from "./types.js";
 import { cn, isUrlCitation } from "./utils.js";
@@ -121,7 +121,7 @@ export const CitationContentDisplay = ({
             supStatusClasses,
             getInteractionClasses(isOpen, variant),
           )}
-          style={{ fontSize: "0.65em", lineHeight: 0, position: "relative", top: "-0.65em", verticalAlign: "baseline" }}
+          style={SUPERSCRIPT_STYLE}
         >
           [<span>{citationNumber}</span>
           {indicator}]

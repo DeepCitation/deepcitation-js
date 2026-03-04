@@ -10,7 +10,37 @@ import { getCitationStatus } from "./parseCitation.js";
  * Compiled once at module load to avoid per-call recompilation.
  */
 const PAGE_NUMBER_REGEX = /page[_a-zA-Z]*(\d+)/;
-const _RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
+/**
+ * Global regex used exclusively via String.prototype.replace(), which resets
+ * lastIndex to 0 per spec (ES2023 §22.2.5.11 step 5) before iterating.
+ * No manual lastIndex reset is needed.
+ */
+const RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
+
+const CITE_ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
+  attachmentid: "attachment_id",
+  fileid: "attachment_id",
+  file_id: "attachment_id",
+  fullphrase: "full_phrase",
+  lineids: "line_ids",
+  pageid: "start_page_id",
+  page_id: "start_page_id",
+  pagekey: "start_page_id",
+  page_key: "start_page_id",
+  startpageid: "start_page_id",
+  start_pageid: "start_page_id",
+  startpagekey: "start_page_id",
+  start_pagekey: "start_page_id",
+  start_page_key: "start_page_id",
+  anchortext: "anchor_text",
+  keyspan: "anchor_text",
+  key_span: "anchor_text",
+  timestamp: "timestamps",
+};
+
+function canonicalizeAttributeAlias(key: string): string {
+  return CITE_ATTRIBUTE_KEY_ALIASES[key] ?? key;
+}
 
 export interface ReplaceCitationsOptions {
   /**
@@ -57,28 +87,7 @@ const parseCiteAttributes = (citeTag: string): Record<string, string | undefined
       .toLowerCase();
     const value = match[3];
 
-    // Normalize key names
-    const normalizedKey =
-      key === "fileid" || key === "file_id" || key === "attachmentid"
-        ? "attachment_id"
-        : key === "anchortext" || key === "anchor_text" || key === "keyspan" || key === "key_span"
-          ? "anchor_text"
-          : key === "fullphrase"
-            ? "full_phrase"
-            : key === "lineids"
-              ? "line_ids"
-              : key === "pageid" ||
-                  key === "page_id" ||
-                  key === "startpageid" ||
-                  key === "start_pageid" ||
-                  key === "start_page_id" ||
-                  key === "startpagekey" ||
-                  key === "start_pagekey" ||
-                  key === "start_page_key" ||
-                  key === "pagekey" ||
-                  key === "page_key"
-                ? "start_page_id"
-                : key;
+    const normalizedKey = canonicalizeAttributeAlias(key);
 
     attrs[normalizedKey] = value;
   }
@@ -179,7 +188,7 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
         const SAMPLE_COUNT = 50;
 
         // First expand ranges (e.g., "62-63" -> "62,63")
-        const expanded = lineIdsStr.replace(/(\d+)-(\d+)/g, (_match, start, end) => {
+        const expanded = lineIdsStr.replace(RANGE_EXPANSION_REGEX, (_match, start, end) => {
           const startNum = parseInt(start, 10);
           const endNum = parseInt(end, 10);
           if (startNum <= endNum) {
@@ -380,6 +389,35 @@ export const normalizeCitations = (response: string): string => {
   return trimmedResponse;
 };
 
+/**
+ * Canonicalize cite tag attribute keys to their standard form.
+ * Pure function — no closure dependencies, hoisted to module scope to avoid
+ * per-call function object allocation.
+ */
+const canonicalizeCiteAttributeKey = (key: string): string => {
+  return canonicalizeAttributeAlias(key.toLowerCase());
+};
+
+/** HTML entity decode map — compiled once at module load. */
+const HTML_ENTITY_MAP: Record<string, string> = {
+  "&quot;": '"',
+  "&apos;": "'",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&amp;": "&",
+};
+const HTML_ENTITY_REGEX = /&(?:quot|apos|lt|gt|amp);/g;
+const decodeHtmlEntities = (str: string): string => {
+  return str.replace(HTML_ENTITY_REGEX, match => HTML_ENTITY_MAP[match] || match);
+};
+
+/** Regex for text-valued cite attributes — compiled once at module load. */
+const TEXT_ATTRIBUTE_REGEX =
+  /(fullPhrase|full_phrase|anchorText|anchor_text|keySpan|key_span|reasoning|value)\s*=\s*(['"])([\s\S]*?)(?=\s+(?:line_ids|lineIds|timestamps|fileId|file_id|attachmentId|attachment_id|start_page_id|start_pageId|startPageId|start_page_key|start_pageKey|startPageKey|anchorText|anchor_text|keySpan|key_span|reasoning|value|full_phrase)\s*=|\s*\/>|['"]>)/gm;
+
+/** Regex for line_ids/timestamps attributes — compiled once at module load. */
+const LINE_IDS_ATTRIBUTE_REGEX = /(line_ids|lineIds|timestamps)=['"]?([[\](){}A-Za-z0-9_\-, ]+)['"]?(\s*\/?>|\s+)/gm;
+
 const normalizeCitationContent = (input: string): string => {
   let normalized = input;
 
@@ -391,45 +429,7 @@ const normalizeCitationContent = (input: string): string => {
   // Replace ></cite> with /> for consistency
   normalized = normalized.replace(/><\/cite>/g, "/>");
 
-  const canonicalizeCiteAttributeKey = (key: string): string => {
-    const lowerKey = key.toLowerCase();
-    if (lowerKey === "fullphrase" || lowerKey === "full_phrase") return "full_phrase";
-    if (lowerKey === "lineids" || lowerKey === "line_ids") return "line_ids";
-    if (
-      lowerKey === "startpageid" ||
-      lowerKey === "start_pageid" ||
-      lowerKey === "start_page_id" ||
-      lowerKey === "startpagekey" ||
-      lowerKey === "start_pagekey" ||
-      lowerKey === "start_page_key"
-    )
-      return "start_page_id";
-    if (lowerKey === "fileid" || lowerKey === "file_id" || lowerKey === "attachmentid" || lowerKey === "attachment_id")
-      return "attachment_id";
-    if (lowerKey === "anchortext" || lowerKey === "anchor_text" || lowerKey === "keyspan" || lowerKey === "key_span")
-      return "anchor_text";
-    if (lowerKey === "reasoning" || lowerKey === "value") return lowerKey;
-    if (lowerKey === "timestamps" || lowerKey === "timestamp" || lowerKey === "timestamps") return "timestamps";
-
-    return lowerKey;
-  };
-
-  const htmlEntityMap: Record<string, string> = {
-    "&quot;": '"',
-    "&apos;": "'",
-    "&lt;": "<",
-    "&gt;": ">",
-    "&amp;": "&",
-  };
-  const htmlEntityRegex = /&(?:quot|apos|lt|gt|amp);/g;
-  const decodeHtmlEntities = (str: string) => {
-    return str.replace(htmlEntityRegex, match => htmlEntityMap[match] || match);
-  };
-
-  const textAttributeRegex =
-    /(fullPhrase|full_phrase|anchorText|anchor_text|keySpan|key_span|reasoning|value)\s*=\s*(['"])([\s\S]*?)(?=\s+(?:line_ids|lineIds|timestamps|fileId|file_id|attachmentId|attachment_id|start_page_id|start_pageId|startPageId|start_page_key|start_pageKey|startPageKey|anchorText|anchor_text|keySpan|key_span|reasoning|value|full_phrase)\s*=|\s*\/>|['"]>)/gm;
-
-  normalized = normalized.replace(textAttributeRegex, (_match, key, openQuote, rawContent) => {
+  normalized = normalized.replace(TEXT_ATTRIBUTE_REGEX, (_match, key, openQuote, rawContent) => {
     let content = rawContent;
 
     if (content.endsWith(openQuote)) {
@@ -456,56 +456,53 @@ const normalizeCitationContent = (input: string): string => {
   const MAX_RANGE_SIZE = 1000;
   const SAMPLE_COUNT = 50;
 
-  normalized = normalized.replace(
-    /(line_ids|lineIds|timestamps)=['"]?([[\](){}A-Za-z0-9_\-, ]+)['"]?(\s*\/?>|\s+)/gm,
-    (_match, key, rawValue, trailingChars) => {
-      // Clean up the value (remove generic text, keep numbers/separators)
-      let cleanedValue = rawValue.replace(/[A-Za-z[\](){}]/g, "");
+  normalized = normalized.replace(LINE_IDS_ATTRIBUTE_REGEX, (_match, key, rawValue, trailingChars) => {
+    // Clean up the value (remove generic text, keep numbers/separators)
+    let cleanedValue = rawValue.replace(/[A-Za-z[\](){}]/g, "");
 
-      // Expand ranges (e.g., "1-3" -> "1,2,3")
-      cleanedValue = cleanedValue.replace(/(\d+)-(\d+)/g, (_rangeMatch: string, start: string, end: string) => {
-        const startNum = parseInt(start, 10);
-        const endNum = parseInt(end, 10);
+    // Expand ranges (e.g., "1-3" -> "1,2,3")
+    cleanedValue = cleanedValue.replace(RANGE_EXPANSION_REGEX, (_rangeMatch: string, start: string, end: string) => {
+      const startNum = parseInt(start, 10);
+      const endNum = parseInt(end, 10);
 
-        // Handle ascending range
-        if (startNum <= endNum) {
-          const rangeSize = endNum - startNum + 1;
-          // For large ranges, use sampling to maintain accuracy
-          if (rangeSize > MAX_RANGE_SIZE) {
-            const samples = [startNum];
-            const sampleCount = Math.min(SAMPLE_COUNT - 2, rangeSize - 2);
-            if (sampleCount > 0) {
-              // Use Math.floor for predictable sampling, ensuring step >= 1
-              const step = Math.max(1, Math.floor((endNum - startNum) / (sampleCount + 1)));
-              for (let i = 1; i <= sampleCount; i++) {
-                const sample = startNum + step * i;
-                // Ensure we don't exceed the range end
-                if (sample < endNum) {
-                  samples.push(sample);
-                }
+      // Handle ascending range
+      if (startNum <= endNum) {
+        const rangeSize = endNum - startNum + 1;
+        // For large ranges, use sampling to maintain accuracy
+        if (rangeSize > MAX_RANGE_SIZE) {
+          const samples = [startNum];
+          const sampleCount = Math.min(SAMPLE_COUNT - 2, rangeSize - 2);
+          if (sampleCount > 0) {
+            // Use Math.floor for predictable sampling, ensuring step >= 1
+            const step = Math.max(1, Math.floor((endNum - startNum) / (sampleCount + 1)));
+            for (let i = 1; i <= sampleCount; i++) {
+              const sample = startNum + step * i;
+              // Ensure we don't exceed the range end
+              if (sample < endNum) {
+                samples.push(sample);
               }
             }
-            samples.push(endNum);
-            return samples.join(",");
           }
-          const range = [];
-          for (let i = startNum; i <= endNum; i++) {
-            range.push(i);
-          }
-          return range.join(",");
-        } else {
-          // Fallback for weird descending ranges or just return start
-          return String(startNum);
+          samples.push(endNum);
+          return samples.join(",");
         }
-      });
+        const range = [];
+        for (let i = startNum; i <= endNum; i++) {
+          range.push(i);
+        }
+        return range.join(",");
+      } else {
+        // Fallback for weird descending ranges or just return start
+        return String(startNum);
+      }
+    });
 
-      // Normalize commas
-      cleanedValue = cleanedValue.replace(/,+/g, ",").replace(/^,|,$/g, "");
+    // Normalize commas
+    cleanedValue = cleanedValue.replace(/,+/g, ",").replace(/^,|,$/g, "");
 
-      // Return standardized format: key='value' + preserved trailing characters (space or />)
-      return `${canonicalizeCiteAttributeKey(key)}='${cleanedValue}'${trailingChars}`;
-    },
-  );
+    // Return standardized format: key='value' + preserved trailing characters (space or />)
+    return `${canonicalizeCiteAttributeKey(key)}='${cleanedValue}'${trailingChars}`;
+  });
 
   // 4. Re-order <cite ... /> attributes to match the strict parsing expectations in `citationParser.ts`
   // (the parser uses regexes that assume a canonical attribute order).
