@@ -24,6 +24,7 @@
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { safeReplace } from "../utils/regexSafety.js";
 
 // =============================================================================
 // DEFAULT MESSAGES (English)
@@ -259,6 +260,10 @@ export type TranslateFunction = (key: MessageKey, values?: MessageValues) => str
  * Create a bound `t()` function from a (partial) messages dictionary.
  * Missing keys fall back to the default English message.
  *
+ * **Security Note**: Interpolated values are converted to strings but NOT HTML-escaped.
+ * Always render translations through JSX/React (which auto-escapes). Never use
+ * `dangerouslySetInnerHTML` with translated strings containing user input.
+ *
  * @param messages - Partial override dictionary (e.g., French translations)
  * @returns A `t(key, values?)` function
  *
@@ -275,7 +280,7 @@ export function createTranslator(
   return function t(key: MessageKey, values?: MessageValues): string {
     const template = (messages as Record<string, string>)[key] ?? defaultMessages[key];
     if (!values) return template;
-    return template.replace(/\{(\w+)\}/g, (match, k: string) => {
+    return safeReplace(template, /\{(\w+)\}/g, (match, k: string) => {
       const v = values[k];
       return v != null ? String(v) : match;
     });
@@ -328,9 +333,13 @@ export interface DeepCitationI18nProviderProps {
  * Provides custom translations to all DeepCitation React components
  * within its subtree.
  *
+ * **Performance**: The `messages` prop is used as a `useMemo` dependency.
+ * If you define messages inline, memoize the object (e.g., with `useMemo` or
+ * a module-level constant) to avoid recreating the translator every render.
+ *
  * @example
  * ```tsx
- * const messages = { "status.verified": "Vérifié" };
+ * const messages = useMemo(() => ({ "status.verified": "Vérifié" }), []);
  * <DeepCitationI18nProvider messages={messages}>
  *   <App />
  * </DeepCitationI18nProvider>

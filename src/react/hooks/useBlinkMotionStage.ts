@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BLINK_ENTER_STEP_MS,
   BLINK_ENTER_TOTAL_MS,
@@ -55,7 +55,11 @@ export function useBlinkMotionStage(
   timingOverride?: BlinkMotionTimingOverride,
 ): { mounted: boolean; stage: BlinkMotionStage; prefersReducedMotion: boolean } {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const timing = timingOverride ?? resolveProfile(profile, speed);
+  const timing = useMemo(
+    () => timingOverride ?? resolveProfile(profile, speed),
+    // Use primitive fields as deps to avoid reference-identity fragility when callers pass inline objects.
+    [timingOverride?.enterStepMs, timingOverride?.enterTotalMs, timingOverride?.exitMs, profile, speed],
+  );
   const [mounted, setMounted] = useState(active);
   const [stage, setStage] = useState<BlinkMotionStage>(active ? "steady" : "idle");
 
