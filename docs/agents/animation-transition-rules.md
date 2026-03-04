@@ -245,6 +245,54 @@ Always consult `usePrefersReducedMotion()` before applying motion. Rules:
 
 ---
 
+## Evidence Image View Transition
+
+The keyhole→expanded-keyhole transition uses a CSS View Transition (`viewTransitionName: DC_EVIDENCE_VT_NAME`) to morph the evidence image between states.
+
+### VT Element Assignment
+
+| View state | VT-named element | Why |
+|---|---|---|
+| Keyhole strip (old) | `containerRef` — scroll container with `height: stripHeightStyle` | Height-constrained visible rect |
+| Expanded-keyhole (new, non-fill) | `containerRef` — scroll container with `maxHeight: min(600px, 80dvh)` | Height-constrained visible rect — matches old state |
+| Expanded-page (new, fill) | `animatedShellRef` (or annotation marker if `annotationVtRect`) | Full-height content fills popover |
+
+**Critical**: In non-fill mode, both old and new VT elements must be height-constrained scroll containers. If the VT name is on an unconstrained inner `<div>`, the browser morphs to the full image height — overshooting the visible area.
+
+### Easing & Timing
+
+| Direction | Duration | Easing | Constant |
+|---|---|---|---|
+| Expand | `VT_EVIDENCE_EXPAND_MS` (180ms) | `EASE_COLLAPSE` — decisive deceleration, no overshoot | `ANIM_STANDARD_MS` tier |
+| Collapse | `VT_EVIDENCE_COLLAPSE_MS` (120ms) | `EASE_COLLAPSE` — decisive deceleration | `ANIM_FAST_MS` tier |
+
+**Do not use `EASE_EXPAND` for VT geometry morphs.** Its ~6% overshoot causes the rect to briefly expand past the target, which looks wrong for image morphs. `EASE_EXPAND` is designed for container height morphs where the overshoot is more subtle.
+
+### Cross-Fade Strategy
+
+Dip-then-reveal: old snapshot fades to ~45% early so the user perceives spatial motion over content detail, then the new snapshot fades in crisp near the end.
+
+```css
+@keyframes dc-evidence-fade-out {
+  0%   { opacity: 1; }
+  30%  { opacity: 0.45; }   /* Dip early — blur the detail, show the motion */
+  100% { opacity: 0; }
+}
+@keyframes dc-evidence-fade-in {
+  0%   { opacity: 0; }
+  60%  { opacity: 0; }   /* Hidden during geometry morph */
+  100% { opacity: 1; }   /* Reveal near end when geometry settled */
+}
+```
+
+The early opacity dip acts as perceptual motion blur — the user tracks the shape moving, not individual text lines. The new content appears crisp once the geometry has settled.
+
+### Reduced Motion
+
+`prefers-reduced-motion: reduce` sets `animation-duration: 0s !important` on all VT pseudo-elements — instant swap, no morph.
+
+---
+
 ## Anti-Patterns
 
 - **No inline easing values.** Use `EASE_EXPAND` / `EASE_COLLAPSE` from `constants.ts`.

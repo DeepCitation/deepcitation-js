@@ -246,6 +246,11 @@ console.log("[API] Input:", sanitizeForLog(userInput));
 | `handleImageError()` | `src/react/imageUtils.ts` | Shared image error handler (`display: "none"`) |
 | `handleImageErrorOpacity()` | `src/react/imageUtils.ts` | Shared image error handler (`opacity: "0"`, preserves layout) |
 | `HIDE_SCROLLBAR_STYLE` | `src/react/constants.ts` | Scrollbar-hiding CSS (`scrollbarWidth: "none"`) |
+| `EASE_EXPAND` | `src/react/constants.ts` | Spring-like expand easing (~6% overshoot) |
+| `VT_EVIDENCE_EXPAND_MS` | `src/react/constants.ts` | Evidence image VT expand duration (180ms) |
+| `VT_EVIDENCE_COLLAPSE_MS` | `src/react/constants.ts` | Evidence image VT collapse duration (120ms) |
+| `VT_EVIDENCE_DIP_OPACITY` | `src/react/constants.ts` | Cross-fade old-snapshot opacity dip (0.45) |
+| `isStrategyOverride()` | `src/drawing/citationDrawing.ts` | True when verifiedFullPhrase === verifiedAnchorText |
 | `acquireScrollLock()`, `releaseScrollLock()` | `src/react/scrollLock.ts` | Ref-counted body scroll lock (shared by popover + drawer) |
 | `triggerHaptic()` | `src/react/haptics.ts` | Fire haptic feedback for a named interaction event |
 | `HapticEvent` | `src/react/haptics.ts` | Union type of haptic event names ("expand" \| "collapse") |

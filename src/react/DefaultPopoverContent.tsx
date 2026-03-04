@@ -20,6 +20,9 @@ import {
   POPOVER_CONTAINER_BASE_CLASSES,
   POPOVER_MORPH_COLLAPSE_MS,
   POPOVER_MORPH_EXPAND_MS,
+  VT_EVIDENCE_COLLAPSE_MS,
+  VT_EVIDENCE_DIP_OPACITY,
+  VT_EVIDENCE_EXPAND_MS,
 } from "./constants.js";
 import { EvidenceTray, InlineExpandedImage, normalizeScreenshotSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { getExpandedPopoverWidth, getSummaryPopoverWidth } from "./expandedWidthPolicy.js";
@@ -448,26 +451,31 @@ function EvidenceZone({
 
   return (
     <>
-      {/* View Transitions CSS for evidence image morph between slots */}
+      {/* View Transitions CSS for evidence image morph between slots.
+          Both directions use EASE_COLLAPSE (decisive deceleration, no overshoot).
+          Duration is asymmetric: 180ms expand (ANIM_STANDARD_MS), 120ms collapse (ANIM_FAST_MS).
+          Cross-fade: old snapshot dips to ~45% opacity early so the user perceives
+          the spatial motion rather than content detail, then the new snapshot
+          fades in crisp near the end. */}
       <style>{`
         ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
-          animation: dc-evidence-fade-out 220ms cubic-bezier(0.25, 0.25, 0.5, 1) both;
+          animation: dc-evidence-fade-out ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
         }
         ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
-          animation: dc-evidence-fade-in 220ms cubic-bezier(0.25, 0.25, 0.5, 1) both;
+          animation: dc-evidence-fade-in ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
         }
         ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
-          animation-duration: 220ms;
-          animation-timing-function: cubic-bezier(0.25, 0.25, 0.5, 1);
+          animation-duration: ${VT_EVIDENCE_EXPAND_MS}ms;
+          animation-timing-function: ${EASE_COLLAPSE};
         }
         :root[data-dc-collapse] ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
         :root[data-dc-collapse] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
-          animation-duration: 120ms;
-          animation-timing-function: cubic-bezier(0.3, 0.2, 0.5, 1);
+          animation-duration: ${VT_EVIDENCE_COLLAPSE_MS}ms;
+          animation-timing-function: ${EASE_COLLAPSE};
         }
         :root[data-dc-collapse] ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
-          animation-duration: 120ms;
-          animation-timing-function: cubic-bezier(0.3, 0.2, 0.5, 1);
+          animation-duration: ${VT_EVIDENCE_COLLAPSE_MS}ms;
+          animation-timing-function: ${EASE_COLLAPSE};
         }
         @media (prefers-reduced-motion: reduce) {
           ::view-transition-group(${DC_EVIDENCE_VT_NAME}),
@@ -477,12 +485,14 @@ function EvidenceZone({
           }
         }
         @keyframes dc-evidence-fade-out {
-          from { opacity: 1; }
-          to { opacity: 0; }
+          0%   { opacity: 1; }
+          30%  { opacity: ${VT_EVIDENCE_DIP_OPACITY}; }
+          100% { opacity: 0; }
         }
         @keyframes dc-evidence-fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          0%   { opacity: 0; }
+          60%  { opacity: 0; }
+          100% { opacity: 1; }
         }
       `}</style>
       {/* Slot A: summary — EvidenceTray keyhole strip */}

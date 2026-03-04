@@ -11,7 +11,7 @@
 
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
+import { isStrategyOverride, shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt } from "../types/search.js";
@@ -1345,13 +1345,14 @@ function applyGestureTransform(
   wrapper: HTMLDivElement,
   gestureZoom: number,
   committedZoom: number,
-  anchor: { mx: number; my: number; sx: number; sy: number },
+  anchor: { mx: number; my: number; sx: number; sy: number; wrapperOffsetLeft?: number },
 ): void {
   if (committedZoom === 0) return;
   const s = gestureZoom / committedZoom;
-  const cx = anchor.mx + anchor.sx;
-  const cy = anchor.my + anchor.sy;
-  wrapper.style.transform = `translate(${cx * (1 - s)}px, ${cy * (1 - s)}px) scale(${s})`;
+  // Wrapper-relative coordinates: subtract wrapperOffsetLeft (centering margin).
+  const wx = anchor.mx + anchor.sx - (anchor.wrapperOffsetLeft ?? 0);
+  const wy = anchor.my + anchor.sy;
+  wrapper.style.transform = `translate(${wx * (1 - s)}px, ${wy * (1 - s)}px) scale(${s})`;
 }
 
 /**
@@ -1485,9 +1486,12 @@ export function InlineExpandedImage({
 
   // Anchor-aware scroll/zoom target: when anchor text is highlighted, center on it
   // instead of the (potentially wider) full phrase box.
+  const vAnchor = verification?.verifiedAnchorText;
+  const vPhrase = verification?.verifiedFullPhrase;
   const anchorHighlightActive =
     effectiveAnchorItem &&
-    shouldHighlightAnchorText(verification?.verifiedAnchorText, verification?.verifiedFullPhrase);
+    (shouldHighlightAnchorText(vAnchor, vPhrase) ||
+      (isStrategyOverride(vAnchor, vPhrase) && shouldHighlightAnchorText(vAnchor, effectivePhraseItem?.text)));
   const scrollTarget = anchorHighlightActive ? effectiveAnchorItem : effectivePhraseItem;
 
   // Track container size via ResizeObserver (both width and height for fit-to-screen).
@@ -1813,12 +1817,15 @@ export function InlineExpandedImage({
       // Update anchor to current midpoint + scroll (follows fingers)
       const mid = getTouchMidpoint(e.touches);
       const rect = el.getBoundingClientRect();
+      const wrapperEl = imageWrapperRef.current;
+      const wrapperRect = wrapperEl ? wrapperEl.getBoundingClientRect() : rect;
       touchGestureAnchorRef.current = {
         mx: mid.x - rect.left,
         my: mid.y - rect.top,
         sx: el.scrollLeft,
         sy: el.scrollTop,
         startZoom: initialZoom,
+        wrapperOffsetLeft: wrapperRect.left - rect.left + el.scrollLeft,
       };
 
       // Apply transform directly to DOM — zero React renders during gesture
@@ -1878,11 +1885,25 @@ export function InlineExpandedImage({
     }
 
     // Compute scroll correction: keep the anchor point visually stable.
+    // wx/wy = wrapper-relative content coords under the anchor at gesture start.
+    // ratio  = new zoom / start zoom — how much content coords have scaled.
+    // newMarginLeft = centering margin at the new zoom level.
+    // Final scroll = margin + scaled wrapper-coord − viewport-local anchor offset.
     const startZoom = anchor.startZoom;
     if (startZoom > 0) {
       const ratio = zoom / startZoom;
-      el.scrollLeft = (anchor.mx + anchor.sx) * ratio - anchor.mx;
-      el.scrollTop = (anchor.my + anchor.sy) * ratio - anchor.my;
+      const wx = anchor.mx + anchor.sx - (anchor.wrapperOffsetLeft ?? 0);
+      const wy = anchor.my + anchor.sy;
+
+      const newZoomedWidth = naturalWidth ? naturalWidth * zoom : 0;
+      const newMarginLeft =
+        newZoomedWidth > 0 && newZoomedWidth < el.clientWidth ? Math.round((el.clientWidth - newZoomedWidth) / 2) : 0;
+
+      // Clamp to scrollable bounds — prevents overshoot during rapid zoom changes.
+      const rawLeft = newMarginLeft + wx * ratio - anchor.mx;
+      const rawTop = wy * ratio - anchor.my;
+      el.scrollLeft = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, rawLeft));
+      el.scrollTop = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, rawTop));
     }
     touchGestureAnchorRef.current = null;
     expandedWheelAnchorRef.current = null;
@@ -1890,6 +1911,15 @@ export function InlineExpandedImage({
 
   // Compute effective image width for zoom
   const zoomedWidth = fill && naturalWidth ? naturalWidth * zoom : undefined;
+
+  // Dynamic centering margin: centers the image when zoomed smaller than the
+  // container, zero when overflowing. Avoids CSS centering which clips the
+  // start edge of overflowing content.
+  const containerWidth = containerSize?.width ?? 0;
+  const centeringMarginLeft =
+    zoomedWidth !== undefined && containerWidth > 0 && zoomedWidth < containerWidth
+      ? Math.round((containerWidth - zoomedWidth) / 2)
+      : 0;
 
   // Show zoom controls in fill mode when image has loaded
   const showZoomControls = fill && imageLoaded && naturalWidth !== null;
@@ -1975,6 +2005,11 @@ export function InlineExpandedImage({
             fill && "flex-1 min-h-0",
           )}
           style={{
+            // VT name on the scroll container so the morph targets the visible
+            // viewport, not the full-height inner div (which would overshoot).
+            // When annotation data provides a positioned marker, the VT name
+            // moves there instead (see annotationVtRect below).
+            ...(!annotationVtRect ? { viewTransitionName: DC_EVIDENCE_VT_NAME } : {}),
             ...(fill ? {} : { maxHeight: "min(600px, 80dvh)" }),
             overscrollBehavior: "none",
             cursor: isDragging ? "move" : "zoom-out",
@@ -2043,11 +2078,8 @@ export function InlineExpandedImage({
             key={src}
             ref={animatedShellRef}
             style={{
-              // In fill mode with annotation data, the VT name moves to a positioned
-              // marker div at the annotation rect (below) so the geometry morph tracks
-              // the annotation region, not the whole page. Without annotation data,
-              // keep VT name here as a fallback.
-              ...(!annotationVtRect ? { viewTransitionName: DC_EVIDENCE_VT_NAME } : {}),
+              // VT name lives on containerRef (above) or the annotation marker (below).
+              // Not on this shell — its unconstrained height would overshoot.
               ...(annotationOrigin
                 ? { transformOrigin: `${annotationOrigin.xPercent}% ${annotationOrigin.yPercent}%` }
                 : undefined),
@@ -2069,6 +2101,7 @@ export function InlineExpandedImage({
                 position: "relative",
                 display: "inline-block",
                 ...(zoomedWidth !== undefined ? { width: zoomedWidth } : {}),
+                ...(centeringMarginLeft > 0 ? { marginLeft: centeringMarginLeft } : {}),
               }}
             >
               <img

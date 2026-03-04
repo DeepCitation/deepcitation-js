@@ -95,7 +95,7 @@ const visibleText = extractVisibleText(response.content);
 
 A set of high-quality React components to help you build production-ready attribution systems. Skip the complexity of reading multiple file formats, rendering multiple formats, coordinate mapping, and visual proof generation.
 
-- [CitationComponent](https://github.com/DeepCitation/deepcitation/tree/main/src/react/Citation.tsx)
+- [Citation](https://github.com/DeepCitation/deepcitation/tree/main/src/react/Citation.tsx)
 - [CitationDrawer](https://github.com/DeepCitation/deepcitation/tree/main/src/react/CitationDrawer.tsx)
 
 

@@ -122,6 +122,21 @@ function countWords(text: string): number {
  *
  * @throws Error if either input exceeds MAX_REGEX_INPUT_LENGTH (~100KB)
  */
+/**
+ * True when the API returned verifiedFullPhrase identical to verifiedAnchorText —
+ * a "strategy override" where the model collapsed the full phrase to just the anchor.
+ */
+export function isStrategyOverride(
+  verifiedAnchorText: string | null | undefined,
+  verifiedFullPhrase: string | null | undefined,
+): boolean {
+  return (
+    verifiedAnchorText != null &&
+    verifiedFullPhrase != null &&
+    verifiedAnchorText.toLowerCase() === verifiedFullPhrase.toLowerCase()
+  );
+}
+
 export function shouldHighlightAnchorText(
   anchorText: string | null | undefined,
   fullPhrase: string | null | undefined,
@@ -157,7 +172,7 @@ export function computeKeySpanHighlight<T extends { text?: string }>(
   anchorTextMatchDeepItems: T[] | undefined,
   verifiedAnchorText: string | null | undefined,
   verifiedFullPhrase: string | null | undefined,
-): { showKeySpanHighlight: boolean; anchorTextItem: T | undefined } {
+): { showKeySpanHighlight: boolean; anchorTextItem: T | undefined; anchorTextItems: T[] } {
   const anchorTextItem = anchorTextMatchDeepItems?.[0];
   const phraseText = phraseMatchDeepItem?.text;
   const anchorTextText = anchorTextItem?.text;
@@ -165,8 +180,16 @@ export function computeKeySpanHighlight<T extends { text?: string }>(
   const hasDistinctKeySpanBox = Boolean(
     anchorTextText && phraseText && anchorTextText.toLowerCase() !== phraseText.toLowerCase(),
   );
-  const showKeySpanHighlight =
-    hasDistinctKeySpanBox && shouldHighlightAnchorText(verifiedAnchorText, verifiedFullPhrase);
 
-  return { showKeySpanHighlight, anchorTextItem };
+  // Primary check: anchorText vs verifiedFullPhrase.
+  // Fallback: anchorText vs phraseMatchDeepItem.text — ONLY when isStrategyOverride()
+  // (API collapsed full phrase to just the anchor text, but the matched text box spans more).
+  const showKeySpanHighlight =
+    hasDistinctKeySpanBox &&
+    (shouldHighlightAnchorText(verifiedAnchorText, verifiedFullPhrase) ||
+      (isStrategyOverride(verifiedAnchorText, verifiedFullPhrase) &&
+        shouldHighlightAnchorText(verifiedAnchorText, phraseText)));
+
+  // anchorTextItems: full array for downstream consumers (e.g., multi-item highlight rendering).
+  return { showKeySpanHighlight, anchorTextItem, anchorTextItems: anchorTextMatchDeepItems ?? [] };
 }
