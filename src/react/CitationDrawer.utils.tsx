@@ -131,15 +131,12 @@ export function groupCitationsBySource(
     const sourceDomain = isUrlSource ? firstCitation.domain || extractDomain(firstCitation.url) : undefined;
 
     return {
-      sourceName:
-        isUrlSource
-          ? firstCitation.siteName || sourceDomain || "Unknown Source"
-          : firstVerification?.label || firstCitation.attachmentId || "Document",
+      sourceName: isUrlSource
+        ? firstCitation.siteName || sourceDomain || "Unknown Source"
+        : firstVerification?.label || firstCitation.attachmentId || "Document",
       sourceDomain,
       sourceFavicon:
-        firstVerification?.url?.verifiedFaviconUrl ||
-        (isUrlSource ? firstCitation.faviconUrl : undefined) ||
-        undefined,
+        firstVerification?.url?.verifiedFaviconUrl || (isUrlSource ? firstCitation.faviconUrl : undefined) || undefined,
       citations: items,
       additionalCount: items.length - 1,
     };

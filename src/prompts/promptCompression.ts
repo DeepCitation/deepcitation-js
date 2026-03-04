@@ -177,7 +177,9 @@ export function decompressPromptIds<T>(compressed: T | string, prefixMap: Record
   if (prefixKeys.length === 0) return compressed;
 
   // Prepare sorted [prefix, full] entries (longest prefix first)
-  const entries = prefixKeys.map(prefix => [prefix, prefixMap[prefix]] as const).sort((a, b) => b[0].length - a[0].length);
+  const entries = prefixKeys
+    .map(prefix => [prefix, prefixMap[prefix]] as const)
+    .sort((a, b) => b[0].length - a[0].length);
 
   // Decide whether we're working on a string or an object
   let text: string;
