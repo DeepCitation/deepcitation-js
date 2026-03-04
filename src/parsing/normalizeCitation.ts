@@ -8,12 +8,13 @@ import { getCitationStatus } from "./parseCitation.js";
 /**
  * Module-level compiled regexes for hot-path operations.
  * Compiled once at module load to avoid per-call recompilation.
- *
- * Safety: /g regexes here are only used via String.prototype.replace(), which
- * resets lastIndex to 0 per spec (ES2023 §22.2.5.11 step 5) before iterating.
- * No manual lastIndex reset is needed when exclusively using .replace().
  */
 const PAGE_NUMBER_REGEX = /page[_a-zA-Z]*(\d+)/;
+/**
+ * Global regex used exclusively via String.prototype.replace(), which resets
+ * lastIndex to 0 per spec (ES2023 §22.2.5.11 step 5) before iterating.
+ * No manual lastIndex reset is needed.
+ */
 const RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
 
 const CITE_ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
