@@ -28,6 +28,8 @@ export function startEvidenceViewTransition(
   if (options?.isCollapse) {
     document.documentElement.dataset.dcCollapse = "";
   }
+  // Safe cast: the `"startViewTransition" in document` guard above ensures
+  // this property exists at runtime before we reach this point.
   const transition = (
     document as Document & { startViewTransition: (cb: () => void) => { finished: Promise<void> } }
   ).startViewTransition(() => {

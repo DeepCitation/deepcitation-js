@@ -179,6 +179,22 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     // props create new identities each render, causing useEffect to teardown and
     // re-register listeners. Because useEffect runs *after* paint, there are
     // brief gaps between teardown and re-setup where no listener exists.
+    // Cache the page scroll container so wheel/touch handlers avoid repeated
+    // getComputedStyle() walks on every event. Resolved once on mount.
+    const scrollContainerRef = React.useRef<Element | null>(null);
+    React.useEffect(() => {
+      if (isMounted && triggerRef.current) {
+        scrollContainerRef.current = findPageScrollEl(triggerRef.current);
+      } else {
+        scrollContainerRef.current = null;
+      }
+    }, [isMounted, triggerRef]);
+
+    const getPageScrollEl = React.useCallback(
+      () => scrollContainerRef.current ?? findPageScrollEl(triggerRef.current),
+      [triggerRef],
+    );
+
     const onEscapeKeyDownRef = React.useRef(onEscapeKeyDown);
     const onOpenChangeRef = React.useRef(onOpenChange);
     React.useLayoutEffect(() => {
@@ -237,12 +253,12 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         e.preventDefault();
         const pixelDelta =
           e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
-        findPageScrollEl(triggerRef.current).scrollTop += pixelDelta;
+        getPageScrollEl().scrollTop += pixelDelta;
       };
 
       el.addEventListener("wheel", onWheel, { passive: false });
       return () => el.removeEventListener("wheel", onWheel);
-    }, [isMounted, triggerRef]);
+    }, [isMounted, getPageScrollEl]);
 
     // Touch scroll passthrough: mirrors the wheel handler above for mobile.
     // Touches on the popover's position:fixed surface dead-end at the viewport
@@ -327,7 +343,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
 
         // Nothing can scroll — forward to page
         e.preventDefault();
-        const pageEl = findPageScrollEl(triggerRef.current);
+        const pageEl = getPageScrollEl();
         pageEl.scrollTop -= dy;
         // Reset start position so next delta is incremental
         startX = t.clientX;
@@ -358,7 +374,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
               if (Math.abs(vy) > 0.08) {
                 let frameVy = vy * 16.67;
                 let lastTime = performance.now();
-                const pageEl = findPageScrollEl(triggerRef.current);
+                const pageEl = getPageScrollEl();
 
                 const coast = () => {
                   const now = performance.now();
@@ -394,7 +410,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         el.removeEventListener("touchend", onTouchEnd);
         el.removeEventListener("touchcancel", onTouchEnd);
       };
-    }, [isMounted, triggerRef]);
+    }, [isMounted, getPageScrollEl]);
 
     if (!isMounted) return null;
 
