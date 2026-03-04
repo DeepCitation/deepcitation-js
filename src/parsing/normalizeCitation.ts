@@ -24,7 +24,6 @@ const CITE_ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
   page_key: "start_page_id",
   startpageid: "start_page_id",
   start_pageid: "start_page_id",
-  start_page_id: "start_page_id",
   startpagekey: "start_page_id",
   start_pagekey: "start_page_id",
   start_page_key: "start_page_id",

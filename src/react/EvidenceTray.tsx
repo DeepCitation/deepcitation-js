@@ -701,7 +701,7 @@ export function AnchorTextFocusedImage({
   } else if (isPannable) {
     keyholeAriaLabel = "Drag or click arrows to pan";
   } else if (canExpand) {
-    keyholeAriaLabel = "click to view full size";
+    keyholeAriaLabel = "Click to view full size";
   }
 
   const getDisplayedScale = useCallback(

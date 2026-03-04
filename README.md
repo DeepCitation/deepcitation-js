@@ -30,7 +30,7 @@ DeepCitation turns model citations into deterministic, inspectable proof.
 #### With bun
 
 ```sh
-bun install deepcitation
+bun add deepcitation
 ```
 
 #### With npm
@@ -48,7 +48,7 @@ yarn add deepcitation
 #### With pnpm
 
 ```sh
-pnpm install deepcitation
+pnpm add deepcitation
 ```
 
 ## Quick Start
@@ -61,7 +61,9 @@ const deepCitation = new DeepCitation({
 });
 
 // 1) Process documents 
-const { deepTextPromptPortion } = await deepCitation.prepareAttachments([  { file: pdfBuffer, filename: "report.pdf" } ]);
+const { deepTextPromptPortion } = await deepCitation.prepareAttachments([
+  { file: pdfBuffer, filename: "report.pdf" },
+]);
 
 // 2) Wrap prompts before calling your model
 const { enhancedSystemPrompt, enhancedUserPrompt } = wrapCitationPrompt({
@@ -77,6 +79,9 @@ const response = await yourLLM.chat({
 
 // 3) Verify citations
 const { verifications } = await deepCitation.verify({ llmOutput: response.content });
+
+// 4) Strip citation metadata before showing model text to users
+const visibleText = extractVisibleText(response.content);
 ```
 
 > **Heads up:** `verifications` is a `Record<string, Verification>` object, not an array.

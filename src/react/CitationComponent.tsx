@@ -1637,7 +1637,6 @@ const UrlStatusIndicator = ({
 }: UrlStatusIndicatorProps) => {
   // "none" means no status indicator at all
   if (indicatorVariant === "none") return null;
-  const customBlockedIndicator = renderBlockedIndicator?.(fetchStatus, errorMessage) ?? null;
 
   // Dot variant: simple colored dots for all statuses
   if (indicatorVariant === "dot") {
@@ -1664,7 +1663,7 @@ const UrlStatusIndicator = ({
       );
     }
     if (isBlocked) {
-      if (customBlockedIndicator) return <>{customBlockedIndicator}</>;
+      if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
       return (
         <StatusIconWrapper ariaLabel={statusInfo.label}>
           <span
@@ -1676,7 +1675,7 @@ const UrlStatusIndicator = ({
       );
     }
     if (isError) {
-      if (customBlockedIndicator) return <>{customBlockedIndicator}</>;
+      if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
       return (
         <StatusIconWrapper ariaLabel={statusInfo.label}>
           <span
@@ -1718,7 +1717,7 @@ const UrlStatusIndicator = ({
 
   // Blocked: Lock icon
   if (isBlocked) {
-    if (customBlockedIndicator) return <>{customBlockedIndicator}</>;
+    if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
     return (
       <StatusIconWrapper className="text-amber-500 dark:text-amber-400" ariaLabel={statusInfo.label}>
         <LockIcon className="w-full h-full" />
@@ -1728,7 +1727,7 @@ const UrlStatusIndicator = ({
 
   // Error: X in circle icon (centered, not subscript)
   if (isError) {
-    if (customBlockedIndicator) return <>{customBlockedIndicator}</>;
+    if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
     return (
       <StatusIconWrapper className="text-red-500 dark:text-red-400" ariaLabel={statusInfo.label}>
         <XCircleIcon className="w-full h-full" />
