@@ -447,6 +447,18 @@ export function isValidProofImageSrc(src: unknown): src is string {
  */
 export const ANCHOR_HIGHLIGHT_VAR = "--dc-anchor-highlight";
 
+/**
+ * Inline style for superscript citation markers.
+ * Positions the element as a true superscript with consistent sizing.
+ */
+export const SUPERSCRIPT_STYLE: React.CSSProperties = {
+  fontSize: "0.65em",
+  lineHeight: 0,
+  position: "relative",
+  top: "-0.65em",
+  verticalAlign: "baseline",
+};
+
 /** Inline style for anchor text highlight background */
 export const ANCHOR_HIGHLIGHT_STYLE: React.CSSProperties = {
   backgroundColor: `var(${ANCHOR_HIGHLIGHT_VAR}, ${ANCHOR_HIGHLIGHT_COLOR})`,
