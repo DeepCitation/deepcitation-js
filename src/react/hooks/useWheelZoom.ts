@@ -51,6 +51,8 @@ export interface WheelZoomAnchor {
   sy: number;
   /** Committed zoom at gesture start. */
   startZoom: number;
+  /** Wrapper's left offset within the scroll container at gesture start (centering margin). */
+  wrapperOffsetLeft: number;
 }
 
 export interface UseWheelZoomReturn {
@@ -75,9 +77,11 @@ function applyGestureTransform(
 ): void {
   if (committedZoom === 0) return;
   const s = gestureZoom / committedZoom;
-  const cx = anchor.mx + anchor.sx;
-  const cy = anchor.my + anchor.sy;
-  wrapper.style.transform = `translate(${cx * (1 - s)}px, ${cy * (1 - s)}px) scale(${s})`;
+  // Wrapper-relative coordinates: subtract wrapperOffsetLeft (centering margin).
+  // When image overflows (wrapperOffsetLeft = 0), identical to container-absolute.
+  const wx = anchor.mx + anchor.sx - anchor.wrapperOffsetLeft;
+  const wy = anchor.my + anchor.sy;
+  wrapper.style.transform = `translate(${wx * (1 - s)}px, ${wy * (1 - s)}px) scale(${s})`;
 }
 
 export function useWheelZoom({
@@ -169,12 +173,14 @@ export function useWheelZoom({
         gestureZoomRef.current = gestureStartZoom;
         committedZoomRef.current = null;
         const rect = el.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
         gestureAnchorRef.current = {
           mx: e.clientX - rect.left,
           my: e.clientY - rect.top,
           sx: el.scrollLeft,
           sy: el.scrollTop,
           startZoom: gestureStartZoom,
+          wrapperOffsetLeft: wrapperRect.left - rect.left + el.scrollLeft,
         };
         wrapper.style.willChange = "transform";
         wrapper.style.transformOrigin = "0 0";

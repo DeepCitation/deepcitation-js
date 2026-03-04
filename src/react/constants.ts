@@ -530,6 +530,15 @@ export const EXPANDED_POPOVER_MAX_WIDTH = "calc(100dvw - 2rem)";
 export const EXPANDED_POPOVER_HEIGHT = "calc(100dvh - 2rem)";
 
 // =============================================================================
+// VIEW TRANSITION: EVIDENCE IMAGE MORPH
+// =============================================================================
+
+/** Duration (ms) for evidence image expand VT (keyhole → expanded). ANIM_STANDARD_MS tier. */
+export const VT_EVIDENCE_EXPAND_MS = 180;
+/** Duration (ms) for evidence image collapse VT (expanded → keyhole). ANIM_FAST_MS tier. */
+export const VT_EVIDENCE_COLLAPSE_MS = 120;
+
+// =============================================================================
 // ANIMATION & TRANSITION TIMINGS
 // =============================================================================
 //
@@ -613,6 +622,13 @@ export const SPINNER_TIMEOUT_MS = 5000;
 export const POPOVER_MORPH_EXPAND_MS = 120;
 /** Transition duration for popover morph collapse (expanded → summary). Faster = snappier close. */
 export const POPOVER_MORPH_COLLAPSE_MS = 80;
+
+/**
+ * Easing for expand transitions — spring-like with ~6% overshoot.
+ * Expanding content briefly surpasses its target, then settles back,
+ * giving the motion a sense of physical weight and liveliness.
+ */
+export const EASE_EXPAND = "cubic-bezier(0.34, 1.06, 0.64, 1)";
 
 /**
  * Easing for collapse transitions — decisive decelerate.

@@ -157,7 +157,7 @@ export function computeKeySpanHighlight<T extends { text?: string }>(
   anchorTextMatchDeepItems: T[] | undefined,
   verifiedAnchorText: string | null | undefined,
   verifiedFullPhrase: string | null | undefined,
-): { showKeySpanHighlight: boolean; anchorTextItem: T | undefined } {
+): { showKeySpanHighlight: boolean; anchorTextItem: T | undefined; anchorTextItems: T[] } {
   const anchorTextItem = anchorTextMatchDeepItems?.[0];
   const phraseText = phraseMatchDeepItem?.text;
   const anchorTextText = anchorTextItem?.text;
@@ -165,8 +165,14 @@ export function computeKeySpanHighlight<T extends { text?: string }>(
   const hasDistinctKeySpanBox = Boolean(
     anchorTextText && phraseText && anchorTextText.toLowerCase() !== phraseText.toLowerCase(),
   );
-  const showKeySpanHighlight =
-    hasDistinctKeySpanBox && shouldHighlightAnchorText(verifiedAnchorText, verifiedFullPhrase);
 
-  return { showKeySpanHighlight, anchorTextItem };
+  // Primary check: anchorText vs verifiedFullPhrase
+  // Fallback: anchorText vs phraseMatchDeepItem.text (catches strategy override case
+  // where verifiedFullPhrase === anchorText but matched text spans much more)
+  const showKeySpanHighlight =
+    hasDistinctKeySpanBox &&
+    (shouldHighlightAnchorText(verifiedAnchorText, verifiedFullPhrase) ||
+      shouldHighlightAnchorText(verifiedAnchorText, phraseText));
+
+  return { showKeySpanHighlight, anchorTextItem, anchorTextItems: anchorTextMatchDeepItems ?? [] };
 }
