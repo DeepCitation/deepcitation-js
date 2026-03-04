@@ -2,7 +2,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
-import { safeTest } from "../utils/regexSafety.js";
+
 import { UrlCitationComponent } from "./Citation.js";
 import {
   DOT_COLORS,
@@ -30,9 +30,6 @@ import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
 import { cn, isImageSource, isUrlCitation } from "./utils.js";
-
-/** Pattern for detecting converted PDF labels on URL citations */
-const PDF_LABEL_PATTERN = /\.pdf$/i;
 
 /**
  * Statuses that show only the successful hit (not the full search trail).
@@ -103,7 +100,7 @@ const METHOD_DISPLAY_NAMES: Record<SearchMethod, string> = {
 const HEADER_DOWNLOAD_BUTTON_BASE_CLASSES =
   "shrink-0 size-8 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-[opacity,color] duration-150";
 const HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES =
-  "focus-visible:opacity-100 focus-visible:pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/source-header:opacity-100 md:group-hover/source-header:pointer-events-auto md:group-focus-within/source-header:opacity-100 md:group-focus-within/source-header:pointer-events-auto";
+  "focus-visible:opacity-100 focus-visible:pointer-events-auto md:opacity-30 md:group-hover/source-header:opacity-100 md:group-hover/source-header:pointer-events-auto md:group-focus-within/source-header:opacity-100 md:group-focus-within/source-header:pointer-events-auto";
 
 // =============================================================================
 // SOURCE CONTEXT HEADER COMPONENT
@@ -204,8 +201,25 @@ const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
 const DOWNLOAD_IFRAME_CLEANUP_DELAY_MS = 30_000;
 
 /**
+ * Returns true when the URL shares the same origin as the current page.
+ * Falls back to false for invalid URLs or SSR contexts.
+ */
+function isSameOrigin(url: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URL(url, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Triggers a download in a background browsing context so the current view
  * remains visible even when the browser ignores anchor `download`.
+ *
+ * Same-origin URLs use a hidden iframe for a seamless download experience.
+ * Cross-origin URLs use an `<a download>` click to avoid CSP frame-ancestors
+ * errors (proof.deepcitation.com blocks framing from other origins).
  */
 function triggerBackgroundDownload(url: string): void {
   if (typeof document === "undefined") {
@@ -214,7 +228,7 @@ function triggerBackgroundDownload(url: string): void {
 
   const isHappyDom = typeof navigator !== "undefined" && /HappyDOM/i.test(navigator.userAgent);
 
-  const fallbackDownload = () => {
+  const anchorDownload = () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = "";
@@ -228,8 +242,10 @@ function triggerBackgroundDownload(url: string): void {
     a.remove();
   };
 
-  if (isHappyDom) {
-    fallbackDownload();
+  // HappyDOM (test env) and cross-origin URLs use the anchor approach.
+  // Cross-origin iframes are blocked by CSP frame-ancestors on proof pages.
+  if (isHappyDom || !isSameOrigin(url)) {
+    anchorDownload();
     return;
   }
 
@@ -259,7 +275,7 @@ function triggerBackgroundDownload(url: string): void {
   } catch {
     window.clearTimeout(timeoutId);
     cleanup();
-    fallbackDownload();
+    anchorDownload();
   }
 }
 
@@ -451,10 +467,10 @@ export function SourceContextHeader({
   const showPagePill = !!onExpand || !!onClose;
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
-  const hasConvertedUrlPdf =
-    !!verification?.attachmentId ||
-    (typeof verification?.label === "string" && safeTest(PDF_LABEL_PATTERN, verification.label));
-  const shouldShowSourceDownloadButton = !!onSourceDownload && (!isUrl || hasConvertedUrlPdf);
+  // Show the source download button whenever the caller provides onSourceDownload.
+  // The caller (CitationComponent) already resolved whether a downloadable source
+  // exists (via the downloadUrl prop), so we trust that signal unconditionally.
+  const shouldShowSourceDownloadButton = !!onSourceDownload;
   const imageDownloadUrl = resolveImageDownloadUrl(verification);
   // Keep a single download action visible: explicit source-download callback wins.
   const shouldShowImageDownloadButton = !!imageDownloadUrl && !shouldShowSourceDownloadButton;

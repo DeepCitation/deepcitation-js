@@ -250,6 +250,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
 
     const managesOverflow = style?.overflow === undefined && style?.overflowY === undefined;
 
+    // Decompose shorthand `overflow` into longhand to avoid React's
+    // "removing overflow while overflowX is set" warning on re-render.
+    const { overflow: incomingOverflow, ...styleWithoutOverflow } = style ?? {};
+
     return (
       <PopoverPortal>
         <div
@@ -284,7 +288,8 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
                 maxHeight: EXPANDED_POPOVER_HEIGHT,
                 ...getBlinkContainerMotionStyle(blinkStage, prefersReducedMotion),
                 overflowX: "clip",
-                ...style,
+                ...styleWithoutOverflow,
+                ...(incomingOverflow !== undefined ? { overflowX: incomingOverflow, overflowY: incomingOverflow } : {}),
                 ...(managesOverflow ? { overflowY: "clip" } : {}),
                 ...HIDE_SCROLLBAR_STYLE,
               } as React.CSSProperties

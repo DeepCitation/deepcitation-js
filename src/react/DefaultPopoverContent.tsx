@@ -27,7 +27,6 @@ import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useAnimatedHeight } from "./hooks/useAnimatedHeight.js";
 import { useBlinkMotionStage } from "./hooks/useBlinkMotionStage.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
-import { type SharedOriginRect, toSharedOriginRect } from "./hooks/useSharedOriginExpandTransition.js";
 import { SpinnerIcon } from "./icons.js";
 import { getBlinkContainerMotionStyle } from "./motion/blinkAnimation.js";
 import { buildIntentSummary, type MatchSnippet } from "./searchSummaryUtils.js";
@@ -41,6 +40,7 @@ import {
 import { isValidProofUrl } from "./urlUtils.js";
 import { cn, isImageSource, isUrlCitation } from "./utils.js";
 import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
+import { DC_EVIDENCE_VT_NAME } from "./viewTransition.js";
 
 // React 19.2's Activity component is disabled here because it triggers a fiber
 // effect linked-list corruption bug during simultaneous mode transitions
@@ -86,10 +86,6 @@ export interface PopoverContentProps {
   onExpandedWidthChange?: (width: number | null, source?: "expanded-keyhole" | "expanded-page" | null) => void;
   /** Ref tracking which state preceded expanded-page, for correct Escape back-navigation. */
   prevBeforeExpandedPageRef?: RefObject<"summary" | "expanded-keyhole">;
-  /** Reports the keyhole/annotation source rect used for shared-origin expand animation. */
-  onPageExpandOriginCapture?: (rect: SharedOriginRect) => void;
-  /** Called when the shared-origin rect was consumed by the expanded-page transition. */
-  onPageExpandOriginConsumed?: () => void;
   /**
    * Callback when the user clicks the download button in the popover header.
    * The button only renders when this prop is provided.
@@ -393,29 +389,26 @@ function EvidenceZone({
   evidenceSrc,
   expandedImage,
   onViewStateChange,
+  onRequestCollapseFromPage,
   onExpandToPage,
   expandCtaLabel,
-  onExpandOriginCapture,
-  onExpandOriginConsumed,
-  pageExpandOriginRect,
   handlePageImageLoad,
   handleKeyholeImageLoad,
   prevBeforeExpandedPageRef,
   verification,
   summaryContent,
   keyholeInitialScroll,
+  escapeInterceptRef,
 }: {
   viewState: PopoverViewState;
   evidenceSrc: string | null;
   expandedImage: { src: string; renderScale?: { x: number; y: number } | null } | null;
   onViewStateChange?: (viewState: PopoverViewState) => void;
+  onRequestCollapseFromPage?: () => void;
   /** When provided, renders an expanded-keyhole footer CTA (for example, "View page" or "View image"). */
   onExpandToPage?: () => void;
   /** Optional expanded-keyhole CTA label override. */
   expandCtaLabel?: string;
-  onExpandOriginCapture?: (rect: SharedOriginRect) => void;
-  onExpandOriginConsumed?: () => void;
-  pageExpandOriginRect?: SharedOriginRect | null;
   handlePageImageLoad: (width: number, height: number) => void;
   handleKeyholeImageLoad: (width: number, height: number) => void;
   prevBeforeExpandedPageRef: RefObject<"summary" | "expanded-keyhole">;
@@ -423,6 +416,7 @@ function EvidenceZone({
   summaryContent: ReactNode;
   /** Natural-pixel scroll position captured from the keyhole strip on last expand click. */
   keyholeInitialScroll?: { left: number; top: number } | null;
+  escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const slotBRef = useRef<HTMLDivElement>(null);
   const slotCRef = useRef<HTMLDivElement>(null);
@@ -440,8 +434,57 @@ function EvidenceZone({
     el?.focus({ preventScroll: true });
   }, [viewState]);
 
+  // Let Escape step back from expanded-page even if focus is on header controls.
+  useEffect(() => {
+    if (!escapeInterceptRef || viewState !== "expanded-page") return;
+    const intercept = onRequestCollapseFromPage ?? null;
+    escapeInterceptRef.current = intercept;
+    return () => {
+      if (escapeInterceptRef.current === intercept) {
+        escapeInterceptRef.current = null;
+      }
+    };
+  }, [viewState, onRequestCollapseFromPage, escapeInterceptRef]);
+
   return (
     <>
+      {/* View Transitions CSS for evidence image morph between slots */}
+      <style>{`
+        ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-out 220ms cubic-bezier(0.25, 0.25, 0.5, 1) both;
+        }
+        ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-in 220ms cubic-bezier(0.25, 0.25, 0.5, 1) both;
+        }
+        ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
+          animation-duration: 220ms;
+          animation-timing-function: cubic-bezier(0.25, 0.25, 0.5, 1);
+        }
+        :root[data-dc-collapse] ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
+        :root[data-dc-collapse] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
+          animation-duration: 120ms;
+          animation-timing-function: cubic-bezier(0.3, 0.2, 0.5, 1);
+        }
+        :root[data-dc-collapse] ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
+          animation-duration: 120ms;
+          animation-timing-function: cubic-bezier(0.3, 0.2, 0.5, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          ::view-transition-group(${DC_EVIDENCE_VT_NAME}),
+          ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
+          ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
+            animation-duration: 0s !important;
+          }
+        }
+        @keyframes dc-evidence-fade-out {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        @keyframes dc-evidence-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
       {/* Slot A: summary — EvidenceTray keyhole strip */}
       <div style={viewState !== "summary" ? { display: "none" } : undefined}>{summaryContent}</div>
       {/* Slot B: expanded-keyhole — always rendered (React 19 fiber stability),
@@ -453,7 +496,6 @@ function EvidenceZone({
             onCollapse={() => onViewStateChange?.("summary")}
             onExpand={onExpandToPage}
             expandCtaLabel={expandCtaLabel}
-            onExpandOriginCapture={onExpandOriginCapture}
             onNaturalSize={handleKeyholeImageLoad}
             verification={verification}
             initialScroll={keyholeInitialScroll ?? undefined}
@@ -471,13 +513,15 @@ function EvidenceZone({
         {expandedImage?.src && (
           <InlineExpandedImage
             src={expandedImage.src}
-            onCollapse={() => onViewStateChange?.(prevBeforeExpandedPageRef.current)}
+            onCollapse={() =>
+              onRequestCollapseFromPage
+                ? onRequestCollapseFromPage()
+                : onViewStateChange?.(prevBeforeExpandedPageRef.current)
+            }
             verification={verification}
             fill
             onNaturalSize={handlePageImageLoad}
             renderScale={expandedImage.renderScale}
-            expandFromRect={viewState === "expanded-page" ? pageExpandOriginRect : null}
-            onExpandFromRectConsumed={onExpandOriginConsumed}
           />
         )}
       </div>
@@ -632,8 +676,6 @@ export function DefaultPopoverContent({
   expandedImageSrcOverride,
   onExpandedWidthChange,
   prevBeforeExpandedPageRef: propPrevBeforeExpandedPageRef,
-  onPageExpandOriginCapture,
-  onPageExpandOriginConsumed,
   onSourceDownload,
   escapeInterceptRef,
 }: PopoverContentProps) {
@@ -710,7 +752,9 @@ export function DefaultPopoverContent({
   // changes, eliminating two set-state-in-effect patterns the React Compiler flags.
   const [expandedPageShell, setExpandedPageShell] = useState<{ width: number; src: string } | null>(null);
   const expandedPageShellWidth =
-    viewState === "expanded-page" && expandedPageShell?.src === expandedImage?.src ? expandedPageShell.width : null;
+    viewState === "expanded-page" && expandedPageShell?.src === expandedImage?.src
+      ? (expandedPageShell?.width ?? null)
+      : null;
 
   // Last measured expanded-keyhole natural width keyed by evidence src.
   // Keeping src+width together prevents stale widths from leaking across source changes.
@@ -769,41 +813,13 @@ export function DefaultPopoverContent({
   const handleKeyholeScrollCapture = useCallback((left: number, top: number) => {
     setKeyholeInitialScroll({ left, top });
   }, []);
-  const pageExpandSourceKey = `${evidenceSrc ?? ""}|${expandedImage?.src ?? ""}`;
-  const [pageExpandOriginState, setPageExpandOriginState] = useState<{
-    rect: SharedOriginRect;
-    sourceKey: string;
-  } | null>(null);
-  const handlePageExpandOriginCapture = useCallback(
-    (rect: SharedOriginRect) => {
-      setPageExpandOriginState({ rect, sourceKey: pageExpandSourceKey });
-      onPageExpandOriginCapture?.(rect);
-    },
-    [onPageExpandOriginCapture, pageExpandSourceKey],
-  );
-  const handlePageExpandOriginConsumed = useCallback(() => {
-    setPageExpandOriginState(null);
-    onPageExpandOriginConsumed?.();
-  }, [onPageExpandOriginConsumed]);
-  const pageExpandOriginRect =
-    viewState === "summary" || pageExpandOriginState?.sourceKey !== pageExpandSourceKey
-      ? null
-      : pageExpandOriginState.rect;
-  const captureVisibleOriginFallback = useCallback(() => {
-    if (typeof document === "undefined") return;
-    const expandedVisible = Array.from(document.querySelectorAll<HTMLElement>("[data-dc-inline-expanded]")).find(el => {
-      const style = window.getComputedStyle(el);
-      return style.display !== "none" && style.visibility !== "hidden";
-    });
-    if (expandedVisible) {
-      handlePageExpandOriginCapture(toSharedOriginRect(expandedVisible.getBoundingClientRect()));
-      return;
-    }
-    const keyhole = document.querySelector<HTMLElement>("[data-dc-keyhole]");
-    if (keyhole) {
-      handlePageExpandOriginCapture(toSharedOriginRect(keyhole.getBoundingClientRect()));
-    }
-  }, [handlePageExpandOriginCapture]);
+  // Tracks which state we entered expanded-page from, so onCollapse can return there.
+  const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
+  const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
+  const handleCollapseFromExpandedPage = useCallback(() => {
+    const target = prevBeforeExpandedPageRef.current;
+    onViewStateChange?.(target);
+  }, [onViewStateChange, prevBeforeExpandedPageRef]);
 
   // Toggles the keyhole expanded view. Clicking when already expanded collapses back to summary.
   const handleKeyholeClick = useCallback(() => {
@@ -828,16 +844,9 @@ export function DefaultPopoverContent({
     onViewStateChange?.("expanded-keyhole");
   }, [viewState, evidenceSrc, onExpandedWidthChange, onViewStateChange]);
 
-  // Tracks which state we entered expanded-page from, so onCollapse can return there.
-  const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
-  const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef is a stable ref identity — including it causes a React Compiler bailout (value modification after hook)
   const handleExpand = useCallback(() => {
     if (!canExpandToPage) return;
-    if (pageExpandOriginRect === null) {
-      captureVisibleOriginFallback();
-    }
     if (viewState !== "expanded-page") {
       prevBeforeExpandedPageRef.current = viewState === "expanded-keyhole" ? "expanded-keyhole" : "summary";
     }
@@ -857,8 +866,6 @@ export function DefaultPopoverContent({
     onExpandedWidthChange,
     onViewStateChange,
     pageNaturalWidth,
-    pageExpandOriginRect,
-    captureVisibleOriginFallback,
     viewState,
   ]);
 
@@ -964,9 +971,16 @@ export function DefaultPopoverContent({
           verification={verification}
           status={status}
           onExpand={canExpandToPage ? handleExpand : undefined}
-          onImageClick={evidenceSrc ? handleKeyholeClick : canExpandToPage ? handleExpand : undefined}
+          onImageClick={
+            evidenceSrc
+              ? (isMiss || isPartialMatch) && canExpandToPage
+                ? handleExpand
+                : handleKeyholeClick
+              : canExpandToPage
+                ? handleExpand
+                : undefined
+          }
           pageCtaLabel={expandCtaLabel}
-          onExpandOriginCapture={handlePageExpandOriginCapture}
           onScrollCapture={evidenceSrc ? handleKeyholeScrollCapture : undefined}
           proofImageSrc={expandedImage?.src}
           onKeyholeWidth={setKeyholeDisplayedWidth}
@@ -991,7 +1005,7 @@ export function DefaultPopoverContent({
               status={searchStatus}
               sourceLabel={sourceLabel}
               onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
-              onClose={isFullPage ? () => onViewStateChange?.(prevBeforeExpandedPageRef.current) : undefined}
+              onClose={isFullPage ? handleCollapseFromExpandedPage : undefined}
               proofUrl={validProofUrl}
               onSourceDownload={onSourceDownload}
             />
@@ -1033,17 +1047,16 @@ export function DefaultPopoverContent({
             evidenceSrc={evidenceSrc}
             expandedImage={expandedImage}
             onViewStateChange={onViewStateChange}
+            onRequestCollapseFromPage={handleCollapseFromExpandedPage}
             onExpandToPage={canExpandToPage ? handleExpand : undefined}
             expandCtaLabel={expandCtaLabel}
-            onExpandOriginCapture={handlePageExpandOriginCapture}
-            onExpandOriginConsumed={handlePageExpandOriginConsumed}
-            pageExpandOriginRect={pageExpandOriginRect}
             handlePageImageLoad={handlePageImageLoad}
             handleKeyholeImageLoad={handleKeyholeImageLoad}
             prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
             verification={verification}
             summaryContent={summaryContent}
             keyholeInitialScroll={keyholeInitialScroll}
+            escapeInterceptRef={escapeInterceptRef}
           />
         </PopoverLayoutShell>
       </>

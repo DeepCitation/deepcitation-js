@@ -40,8 +40,8 @@ Five tiers cover all UI interactions. Match the tier to the perceptual weight of
 
 The popover height morph uses asymmetric durations separate from this scale:
 
-- Expand: `POPOVER_MORPH_EXPAND_MS` = 200ms
-- Collapse: `POPOVER_MORPH_COLLAPSE_MS` = 100ms
+- Expand: `POPOVER_MORPH_EXPAND_MS` = 120ms
+- Collapse: `POPOVER_MORPH_COLLAPSE_MS` = 80ms
 
 Collapse is always faster than expand — collapsing content should feel snappy and responsive, not linger.
 
