@@ -169,6 +169,25 @@ function DrawerPageBadges({
   );
 }
 
+function buildSourceGroupAriaLabel(
+  sourceName: string,
+  sourceDomain: string | undefined,
+  citationCount: number,
+): string {
+  let ariaLabel = `Source: ${sourceName}`;
+
+  const shouldAppendDomain = !!sourceDomain && sourceDomain !== sourceName;
+  if (shouldAppendDomain) {
+    ariaLabel += ` (${sourceDomain})`;
+  }
+
+  if (citationCount > 1) {
+    ariaLabel += `, ${citationCount} citations`;
+  }
+
+  return ariaLabel;
+}
+
 // =========
 // SourceGroupHeader
 // =========
@@ -182,13 +201,14 @@ function SourceGroupHeader({ group }: { group: SourceCitationGroup }) {
   const sourceName = group.sourceName || "Source";
   const citationCount = group.citations.length;
   const isUrlSource = !!group.sourceDomain;
+  const sourceAriaLabel = buildSourceGroupAriaLabel(sourceName, group.sourceDomain, citationCount);
 
   return (
     <div
       className="w-full px-4 py-2.5 flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700"
       role="heading"
       aria-level={3}
-      aria-label={`Source: ${sourceName}${isUrlSource && group.sourceDomain && group.sourceDomain !== sourceName ? ` (${group.sourceDomain})` : ""}${citationCount > 1 ? `, ${citationCount} citations` : ""}`}
+      aria-label={sourceAriaLabel}
     >
       {/* Favicon for URL sources, letter avatar for documents */}
       <div className="shrink-0">
@@ -634,11 +654,15 @@ function DrawerSourceGroup({
     return (
       <div key={key}>
         {group.citations.map((item, index) => {
+          if (renderCitationItem) {
+            return (
+              <RenderCitationDrawerItem key={item.citationKey} item={item} renderCitationItem={renderCitationItem} />
+            );
+          }
+
           const itemIndex = staggerOffset + index;
           const delay = computeStaggerDelay(itemIndex);
-          return renderCitationItem ? (
-            <RenderCitationDrawerItem key={item.citationKey} item={item} renderCitationItem={renderCitationItem} />
-          ) : (
+          return (
             <CitationDrawerItemComponent
               key={item.citationKey}
               item={item}
@@ -672,11 +696,15 @@ function DrawerSourceGroup({
       <SourceGroupHeader group={group} />
       <div>
         {group.citations.map((item, index) => {
+          if (renderCitationItem) {
+            return (
+              <RenderCitationDrawerItem key={item.citationKey} item={item} renderCitationItem={renderCitationItem} />
+            );
+          }
+
           const itemIndex = staggerOffset + index;
           const delay = computeStaggerDelay(itemIndex);
-          return renderCitationItem ? (
-            <RenderCitationDrawerItem key={item.citationKey} item={item} renderCitationItem={renderCitationItem} />
-          ) : (
+          return (
             <CitationDrawerItemComponent
               key={item.citationKey}
               item={item}
@@ -899,9 +927,12 @@ function OpenCitationDrawer({
         );
         if (page !== null) {
           k2p.set(citationKey, page);
-          const existing = p2i.get(page) ?? [];
-          existing.push(item);
-          p2i.set(page, existing);
+          const existingItems = p2i.get(page);
+          if (existingItems) {
+            existingItems.push(item);
+          } else {
+            p2i.set(page, [item]);
+          }
           if (!p2any.has(page)) p2any.set(page, item);
         }
         for (const candidate of verification?.pages ?? []) {

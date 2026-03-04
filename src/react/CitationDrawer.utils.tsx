@@ -177,14 +177,15 @@ export function getStatusInfo(
   const isPartial = isPartialSearchStatus(status);
 
   if (indicatorVariant === "none") {
-    const label =
-      !status || status === "pending" || status === "loading"
-        ? "Verifying"
-        : status === "not_found"
-          ? "Not found"
-          : isPartial
-            ? "Partial match"
-            : "Verified";
+    let label = "Verified";
+    if (!status || status === "pending" || status === "loading") {
+      label = "Verifying";
+    } else if (status === "not_found") {
+      label = "Not found";
+    } else if (isPartial) {
+      label = "Partial match";
+    }
+
     return { color: "", icon: null, label };
   }
 

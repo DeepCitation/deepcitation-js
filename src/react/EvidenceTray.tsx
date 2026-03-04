@@ -84,6 +84,12 @@ import { ZoomToolbar } from "./ZoomToolbar.js";
  *  to catch intentional user panning. */
 const DRIFT_THRESHOLD_PX = 15;
 
+function getSearchSummaryPrimaryMessage(outcome: string | null | undefined): string | null {
+  if (outcome === "not_found") return "Text not found in document";
+  if (outcome === "related_found") return "Similar text found";
+  return null;
+}
+
 /**
  * Scroll an element to a target scrollLeft over `POPOVER_MORPH_EXPAND_MS` using
  * an ease-out curve. Much faster than `behavior: "smooth"` (~500-800ms browser default).
@@ -688,6 +694,28 @@ export function AnchorTextFocusedImage({
 
   // When the image fits entirely in the keyhole, expanding would show nothing new — suppress affordances.
   const canExpand = !imageFitInfo?.imageFitsCompletely && !!onImageClick;
+  const interactionCursor = isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default";
+  let keyholeAriaLabel = "Verification image";
+  if (isPannable && canExpand) {
+    keyholeAriaLabel = "Drag or click arrows to pan, click to view full size";
+  } else if (isPannable) {
+    keyholeAriaLabel = "Drag or click arrows to pan";
+  } else if (canExpand) {
+    keyholeAriaLabel = "click to view full size";
+  }
+
+  const getDisplayedScale = useCallback(
+    (img: HTMLImageElement, stripHeight: number): number => {
+      if (imageFitInfo?.isWidthFit && img.naturalWidth > 0) {
+        return imageFitInfo.displayedWidth / img.naturalWidth;
+      }
+      if (img.naturalHeight > 0) {
+        return (keyholeZoom * stripHeight) / img.naturalHeight;
+      }
+      return 1;
+    },
+    [imageFitInfo, keyholeZoom],
+  );
 
   const captureExpandOriginRect = useCallback(() => {
     const container = containerRef.current;
@@ -708,12 +736,7 @@ export function AnchorTextFocusedImage({
       sourceRenderScale.y > 0
     ) {
       const stripHeight = container.clientHeight;
-      const displayedScale =
-        imageFitInfo?.isWidthFit && img.naturalWidth > 0
-          ? imageFitInfo.displayedWidth / img.naturalWidth
-          : img.naturalHeight > 0
-            ? (keyholeZoom * stripHeight) / img.naturalHeight
-            : 1;
+      const displayedScale = getDisplayedScale(img, stripHeight);
 
       if (Number.isFinite(displayedScale) && displayedScale > 0) {
         const containerRect = toSharedOriginRect(container.getBoundingClientRect());
@@ -735,7 +758,7 @@ export function AnchorTextFocusedImage({
     }
 
     onExpandOriginCapture?.(isValidSharedOriginRect(captured) ? captured : fallbackRect);
-  }, [containerRef, imageFitInfo, keyholeZoom, onExpandOriginCapture, sourceOriginItem, sourceRenderScale]);
+  }, [containerRef, getDisplayedScale, onExpandOriginCapture, sourceOriginItem, sourceRenderScale]);
 
   return (
     <div className="relative">
@@ -750,7 +773,7 @@ export function AnchorTextFocusedImage({
           className="block relative w-full"
           title={!canExpand && !isPannable && imageFitInfo?.imageFitsCompletely ? "Already full size" : undefined}
           style={{
-            cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default",
+            cursor: interactionCursor,
           }}
           onKeyDown={e => {
             const el = containerRef.current;
@@ -780,23 +803,14 @@ export function AnchorTextFocusedImage({
               const container = containerRef.current;
               if (onScrollCapture && img && container) {
                 const stripHeight = container.clientHeight;
-                const displayedScale =
-                  imageFitInfo?.isWidthFit && img.naturalWidth > 0
-                    ? imageFitInfo.displayedWidth / img.naturalWidth
-                    : img.naturalHeight > 0
-                      ? (keyholeZoom * stripHeight) / img.naturalHeight
-                      : 1;
+                const displayedScale = getDisplayedScale(img, stripHeight);
                 const ds = displayedScale > 0 ? displayedScale : 1;
                 onScrollCapture(container.scrollLeft / ds, container.scrollTop / ds);
               }
               onImageClick?.();
             }
           }}
-          aria-label={
-            [isPannable && "Drag or click arrows to pan", canExpand && "click to view full size"]
-              .filter(Boolean)
-              .join(", ") || "Verification image"
-          }
+          aria-label={keyholeAriaLabel}
         >
           <div
             ref={containerRef}
@@ -812,7 +826,7 @@ export function AnchorTextFocusedImage({
               WebkitMaskImage: maskImage,
               maskImage,
               ...HIDE_SCROLLBAR_STYLE,
-              cursor: isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default",
+              cursor: interactionCursor,
               // Hover ring affordance signals zoom interactivity
               ...(isHovering && !isDragging
                 ? { boxShadow: "inset 0 0 0 2px rgba(96, 165, 250, 0.2)", borderRadius: "2px" }
@@ -1062,14 +1076,7 @@ export function SearchAnalysisSummary({
   verification?: Verification | null;
 }) {
   const intentSummary = useMemo(() => buildIntentSummary(verification, searchAttempts), [verification, searchAttempts]);
-
-  // Primary message based on outcome
-  const primaryMessage =
-    intentSummary?.outcome === "not_found"
-      ? "Text not found in document"
-      : intentSummary?.outcome === "related_found"
-        ? "Similar text found"
-        : null;
+  const primaryMessage = getSearchSummaryPrimaryMessage(intentSummary?.outcome);
 
   // Snippets for related_found outcome (limit to 3)
   const snippets = intentSummary?.snippets?.slice(0, 3) ?? [];
@@ -1082,8 +1089,11 @@ export function SearchAnalysisSummary({
       {/* Snippets for related_found */}
       {snippets.length > 0 && (
         <div className="space-y-1">
-          {snippets.map((snippet, idx) => (
-            <MatchSnippetDisplay key={`snippet-${idx}-${snippet.matchStart}`} snippet={snippet} />
+          {snippets.map(snippet => (
+            <MatchSnippetDisplay
+              key={`snippet-${snippet.page ?? "na"}-${snippet.matchStart}-${snippet.matchEnd}`}
+              snippet={snippet}
+            />
           ))}
         </div>
       )}
@@ -1530,7 +1540,7 @@ export function InlineExpandedImage({
   const zoomRef = useRef(zoom);
   useEffect(() => {
     zoomRef.current = zoom;
-  });
+  }, [zoom]);
   // Dynamic zoom floor: on narrow viewports the fit-to-screen zoom may be below
   // EXPANDED_ZOOM_MIN (e.g. 29% for a 1700px image on a 550px viewport).
   // This floor feeds into the slider min, zoom-out disabled check, and clampZoom

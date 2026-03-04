@@ -10,7 +10,33 @@ import { getCitationStatus } from "./parseCitation.js";
  * Compiled once at module load to avoid per-call recompilation.
  */
 const PAGE_NUMBER_REGEX = /page[_a-zA-Z]*(\d+)/;
-const _RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
+const RANGE_EXPANSION_REGEX = /(\d+)-(\d+)/g;
+
+const CITE_ATTRIBUTE_KEY_ALIASES: Record<string, string> = {
+  attachmentid: "attachment_id",
+  fileid: "attachment_id",
+  file_id: "attachment_id",
+  fullphrase: "full_phrase",
+  lineids: "line_ids",
+  pageid: "start_page_id",
+  page_id: "start_page_id",
+  pagekey: "start_page_id",
+  page_key: "start_page_id",
+  startpageid: "start_page_id",
+  start_pageid: "start_page_id",
+  start_page_id: "start_page_id",
+  startpagekey: "start_page_id",
+  start_pagekey: "start_page_id",
+  start_page_key: "start_page_id",
+  anchortext: "anchor_text",
+  keyspan: "anchor_text",
+  key_span: "anchor_text",
+  timestamp: "timestamps",
+};
+
+function canonicalizeAttributeAlias(key: string): string {
+  return CITE_ATTRIBUTE_KEY_ALIASES[key] ?? key;
+}
 
 export interface ReplaceCitationsOptions {
   /**
@@ -57,28 +83,7 @@ const parseCiteAttributes = (citeTag: string): Record<string, string | undefined
       .toLowerCase();
     const value = match[3];
 
-    // Normalize key names
-    const normalizedKey =
-      key === "fileid" || key === "file_id" || key === "attachmentid"
-        ? "attachment_id"
-        : key === "anchortext" || key === "anchor_text" || key === "keyspan" || key === "key_span"
-          ? "anchor_text"
-          : key === "fullphrase"
-            ? "full_phrase"
-            : key === "lineids"
-              ? "line_ids"
-              : key === "pageid" ||
-                  key === "page_id" ||
-                  key === "startpageid" ||
-                  key === "start_pageid" ||
-                  key === "start_page_id" ||
-                  key === "startpagekey" ||
-                  key === "start_pagekey" ||
-                  key === "start_page_key" ||
-                  key === "pagekey" ||
-                  key === "page_key"
-                ? "start_page_id"
-                : key;
+    const normalizedKey = canonicalizeAttributeAlias(key);
 
     attrs[normalizedKey] = value;
   }
@@ -179,7 +184,8 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
         const SAMPLE_COUNT = 50;
 
         // First expand ranges (e.g., "62-63" -> "62,63")
-        const expanded = lineIdsStr.replace(/(\d+)-(\d+)/g, (_match, start, end) => {
+        RANGE_EXPANSION_REGEX.lastIndex = 0;
+        const expanded = lineIdsStr.replace(RANGE_EXPANSION_REGEX, (_match, start, end) => {
           const startNum = parseInt(start, 10);
           const endNum = parseInt(end, 10);
           if (startNum <= endNum) {
@@ -386,26 +392,7 @@ export const normalizeCitations = (response: string): string => {
  * per-call function object allocation.
  */
 const canonicalizeCiteAttributeKey = (key: string): string => {
-  const lowerKey = key.toLowerCase();
-  if (lowerKey === "fullphrase" || lowerKey === "full_phrase") return "full_phrase";
-  if (lowerKey === "lineids" || lowerKey === "line_ids") return "line_ids";
-  if (
-    lowerKey === "startpageid" ||
-    lowerKey === "start_pageid" ||
-    lowerKey === "start_page_id" ||
-    lowerKey === "startpagekey" ||
-    lowerKey === "start_pagekey" ||
-    lowerKey === "start_page_key"
-  )
-    return "start_page_id";
-  if (lowerKey === "fileid" || lowerKey === "file_id" || lowerKey === "attachmentid" || lowerKey === "attachment_id")
-    return "attachment_id";
-  if (lowerKey === "anchortext" || lowerKey === "anchor_text" || lowerKey === "keyspan" || lowerKey === "key_span")
-    return "anchor_text";
-  if (lowerKey === "reasoning" || lowerKey === "value") return lowerKey;
-  if (lowerKey === "timestamps" || lowerKey === "timestamp") return "timestamps";
-
-  return lowerKey;
+  return canonicalizeAttributeAlias(key.toLowerCase());
 };
 
 /** HTML entity decode map — compiled once at module load. */
@@ -476,7 +463,8 @@ const normalizeCitationContent = (input: string): string => {
     let cleanedValue = rawValue.replace(/[A-Za-z[\](){}]/g, "");
 
     // Expand ranges (e.g., "1-3" -> "1,2,3")
-    cleanedValue = cleanedValue.replace(/(\d+)-(\d+)/g, (_rangeMatch: string, start: string, end: string) => {
+    RANGE_EXPANSION_REGEX.lastIndex = 0;
+    cleanedValue = cleanedValue.replace(RANGE_EXPANSION_REGEX, (_rangeMatch: string, start: string, end: string) => {
       const startNum = parseInt(start, 10);
       const endNum = parseInt(end, 10);
 
