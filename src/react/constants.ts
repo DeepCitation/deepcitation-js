@@ -537,6 +537,12 @@ export const EXPANDED_POPOVER_HEIGHT = "calc(100dvh - 2rem)";
 export const VT_EVIDENCE_EXPAND_MS = 180;
 /** Duration (ms) for evidence image collapse VT (expanded → keyhole). ANIM_FAST_MS tier. */
 export const VT_EVIDENCE_COLLAPSE_MS = 120;
+/**
+ * Opacity dip for VT old-snapshot cross-fade (empirically tuned).
+ * Low enough to suppress text-detail flicker during geometry morph,
+ * high enough to preserve the shape silhouette for spatial tracking.
+ */
+export const VT_EVIDENCE_DIP_OPACITY = 0.45;
 
 // =============================================================================
 // ANIMATION & TRANSITION TIMINGS

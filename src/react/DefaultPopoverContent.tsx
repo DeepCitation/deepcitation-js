@@ -21,6 +21,7 @@ import {
   POPOVER_MORPH_COLLAPSE_MS,
   POPOVER_MORPH_EXPAND_MS,
   VT_EVIDENCE_COLLAPSE_MS,
+  VT_EVIDENCE_DIP_OPACITY,
   VT_EVIDENCE_EXPAND_MS,
 } from "./constants.js";
 import { EvidenceTray, InlineExpandedImage, normalizeScreenshotSrc, resolveExpandedImage } from "./EvidenceTray.js";
@@ -485,7 +486,7 @@ function EvidenceZone({
         }
         @keyframes dc-evidence-fade-out {
           0%   { opacity: 1; }
-          30%  { opacity: 0.45; }
+          30%  { opacity: ${VT_EVIDENCE_DIP_OPACITY}; }
           100% { opacity: 0; }
         }
         @keyframes dc-evidence-fade-in {

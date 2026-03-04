@@ -122,6 +122,21 @@ function countWords(text: string): number {
  *
  * @throws Error if either input exceeds MAX_REGEX_INPUT_LENGTH (~100KB)
  */
+/**
+ * True when the API returned verifiedFullPhrase identical to verifiedAnchorText —
+ * a "strategy override" where the model collapsed the full phrase to just the anchor.
+ */
+export function isStrategyOverride(
+  verifiedAnchorText: string | null | undefined,
+  verifiedFullPhrase: string | null | undefined,
+): boolean {
+  return (
+    verifiedAnchorText != null &&
+    verifiedFullPhrase != null &&
+    verifiedAnchorText.toLowerCase() === verifiedFullPhrase.toLowerCase()
+  );
+}
+
 export function shouldHighlightAnchorText(
   anchorText: string | null | undefined,
   fullPhrase: string | null | undefined,
@@ -166,18 +181,15 @@ export function computeKeySpanHighlight<T extends { text?: string }>(
     anchorTextText && phraseText && anchorTextText.toLowerCase() !== phraseText.toLowerCase(),
   );
 
-  // Primary check: anchorText vs verifiedFullPhrase
-  // Fallback: anchorText vs phraseMatchDeepItem.text — ONLY when verifiedFullPhrase
-  // equals verifiedAnchorText (strategy override case where the API returned the
-  // anchor text as the full phrase, but the matched text box spans much more).
-  const strategyOverride =
-    verifiedAnchorText != null &&
-    verifiedFullPhrase != null &&
-    verifiedAnchorText.toLowerCase() === verifiedFullPhrase.toLowerCase();
+  // Primary check: anchorText vs verifiedFullPhrase.
+  // Fallback: anchorText vs phraseMatchDeepItem.text — ONLY when isStrategyOverride()
+  // (API collapsed full phrase to just the anchor text, but the matched text box spans more).
   const showKeySpanHighlight =
     hasDistinctKeySpanBox &&
     (shouldHighlightAnchorText(verifiedAnchorText, verifiedFullPhrase) ||
-      (strategyOverride && shouldHighlightAnchorText(verifiedAnchorText, phraseText)));
+      (isStrategyOverride(verifiedAnchorText, verifiedFullPhrase) &&
+        shouldHighlightAnchorText(verifiedAnchorText, phraseText)));
 
+  // anchorTextItems: full array for downstream consumers (e.g., multi-item highlight rendering).
   return { showKeySpanHighlight, anchorTextItem, anchorTextItems: anchorTextMatchDeepItems ?? [] };
 }

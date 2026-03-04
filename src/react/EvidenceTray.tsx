@@ -11,7 +11,7 @@
 
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
+import { isStrategyOverride, shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt } from "../types/search.js";
@@ -1486,15 +1486,12 @@ export function InlineExpandedImage({
 
   // Anchor-aware scroll/zoom target: when anchor text is highlighted, center on it
   // instead of the (potentially wider) full phrase box.
-  // Strategy override: API returned verifiedFullPhrase === verifiedAnchorText, so the
-  // primary check would return false (equal word counts). Fall back to phraseItem text.
   const vAnchor = verification?.verifiedAnchorText;
   const vPhrase = verification?.verifiedFullPhrase;
-  const strategyOverride = vAnchor != null && vPhrase != null && vAnchor.toLowerCase() === vPhrase.toLowerCase();
   const anchorHighlightActive =
     effectiveAnchorItem &&
     (shouldHighlightAnchorText(vAnchor, vPhrase) ||
-      (strategyOverride && shouldHighlightAnchorText(vAnchor, effectivePhraseItem?.text)));
+      (isStrategyOverride(vAnchor, vPhrase) && shouldHighlightAnchorText(vAnchor, effectivePhraseItem?.text)));
   const scrollTarget = anchorHighlightActive ? effectiveAnchorItem : effectivePhraseItem;
 
   // Track container size via ResizeObserver (both width and height for fit-to-screen).
@@ -1888,8 +1885,10 @@ export function InlineExpandedImage({
     }
 
     // Compute scroll correction: keep the anchor point visually stable.
-    // Uses wrapper-relative coordinates and accounts for the centering margin
-    // that appears when the zoomed image is narrower than the container.
+    // wx/wy = wrapper-relative content coords under the anchor at gesture start.
+    // ratio  = new zoom / start zoom — how much content coords have scaled.
+    // newMarginLeft = centering margin at the new zoom level.
+    // Final scroll = margin + scaled wrapper-coord − viewport-local anchor offset.
     const startZoom = anchor.startZoom;
     if (startZoom > 0) {
       const ratio = zoom / startZoom;
@@ -1900,8 +1899,11 @@ export function InlineExpandedImage({
       const newMarginLeft =
         newZoomedWidth > 0 && newZoomedWidth < el.clientWidth ? Math.round((el.clientWidth - newZoomedWidth) / 2) : 0;
 
-      el.scrollLeft = newMarginLeft + wx * ratio - anchor.mx;
-      el.scrollTop = wy * ratio - anchor.my;
+      // Clamp to scrollable bounds — prevents overshoot during rapid zoom changes.
+      const rawLeft = newMarginLeft + wx * ratio - anchor.mx;
+      const rawTop = wy * ratio - anchor.my;
+      el.scrollLeft = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, rawLeft));
+      el.scrollTop = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, rawTop));
     }
     touchGestureAnchorRef.current = null;
     expandedWheelAnchorRef.current = null;
