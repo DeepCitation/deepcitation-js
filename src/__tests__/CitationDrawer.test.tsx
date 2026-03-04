@@ -516,7 +516,7 @@ describe("CitationDrawer", () => {
     const groups = [createGroup("Source A", 2), createGroup("Source B", 1)];
 
     const { getAllByText, getByText } = render(
-      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} showMoreSection={false} />,
+      <CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />,
     );
 
     // Multi-citation group: each item renders anchorText via HighlightedPhrase.
