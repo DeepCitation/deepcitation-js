@@ -119,8 +119,11 @@ export function ZoomToolbar({
     [onZoomChange, zoomFloor, zoomMax],
   );
 
-  /** Shared handler: stop propagation for any mouse/touch/pointer event. */
-  const stop = useCallback((e: React.SyntheticEvent) => e.stopPropagation(), []);
+  /** Shared handlers: stop propagation for pointer events, allow Escape to bubble. */
+  const stopClick = useCallback((e: React.SyntheticEvent) => e.stopPropagation(), []);
+  const stopKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== "Escape") e.stopPropagation();
+  }, []);
 
   const locateIconStyle: React.CSSProperties =
     locatePulseStage === "grow"
@@ -150,7 +153,7 @@ export function ZoomToolbar({
         pointerEvents: "auto",
       }}
     >
-      <div className="flex flex-col items-end gap-2" onClick={stop} onKeyDown={stop}>
+      <div className="flex flex-col items-end gap-2" onClick={stopClick} onKeyDown={stopKeyDown}>
         {/* Locate — standalone card above the zoom controls */}
         {showLocate && onLocate && (
           <button
