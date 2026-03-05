@@ -249,6 +249,7 @@ export function resolveEvidenceSrc(verification: Verification | null | undefined
   const raw = verification?.assets?.webCapture?.src;
   if (!raw) return null;
   try {
+    if (isValidProofImageSrc(raw)) return raw;
     const s = normalizeScreenshotSrc(raw);
     return isValidProofImageSrc(s) ? s : null;
   } catch (e) {
@@ -303,6 +304,9 @@ export function resolveExpandedImage(verification: Verification | null | undefin
   const urlScreenshot = verification.assets?.webCapture?.src;
   if (urlScreenshot) {
     try {
+      if (isValidProofImageSrc(urlScreenshot)) {
+        return { src: urlScreenshot, dimensions: null, highlightBox: null, textItems: [] };
+      }
       const src = normalizeScreenshotSrc(urlScreenshot);
       if (isValidProofImageSrc(src)) {
         return { src, dimensions: null, highlightBox: null, textItems: [] };
