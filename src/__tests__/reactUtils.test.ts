@@ -9,8 +9,8 @@ import {
   getCitationDisplayText,
   getCitationNumber,
 } from "../react/utils.js";
-import { isUrlCitation } from "../types/citation.js";
 import type { Citation } from "../types/citation.js";
+import { isUrlCitation } from "../types/citation.js";
 
 describe("react utils", () => {
   const citation: Citation = {
