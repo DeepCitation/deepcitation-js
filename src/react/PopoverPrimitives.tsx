@@ -52,7 +52,8 @@ export interface PopoverTriggerProps extends HTMLAttributes<HTMLElement> {
 
 export const PopoverTrigger = forwardRef<HTMLElement, PopoverTriggerProps>(
   ({ asChild = false, children, ...props }, forwardedRef) => {
-    "use no memo";
+    // "use no memo" — React Compiler opt-out: composeRefs callback captures forwardedRef
+    // in a way the compiler can't safely memoize.
     const { triggerRef } = usePopoverContext();
 
     if (asChild) {

@@ -313,7 +313,7 @@ export interface CitationComponentProps extends BaseCitationProps {
 function useSpinnerStage(isLoading: boolean, isPending: boolean, hasDefinitiveResult: boolean): SpinnerStage {
   // Timer-driven state transitions (5s/15s) use setState-during-render reset pattern.
   // The compiler can't safely memoize across the timer + render-phase setState boundary.
-  "use no memo";
+  // "use no memo" — React Compiler opt-out (would be a directive if compiler were active).
   const shouldAnimate = (isLoading || isPending) && !hasDefinitiveResult;
   const [stage, setStage] = useState<SpinnerStage>("active");
 
@@ -355,7 +355,8 @@ function useSpinnerStage(isLoading: boolean, isPending: boolean, hasDefinitiveRe
  * of the file compiles normally.
  */
 function useKeyboardOpenTracking(isHovering: boolean, popoverContentRef: React.RefObject<HTMLDivElement | null>) {
-  "use no memo";
+  // "use no memo" — React Compiler opt-out: ref read in effect + mutated in callbacks
+  // is a pattern the compiler can't safely transform.
   const openedViaKeyboardRef = useRef(false);
 
   // A.5.1 Focus trap: set `inert` on background content when the popover is
