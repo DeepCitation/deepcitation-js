@@ -528,4 +528,3 @@ Use these when `CitationComponent` doesn't fit your layout requirements.
 - [Styling]({{ site.baseurl }}/styling/) - CSS customization
 - [Error Handling]({{ site.baseurl }}/error-handling/) - Production error patterns
 - [Real-World Examples]({{ site.baseurl }}/real-world-examples/) - Industry-specific integrations
-- [Migration Guide]({{ site.baseurl }}/migration/) - API changes by version

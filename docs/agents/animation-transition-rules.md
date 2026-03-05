@@ -53,10 +53,22 @@ Two named curves are used throughout. Do not inline `cubic-bezier()` values dire
 
 | Constant | Value | Intent |
 |---|---|---|
-| `EASE_EXPAND` | `cubic-bezier(0.34, 1.06, 0.64, 1)` | Spring-like ~6% overshoot — expanding content feels alive |
+| `EASE_EXPAND` | `cubic-bezier(0.34, 1.02, 0.64, 1)` | Restrained ~2% overshoot — crisp settle without visible bounce |
 | `EASE_COLLAPSE` | `cubic-bezier(0.2, 0, 0, 1)` | Decisive deceleration — collapsing content exits cleanly |
 
 Use `EASE_EXPAND` for things growing into view. Use `EASE_COLLAPSE` for things leaving.
+
+### Overshoot Pixel Budget
+
+A fixed percentage is misleading — what matters is **absolute pixel displacement on the viewer's screen**. 2% of a 40px chevron = 0.8px (imperceptible). 2% of a 400px fly-out on a 390px phone = 8px (clearly visible bounce).
+
+**Rule: keep absolute overshoot ≤ 4px.** At 2% that means `EASE_EXPAND` is appropriate when total travel ≤ ~200px. For anything larger — VT geometry morphs, full-page transitions, content-zone height morphs — use `EASE_COLLAPSE` or `BLINK_ENTER_EASING` (both zero-overshoot).
+
+| Travel distance | 2% overshoot | Verdict |
+|---|---|---|
+| ≤ 100px (chevrons, icons, small reveals) | ≤ 2px | `EASE_EXPAND` ✓ — imperceptible |
+| 100–200px (card expand, tray reveal) | 2–4px | `EASE_EXPAND` ✓ — subtle settle |
+| > 200px (VT morphs, page transitions, height morphs) | > 4px | `EASE_COLLAPSE` or `BLINK_ENTER_EASING` — no overshoot |
 
 Content that appears *after* a container expands uses `CONTENT_STAGGER_DELAY_MS` = 30ms so the container leads and content follows.
 
@@ -266,7 +278,7 @@ The keyhole→expanded-keyhole transition uses a CSS View Transition (`viewTrans
 | Expand | `VT_EVIDENCE_EXPAND_MS` (180ms) | `EASE_COLLAPSE` — decisive deceleration, no overshoot | `ANIM_STANDARD_MS` tier |
 | Collapse | `VT_EVIDENCE_COLLAPSE_MS` (120ms) | `EASE_COLLAPSE` — decisive deceleration | `ANIM_FAST_MS` tier |
 
-**Do not use `EASE_EXPAND` for VT geometry morphs.** Its ~6% overshoot causes the rect to briefly expand past the target, which looks wrong for image morphs. `EASE_EXPAND` is designed for container height morphs where the overshoot is more subtle.
+**Do not use `EASE_EXPAND` for VT geometry morphs.** VT morphs typically travel > 200px, exceeding the 4px overshoot pixel budget. Use `EASE_COLLAPSE` (zero overshoot, decisive deceleration) for all VT geometry transitions.
 
 ### Cross-Fade Strategy
 
@@ -295,6 +307,7 @@ The early opacity dip acts as perceptual motion blur — the user tracks the sha
 
 ## Anti-Patterns
 
+- **No `EASE_EXPAND` on travel > 200px.** Absolute overshoot must stay ≤ 4px. VT morphs, page transitions, and height morphs exceed this — use `EASE_COLLAPSE` or `BLINK_ENTER_EASING`.
 - **No inline easing values.** Use `EASE_EXPAND` / `EASE_COLLAPSE` from `constants.ts`.
 - **No inline duration values.** Use the 5-tier timing constants.
 - **No `transition: width`** on content-heavy containers. Snap to target width instead.
