@@ -524,6 +524,78 @@ describe("DeepCitation Client", () => {
       // Different citations should make separate calls
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
+
+    it("propagates top-level documentFiles into each verification's assets", async () => {
+      const client = new DeepCitation({ apiKey: "sk-dc-123" });
+
+      const docFiles = {
+        verificationPdf: {
+          origin: "converted_from_url" as const,
+          mimeType: "application/pdf",
+          download: { url: "https://api.deepcitation.com/download/pdf/123" },
+        },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          verifications: {
+            c1: { status: "found", assets: { webCapture: { src: "https://img.example.com/shot.png" } } },
+            c2: { status: "partial_text_found" },
+          },
+          documentFiles: docFiles,
+        }),
+      } as Response);
+
+      const result = await client.verifyAttachment("att_url", {
+        c1: { type: "url", fullPhrase: "test", url: "https://example.com" },
+        c2: { type: "url", fullPhrase: "other", url: "https://example.com/page" },
+      });
+
+      // Both verifications should have documentFiles in assets
+      expect(result.verifications.c1.assets?.documentFiles).toEqual(docFiles);
+      expect(result.verifications.c2.assets?.documentFiles).toEqual(docFiles);
+      // Existing assets should be preserved
+      expect(result.verifications.c1.assets?.webCapture?.src).toBe("https://img.example.com/shot.png");
+      // Top-level documentFiles should still be present
+      expect(result.documentFiles).toEqual(docFiles);
+    });
+
+    it("does not overwrite existing per-verification documentFiles", async () => {
+      const client = new DeepCitation({ apiKey: "sk-dc-123" });
+
+      const topLevelDocs = {
+        verificationPdf: {
+          origin: "converted_from_url" as const,
+          mimeType: "application/pdf",
+          download: { url: "https://api.deepcitation.com/download/top-level" },
+        },
+      };
+      const perVerificationDocs = {
+        originalFile: {
+          origin: "upload" as const,
+          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          download: { url: "https://api.deepcitation.com/download/original" },
+        },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          verifications: {
+            c1: { status: "found", assets: { documentFiles: perVerificationDocs } },
+          },
+          documentFiles: topLevelDocs,
+        }),
+      } as Response);
+
+      const result = await client.verifyAttachment("att_doc", {
+        c1: { type: "document", fullPhrase: "test", attachmentId: "att_doc" },
+      });
+
+      // Per-verification documentFiles should NOT be overwritten
+      expect(result.verifications.c1.assets?.documentFiles).toEqual(perVerificationDocs);
+    });
   });
 
   describe("prepareAttachments with concurrency limits", () => {

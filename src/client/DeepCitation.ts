@@ -716,7 +716,19 @@ export class DeepCitation {
         throw await createApiError(response, "Verification");
       }
 
-      return (await response.json()) as VerifyCitationsResponse;
+      const result = (await response.json()) as VerifyCitationsResponse;
+
+      // Propagate top-level documentFiles into each verification's assets so
+      // React components can access it at verification.assets.documentFiles
+      // without the consumer having to thread the prop manually.
+      if (result.documentFiles) {
+        for (const v of Object.values(result.verifications)) {
+          if (!v.assets) v.assets = {};
+          if (!v.assets.documentFiles) v.assets.documentFiles = result.documentFiles;
+        }
+      }
+
+      return result;
     })();
 
     // Force cleanup if cache is at or approaching the limit to prevent memory leaks
