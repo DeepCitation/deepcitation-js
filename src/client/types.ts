@@ -4,12 +4,11 @@ import type {
   ExpiresAt,
   ImageFormat,
   PageRendersStatus,
-  ProofConfig,
   ProofOptions,
   SourcePage,
   Verification,
-  VerifyCitationResponse,
   VerificationDocumentAssets,
+  VerifyCitationResponse,
 } from "../types/index.js";
 
 /**
@@ -301,9 +300,7 @@ export interface VerifyInput extends ProofOptions {
  * Input for convertFile - convert URL or Office file to PDF.
  * Provide either `url` or `file`, not both.
  */
-export type ConvertFileInput =
-  | ConvertFileUrlInput
-  | ConvertFileUploadInput;
+export type ConvertFileInput = ConvertFileUrlInput | ConvertFileUploadInput;
 
 /** Convert a URL to PDF */
 interface ConvertFileUrlInput extends FileRequestOptions {

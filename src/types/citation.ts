@@ -6,7 +6,6 @@ import type { ProofConfig, Verification, VerificationDocumentAssets } from "./ve
  */
 export type ImageFormat = "jpeg" | "png" | "avif" | "webp";
 
-
 /**
  * A dictionary/map of citations keyed by citationKey (a 16-char hash).
  *

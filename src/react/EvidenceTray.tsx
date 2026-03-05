@@ -1306,8 +1306,12 @@ export function EvidenceTray({
                       fullPhrase={verification?.citation?.fullPhrase ?? verification?.verifiedFullPhrase ?? undefined}
                       anchorText={verification?.citation?.anchorText ?? verification?.verifiedAnchorText ?? undefined}
                       status={verification?.status ?? "not_found"}
-                      expectedPage={verification?.citation?.type === "document" ? verification.citation.pageNumber : undefined}
-                      expectedLine={verification?.citation?.type === "document" ? verification.citation.lineIds?.[0] : undefined}
+                      expectedPage={
+                        verification?.citation?.type === "document" ? verification.citation.pageNumber : undefined
+                      }
+                      expectedLine={
+                        verification?.citation?.type === "document" ? verification.citation.lineIds?.[0] : undefined
+                      }
                       onCollapse={() => setShowSearchLog(false)}
                     />
                   </div>

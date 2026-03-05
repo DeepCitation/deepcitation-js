@@ -24,12 +24,7 @@ import {
   VT_EVIDENCE_DIP_OPACITY,
   VT_EVIDENCE_EXPAND_MS,
 } from "./constants.js";
-import {
-  EvidenceTray,
-  InlineExpandedImage,
-  resolveEvidenceSrc,
-  resolveExpandedImage,
-} from "./EvidenceTray.js";
+import { EvidenceTray, InlineExpandedImage, resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { getExpandedPopoverWidth, getSummaryPopoverWidth } from "./expandedWidthPolicy.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useAnimatedHeight } from "./hooks/useAnimatedHeight.js";

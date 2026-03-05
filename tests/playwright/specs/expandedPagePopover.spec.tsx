@@ -23,8 +23,6 @@ const baseCitation: Citation = {
 const tallImageBase64 =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAZAAQAAAACpxxs4AAACPklEQVR42u3NMQEAAAwCIPuX1hZ7BgVID0QikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUTyNRnb9LNzJVTWGwAAAABJRU5ErkJggg==";
 
-// Verification with pages[] array so resolveExpandedImage finds a match page,
-// enabling the "Expand to full page" button.
 const verificationWithTallImage: Verification = {
   status: "found",
   verifiedMatchSnippet: "Functional status: He is at baseline",
@@ -35,15 +33,15 @@ const verificationWithTallImage: Verification = {
     evidenceSnippet: {
       src: tallImageBase64,
     },
+    pageRenders: [
+      {
+        pageNumber: 5,
+        dimensions: { width: 800, height: 1600 },
+        imageUrl: tallImageBase64,
+        isMatchPage: true,
+      },
+    ],
   },
-  pages: [
-    {
-      pageNumber: 5,
-      dimensions: { width: 800, height: 1600 },
-      source: tallImageBase64,
-      isMatchPage: true,
-    },
-  ],
 };
 
 // =============================================================================
@@ -103,17 +101,21 @@ async function dispatchCtrlWheel(
   clientY: number,
   deltaY: number,
 ) {
-  await locator.evaluate(
+  // Dispatch on the img element so the useWheelZoom wrapper.contains(e.target) check
+  // passes — the wheel handler rejects events whose target is outside the image wrapper.
+  const target = locator.locator("img").first();
+  await target.evaluate(
     (el, args) => {
-      const event = new WheelEvent("wheel", {
-        deltaY: args.deltaY,
-        clientX: args.clientX,
-        clientY: args.clientY,
-        ctrlKey: true,
-        bubbles: true,
-        cancelable: true,
-      });
-      el.dispatchEvent(event);
+      el.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: args.deltaY,
+          clientX: args.clientX,
+          clientY: args.clientY,
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     },
     { clientX, clientY, deltaY },
   );

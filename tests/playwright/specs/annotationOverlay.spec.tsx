@@ -55,16 +55,16 @@ const verificationWithAnnotation: Verification = {
     evidenceSnippet: {
       src: tallImageBase64,
     },
+    pageRenders: [
+      {
+        pageNumber: 5,
+        dimensions: { width: 800, height: 1600 },
+        imageUrl: tallImageBase64,
+        isMatchPage: true,
+        renderScale: { x: 1, y: 1 },
+      },
+    ],
   },
-  pages: [
-    {
-      pageNumber: 5,
-      dimensions: { width: 800, height: 1600 },
-      source: tallImageBase64,
-      isMatchPage: true,
-      renderScale: { x: 1, y: 1 },
-    },
-  ],
 };
 
 // Same verification but without renderScale — annotation should not render.
@@ -82,16 +82,16 @@ const verificationNoRenderScale: Verification = {
     evidenceSnippet: {
       src: tallImageBase64,
     },
+    pageRenders: [
+      {
+        pageNumber: 5,
+        dimensions: { width: 800, height: 1600 },
+        imageUrl: tallImageBase64,
+        isMatchPage: true,
+        // no renderScale
+      },
+    ],
   },
-  pages: [
-    {
-      pageNumber: 5,
-      dimensions: { width: 800, height: 1600 },
-      source: tallImageBase64,
-      isMatchPage: true,
-      // no renderScale
-    },
-  ],
 };
 
 // Same verification but without phraseMatchDeepItem — annotation should not render.
@@ -105,16 +105,16 @@ const verificationNoPhraseItem: Verification = {
     evidenceSnippet: {
       src: tallImageBase64,
     },
+    pageRenders: [
+      {
+        pageNumber: 5,
+        dimensions: { width: 800, height: 1600 },
+        imageUrl: tallImageBase64,
+        isMatchPage: true,
+        renderScale: { x: 1, y: 1 },
+      },
+    ],
   },
-  pages: [
-    {
-      pageNumber: 5,
-      dimensions: { width: 800, height: 1600 },
-      source: tallImageBase64,
-      isMatchPage: true,
-      renderScale: { x: 1, y: 1 },
-    },
-  ],
 };
 
 // =============================================================================

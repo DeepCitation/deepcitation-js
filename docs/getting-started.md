@@ -107,7 +107,7 @@ Include your API key in the Authorization header:
 Authorization: Bearer dc_live_your_api_key
 ```
 
-Get your API key from the [dashboard](https://deepcitation.com/usage).
+Get your API key from the [API Keys Page](https://deepcitation.com/signup).
 
 ---
 

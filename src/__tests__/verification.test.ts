@@ -1,9 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { generateVerificationKey } from "../react/utils.js";
-import {
-  BLANK_VERIFICATION,
-  type Verification,
-} from "../types/verification.js";
+import { BLANK_VERIFICATION, type Verification } from "../types/verification.js";
 
 describe("verification helpers", () => {
   it("BLANK_VERIFICATION is a frozen not_found sentinel", () => {

@@ -147,13 +147,7 @@ export interface WebCaptureAsset {
  * Content match status for URL/web content verification.
  * Used when verifying that a URL contains what the AI claimed.
  */
-export type ContentMatchStatus =
-  | "exact"
-  | "partial"
-  | "mismatch"
-  | "not_found"
-  | "not_checked"
-  | "inconclusive";
+export type ContentMatchStatus = "exact" | "partial" | "mismatch" | "not_found" | "not_checked" | "inconclusive";
 
 /**
  * URL access status for web content verification.

@@ -426,7 +426,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             width: "max-content",
             zIndex: `var(${Z_INDEX_POPOVER_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})`,
             pointerEvents: dataState === "open" ? "auto" : "none",
-            transform: `translate3d(${coordsRef.current.x}px, ${coordsRef.current.y}px, 0)`,
+            transform: "translate3d(0, 0, 0)",
           }}
         >
           <style>{`[data-dc-popover-content]::-webkit-scrollbar { display: none; }`}</style>

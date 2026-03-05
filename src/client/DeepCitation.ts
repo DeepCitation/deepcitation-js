@@ -565,13 +565,16 @@ export class DeepCitation {
 
     // Upload files with concurrency limit to prevent overwhelming network/server
     // Performance fix: limits concurrent uploads to DEFAULT_UPLOAD_CONCURRENCY
-    const uploadPromises = files.map(({ file, filename, attachmentId, endUserId, endFileId, convertedPdfDownloadPolicy }) =>
-      this.uploadLimiter(() =>
-        this.uploadFile(file, { filename, attachmentId, endUserId, endFileId, convertedPdfDownloadPolicy }).then(result => ({
-          result,
-          filename,
-        })),
-      ),
+    const uploadPromises = files.map(
+      ({ file, filename, attachmentId, endUserId, endFileId, convertedPdfDownloadPolicy }) =>
+        this.uploadLimiter(() =>
+          this.uploadFile(file, { filename, attachmentId, endUserId, endFileId, convertedPdfDownloadPolicy }).then(
+            result => ({
+              result,
+              filename,
+            }),
+          ),
+        ),
     );
 
     const uploadResults = await Promise.all(uploadPromises);

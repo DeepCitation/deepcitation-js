@@ -6,11 +6,6 @@
 
 // Box/geometry types
 export type { DeepTextItem, ScreenBox, SourcePage } from "./boxes.js";
-// Citation core types
-export {
-  isDocumentCitation,
-  isUrlCitation,
-} from "./citation.js";
 export type {
   Citation,
   CitationBase,
@@ -22,7 +17,8 @@ export type {
   VerifyCitationRequest,
   VerifyCitationResponse,
 } from "./citation.js";
-export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./citation.js";
+// Citation core types
+export { DEFAULT_OUTPUT_IMAGE_FORMAT, isDocumentCitation, isUrlCitation } from "./citation.js";
 // Search status types
 export type {
   MatchedVariation,
@@ -45,14 +41,12 @@ export type {
   ProofConfig,
   ProofImageAsset,
   ProofPageAsset,
-  UrlVerificationResult,
   UrlAccessStatus,
+  UrlVerificationResult,
   Verification,
   VerificationAssets,
   VerificationDocumentAssets,
   VerificationPdfAsset,
   WebCaptureAsset,
 } from "./verification.js";
-export {
-  BLANK_VERIFICATION,
-} from "./verification.js";
+export { BLANK_VERIFICATION } from "./verification.js";
