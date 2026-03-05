@@ -37,10 +37,18 @@ export default function Home() {
 
     // Fetch result extracted so complex conditionals stay outside try/catch.
     // (React Compiler limitation: can't handle value blocks inside try/catch.)
-    let uploadResult: { res: Response; data: Record<string, unknown> } | null = null;
+    let uploadResult: {
+      res: Response;
+      data: { fileDataPart?: FileDataPart; deepTextPromptPortion?: string; error?: string; details?: string };
+    } | null = null;
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = (await res.json()) as Record<string, unknown>;
+      const data = (await res.json()) as {
+        fileDataPart?: FileDataPart;
+        deepTextPromptPortion?: string;
+        error?: string;
+        details?: string;
+      };
       uploadResult = { res, data };
     } catch (err) {
       setUploadError("Network error - check if the server is running");
@@ -49,13 +57,15 @@ export default function Home() {
 
     if (uploadResult) {
       const { res, data } = uploadResult;
-      if (res.ok && data.fileDataPart) {
-        setFileDataParts(prev => [...prev, data.fileDataPart]);
-        if (data.deepTextPromptPortion) {
-          setDeepTextPromptPortions(prev => [...prev, data.deepTextPromptPortion]);
+      const part = data.fileDataPart;
+      const portion = data.deepTextPromptPortion;
+      if (res.ok && part) {
+        setFileDataParts(prev => [...prev, part]);
+        if (portion) {
+          setDeepTextPromptPortions(prev => [...prev, portion]);
         }
       } else {
-        const errorMsg = String(data.details ?? data.error ?? "Upload failed");
+        const errorMsg = data.details ?? data.error ?? "Upload failed";
         setUploadError(errorMsg);
         console.error("Upload failed:", errorMsg);
       }

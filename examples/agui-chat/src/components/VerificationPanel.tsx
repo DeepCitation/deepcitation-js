@@ -75,9 +75,10 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       {/* Citation List */}
       <div className="flex-1 overflow-y-auto">
         {Object.entries(verifications).map(([key, v]: [string, Verification]) => {
-          const isVerified = v.status === "found";
-          const isPartial = ["partial_text_found", "found_on_other_page", "found_on_other_line"].includes(v.status);
-          const isMiss = v.status === "not_found";
+          const status = v.status ?? "";
+          const isVerified = status === "found";
+          const isPartial = ["partial_text_found", "found_on_other_page", "found_on_other_line"].includes(status);
+          const isMiss = status === "not_found";
           const isExpanded = expandedCitation === key;
 
           return (

@@ -9,10 +9,9 @@
  */
 
 import { HttpAgent } from "@ag-ui/client";
-import { EventType, type BaseEvent } from "@ag-ui/core";
+import { EventType, type BaseEvent, type Message } from "@ag-ui/core";
 import type { Citation, FileDataPart, Verification } from "deepcitation";
 import { useCallback, useRef, useState } from "react";
-import type { Subscription } from "rxjs";
 
 export interface AgentMessage {
   id: string;
@@ -63,7 +62,7 @@ export function useAgentChat({
     Record<string, MessageVerificationResult>
   >({});
 
-  const subscriptionRef = useRef<Subscription | null>(null);
+  const subscriptionRef = useRef<{ unsubscribe(): void } | null>(null);
   // Track current assistant message ID for event correlation
   const currentMessageIdRef = useRef<string | null>(null);
 
@@ -95,20 +94,22 @@ export function useAgentChat({
 
       const agent = new HttpAgent({ url: agentUrl });
 
-      // Build message history for the agent
-      const agentMessages = [
+      // Build message history for the agent (must match AG-UI Message union)
+      const agentMessages: Message[] = [
         ...baseMessages.map(m => ({
           id: m.id,
           role: m.role,
           content: m.content,
-        })),
-        { id: userMessage.id, role: "user" as const, content },
+        })) as Message[],
+        { id: userMessage.id, role: "user" as const, content } as Message,
       ];
 
       const events$ = agent.run({
         threadId,
         runId,
         messages: agentMessages,
+        tools: [],
+        context: [],
         state: {
           fileDataParts,
           deepTextPromptPortions,
