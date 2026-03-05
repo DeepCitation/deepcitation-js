@@ -266,8 +266,11 @@ export function resolveEvidenceSrc(verification: Verification | null | undefined
  * 1. matchPage from verification.assets.pageRenders (best: has image, dimensions, highlight, textItems)
  * 2. assets.proofImage.url (good: CDN image, no overlay data)
  * 2b. First non-match page from verification.assets.pageRenders (for not_found)
+ * 2c. Derived from assets.proofPage.url + ?view=page&format=png (proof service full-page render)
  * 3. assets.webCapture.src (URL citations: full page screenshot)
- * 4. assets.evidenceSnippet.src (baseline: keyhole image at full size)
+ *
+ * Note: assets.evidenceSnippet.src is intentionally excluded — it is the keyhole crop, not a
+ * full-page image. Using it here would make "View page" re-show the same image as the keyhole.
  *
  * Each source is validated with isValidProofImageSrc() before use, blocking SVG data URIs
  * (which can contain scripts), javascript: URIs, and untrusted hosts. Localhost is allowed
@@ -300,6 +303,23 @@ export function resolveExpandedImage(verification: Verification | null | undefin
     return toExpandedImageSource(anyPage);
   }
 
+  // 2c. Derive full-page PNG from proofPage.url by appending ?view=page&format=png.
+  // The proof service serves the same resource in different representations via these params.
+  const proofPageUrl = verification.assets?.proofPage?.url;
+  if (proofPageUrl) {
+    try {
+      const url = new URL(proofPageUrl);
+      url.searchParams.set("view", "page");
+      url.searchParams.set("format", "png");
+      const derivedSrc = url.toString();
+      if (isValidProofImageSrc(derivedSrc)) {
+        return { src: derivedSrc, dimensions: null, highlightBox: null, textItems: [] };
+      }
+    } catch {
+      // Malformed proofPage.url — fall through
+    }
+  }
+
   // 3. URL screenshot — base64-encoded page screenshot (URL citations)
   const urlScreenshot = verification.assets?.webCapture?.src;
   if (urlScreenshot) {
@@ -314,17 +334,6 @@ export function resolveExpandedImage(verification: Verification | null | undefin
     } catch {
       // Malformed base64 — fall through to next candidate
     }
-  }
-
-  // 4. Baseline: keyhole verification image at full size
-  const evidenceSnippet = verification.assets?.evidenceSnippet;
-  if (evidenceSnippet?.src && isValidProofImageSrc(evidenceSnippet.src)) {
-    return {
-      src: evidenceSnippet.src,
-      dimensions: evidenceSnippet.dimensions ?? null,
-      highlightBox: null,
-      textItems: [],
-    };
   }
 
   return null;
@@ -1974,12 +1983,9 @@ export function InlineExpandedImage({
   // In fill mode, the shell has CANVAS_PADDING_PX on each side, so the
   // available width for centering is reduced by 2 × padding.
   const containerWidth = containerSize?.width ?? 0;
-  const canvasPad = fill ? CANVAS_PADDING_PX * 2 : 0;
+  const canvasPad = 0;
   const availableWidth = containerWidth - canvasPad;
-  const centeringMarginLeft =
-    zoomedWidth !== undefined && availableWidth > 0 && zoomedWidth < availableWidth
-      ? Math.round((availableWidth - zoomedWidth) / 2)
-      : 0;
+  const centeringMarginLeft = 0;
 
   // Show zoom controls in fill mode when image has loaded
   const showZoomControls = fill && imageLoaded && naturalWidth !== null;
@@ -2158,14 +2164,7 @@ export function InlineExpandedImage({
               // Canvas padding: inline-block + min-width:100% so the shell fills
               // the container when the image is small but expands when it overflows,
               // keeping grey padding on all four sides of the page image.
-              ...(fill
-                ? {
-                    display: "inline-block",
-                    boxSizing: "border-box" as const,
-                    minWidth: "100%",
-                    padding: CANVAS_PADDING_PX,
-                  }
-                : undefined),
+              ...(fill ? { display: "block" } : undefined),
             }}
           >
             {!imageLoaded && (
