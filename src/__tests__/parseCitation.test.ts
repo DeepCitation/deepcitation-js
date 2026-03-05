@@ -6,8 +6,8 @@ import {
   normalizeCitationType,
   parseCitation,
 } from "../parsing/parseCitation.js";
-import { isDocumentCitation, isUrlCitation } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
+import { isDocumentCitation, isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 
 describe("getCitationStatus", () => {

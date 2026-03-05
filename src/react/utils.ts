@@ -1,6 +1,6 @@
 import { getCitationPageNumber } from "../parsing/normalizeCitation.js";
 import type { Citation } from "../types/citation.js";
-import { isDocumentCitation, isUrlCitation } from "../types/citation.js";
+import { isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { sha1Hash } from "../utils/sha.js";
 
@@ -11,9 +11,6 @@ import { sha1Hash } from "../utils/sha.js";
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(" ");
 }
-
-// Re-export type guards from canonical location for backward compatibility
-export { isDocumentCitation, isUrlCitation };
 
 /**
  * Generates a unique, deterministic key for a citation based on its content.

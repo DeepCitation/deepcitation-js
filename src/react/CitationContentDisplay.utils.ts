@@ -7,9 +7,10 @@
  * @packageDocumentation
  */
 
+import { isUrlCitation } from "../types/citation.js";
 import { safeReplace } from "../utils/regexSafety.js";
 import type { BaseCitationProps, CitationContent, CitationVariant } from "./types.js";
-import { cn, isUrlCitation } from "./utils.js";
+import { cn } from "./utils.js";
 
 /** Variants that handle their own hover styling (don't need parent hover) */
 export const VARIANTS_WITH_OWN_HOVER = new Set<CitationVariant>(["chip", "badge", "linter", "superscript", "footnote"]);

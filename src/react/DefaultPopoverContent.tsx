@@ -10,6 +10,7 @@
 
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Citation, CitationStatus } from "../types/citation.js";
+import { isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { getStatusLabel } from "./citationStatus.js";
 import {
@@ -42,7 +43,7 @@ import {
   type UrlAccessExplanation,
 } from "./urlAccessExplanation.js";
 import { isValidProofUrl } from "./urlUtils.js";
-import { cn, isImageSource, isUrlCitation } from "./utils.js";
+import { cn, isImageSource } from "./utils.js";
 import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
 import { DC_EVIDENCE_VT_NAME } from "./viewTransition.js";
 

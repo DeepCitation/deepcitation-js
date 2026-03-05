@@ -1,8 +1,8 @@
 import type { DeepTextItem } from "../types/boxes.js";
+import { isDocumentCitation } from "../types/citation.js";
 import type { MatchedVariation, SearchAttempt, SearchMethod } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { defaultTranslator, type MessageKey, type TranslateFunction } from "./i18n.js";
-import { isDocumentCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
 
 // =============================================================================

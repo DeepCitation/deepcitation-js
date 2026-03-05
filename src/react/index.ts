@@ -11,6 +11,8 @@
  * @packageDocumentation
  */
 
+// Utilities - For generating citation keys and display text
+export { isDocumentCitation, isUrlCitation } from "../types/citation.js";
 // Components
 // URL Citation Component - For displaying URL citations
 export {
@@ -264,7 +266,6 @@ export {
 } from "./useSmartDiff.js";
 // URL Metadata hook
 export { useUrlMeta } from "./useUrlMeta.js";
-// Utilities - For generating citation keys and display text
 export {
   CITATION_X_PADDING,
   CITATION_Y_PADDING,
@@ -274,8 +275,6 @@ export {
   getCitationAnchorText,
   getCitationDisplayText,
   getCitationNumber,
-  isDocumentCitation,
-  isUrlCitation,
 } from "./utils.js";
 // Verification Log Components (Search attempt timeline display)
 export {
