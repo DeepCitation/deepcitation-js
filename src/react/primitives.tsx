@@ -182,7 +182,7 @@ export const CitationTrigger = forwardRef<HTMLSpanElement, CitationTriggerProps>
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          onCitationClick?.(citation, citationKey, e.nativeEvent);
+          onCitationClick?.(citation, citationKey, e);
         }
       },
       [onCitationClick, citation, citationKey],
