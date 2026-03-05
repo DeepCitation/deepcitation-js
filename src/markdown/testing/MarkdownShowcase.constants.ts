@@ -24,9 +24,6 @@ const partialVerification: Verification = {
 
 const notFoundVerification: Verification = {
   status: "not_found",
-  document: {
-    verifiedPageNumber: -1,
-  },
 };
 
 const pendingVerification: Verification = {

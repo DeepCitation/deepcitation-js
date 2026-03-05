@@ -1,16 +1,20 @@
-// PDF stores items just like ScreenBox, these are in PDF space
-export interface DeepTextItem extends ScreenBox {
-  text?: string;
-}
-
-export type IVertex = {
+/**
+ * A rectangular region with position and dimensions.
+ * Used for bounding boxes, highlights, and selection regions in document space.
+ */
+export interface ScreenBox {
   x: number;
   y: number;
-};
-
-export interface ScreenBox extends IVertex {
   width: number;
   height: number;
+}
+
+/**
+ * A positioned text fragment with bounding box coordinates.
+ * Used for OCR text items, phrase matches, and annotation overlays.
+ */
+export interface DeepTextItem extends ScreenBox {
+  text?: string;
 }
 
 /**
@@ -26,9 +30,9 @@ export interface SourcePage {
     height: number;
   };
   /** Source URL for the page image/render */
-  source: string;
+  imageUrl: string;
   /** Optional base64-encoded thumbnail image (e.g., avif) for quick preview */
-  thumbnail?: string;
-  /** Optional expiration date for the page data (ISO 8601 string). If "never", the page does not expire (enterprise). */
-  expiresAt?: string | "never";
+  thumbnailUrl?: string;
+  /** Optional expiration date for the page data (ISO 8601 string or "never" for enterprise). */
+  expiresAt?: string;
 }

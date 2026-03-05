@@ -34,10 +34,19 @@ export function startEvidenceViewTransition(
   // Safe cast: the `"startViewTransition" in document` guard above ensures
   // this property exists at runtime before we reach this point.
   const transition = (
-    document as Document & { startViewTransition: (cb: () => void) => { finished: Promise<void> } }
+    document as Document & {
+      startViewTransition: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> };
+    }
   ).startViewTransition(() => {
     flushSync(update);
   });
+  // Log VT failures in development — the most common cause is duplicate
+  // view-transition-name values in the live DOM after flushSync.
+  if (process.env.NODE_ENV !== "production") {
+    transition.ready.catch((e: unknown) => {
+      console.warn("[VT] transition.ready rejected — animation skipped:", e);
+    });
+  }
   transition.finished
     .then(() => {
       delete document.documentElement.dataset.dcCollapse;

@@ -288,6 +288,7 @@ export const parseCitation = (
           reasoning,
         } as UrlCitation)
       : ({
+          type: "document" as const,
           attachmentId: attachmentId,
           pageNumber,
           startPageId: `page_number_${pageNumber || 1}_index_${pageIndex || 0}`,
@@ -401,6 +402,7 @@ const parseJsonCitation = (jsonCitation: unknown, citationNumber?: number): Cita
   }
 
   const citation: DocumentCitation = {
+    type: "document",
     attachmentId,
     pageNumber,
     fullPhrase,

@@ -564,7 +564,7 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         label: "Document.pdf",
         document: { verifiedPageNumber: 5 },
-        proof: { proofUrl: "https://api.deepcitation.com/proof/123" },
+        assets: { proofPage: { url: "https://api.deepcitation.com/proof/123" } },
       };
 
       const { queryByRole, container } = render(
@@ -635,7 +635,7 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         label: "Document.pdf",
         document: { verifiedPageNumber: 5 },
-        proof: { proofUrl: "javascript:alert('XSS')" },
+        assets: { proofPage: { url: "javascript:alert('XSS')" } },
       };
 
       const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
@@ -654,7 +654,7 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         label: "Document.pdf",
         document: { verifiedPageNumber: 5 },
-        proof: { proofUrl: "data:text/html,<script>alert('XSS')</script>" },
+        assets: { proofPage: { url: "data:text/html,<script>alert('XSS')</script>" } },
       };
 
       const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
@@ -673,7 +673,7 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         label: "Document.pdf",
         document: { verifiedPageNumber: 5 },
-        proof: { proofUrl: "https://cdn.deepcitation.com/proof/456" },
+        assets: { proofPage: { url: "https://cdn.deepcitation.com/proof/456" } },
       };
 
       const { queryByRole, container } = render(
@@ -746,7 +746,7 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         label: "Document.pdf",
         document: { verifiedPageNumber: 5 },
-        proof: { proofUrl: "https://evil.com/fake-proof" },
+        assets: { proofPage: { url: "https://evil.com/fake-proof" } },
       };
 
       const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
@@ -765,7 +765,7 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         label: "Document.pdf",
         document: { verifiedPageNumber: 5 },
-        proof: { proofUrl: "" },
+        assets: { proofPage: { url: "" } },
       };
 
       const { queryByRole, container } = render(
@@ -908,9 +908,10 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        document: {
-          verificationImageSrc:
-            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        assets: {
+          evidenceSnippet: {
+            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          },
         },
       };
       const onSourceDownload = () => {};
@@ -978,9 +979,10 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        document: {
-          verificationImageSrc:
-            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        assets: {
+          evidenceSnippet: {
+            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          },
         },
       };
 
@@ -998,9 +1000,10 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         attachmentId: "att-url-123",
         label: "example.com.pdf",
-        document: {
-          verificationImageSrc:
-            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        assets: {
+          evidenceSnippet: {
+            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          },
         },
       };
       const onSourceDownload = () => {};
@@ -1034,9 +1037,10 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        document: {
-          verificationImageSrc:
-            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        assets: {
+          evidenceSnippet: {
+            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          },
         },
       };
       const parentClick = jest.fn();
@@ -1066,9 +1070,10 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        document: {
-          verificationImageSrc:
-            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        assets: {
+          evidenceSnippet: {
+            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+          },
         },
       };
 

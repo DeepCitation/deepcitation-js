@@ -406,6 +406,7 @@ export function deferredCitationToCitation(data: CitationData, citationNumber?: 
   const lineIds = data.line_ids?.length ? [...data.line_ids].sort((a, b) => a - b) : undefined;
 
   return {
+    type: "document" as const,
     attachmentId: data.attachment_id,
     pageNumber,
     startPageId,

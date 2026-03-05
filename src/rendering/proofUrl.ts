@@ -57,14 +57,14 @@ export function buildSnippetImageUrl(proofId: string, options: ProofUrlOptions):
  * Build proof URLs for all citations in a verification record.
  * Returns a map of citationKey -> proofUrl.
  *
- * Uses `proofId` from each verification if available, otherwise falls back
+ * Uses `assets.proofPage.id` from each verification if available, otherwise falls back
  * to the citationKey as the proof ID.
  */
 export function buildProofUrls(verifications: VerificationRecord, options: ProofUrlOptions): Record<string, string> {
   const urls: Record<string, string> = {};
 
   for (const [citationKey, verification] of Object.entries(verifications)) {
-    const proofId = verification.proof?.proofId || citationKey;
+    const proofId = verification.assets?.proofPage?.id || citationKey;
     urls[citationKey] = buildProofUrl(proofId, options);
   }
 

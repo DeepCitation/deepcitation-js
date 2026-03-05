@@ -1,5 +1,5 @@
 /**
- * Tests for resolveExpandedImage() — the three-tier fallback resolver
+ * Tests for resolveExpandedImage() — fallback resolver
  * for the expanded page viewer's image source.
  *
  * Security model: each source is validated with isValidProofImageSrc() before use.
@@ -7,7 +7,7 @@
  *          localhost (dev), same-origin relative paths, safe raster data URIs.
  * Rejected: SVG data URIs, javascript: URIs, arbitrary HTTPS hosts, relative paths with `..` traversal.
  * Invalid sources are skipped and the next tier is tried.
- * Correctness: validates cascade priority (matchPage → proofImageUrl → verificationImageSrc).
+ * Correctness: validates cascade priority (matchPage -> proofImage -> webCapture -> evidenceSnippet).
  */
 
 import { describe, expect, it } from "@jest/globals";
@@ -66,22 +66,22 @@ describe("resolveExpandedImage", () => {
   });
 
   describe("cascade priority", () => {
-    it("prefers matchPage over proofImageUrl and verificationImageSrc", () => {
+    it("prefers matchPage over proofImage and evidenceSnippet", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            dimensions: { width: 800, height: 1200 },
-            highlightBox: { x: 10, y: 20, width: 100, height: 50 },
-          },
-        ],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verifiedPageNumber: 1,
+        document: { verifiedPageNumber: 1 },
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: true,
+              imageUrl: TRUSTED_IMG,
+              dimensions: { width: 800, height: 1200 },
+              highlightBox: { x: 10, y: 20, width: 100, height: 50 },
+            },
+          ],
+          proofImage: { url: TRUSTED_CDN_IMG },
+          evidenceSnippet: { src: TRUSTED_IMG },
         },
       };
 
@@ -93,20 +93,20 @@ describe("resolveExpandedImage", () => {
       expect(result.highlightBox).toEqual({ x: 10, y: 20, width: 100, height: 50 });
     });
 
-    it("falls back to proofImageUrl when no matchPage exists", () => {
+    it("falls back to proofImage when no matchPage exists", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: false,
-            source: TRUSTED_IMG,
-          },
-        ],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verifiedPageNumber: 1,
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: false,
+              imageUrl: TRUSTED_IMG,
+              dimensions: { width: 800, height: 1200 },
+            },
+          ],
+          proofImage: { url: TRUSTED_CDN_IMG },
+          evidenceSnippet: { src: TRUSTED_IMG },
         },
       };
 
@@ -118,13 +118,14 @@ describe("resolveExpandedImage", () => {
       expect(result.highlightBox).toBeNull();
     });
 
-    it("falls back to verificationImageSrc when no matchPage or proofImageUrl", () => {
+    it("falls back to evidenceSnippet when no matchPage or proofImage", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verificationImageDimensions: { width: 600, height: 900 },
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: TRUSTED_IMG,
+            dimensions: { width: 600, height: 900 },
+          },
         },
       };
 
@@ -132,23 +133,25 @@ describe("resolveExpandedImage", () => {
       expect(result).not.toBeNull();
       if (!result) throw new Error("Expected result");
       expect(result.src).toBe(TRUSTED_IMG);
-      if (!result) throw new Error("Expected result");
       expect(result.dimensions).toEqual({ width: 600, height: 900 });
-      if (!result) throw new Error("Expected result");
       expect(result.highlightBox).toBeNull();
     });
 
-    it("falls back to proofImageUrl when matchPage has no source", () => {
+    it("falls back to proofImage when matchPage has no imageUrl", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            // no source field
-          },
-        ],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: true,
+              // no imageUrl field
+              imageUrl: "" as unknown as string,
+              dimensions: { width: 800, height: 1200 },
+            },
+          ],
+          proofImage: { url: TRUSTED_CDN_IMG },
+        },
       };
 
       const result = resolveExpandedImage(verification);
@@ -162,7 +165,11 @@ describe("resolveExpandedImage", () => {
     it("accepts localhost matchPage source (dev environment)", () => {
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: LOCALHOST_IMG }],
+        assets: {
+          pageRenders: [
+            { pageNumber: 1, isMatchPage: true, imageUrl: LOCALHOST_IMG, dimensions: { width: 1, height: 1 } },
+          ],
+        },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
@@ -173,7 +180,7 @@ describe("resolveExpandedImage", () => {
       const pngDataUri = "data:image/png;base64,iVBORw0KGgo=";
       const verification: Verification = {
         status: "found",
-        document: { verificationImageSrc: pngDataUri, verifiedPageNumber: 1 },
+        assets: { evidenceSnippet: { src: pngDataUri } },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
@@ -183,10 +190,14 @@ describe("resolveExpandedImage", () => {
     it("rejects untrusted HTTPS host — skips tier and falls through", () => {
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: UNTRUSTED_HTTPS_IMG }],
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        assets: {
+          pageRenders: [
+            { pageNumber: 1, isMatchPage: true, imageUrl: UNTRUSTED_HTTPS_IMG, dimensions: { width: 1, height: 1 } },
+          ],
+          evidenceSnippet: { src: TRUSTED_IMG },
+        },
       };
-      // tier 1 (untrusted host) is skipped; tier 3 (trusted) is used
+      // tier 1 (untrusted host) is skipped; tier 4 (trusted snippet) is used
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
       expect(result?.src).toBe(TRUSTED_IMG);
@@ -195,10 +206,14 @@ describe("resolveExpandedImage", () => {
     it("rejects SVG data URI — skips tier and falls through", () => {
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: SVG_DATA_URI }],
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        assets: {
+          pageRenders: [
+            { pageNumber: 1, isMatchPage: true, imageUrl: SVG_DATA_URI, dimensions: { width: 1, height: 1 } },
+          ],
+          evidenceSnippet: { src: TRUSTED_IMG },
+        },
       };
-      // SVG data URI skipped; trusted verificationImageSrc used
+      // SVG data URI skipped; trusted evidenceSnippet used
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
       expect(result?.src).toBe(TRUSTED_IMG);
@@ -207,16 +222,18 @@ describe("resolveExpandedImage", () => {
     it("rejects javascript: URI — returns null when no valid fallback", () => {
       const verification: Verification = {
         status: "found",
-        proof: { proofImageUrl: JAVASCRIPT_URI },
+        assets: { proofImage: { url: JAVASCRIPT_URI } },
       };
       expect(resolveExpandedImage(verification)).toBeNull();
     });
 
-    it("falls through from invalid proofImageUrl to valid verificationImageSrc", () => {
+    it("falls through from invalid proofImage to valid evidenceSnippet", () => {
       const verification: Verification = {
         status: "found",
-        proof: { proofImageUrl: UNTRUSTED_HTTPS_IMG },
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        assets: {
+          proofImage: { url: UNTRUSTED_HTTPS_IMG },
+          evidenceSnippet: { src: TRUSTED_IMG },
+        },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
@@ -226,9 +243,13 @@ describe("resolveExpandedImage", () => {
     it("returns valid matchPage source when all tiers present", () => {
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: LOCALHOST_IMG }],
-        proof: { proofImageUrl: UNTRUSTED_HTTPS_IMG },
-        document: { verificationImageSrc: SVG_DATA_URI, verifiedPageNumber: 1 },
+        assets: {
+          pageRenders: [
+            { pageNumber: 1, isMatchPage: true, imageUrl: LOCALHOST_IMG, dimensions: { width: 1, height: 1 } },
+          ],
+          proofImage: { url: UNTRUSTED_HTTPS_IMG },
+          evidenceSnippet: { src: SVG_DATA_URI },
+        },
       };
       // localhost matchPage wins (valid tier 1)
       const result = resolveExpandedImage(verification);
@@ -239,26 +260,29 @@ describe("resolveExpandedImage", () => {
     it("accepts proof.deepcitation.com as matchPage source (tier 1)", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_PROOF_IMG,
-            dimensions: { width: 800, height: 1200 },
-          },
-        ],
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: true,
+              imageUrl: TRUSTED_PROOF_IMG,
+              dimensions: { width: 800, height: 1200 },
+            },
+          ],
+        },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
       expect(result?.src).toBe(TRUSTED_PROOF_IMG);
     });
 
-    it("accepts relative path as verificationImageSrc (tier 3)", () => {
+    it("accepts relative path as evidenceSnippet src", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: RELATIVE_PATH_IMG,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: RELATIVE_PATH_IMG,
+          },
         },
       };
       const result = resolveExpandedImage(verification);
@@ -269,9 +293,10 @@ describe("resolveExpandedImage", () => {
     it("rejects relative path with .. traversal", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: TRAVERSAL_PATH,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: TRAVERSAL_PATH,
+          },
         },
       };
       expect(resolveExpandedImage(verification)).toBeNull();
@@ -280,9 +305,10 @@ describe("resolveExpandedImage", () => {
     it("rejects URL-encoded path traversal (%2e%2e)", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: ENCODED_TRAVERSAL_PATH,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: ENCODED_TRAVERSAL_PATH,
+          },
         },
       };
       expect(resolveExpandedImage(verification)).toBeNull();
@@ -291,7 +317,11 @@ describe("resolveExpandedImage", () => {
     it("rejects protocol-relative URL (//evil.com)", () => {
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: PROTOCOL_RELATIVE_URL }],
+        assets: {
+          pageRenders: [
+            { pageNumber: 1, isMatchPage: true, imageUrl: PROTOCOL_RELATIVE_URL, dimensions: { width: 1, height: 1 } },
+          ],
+        },
       };
       expect(resolveExpandedImage(verification)).toBeNull();
     });
@@ -299,21 +329,22 @@ describe("resolveExpandedImage", () => {
     it("rejects Unicode fullwidth dots (U+FF0E) traversal", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: UNICODE_FULLWIDTH_TRAVERSAL,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: UNICODE_FULLWIDTH_TRAVERSAL,
+          },
         },
       };
-      // Should be rejected by the Unicode lookalike regex (\uFF0E is fullwidth dot)
       expect(resolveExpandedImage(verification)).toBeNull();
     });
 
     it("rejects Unicode one dot leader (U+2024) lookalike", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: UNICODE_ONE_DOT_LEADER,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: UNICODE_ONE_DOT_LEADER,
+          },
         },
       };
       expect(resolveExpandedImage(verification)).toBeNull();
@@ -322,33 +353,34 @@ describe("resolveExpandedImage", () => {
     it("rejects double-encoded path traversal (%252e%252e)", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: DOUBLE_ENCODED_TRAVERSAL,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: DOUBLE_ENCODED_TRAVERSAL,
+          },
         },
       };
-      // Iterative decoding should catch: %252e%252e → %2e%2e → ..
       expect(resolveExpandedImage(verification)).toBeNull();
     });
 
     it("rejects triple-encoded path traversal (%25252e%25252e)", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: TRIPLE_ENCODED_TRAVERSAL,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: TRIPLE_ENCODED_TRAVERSAL,
+          },
         },
       };
-      // Iterative decoding should catch: %25252e → %252e → %2e → ..
       expect(resolveExpandedImage(verification)).toBeNull();
     });
 
     it("rejects null byte injection (literal \\0)", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: NULL_BYTE_PATH,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: NULL_BYTE_PATH,
+          },
         },
       };
       expect(resolveExpandedImage(verification)).toBeNull();
@@ -357,23 +389,23 @@ describe("resolveExpandedImage", () => {
     it("rejects URL-encoded null byte (%00)", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: ENCODED_NULL_BYTE,
-          verifiedPageNumber: 1,
+        assets: {
+          evidenceSnippet: {
+            src: ENCODED_NULL_BYTE,
+          },
         },
       };
-      // After decoding, should contain \0 and be rejected
       expect(resolveExpandedImage(verification)).toBeNull();
     });
   });
 
-  describe("URL citation screenshot (tier 3 — webPageScreenshotBase64)", () => {
+  describe("URL citation screenshot (tier 3 — webCapture.src)", () => {
     it("converts raw base64 string to data:image/jpeg;base64, URI", () => {
       const rawBase64 =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
       const verification: Verification = {
         status: "found",
-        url: { webPageScreenshotBase64: rawBase64 },
+        assets: { webCapture: { src: rawBase64 } },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
@@ -387,34 +419,40 @@ describe("resolveExpandedImage", () => {
       const dataUri = "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";
       const verification: Verification = {
         status: "found",
-        url: { webPageScreenshotBase64: dataUri },
+        assets: { webCapture: { src: dataUri } },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
       expect(result?.src).toBe(dataUri);
     });
 
-    it("falls through to verificationImageSrc when URL screenshot is an SVG data URI", () => {
+    it("falls through to evidenceSnippet when URL screenshot is an SVG data URI", () => {
       const verification: Verification = {
         status: "found",
-        url: { webPageScreenshotBase64: SVG_DATA_URI },
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        assets: {
+          webCapture: { src: SVG_DATA_URI },
+          evidenceSnippet: { src: TRUSTED_IMG },
+        },
       };
-      // SVG data URI is rejected by isValidProofImageSrc; tier 4 (verificationImageSrc) is used
+      // SVG data URI is rejected by isValidProofImageSrc; tier 4 (evidenceSnippet) is used
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
       expect(result?.src).toBe(TRUSTED_IMG);
     });
 
-    it("confirms cascade: matchPage > proofImageUrl > webPageScreenshotBase64 > verificationImageSrc", () => {
+    it("confirms cascade: matchPage > proofImage > webCapture > evidenceSnippet", () => {
       const rawBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";
-      // tier 1 invalid, tier 2 invalid — should land on tier 3 (URL screenshot)
+      // tier 1 invalid, tier 2 invalid — should land on tier 3 (web capture)
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: UNTRUSTED_HTTPS_IMG }],
-        proof: { proofImageUrl: UNTRUSTED_HTTPS_IMG },
-        url: { webPageScreenshotBase64: rawBase64 },
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        assets: {
+          pageRenders: [
+            { pageNumber: 1, isMatchPage: true, imageUrl: UNTRUSTED_HTTPS_IMG, dimensions: { width: 1, height: 1 } },
+          ],
+          proofImage: { url: UNTRUSTED_HTTPS_IMG },
+          webCapture: { src: rawBase64 },
+          evidenceSnippet: { src: TRUSTED_IMG },
+        },
       };
       const result = resolveExpandedImage(verification);
       expect(result).not.toBeNull();
@@ -426,15 +464,16 @@ describe("resolveExpandedImage", () => {
     it("defaults highlightBox to null when matchPage has none", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            dimensions: { width: 800, height: 1200 },
-            // no highlightBox
-          },
-        ],
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: true,
+              imageUrl: TRUSTED_IMG,
+              dimensions: { width: 800, height: 1200 },
+            },
+          ],
+        },
       };
 
       const result = resolveExpandedImage(verification);
@@ -446,14 +485,16 @@ describe("resolveExpandedImage", () => {
     it("defaults textItems to empty array when matchPage has none", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            // no textItems
-          },
-        ],
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: true,
+              imageUrl: TRUSTED_IMG,
+              dimensions: { width: 800, height: 1200 },
+            },
+          ],
+        },
       };
 
       const result = resolveExpandedImage(verification);
@@ -466,14 +507,17 @@ describe("resolveExpandedImage", () => {
       const textItems = [{ text: "hello", x: 0, y: 0, width: 50, height: 12 }];
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            textItems,
-          },
-        ],
+        assets: {
+          pageRenders: [
+            {
+              pageNumber: 1,
+              isMatchPage: true,
+              imageUrl: TRUSTED_IMG,
+              dimensions: { width: 800, height: 1200 },
+              textItems,
+            },
+          ],
+        },
       };
 
       const result = resolveExpandedImage(verification);
@@ -482,13 +526,13 @@ describe("resolveExpandedImage", () => {
       expect(result.textItems).toEqual(textItems);
     });
 
-    it("defaults dimensions to null for verificationImageSrc without dimensions", () => {
+    it("defaults dimensions to null for evidenceSnippet without dimensions", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verifiedPageNumber: 1,
-          // no verificationImageDimensions
+        assets: {
+          evidenceSnippet: {
+            src: TRUSTED_IMG,
+          },
         },
       };
 
@@ -498,11 +542,13 @@ describe("resolveExpandedImage", () => {
       expect(result.dimensions).toBeNull();
     });
 
-    it("returns empty pages array gracefully", () => {
+    it("returns empty pageRenders array gracefully", () => {
       const verification: Verification = {
         status: "found",
-        pages: [],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
+        assets: {
+          pageRenders: [],
+          proofImage: { url: TRUSTED_CDN_IMG },
+        },
       };
 
       const result = resolveExpandedImage(verification);

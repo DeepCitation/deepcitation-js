@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Citation } from "../types/citation.js";
-import type { Verification, VerificationPage } from "../types/verification.js";
+import type { PageRenderAsset, Verification } from "../types/verification.js";
 import type { IndicatorVariant } from "./types.js";
 
 /**
@@ -14,7 +14,7 @@ export interface CitationDrawerItem {
   /** Verification result if available */
   verification: Verification | null;
   /** Optional page render for the citation's verified page */
-  page?: VerificationPage | null;
+  page?: PageRenderAsset | null;
 }
 
 /**

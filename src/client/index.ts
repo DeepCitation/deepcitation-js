@@ -10,12 +10,12 @@ export {
 export type {
   AttachmentResponse,
   CitationInput,
+  ConvertedPdfDownloadPolicy,
   ConvertFileInput,
   ConvertFileResponse,
   DeepCitationConfig,
   DeepCitationLogger,
   DeleteAttachmentResponse,
-  ExpirationValue,
   ExtendExpirationDuration,
   ExtendExpirationOptions,
   ExtendExpirationResponse,

@@ -25,14 +25,15 @@ function createMockContainer(): HTMLDivElement {
   return el;
 }
 
-/** Create a mock wrapper element for CSS transforms. */
-function createMockWrapper(): HTMLDivElement {
+/** Create a mock wrapper element for CSS transforms (inside the container). */
+function createMockWrapper(container: HTMLDivElement): HTMLDivElement {
   const el = document.createElement("div");
-  document.body.appendChild(el);
+  container.appendChild(el);
   return el;
 }
 
-/** Dispatch a wheel event on the container. */
+/** Dispatch a wheel event on the wrapper (bubbles up to container).
+ *  Mirrors real usage where the cursor is over the image inside the wrapper. */
 function fireWheel(el: HTMLElement, deltaY: number) {
   const event = new WheelEvent("wheel", {
     deltaY,
@@ -56,7 +57,7 @@ describe("useWheelZoom", () => {
 
   it("returns expected shape", () => {
     const container = createMockContainer();
-    const wrapper = createMockWrapper();
+    const wrapper = createMockWrapper(container);
 
     const { result } = renderHook(() =>
       useWheelZoom({
@@ -79,7 +80,7 @@ describe("useWheelZoom", () => {
 
   it("commits zoom after 150ms debounce", async () => {
     const container = createMockContainer();
-    const wrapper = createMockWrapper();
+    const wrapper = createMockWrapper(container);
     const onZoomCommit = jest.fn<(z: number) => void>();
 
     renderHook(() =>
@@ -95,9 +96,10 @@ describe("useWheelZoom", () => {
       }),
     );
 
-    // Fire a zoom-in wheel event (negative deltaY = zoom in)
+    // Fire a zoom-in wheel event on the wrapper (cursor over image).
+    // Events bubble from wrapper to container where the handler is attached.
     act(() => {
-      fireWheel(container, -100);
+      fireWheel(wrapper, -100);
     });
 
     // Before debounce: no commit yet
@@ -116,7 +118,7 @@ describe("useWheelZoom", () => {
 
   it("prevents snap-back when new gesture starts before React re-renders", async () => {
     const container = createMockContainer();
-    const wrapper = createMockWrapper();
+    const wrapper = createMockWrapper(container);
 
     // Track committed zoom values — intentionally do NOT re-render (simulating
     // the window between commit timeout and React's render).
@@ -139,9 +141,9 @@ describe("useWheelZoom", () => {
       }),
     );
 
-    // First gesture: zoom in
+    // First gesture: zoom in (cursor on wrapper/image)
     act(() => {
-      fireWheel(container, -100);
+      fireWheel(wrapper, -100);
     });
 
     // Wait for 150ms debounce — commit fires
@@ -161,7 +163,7 @@ describe("useWheelZoom", () => {
     // Start second gesture BEFORE React re-renders (zoom prop still 1.0).
     // Without committedZoomRef, this would snap back to zoom=1.0.
     act(() => {
-      fireWheel(container, -50);
+      fireWheel(wrapper, -50);
     });
 
     // The second gesture should build on top of firstCommit, not snap back to 1.0.
@@ -174,7 +176,7 @@ describe("useWheelZoom", () => {
 
   it("uses committed zoom as CSS transform scale base during stale-prop window", async () => {
     const container = createMockContainer();
-    const wrapper = createMockWrapper();
+    const wrapper = createMockWrapper(container);
 
     let lastCommittedZoom = 1.0;
     const onZoomCommit = jest.fn<(z: number) => void>().mockImplementation(z => {
@@ -195,9 +197,9 @@ describe("useWheelZoom", () => {
       }),
     );
 
-    // First gesture: zoom in
+    // First gesture: zoom in (cursor on wrapper/image)
     act(() => {
-      fireWheel(container, -100);
+      fireWheel(wrapper, -100);
     });
 
     // Wait for commit
@@ -214,7 +216,7 @@ describe("useWheelZoom", () => {
     // Second gesture while zoom prop is still 1.0 (stale).
     // The CSS transform scale should be relative to `committed`, not 1.0.
     act(() => {
-      fireWheel(container, -50);
+      fireWheel(wrapper, -50);
     });
 
     // Parse the scale value from the wrapper's CSS transform.
@@ -232,7 +234,7 @@ describe("useWheelZoom", () => {
 
   it("does not intercept horizontal-only wheel events", async () => {
     const container = createMockContainer();
-    const wrapper = createMockWrapper();
+    const wrapper = createMockWrapper(container);
     const onZoomCommit = jest.fn<(z: number) => void>();
 
     const { result } = renderHook(() =>

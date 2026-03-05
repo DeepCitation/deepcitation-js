@@ -49,8 +49,10 @@ describe("CitationComponent behaviorConfig", () => {
   };
 
   const verificationWithImage: Verification = {
-    document: {
-      verificationImageSrc: "data:image/png;base64,iVBORw0KGgo=",
+    assets: {
+      evidenceSnippet: {
+        src: "data:image/png;base64,iVBORw0KGgo=",
+      },
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -550,7 +552,7 @@ describe("CitationComponent behaviorConfig", () => {
       });
 
       // Expanded-page portal opens (setImageExpanded: true path) but custom src is rejected;
-      // falls back to the baseline verificationImageSrc — not the malicious URI
+      // falls back to the baseline evidenceSnippet src, not the malicious URI
       const overlayImage = document.querySelector("img[alt='Full page verification']");
       expect(overlayImage?.getAttribute("src")).not.toBe("javascript:alert(1)");
     });
@@ -744,6 +746,72 @@ describe("CitationComponent behaviorConfig", () => {
       // Both handlers were called
       expect(behaviorConfigCalls).toHaveLength(1);
       expect(eventHandlerCalls).toHaveLength(1);
+    });
+  });
+
+  describe("eventHandlers.onClickAfterDefault", () => {
+    it("runs after default click behavior and keeps popover interactions", async () => {
+      const onClickAfterDefault = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          eventHandlers={{ onClickAfterDefault }}
+        />,
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      await act(async () => {
+        fireEvent.click(citation as HTMLElement);
+      });
+
+      await waitForPopoverVisible(container);
+      expect(onClickAfterDefault).toHaveBeenCalledTimes(1);
+      expect(onClickAfterDefault).toHaveBeenCalledWith(baseCitation, expect.any(String), expect.any(Object));
+    });
+
+    it("does not run when click behavior is replaced by eventHandlers.onClick", async () => {
+      const onClick = jest.fn();
+      const onClickAfterDefault = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          eventHandlers={{ onClick, onClickAfterDefault }}
+        />,
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      await act(async () => {
+        fireEvent.click(citation as HTMLElement);
+      });
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onClickAfterDefault).not.toHaveBeenCalled();
+    });
+
+    it("does not run when click behavior is replaced by behaviorConfig.onClick", async () => {
+      const customOnClick = jest.fn();
+      const onClickAfterDefault = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          behaviorConfig={{ onClick: customOnClick }}
+          eventHandlers={{ onClickAfterDefault }}
+        />,
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      await act(async () => {
+        fireEvent.click(citation as HTMLElement);
+      });
+
+      expect(customOnClick).toHaveBeenCalledTimes(1);
+      expect(onClickAfterDefault).not.toHaveBeenCalled();
     });
   });
 
@@ -1252,8 +1320,10 @@ describe("CitationComponent mobile/touch detection", () => {
   };
 
   const verificationWithImage: Verification = {
-    document: {
-      verificationImageSrc: "data:image/png;base64,iVBORw0KGgo=",
+    assets: {
+      evidenceSnippet: {
+        src: "data:image/png;base64,iVBORw0KGgo=",
+      },
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -1886,8 +1956,10 @@ describe("CitationComponent interactionMode", () => {
   };
 
   const verificationWithImage: Verification = {
-    document: {
-      verificationImageSrc: "data:image/png;base64,iVBORw0KGgo=",
+    assets: {
+      evidenceSnippet: {
+        src: "data:image/png;base64,iVBORw0KGgo=",
+      },
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -2449,7 +2521,7 @@ describe("CitationComponent proof URL links", () => {
       label: "Document.pdf",
       verifiedMatchSnippet: "test citation phrase",
       document: { verifiedPageNumber: 5 },
-      proof: { proofUrl: "javascript:alert('XSS')" },
+      assets: { proofPage: { url: "javascript:alert('XSS')" } },
     };
 
     const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
@@ -2476,7 +2548,7 @@ describe("CitationComponent proof URL links", () => {
       label: "Document.pdf",
       verifiedMatchSnippet: "test citation phrase",
       document: { verifiedPageNumber: 5 },
-      proof: { proofUrl: "data:text/html,<script>alert('XSS')</script>" },
+      assets: { proofPage: { url: "data:text/html,<script>alert('XSS')</script>" } },
     };
 
     const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
@@ -2501,7 +2573,7 @@ describe("CitationComponent proof URL links", () => {
       label: "Document.pdf",
       verifiedMatchSnippet: "test citation phrase",
       document: { verifiedPageNumber: 5 },
-      proof: { proofUrl: "https://evil.com/fake-proof" },
+      assets: { proofPage: { url: "https://evil.com/fake-proof" } },
     };
 
     const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);

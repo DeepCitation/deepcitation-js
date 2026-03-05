@@ -256,6 +256,13 @@ export const defaultMessages = {
   "location.page": "p.\u202f{pageNumber}",
   "location.image": "Image",
 
+  // ── Evidence / popover inline labels ────────────────────────────
+  "evidence.textNotFound": "Text not found in document",
+  "evidence.similarTextFound": "Similar text found",
+  "evidence.scrollToZoom": "Scroll to zoom",
+  "evidence.differentSection": "(different section)",
+  "evidence.andMore": "\u2026and {count} more",
+
   // ── Misc ───────────────────────────────────────────────────────
   "misc.noTextFound": "No text found",
   "misc.warning": "Warning",

@@ -630,11 +630,12 @@ export const POPOVER_MORPH_EXPAND_MS = 120;
 export const POPOVER_MORPH_COLLAPSE_MS = 80;
 
 /**
- * Easing for expand transitions — spring-like with ~6% overshoot.
- * Expanding content briefly surpasses its target, then settles back,
- * giving the motion a sense of physical weight and liveliness.
+ * Easing for expand transitions — restrained spring with ~2% overshoot.
+ * Appropriate only when total travel ≤ ~200px (keeps absolute overshoot ≤ 4px).
+ * For larger motions (VT morphs, page transitions, height morphs) use
+ * EASE_COLLAPSE or BLINK_ENTER_EASING — both are zero-overshoot.
  */
-export const EASE_EXPAND = "cubic-bezier(0.34, 1.06, 0.64, 1)";
+export const EASE_EXPAND = "cubic-bezier(0.34, 1.02, 0.64, 1)";
 
 /**
  * Easing for collapse transitions — decisive decelerate.

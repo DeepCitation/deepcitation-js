@@ -9,7 +9,6 @@ import {
 import { isDocumentCitation, isUrlCitation } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { NOT_FOUND_VERIFICATION_INDEX } from "../types/verification.js";
 
 describe("getCitationStatus", () => {
   it("marks verified citations", () => {
@@ -38,7 +37,7 @@ describe("getCitationStatus", () => {
         attachmentId: "file",
       },
       document: {
-        verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+        verifiedPageNumber: -1,
       },
       status: "not_found",
       verifiedMatchSnippet: "snippet",
@@ -212,7 +211,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         document: {
-          verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+          verifiedPageNumber: -1,
         },
         status: "not_found",
         verifiedMatchSnippet: "snippet",
@@ -2954,20 +2953,9 @@ describe("type guards", () => {
   });
 
   it("isDocumentCitation returns true for document citations", () => {
-    const citation: Citation = { attachmentId: "abc", fullPhrase: "test" };
-    expect(isDocumentCitation(citation)).toBe(true);
-    expect(isUrlCitation(citation)).toBe(false);
-  });
-
-  it("isDocumentCitation returns true for citations with type 'document'", () => {
     const citation: Citation = { type: "document", attachmentId: "abc", fullPhrase: "test" };
     expect(isDocumentCitation(citation)).toBe(true);
     expect(isUrlCitation(citation)).toBe(false);
-  });
-
-  it("isDocumentCitation returns true for citations with no type (backward compat)", () => {
-    const citation: Citation = { fullPhrase: "test" };
-    expect(isDocumentCitation(citation)).toBe(true);
   });
 });
 
@@ -2979,7 +2967,7 @@ describe("groupCitationsByAttachmentId — mixed citation types", () => {
   it("groups URL citations under empty string key", () => {
     const citations: Citation[] = [
       { type: "url", url: "https://example.com", fullPhrase: "url phrase" },
-      { attachmentId: "file1", fullPhrase: "doc phrase", pageNumber: 1 },
+      { type: "document", attachmentId: "file1", fullPhrase: "doc phrase", pageNumber: 1 },
     ];
     const grouped = groupCitationsByAttachmentId(citations);
 

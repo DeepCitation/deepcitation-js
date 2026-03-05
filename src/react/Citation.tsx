@@ -1,7 +1,7 @@
 import type React from "react";
 import { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Citation, CitationStatus } from "../types/citation.js";
-import type { Verification } from "../types/verification.js";
+import type { Verification, VerificationDocumentAssets } from "../types/verification.js";
 import { CitationContentDisplay } from "./CitationContentDisplay.js";
 import {
   getDefaultContent,
@@ -69,6 +69,27 @@ export type {
 /** Tracks which deprecation warnings have already been emitted (dev-mode only). */
 const deprecationWarned = new Set<string>();
 
+export type CitationDownloadPolicy = "original_only" | "original_plus_url_pdf" | "original_plus_all_pdf";
+
+function resolveSourceDownloadUrl(
+  documentFiles: VerificationDocumentAssets | undefined,
+  policy: CitationDownloadPolicy,
+): string | null {
+  if (!documentFiles) return null;
+
+  const originalUrl = documentFiles.originalFile?.download?.url;
+  if (originalUrl) return originalUrl;
+
+  const pdf = documentFiles.verificationPdf;
+  const pdfUrl = pdf?.download?.url;
+  if (!pdf || !pdfUrl) return null;
+
+  if (policy === "original_plus_all_pdf") return pdfUrl;
+  if (policy === "original_plus_url_pdf" && pdf.origin === "converted_from_url") return pdfUrl;
+
+  return null;
+}
+
 function getUrlStatusLabel(fetchStatus: UrlFetchStatus, t: TranslateFunction): string {
   switch (fetchStatus) {
     case "verified":
@@ -129,6 +150,7 @@ function getUrlStatusLabel(fetchStatus: UrlFetchStatus, t: TranslateFunction): s
  * Custom behavior:
  * - Use `behaviorConfig.onClick` to replace the default click behavior
  * - Use `eventHandlers.onClick` to add side effects (disables default)
+ * - Use `eventHandlers.onClickAfterDefault` to add side effects while keeping defaults
  *
  * @example Default usage
  * ```tsx
@@ -251,12 +273,15 @@ export interface CitationComponentProps extends BaseCitationProps {
    * ```
    */
   onSourceDownload?: (citation: Citation) => void;
+  /** Optional explicit file artifacts to use for source download decisions. */
+  documentFiles?: VerificationDocumentAssets;
   /**
-   * Signed download URL for the source file. When provided (and `onSourceDownload`
-   * is not set), the popover download button will open this URL in a new tab.
-   * `onSourceDownload` takes precedence when both are provided.
+   * Source download behavior when `onSourceDownload` is not provided.
+   * - "original_only": only original upload downloads are shown
+   * - "original_plus_url_pdf": original upload + URL-converted PDF (default)
+   * - "original_plus_all_pdf": original upload + any verification PDF
    */
-  downloadUrl?: string;
+  downloadPolicy?: CitationDownloadPolicy;
   /**
    * Enable haptic feedback on mobile for expand/collapse transitions.
    * Experimental — off by default while we validate the feel across devices.
@@ -471,7 +496,8 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
  * ## Customization
  *
  * Use `behaviorConfig.onClick` to completely replace the click behavior,
- * or `eventHandlers.onClick` to add side effects (which disables defaults).
+ * use `eventHandlers.onClick` to add side effects that replace defaults,
+ * or `eventHandlers.onClickAfterDefault` to add side effects while preserving defaults.
  */
 export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentProps>(
   (
@@ -497,7 +523,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       sourceLabel,
       onTimingEvent,
       onSourceDownload,
-      downloadUrl,
+      documentFiles,
+      downloadPolicy = "original_plus_url_pdf",
       experimentalHaptics = false,
     },
     ref,
@@ -518,13 +545,19 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     const indicatorVariant: IndicatorVariant = indicatorVariantProp;
 
+    const resolvedDocumentFiles = documentFiles ?? verification?.assets?.documentFiles;
+    const fallbackDownloadUrl = useMemo(
+      () => resolveSourceDownloadUrl(resolvedDocumentFiles, downloadPolicy),
+      [resolvedDocumentFiles, downloadPolicy],
+    );
+
     // Resolve effective download handler: explicit callback wins, else trigger browser download
     const effectiveOnSourceDownload = useMemo(() => {
       if (onSourceDownload) return onSourceDownload;
-      if (downloadUrl && sanitizeUrl(downloadUrl)) {
+      if (fallbackDownloadUrl && sanitizeUrl(fallbackDownloadUrl)) {
         return () => {
           const a = document.createElement("a");
-          a.href = downloadUrl;
+          a.href = fallbackDownloadUrl;
           a.download = "";
           document.body.appendChild(a);
           a.click();
@@ -532,7 +565,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         };
       }
       return undefined;
-    }, [onSourceDownload, downloadUrl]);
+    }, [onSourceDownload, fallbackDownloadUrl]);
 
     const t = useTranslation();
 
@@ -718,13 +751,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // (setState in useLayoutEffect causes a compiler bailout for the entire component).
     const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef, lockedSide);
     const projectedSummaryKeyholeWidth = useMemo(() => {
-      const dims = verification?.document?.verificationImageDimensions;
+      const dims = verification?.assets?.evidenceSnippet?.dimensions;
       if (!dims) return null;
       const width = dims.width;
       const height = dims.height;
       if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
       return width * (KEYHOLE_STRIP_HEIGHT_DEFAULT / height);
-    }, [verification?.document?.verificationImageDimensions]);
+    }, [verification?.assets?.evidenceSnippet?.dimensions]);
     const projectedPopoverWidthPx = useMemo(() => {
       if (!isHovering || typeof document === "undefined") return null;
       const viewportWidth = document.documentElement.clientWidth;
@@ -826,8 +859,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const status = useMemo(() => getStatusFromVerification(verification), [verification]);
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
-    // Resolve the image source, preferring the new field name with fallback to deprecated one
-    const resolvedImageSrc = verification?.document?.verificationImageSrc ?? null;
+    // Resolve the evidence snippet image source for spinner finalization logic.
+    const resolvedImageSrc = verification?.assets?.evidenceSnippet?.src ?? null;
 
     const hasDefinitiveResult =
       resolvedImageSrc ||
@@ -955,7 +988,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           return;
         }
 
-        // Execute the requested action
+        // Execute the requested default action
         switch (action) {
           case "showPopover":
             // Reset to summary on open (not on close) so exit animations retain
@@ -972,6 +1005,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             setViewStateWithHaptics("expanded-page");
             break;
         }
+
+        eventHandlers?.onClickAfterDefault?.(citation, citationKey, e);
       },
       [
         behaviorConfig,
@@ -1859,7 +1894,8 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     const citation: Citation = useMemo(
       () =>
         providedCitation || {
-          value: url,
+          type: "url",
+          url,
           fullPhrase: title || url,
         },
       [providedCitation, url, title],

@@ -68,6 +68,7 @@ function CodeBlock({ children, label }: { children: string; label?: string }) {
 // =============================================================================
 
 const _baseCitation: Citation = {
+  type: "document",
   attachmentId: "abc123",
   pageNumber: 5,
   lineIds: [12, 13],

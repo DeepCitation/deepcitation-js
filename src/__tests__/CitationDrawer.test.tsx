@@ -956,8 +956,10 @@ describe("CitationDrawerTrigger", () => {
             citation: { type: "url", siteName: "TestSource", title: "Article 1" },
             verification: {
               status: "found",
-              document: {
-                verificationImageSrc: "data:image/png;base64,abc123",
+              assets: {
+                evidenceSnippet: {
+                  src: "data:image/png;base64,abc123",
+                },
               },
             },
           },
@@ -1040,8 +1042,10 @@ describe("CitationDrawerTrigger", () => {
             citation: { type: "url", siteName: "TestSource", title: "Article 1" },
             verification: {
               status: "found",
-              document: {
-                verificationImageSrc: "javascript:alert('xss')",
+              assets: {
+                evidenceSnippet: {
+                  src: "javascript:alert('xss')",
+                },
               },
             },
           },
@@ -1391,10 +1395,12 @@ describe("CitationDrawer page badges", () => {
             },
             verification: {
               status: "found" as const,
-              pages: [
-                { pageNumber: 1, source: page1Src, dimensions: { width: 1000, height: 1400 } },
-                { pageNumber: 2, source: page2Src, dimensions: { width: 1000, height: 1400 } },
-              ],
+              assets: {
+                pageRenders: [
+                  { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+                  { pageNumber: 2, imageUrl: page2Src, dimensions: { width: 1000, height: 1400 } },
+                ],
+              },
             },
           },
           {
@@ -1407,10 +1413,12 @@ describe("CitationDrawer page badges", () => {
             },
             verification: {
               status: "found" as const,
-              pages: [
-                { pageNumber: 1, source: page1Src, dimensions: { width: 1000, height: 1400 } },
-                { pageNumber: 5, source: page5Src, dimensions: { width: 1000, height: 1400 } },
-              ],
+              assets: {
+                pageRenders: [
+                  { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+                  { pageNumber: 5, imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
+                ],
+              },
             },
           },
         ],
@@ -1447,11 +1455,13 @@ describe("CitationDrawer page badges", () => {
             },
             verification: {
               status: "found" as const,
-              pages: [
-                { pageNumber: 1, source: page1Src, dimensions: { width: 1000, height: 1400 } },
-                { pageNumber: 2, source: page2Src, dimensions: { width: 1000, height: 1400 } },
-                { pageNumber: 5, source: page5Src, dimensions: { width: 1000, height: 1400 } },
-              ],
+              assets: {
+                pageRenders: [
+                  { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+                  { pageNumber: 2, imageUrl: page2Src, dimensions: { width: 1000, height: 1400 } },
+                  { pageNumber: 5, imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
+                ],
+              },
             },
           },
         ],
@@ -1496,8 +1506,10 @@ describe("CitationDrawer evidence tray interactions", () => {
             },
             verification: {
               status: "found" as const,
-              document: { verificationImageSrc: evidenceSrc },
-              pages: [{ pageNumber: 4, source: page4Src, dimensions: { width: 1000, height: 1400 } }],
+              assets: {
+                evidenceSnippet: { src: evidenceSrc },
+                pageRenders: [{ pageNumber: 4, imageUrl: page4Src, dimensions: { width: 1000, height: 1400 } }],
+              },
             },
           },
         ],
@@ -1539,8 +1551,10 @@ describe("CitationDrawer evidence tray interactions", () => {
             },
             verification: {
               status: "found" as const,
-              document: { verificationImageSrc: evidenceSrc },
-              pages: [{ pageNumber: 4, source: page4Src, dimensions: { width: 1000, height: 1400 } }],
+              assets: {
+                evidenceSnippet: { src: evidenceSrc },
+                pageRenders: [{ pageNumber: 4, imageUrl: page4Src, dimensions: { width: 1000, height: 1400 } }],
+              },
             },
           },
         ],

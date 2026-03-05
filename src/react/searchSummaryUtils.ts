@@ -278,15 +278,15 @@ export function buildIntentSummary(
 }
 
 /**
- * Find textItems for a specific page from the verification's pages array.
+ * Find textItems for a specific page from verification.assets.pageRenders.
  * Returns undefined if no textItems are available.
  */
 function findPageTextItems(
   verification: Verification | null | undefined,
   pageNumber: number | null | undefined,
 ): DeepTextItem[] | undefined {
-  if (!verification?.pages || !pageNumber) return undefined;
-  const page = verification.pages.find(p => p.pageNumber === pageNumber);
+  if (!verification?.assets?.pageRenders || !pageNumber) return undefined;
+  const page = verification.assets.pageRenders.find(p => p.pageNumber === pageNumber);
   return page?.textItems;
 }
 

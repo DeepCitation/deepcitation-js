@@ -1,7 +1,11 @@
 import type { ScreenBox } from "./boxes.js";
-import type { Verification } from "./verification.js";
+import type { ProofConfig, Verification, VerificationDocumentAssets } from "./verification.js";
 
-export type OutputImageFormat = "jpeg" | "png" | "avif" | undefined | null;
+/**
+ * Image format for proof images, verification screenshots, and output.
+ */
+export type ImageFormat = "jpeg" | "png" | "avif" | "webp";
+
 
 /**
  * A dictionary/map of citations keyed by citationKey (a 16-char hash).
@@ -17,8 +21,8 @@ export type OutputImageFormat = "jpeg" | "png" | "avif" | undefined | null;
  * @example
  * ```typescript
  * const citations: CitationRecord = {
- *   "a1b2c3d4e5f67890": { pageNumber: 1, fullPhrase: "Revenue grew 23%" },
- *   "f9e8d7c6b5a43210": { pageNumber: 2, fullPhrase: "Costs decreased 15%" },
+ *   "a1b2c3d4e5f67890": { type: "document", pageNumber: 1, fullPhrase: "Revenue grew 23%" },
+ *   "f9e8d7c6b5a43210": { type: "document", pageNumber: 2, fullPhrase: "Costs decreased 15%" },
  * };
  *
  * // Iterate over citations
@@ -45,7 +49,7 @@ export type CitationRecord = Record<string, Citation>;
  * @example
  * ```typescript
  * const verifications: VerificationRecord = {
- *   "a1b2c3d4e5f67890": { status: "found", verifiedPageNumber: 1 },
+ *   "a1b2c3d4e5f67890": { status: "found" },
  *   "f9e8d7c6b5a43210": { status: "not_found" },
  * };
  *
@@ -58,41 +62,37 @@ export type CitationRecord = Record<string, Citation>;
 export type VerificationRecord = Record<string, Verification>;
 
 export const DEFAULT_OUTPUT_IMAGE_FORMAT = "avif" as const;
+
 export interface VerifyCitationResponse {
   verifications: VerificationRecord;
-  /** Signed download URL for the source file. Expires after 7 days. */
-  downloadUrl?: string;
+  /** Downloadable source and verification files for this attachment. */
+  documentFiles?: VerificationDocumentAssets;
 }
 
-export interface VerifyCitationRequest {
-  attachmentId: string;
-  citations: CitationRecord;
-  outputImageFormat?: OutputImageFormat;
-  apiKey?: string; // Optional API key for authentication
-
-  /** Developer's end-user identifier for usage attribution */
-  endUserId?: string;
-
+/**
+ * Proof generation options shared across request types.
+ * Used by VerifyCitationRequest, VerifyCitationsOptions, and VerifyInput.
+ */
+export interface ProofOptions {
   /**
-   * When true, the backend will persist proof artifacts (images, metadata)
-   * and return proofId, proofUrl, and proofImageUrl in the response.
+   * When true, the backend will persist proof artifacts and return
+   * fields under verification.assets.proofPage and verification.assets.proofImage.
    * @default false
    */
   generateProofUrls?: boolean;
-
   /**
    * Proof URL configuration. Only used when generateProofUrls is true.
    */
-  proofConfig?: {
-    /** Access control for proof URLs */
-    access?: "signed" | "workspace" | "public";
-    /** Expiry duration for signed URLs (only used when access is "signed") */
-    signedUrlExpiry?: "1h" | "24h" | "7d" | "30d" | "90d" | "1y";
-    /** Image format for proof images */
-    imageFormat?: "png" | "jpeg" | "avif" | "webp";
-    /** Whether to also return base64 images inline (in addition to URLs) */
-    includeBase64?: boolean;
-  };
+  proofConfig?: ProofConfig;
+}
+
+export interface VerifyCitationRequest extends ProofOptions {
+  attachmentId: string;
+  citations: CitationRecord;
+  outputImageFormat?: ImageFormat;
+  apiKey?: string;
+  /** Developer's end-user identifier for usage attribution */
+  endUserId?: string;
 }
 
 /**
@@ -107,49 +107,35 @@ export type CitationType = "document" | "url";
  * Used for icon selection and grouping in sources lists.
  */
 export type SourceType =
-  | "web" // Generic web page
-  | "pdf" // PDF document
-  | "document" // Uploaded document
-  | "social" // Social media (X/Twitter, Facebook, etc.)
-  | "video" // Video platforms (YouTube, Twitch, etc.)
-  | "news" // News articles
-  | "academic" // Academic papers/journals
-  | "code" // Code repositories (GitHub, etc.)
-  | "forum" // Forums/discussion boards (Reddit, etc.)
-  | "commerce" // E-commerce sites
-  | "reference" // Reference sites (Wikipedia, etc.)
-  | "unknown"; // Unknown/other
+  | "web"
+  | "pdf"
+  | "document"
+  | "social"
+  | "video"
+  | "news"
+  | "academic"
+  | "code"
+  | "forum"
+  | "commerce"
+  | "reference"
+  | "unknown";
 
 /**
  * Common fields shared by all citation types.
+ * Only contains fields that are semantically valid for both document and URL citations.
  */
 export interface CitationBase {
-  /** Attachment ID for document citations */
-  attachmentId?: string;
-
-  /** Page number in the document */
-  pageNumber?: number | null;
-
-  /** Line IDs within the page */
-  lineIds?: number[] | null;
-
-  /** Start page ID for multi-page citations */
-  startPageId?: string | null;
-
-  /** Selection box coordinates in the document */
-  selection?: ScreenBox | null;
-
   /** The full context/excerpt containing the cited information */
-  fullPhrase?: string | null;
+  fullPhrase?: string;
 
   /** The specific anchor text being cited (should be substring of fullPhrase) */
-  anchorText?: string | null;
+  anchorText?: string;
 
   /** Citation number for display (e.g., [1], [2], [3]) */
   citationNumber?: number;
 
   /** Reasoning for why this citation was included */
-  reasoning?: string | null;
+  reasoning?: string;
 
   /** Timestamps for audio/video citations */
   timestamps?: {
@@ -161,9 +147,6 @@ export interface CitationBase {
 /**
  * Document citation — PDF or uploaded document.
  * Uses attachmentId, pageNumber, lineIds for verification.
- *
- * `type` is optional for backward compatibility: omitting it (or setting to `"document"`)
- * means this is a document citation.
  *
  * @example
  * ```typescript
@@ -179,30 +162,28 @@ export interface CitationBase {
  * ```
  */
 export interface DocumentCitation extends CitationBase {
-  /** Citation type discriminator. Optional — `undefined` is treated as `"document"`. */
-  type?: "document";
+  /** Citation type discriminator. Required. */
+  type: "document";
 
   /** Attachment ID for document citations */
   attachmentId?: string;
 
   /** Page number in the document */
-  pageNumber?: number | null;
+  pageNumber?: number;
 
   /** Line IDs within the page */
-  lineIds?: number[] | null;
+  lineIds?: number[];
 
   /** Start page ID for multi-page citations */
-  startPageId?: string | null;
+  startPageId?: string;
 
   /** Selection box coordinates in the document */
-  selection?: ScreenBox | null;
+  selection?: ScreenBox;
 }
 
 /**
  * URL citation — web page or online resource.
  * Uses url, domain, title, etc. for verification.
- *
- * `type: "url"` is REQUIRED — it is the discriminator.
  *
  * @example
  * ```typescript
@@ -218,7 +199,7 @@ export interface DocumentCitation extends CitationBase {
  * ```
  */
 export interface UrlCitation extends CitationBase {
-  /** Citation type discriminator. REQUIRED for URL citations. */
+  /** Citation type discriminator. Required. */
   type: "url";
 
   /** The source URL */
@@ -248,25 +229,42 @@ export interface UrlCitation extends CitationBase {
   /** Author name if available */
   author?: string;
 
-  /** Publication date */
-  publishedAt?: Date | string;
+  /** Publication date (ISO 8601 string) */
+  publishedAt?: string;
 
   /** Open Graph or social media image URL */
   imageUrl?: string;
 
-  /** When the source was accessed/verified */
-  accessedAt?: Date | string;
+  /** When the source was accessed/verified (ISO 8601 string) */
+  accessedAt?: string;
 }
 
 /**
  * Discriminated union for citations.
  *
  * Narrow with `citation.type === "url"` to get `UrlCitation`,
- * otherwise it's a `DocumentCitation` (type is `"document"` or `undefined`).
+ * or `citation.type === "document"` to get `DocumentCitation`.
  *
  * Common fields (`fullPhrase`, `anchorText`, etc.) are accessible without narrowing.
+ * Document-specific fields (`pageNumber`, `lineIds`, etc.) require narrowing first.
  */
 export type Citation = DocumentCitation | UrlCitation;
+
+/**
+ * Type guard to check if a citation is a URL citation.
+ * Narrows the Citation union to UrlCitation when true.
+ */
+export function isUrlCitation(citation: Citation): citation is UrlCitation {
+  return citation.type === "url";
+}
+
+/**
+ * Type guard to check if a citation is a document citation.
+ * Narrows the Citation union to DocumentCitation when true.
+ */
+export function isDocumentCitation(citation: Citation): citation is DocumentCitation {
+  return citation.type === "document";
+}
 
 export interface CitationStatus {
   isVerified: boolean;
@@ -300,6 +298,6 @@ export interface SourceMeta {
   excerpts?: string[];
   /** Verification status if verified */
   verificationStatus?: "verified" | "partial" | "pending" | "failed" | "unknown";
-  /** When the source was accessed */
-  accessedAt?: Date | string;
+  /** When the source was accessed (ISO 8601 string) */
+  accessedAt?: string;
 }

@@ -5,14 +5,19 @@
  */
 
 // Box/geometry types
-export type { DeepTextItem, IVertex, ScreenBox, SourcePage } from "./boxes.js";
+export type { DeepTextItem, ScreenBox, SourcePage } from "./boxes.js";
 // Citation core types
+export {
+  isDocumentCitation,
+  isUrlCitation,
+} from "./citation.js";
 export type {
   Citation,
   CitationBase,
   CitationStatus,
   DocumentCitation,
-  OutputImageFormat,
+  ImageFormat,
+  ProofOptions,
   UrlCitation,
   VerifyCitationRequest,
   VerifyCitationResponse,
@@ -27,14 +32,27 @@ export type {
 } from "./search.js";
 // Found highlight types
 export type {
+  ContentMatchStatus,
   DocumentVerificationResult,
-  ProofHosting,
+  DownloadLink,
+  EvidenceSnippetAsset,
+  ExpiresAt,
+  FileAsset,
+  OriginalFileAsset,
+  PageRenderAsset,
+  PageRendersStatus,
+  PdfOrigin,
+  ProofConfig,
+  ProofImageAsset,
+  ProofPageAsset,
   UrlVerificationResult,
+  UrlAccessStatus,
   Verification,
-  VerificationPage,
+  VerificationAssets,
+  VerificationDocumentAssets,
+  VerificationPdfAsset,
+  WebCaptureAsset,
 } from "./verification.js";
 export {
   BLANK_VERIFICATION,
-  NOT_FOUND_VERIFICATION_INDEX,
-  PENDING_VERIFICATION_INDEX,
 } from "./verification.js";

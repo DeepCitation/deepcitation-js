@@ -274,7 +274,11 @@ describe("DeepCitation Client", () => {
             citation_key_1: {
               document: {
                 verifiedPageNumber: 1,
-                verificationImageSrc: "base64data",
+              },
+              assets: {
+                evidenceSnippet: {
+                  src: "base64data",
+                },
               },
               status: "found",
               verifiedMatchSnippet: "Revenue grew 15%",
@@ -339,7 +343,11 @@ describe("DeepCitation Client", () => {
           verifications: {
             key1: {
               status: "found",
-              proofUrl: "https://proof.example.com/abc",
+              assets: {
+                proofPage: {
+                  url: "https://proof.example.com/abc",
+                },
+              },
             },
           },
         }),
@@ -625,7 +633,7 @@ describe("DeepCitation Client", () => {
           originalFilename: "test.pdf",
           mimeType: "application/pdf",
           pageCount: 3,
-          pages: [],
+          pageRenders: [],
           verifications: {},
         }),
       } as Response);
@@ -942,7 +950,7 @@ describe("DeepCitation Client", () => {
           originalFilename: "test.pdf",
           mimeType: "application/pdf",
           pageCount: 1,
-          pages: [],
+          pageRenders: [],
           verifications: {},
         }),
       } as Response);

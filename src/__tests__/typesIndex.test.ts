@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
-import { NOT_FOUND_VERIFICATION_INDEX } from "../types/index.js";
+import { BLANK_VERIFICATION } from "../types/index.js";
 
 describe("types index exports", () => {
-  it("re-exports highlight constants", () => {
-    expect(NOT_FOUND_VERIFICATION_INDEX).toBe(-1);
+  it("re-exports BLANK_VERIFICATION", () => {
+    expect(BLANK_VERIFICATION.status).toBe("not_found");
+    expect(Object.isFrozen(BLANK_VERIFICATION)).toBe(true);
   });
 });

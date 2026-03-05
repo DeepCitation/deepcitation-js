@@ -17,10 +17,10 @@ export {
 export type {
   AttachmentResponse,
   CitationInput,
+  ConvertedPdfDownloadPolicy,
   DeepCitationConfig,
   DeepCitationLogger,
   DeleteAttachmentResponse,
-  ExpirationValue,
   ExtendExpirationDuration,
   ExtendExpirationOptions,
   ExtendExpirationResponse,
@@ -125,7 +125,7 @@ export {
 // Proof URL Builders
 export type { ProofUrlOptions } from "./rendering/proofUrl.js";
 export { buildProofUrl, buildProofUrls, buildSnippetImageUrl } from "./rendering/proofUrl.js";
-export type { DeepTextItem, IVertex, ScreenBox, SourcePage } from "./types/boxes.js";
+export type { DeepTextItem, ScreenBox, SourcePage } from "./types/boxes.js";
 // Types
 export type {
   Citation,
@@ -135,7 +135,8 @@ export type {
   CitationStatus,
   CitationType,
   DocumentCitation,
-  OutputImageFormat,
+  ImageFormat,
+  ProofOptions,
   SourceMeta,
   // Source types for categorization
   SourceType,
@@ -144,7 +145,7 @@ export type {
   VerifyCitationRequest,
   VerifyCitationResponse,
 } from "./types/citation.js";
-export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
+export { DEFAULT_OUTPUT_IMAGE_FORMAT, isDocumentCitation, isUrlCitation } from "./types/citation.js";
 export type {
   SearchAttempt,
   SearchMethod,
@@ -157,16 +158,27 @@ export type {
 export type {
   ContentMatchStatus,
   DocumentVerificationResult,
-  ProofHosting,
+  DownloadLink,
+  EvidenceSnippetAsset,
+  ExpiresAt,
+  FileAsset,
+  OriginalFileAsset,
+  PageRenderAsset,
+  PageRendersStatus,
+  PdfOrigin,
+  ProofConfig,
+  ProofImageAsset,
+  ProofPageAsset,
   UrlAccessStatus,
   UrlVerificationResult,
   Verification,
-  VerificationPage,
+  VerificationAssets,
+  VerificationDocumentAssets,
+  VerificationPdfAsset,
+  WebCaptureAsset,
 } from "./types/verification.js";
 export {
   BLANK_VERIFICATION,
-  NOT_FOUND_VERIFICATION_INDEX,
-  PENDING_VERIFICATION_INDEX,
 } from "./types/verification.js";
 // File validation
 export {

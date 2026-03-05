@@ -183,17 +183,17 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
 }
 
 function resolveImageDownloadUrl(verification: Verification | null | undefined): string | null {
-  const proofImageUrl = verification?.proof?.proofImageUrl;
+  const proofImageUrl = verification?.assets?.proofImage?.url;
   if (proofImageUrl && isValidProofImageSrc(proofImageUrl)) {
     return proofImageUrl;
   }
 
-  const verificationImageSrc = verification?.document?.verificationImageSrc;
+  const verificationImageSrc = verification?.assets?.evidenceSnippet?.src;
   if (verificationImageSrc && isValidProofImageSrc(verificationImageSrc)) {
     return verificationImageSrc;
   }
 
-  const rawScreenshot = verification?.url?.webPageScreenshotBase64;
+  const rawScreenshot = verification?.assets?.webCapture?.src;
   if (!rawScreenshot || typeof rawScreenshot !== "string") {
     return null;
   }
@@ -488,7 +488,7 @@ export function SourceContextHeader({
   const url = isUrl ? citation.url || "" : "";
   // Show the source download button whenever the caller provides onSourceDownload.
   // The caller (CitationComponent) already resolved whether a downloadable source
-  // exists (via the downloadUrl prop), so we trust that signal unconditionally.
+  // exists from documentFiles/origin policy, so we trust that signal unconditionally.
   const shouldShowSourceDownloadButton = !!onSourceDownload;
   const imageDownloadUrl = resolveImageDownloadUrl(verification);
   // Keep a single download action visible: explicit source-download callback wins.

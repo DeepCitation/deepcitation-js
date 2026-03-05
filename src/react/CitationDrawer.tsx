@@ -102,7 +102,7 @@ function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
         (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber,
       );
       if (page !== null) pages.add(page);
-      for (const candidate of verification?.pages ?? []) {
+      for (const candidate of verification?.assets?.pageRenders ?? []) {
         const candidatePage = normalizePageNumber(candidate.pageNumber);
         if (candidatePage !== null) pages.add(candidatePage);
       }
@@ -928,7 +928,7 @@ function OpenCitationDrawer({
 
   // Bidirectional page↔key lookup maps — O(1) instead of linear scans per interaction
   // pageToItems groups all citations by page for the header panel indicator row.
-  // pageToAnyItem includes pages from verification.pages so "extra" pages are still clickable.
+  // pageToAnyItem includes pages from verification.assets.pageRenders so "extra" pages are still clickable.
   const { keyToPage, pageToItems, pageToAnyItem } = useMemo(() => {
     const k2p = new Map<string, number>();
     const p2i = new Map<number, CitationDrawerItem[]>();
@@ -949,7 +949,7 @@ function OpenCitationDrawer({
           }
           if (!p2any.has(page)) p2any.set(page, item);
         }
-        for (const candidate of verification?.pages ?? []) {
+        for (const candidate of verification?.assets?.pageRenders ?? []) {
           const candidatePage = normalizePageNumber(candidate.pageNumber);
           if (candidatePage !== null && !p2any.has(candidatePage)) {
             p2any.set(candidatePage, item);

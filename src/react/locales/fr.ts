@@ -127,13 +127,11 @@ export const frMessages = {
   "urlAccess.login.description": "Cette page requiert une authentification pour afficher son contenu.",
   "urlAccess.login.suggestion": "Connectez-vous au site puis visitez l'URL pour verifier cette citation.",
   "urlAccess.geo.title": "Restriction geographique",
-  "urlAccess.geo.description":
-    "Ce contenu n'est pas disponible depuis l'emplacement de notre serveur de verification.",
+  "urlAccess.geo.description": "Ce contenu n'est pas disponible depuis l'emplacement de notre serveur de verification.",
   "urlAccess.geo.suggestion":
     "Essayez de visiter l'URL directement - elle peut etre accessible depuis votre emplacement.",
   "urlAccess.antibot.title": "Bloque par la protection du site",
-  "urlAccess.antibot.description":
-    "La protection anti-bot du site a empeche notre crawler d'acceder a la page.",
+  "urlAccess.antibot.description": "La protection anti-bot du site a empeche notre crawler d'acceder a la page.",
   "urlAccess.antibot.suggestion": "Visitez directement l'URL dans votre navigateur pour verifier cette citation.",
   "urlAccess.rateLimit.title": "Limitation de debit",
   "urlAccess.rateLimit.description": "Trop de requetes ont ete envoyees a ce site.",
@@ -144,11 +142,9 @@ export const frMessages = {
   "urlAccess.notFound.suggestion": "Verifiez que l'URL est correcte, ou recherchez le contenu sur le site.",
   "urlAccess.server.title": "Erreur serveur",
   "urlAccess.server.description": "Le site a renvoye une erreur serveur et n'a pas pu etre consulte.",
-  "urlAccess.server.suggestion":
-    "Reessayez plus tard - le site rencontre peut-etre des problemes temporaires.",
+  "urlAccess.server.suggestion": "Reessayez plus tard - le site rencontre peut-etre des problemes temporaires.",
   "urlAccess.timeout.title": "Delai de connexion depasse",
-  "urlAccess.timeout.description":
-    "Le site a mis trop de temps a repondre a notre requete de verification.",
+  "urlAccess.timeout.description": "Le site a mis trop de temps a repondre a notre requete de verification.",
   "urlAccess.timeout.suggestion": "Reessayez plus tard - le site est peut-etre sous forte charge.",
   "urlAccess.network.title": "Erreur reseau",
   "urlAccess.network.description": "Impossible de se connecter a ce site - le domaine est peut-etre inaccessible.",
@@ -171,6 +167,11 @@ export const frMessages = {
   "urlStatus.unknown": "Statut inconnu",
   "location.page": "p. {pageNumber}",
   "location.image": "Image",
+  "evidence.textNotFound": "Texte introuvable dans le document",
+  "evidence.similarTextFound": "Texte similaire trouve",
+  "evidence.scrollToZoom": "Defiler pour zoomer",
+  "evidence.differentSection": "(section differente)",
+  "evidence.andMore": "\u2026et {count} de plus",
   "misc.noTextFound": "Aucun texte trouve",
   "misc.warning": "Avertissement",
   "misc.error": "Erreur",

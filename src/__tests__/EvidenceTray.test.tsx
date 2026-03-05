@@ -15,8 +15,10 @@ const baseStatus: CitationStatus = {
 
 const baseVerification: Verification = {
   status: "found",
-  document: {
-    verificationImageSrc: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
+  assets: {
+    evidenceSnippet: {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
+    },
   },
 };
 
@@ -210,10 +212,12 @@ describe("EvidenceTray interaction styles", () => {
     const page5Src = "https://proof.deepcitation.com/page5.png";
     const verificationWithStringPages = {
       status: "found",
-      pages: [
-        { pageNumber: "1", source: page1Src, dimensions: { width: 1000, height: 1400 } },
-        { pageNumber: "5", source: page5Src, dimensions: { width: 1000, height: 1400 } },
-      ],
+      assets: {
+        pageRenders: [
+          { pageNumber: "1", imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+          { pageNumber: "5", imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
+        ],
+      },
     } as unknown as Verification;
 
     const resolved = resolveExpandedImageForPage(verificationWithStringPages, 5);
