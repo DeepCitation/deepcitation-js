@@ -360,17 +360,18 @@ function AnimatedHeightWrapper({
     EASE_COLLAPSE,
   );
 
+  // Extracted from inline JSX arrow so the React Compiler can cache it.
+  // Only reads from the event parameter — zero closures captured.
+  const handleTransitionEnd = useCallback((e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.propertyName === "height") {
+      e.currentTarget.style.height = "";
+      e.currentTarget.style.overflow = "";
+      e.currentTarget.style.transition = "";
+    }
+  }, []);
+
   return (
-    <div
-      ref={wrapperRef}
-      onTransitionEnd={e => {
-        if (e.propertyName === "height") {
-          e.currentTarget.style.height = "";
-          e.currentTarget.style.overflow = "";
-          e.currentTarget.style.transition = "";
-        }
-      }}
-    >
+    <div ref={wrapperRef} onTransitionEnd={handleTransitionEnd}>
       <div ref={contentRef} style={{ display: "flow-root" }}>
         {children}
       </div>
@@ -451,40 +452,86 @@ function EvidenceZone({
     };
   }, [viewState, onRequestCollapseFromPage, escapeInterceptRef]);
 
+  // Extracted from inline JSX arrows so the React Compiler can cache them.
+  const handleKeyholeCollapse = useCallback(() => {
+    onViewStateChange?.("summary");
+  }, [onViewStateChange]);
+
+  const handlePageCollapse = useCallback(() => {
+    if (onRequestCollapseFromPage) {
+      onRequestCollapseFromPage();
+    } else {
+      onViewStateChange?.(prevBeforeExpandedPageRef.current);
+    }
+  }, [onRequestCollapseFromPage, onViewStateChange, prevBeforeExpandedPageRef]);
+
   return (
     <>
       {/* View Transitions CSS for evidence image morph between slots.
-          Both directions use EASE_COLLAPSE (decisive deceleration, no overshoot).
-          Duration is asymmetric: 180ms expand (ANIM_STANDARD_MS), 120ms collapse (ANIM_FAST_MS).
-          Cross-fade: old snapshot dips to ~45% opacity early so the user perceives
-          the spatial motion rather than content detail, then the new snapshot
-          fades in crisp near the end. */}
+          Three strategies keyed by data attributes on <html>:
+
+          1. Keyhole expand (default) — geometry-only morph, no cross-fade.
+             Old snapshot hidden immediately so the new content is visible
+             throughout the morph. Size change is small enough that the
+             geometry morph alone provides smooth continuity.
+
+          2. Page expand (data-dc-page-expand) — fly-to-annotation morph.
+             Old snapshot (keyhole evidence strip) stays visible and flies to
+             the annotation rect while the new snapshot (highlight rectangle
+             at the annotation position) fades in. The group geometry morph
+             tracks from keyhole → annotation rect, creating a spatial "land
+             on the text" effect.
+
+          3. Collapse (data-dc-collapse) — opacity cross-fade.
+             Quick exit where the opacity dip reinforces the "shrinking away" feel. */}
       <style>{`
         ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
-          animation: dc-evidence-fade-out ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+          animation: none;
+          opacity: 0;
         }
         ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
-          animation: dc-evidence-fade-in ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+          animation: none;
         }
         ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
           animation-duration: ${VT_EVIDENCE_EXPAND_MS}ms;
           animation-timing-function: ${EASE_COLLAPSE};
         }
-        :root[data-dc-collapse] ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
+
+        :root[data-dc-page-expand] ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fly-out ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+        }
+        :root[data-dc-page-expand] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fly-in ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+        }
+
+        :root[data-dc-collapse] ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-out ${VT_EVIDENCE_COLLAPSE_MS}ms ${EASE_COLLAPSE} both;
+        }
         :root[data-dc-collapse] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
-          animation-duration: ${VT_EVIDENCE_COLLAPSE_MS}ms;
-          animation-timing-function: ${EASE_COLLAPSE};
+          animation: dc-evidence-fade-in ${VT_EVIDENCE_COLLAPSE_MS}ms ${EASE_COLLAPSE} both;
         }
         :root[data-dc-collapse] ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
           animation-duration: ${VT_EVIDENCE_COLLAPSE_MS}ms;
           animation-timing-function: ${EASE_COLLAPSE};
         }
+
         @media (prefers-reduced-motion: reduce) {
           ::view-transition-group(${DC_EVIDENCE_VT_NAME}),
           ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
           ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
             animation-duration: 0s !important;
           }
+        }
+
+        @keyframes dc-evidence-fly-out {
+          0%   { opacity: 1; }
+          60%  { opacity: 0.8; }
+          100% { opacity: 0; }
+        }
+        @keyframes dc-evidence-fly-in {
+          0%   { opacity: 0; }
+          50%  { opacity: 0; }
+          100% { opacity: 1; }
         }
         @keyframes dc-evidence-fade-out {
           0%   { opacity: 1; }
@@ -505,7 +552,7 @@ function EvidenceZone({
         {evidenceSrc && (
           <InlineExpandedImage
             src={evidenceSrc}
-            onCollapse={() => onViewStateChange?.("summary")}
+            onCollapse={handleKeyholeCollapse}
             onExpand={onExpandToPage}
             expandCtaLabel={expandCtaLabel}
             onNaturalSize={handleKeyholeImageLoad}
@@ -525,11 +572,7 @@ function EvidenceZone({
         {expandedImage?.src && (
           <InlineExpandedImage
             src={expandedImage.src}
-            onCollapse={() =>
-              onRequestCollapseFromPage
-                ? onRequestCollapseFromPage()
-                : onViewStateChange?.(prevBeforeExpandedPageRef.current)
-            }
+            onCollapse={handlePageCollapse}
             verification={verification}
             fill
             onNaturalSize={handlePageImageLoad}
@@ -713,18 +756,18 @@ export function DefaultPopoverContent({
     if (prevIsPendingRef.current && !isPending) {
       // Pending → resolved: announce the verification result
       if (isVerified && !isPartialMatch && !isMiss) {
-        el.textContent = "Citation verified — exact match found";
+        el.textContent = t("aria.announcement.verifiedExact");
       } else if (isMiss) {
-        el.textContent = "Verification complete — citation not found in source";
+        el.textContent = t("aria.announcement.notFound");
       } else if (isPartialMatch) {
-        el.textContent = "Verification complete — partial match found";
+        el.textContent = t("aria.announcement.partial");
       }
     } else if (!prevIsPendingRef.current && isPending) {
       // Resolved → pending (retry): clear so next resolution triggers a new announcement.
       el.textContent = "";
     }
     prevIsPendingRef.current = isPending;
-  }, [isPending, isVerified, isPartialMatch, isMiss]);
+  }, [isPending, isVerified, isPartialMatch, isMiss, t]);
 
   // Save/restore scroll position for back navigation
 
@@ -789,7 +832,10 @@ export function DefaultPopoverContent({
         setExpandedPageShell(prev => (prev ? prev : { width, src: expandedImage.src }));
       }
     },
-    [viewState, expandedImage?.src],
+    // expandedImage (not expandedImage?.src) — compiler infers the whole object
+    // because of the optional chaining property access pattern. Stable ref identity
+    // means this rarely triggers extra re-creation.
+    [viewState, expandedImage],
   );
 
   // Resolve the evidence image src — used by handleKeyholeClick and the prefetch effect.
@@ -833,10 +879,13 @@ export function DefaultPopoverContent({
   // Tracks which state we entered expanded-page from, so onCollapse can return there.
   const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
   const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
-  const handleCollapseFromExpandedPage = useCallback(() => {
+  // Not wrapped in useCallback — the compiler auto-memoizes this with correct deps.
+  // Manual useCallback conflicts with the compiler's inference of ref.current access
+  // ("Differences in ref.current access"), causing a file-level bailout.
+  const handleCollapseFromExpandedPage = () => {
     const target = prevBeforeExpandedPageRef.current;
     onViewStateChange?.(target);
-  }, [onViewStateChange, prevBeforeExpandedPageRef]);
+  };
 
   // Toggles the keyhole expanded view. Clicking when already expanded collapses back to summary.
   const handleKeyholeClick = useCallback(() => {
@@ -861,12 +910,10 @@ export function DefaultPopoverContent({
     onViewStateChange?.("expanded-keyhole");
   }, [viewState, evidenceSrc, onExpandedWidthChange, onViewStateChange]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef is a stable ref identity — including it causes a React Compiler bailout (value modification after hook)
   const handleExpand = useCallback(() => {
     if (!canExpandToPage) return;
-    if (viewState !== "expanded-page") {
-      prevBeforeExpandedPageRef.current = viewState === "expanded-keyhole" ? "expanded-keyhole" : "summary";
-    }
+    // prevBeforeExpandedPageRef.current is now set by setViewStateWithHaptics in
+    // Citation.tsx — no ref mutation needed here, which eliminates a React Compiler bailout.
     const expandedPageWidth =
       expandedPageShellWidth ?? pageNaturalWidth ?? keyholeImageNaturalWidth ?? keyholeNaturalWidthSeed;
     if (expandedPageWidth != null && expandedImage?.src) {
@@ -877,13 +924,14 @@ export function DefaultPopoverContent({
   }, [
     canExpandToPage,
     expandedPageShellWidth,
-    expandedImage?.src,
+    // expandedImage (not expandedImage?.src) — compiler infers the whole object
+    // because of the optional chaining property access pattern.
+    expandedImage,
     keyholeImageNaturalWidth,
     keyholeNaturalWidthSeed,
     onExpandedWidthChange,
     onViewStateChange,
     pageNaturalWidth,
-    viewState,
   ]);
 
   // Prefetch images imperatively when the popover becomes visible.

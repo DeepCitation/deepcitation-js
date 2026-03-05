@@ -73,7 +73,7 @@ function computePosition(
     }
     x += alignOffset;
     y = side === "bottom" ? triggerRect.bottom + sideOffset : triggerRect.top - contentRect.height - sideOffset;
-    return { x: Math.round(x), y: Math.round(y) };
+    return { x, y };
   }
 
   if (align === "center") {
@@ -86,7 +86,7 @@ function computePosition(
   y += alignOffset;
   x = side === "right" ? triggerRect.right + sideOffset : triggerRect.left - contentRect.width - sideOffset;
 
-  return { x: Math.round(x), y: Math.round(y) };
+  return { x, y };
 }
 
 const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
@@ -110,7 +110,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     const wrapperRef = React.useRef<HTMLDivElement | null>(null);
     const prevOpenRef = React.useRef(open);
     const { mounted: isMounted, stage: blinkStage, prefersReducedMotion } = useBlinkMotionStage(open, "container");
-    const [coords, setCoords] = React.useState<Coords>({ x: 0, y: 0 });
+    const coordsRef = React.useRef<Coords>({ x: 0, y: 0 });
     const dataState: "open" | "closed" = open ? "open" : "closed";
 
     const setContentRefs = React.useCallback(
@@ -125,13 +125,14 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     const recomputePosition = React.useCallback(() => {
       const triggerEl = triggerRef.current;
       const contentEl = localContentRef.current;
-      if (!isMounted || !triggerEl || !contentEl) return;
+      const wrapper = wrapperRef.current;
+      if (!isMounted || !triggerEl || !contentEl || !wrapper) return;
       const triggerRect = triggerEl.getBoundingClientRect();
       const contentRect = contentEl.getBoundingClientRect();
       const next = computePosition(triggerRect, contentRect, side, align, sideOffset, alignOffset);
-      setCoords(prev =>
-        Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 ? prev : { x: next.x, y: next.y },
-      );
+      if (Math.abs(coordsRef.current.x - next.x) < 0.5 && Math.abs(coordsRef.current.y - next.y) < 0.5) return;
+      coordsRef.current = next;
+      wrapper.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`;
     }, [align, alignOffset, isMounted, side, sideOffset, triggerRef]);
 
     React.useLayoutEffect(() => {
@@ -425,7 +426,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             width: "max-content",
             zIndex: `var(${Z_INDEX_POPOVER_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})`,
             pointerEvents: dataState === "open" ? "auto" : "none",
-            transform: `translate3d(${coords.x}px, ${coords.y}px, 0)`,
+            transform: `translate3d(${coordsRef.current.x}px, ${coordsRef.current.y}px, 0)`,
           }}
         >
           <style>{`[data-dc-popover-content]::-webkit-scrollbar { display: none; }`}</style>

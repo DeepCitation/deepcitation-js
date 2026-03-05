@@ -538,7 +538,7 @@ export const VT_EVIDENCE_EXPAND_MS = 180;
 /** Duration (ms) for evidence image collapse VT (expanded → keyhole). ANIM_FAST_MS tier. */
 export const VT_EVIDENCE_COLLAPSE_MS = 120;
 /**
- * Opacity dip for VT old-snapshot cross-fade (empirically tuned).
+ * Opacity dip for VT old-snapshot cross-fade on collapse (empirically tuned).
  * Low enough to suppress text-detail flicker during geometry morph,
  * high enough to preserve the shape silhouette for spatial tracking.
  */

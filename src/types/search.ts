@@ -1,3 +1,5 @@
+import type { DeepTextItem } from "./boxes.js";
+
 export type SearchStatus =
   | "loading"
   | "pending"
@@ -98,6 +100,11 @@ export interface SearchAttempt {
   matchedVariation?: MatchedVariation;
   /** The actual text found in document (may exist even if success: false, for rejected matches) */
   matchedText?: string;
+  /**
+   * Deep text boxes for what was observed during this attempt (accepted or rejected).
+   * Enables highlighting exact seen text, even when it was on the wrong line/page.
+   */
+  deepTextItems?: DeepTextItem[];
 
   // Human-readable note (API-generated)
   /** e.g., "not found on expected page (2)" */

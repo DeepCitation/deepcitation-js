@@ -34,7 +34,7 @@ import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
 import { usePopoverAlignOffset } from "./hooks/usePopoverAlignOffset.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { useViewportBoundaryGuard } from "./hooks/useViewportBoundaryGuard.js";
-import { useTranslation } from "./i18n.js";
+import { type TranslateFunction, useTranslation } from "./i18n.js";
 import { CheckIcon, ExternalLinkIcon, LockIcon, XCircleIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
 import { PopoverContent } from "./Popover.js";
@@ -55,7 +55,7 @@ import type {
   UrlFetchStatus,
 } from "./types.js";
 import { isBlockedStatus, isErrorStatus } from "./urlStatus.js";
-import { extractDomain, getUrlPath, STATUS_ICONS, safeWindowOpen, sanitizeUrl, truncateString } from "./urlUtils.js";
+import { extractDomain, getUrlPath, safeWindowOpen, sanitizeUrl, truncateString } from "./urlUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey } from "./utils.js";
 import { startEvidenceViewTransition } from "./viewTransition.js";
 
@@ -68,6 +68,43 @@ export type {
 
 /** Tracks which deprecation warnings have already been emitted (dev-mode only). */
 const deprecationWarned = new Set<string>();
+
+function getUrlStatusLabel(fetchStatus: UrlFetchStatus, t: TranslateFunction): string {
+  switch (fetchStatus) {
+    case "verified":
+      return t("urlStatus.verified");
+    case "partial":
+      return t("urlStatus.partial");
+    case "pending":
+      return t("urlStatus.pending");
+    case "accessible":
+      return t("urlStatus.accessible");
+    case "redirected":
+      return t("urlStatus.redirected");
+    case "redirected_valid":
+      return t("urlStatus.redirectedValid");
+    case "blocked_antibot":
+      return t("urlStatus.blockedAntibot");
+    case "blocked_login":
+      return t("urlStatus.blockedLogin");
+    case "blocked_paywall":
+      return t("urlStatus.blockedPaywall");
+    case "blocked_geo":
+      return t("urlStatus.blockedGeo");
+    case "blocked_rate_limit":
+      return t("urlStatus.blockedRateLimit");
+    case "error_timeout":
+      return t("urlStatus.errorTimeout");
+    case "error_not_found":
+      return t("urlStatus.errorNotFound");
+    case "error_server":
+      return t("urlStatus.errorServer");
+    case "error_network":
+      return t("urlStatus.errorNetwork");
+    default:
+      return t("urlStatus.unknown");
+  }
+}
 
 // Body scroll lock — imported from scrollLock.ts (canonical location, ref-counted)
 // CitationErrorBoundary — imported from ./CitationErrorBoundary.js (canonical location)
@@ -249,6 +286,7 @@ export interface CitationComponentProps extends BaseCitationProps {
 
 /** Manages the 3-stage spinner progression: active (0–5s) → slow (5–15s) → stale (15s+). */
 function useSpinnerStage(isLoading: boolean, isPending: boolean, hasDefinitiveResult: boolean): SpinnerStage {
+  "use no memo";
   const shouldAnimate = (isLoading || isPending) && !hasDefinitiveResult;
   const [stage, setStage] = useState<SpinnerStage>("active");
 
@@ -274,6 +312,74 @@ function useSpinnerStage(isLoading: boolean, isPending: boolean, hasDefinitiveRe
 
   // When not animating, always return "active" (derived, no setState needed)
   return shouldAnimate ? stage : "active";
+}
+
+// =============================================================================
+// KEYBOARD-OPEN TRACKING HOOK
+// =============================================================================
+
+/**
+ * Tracks whether the popover was opened via keyboard (Enter/Space) vs mouse/touch.
+ * Manages the A.5.1 focus trap (inert on background) and A.5.2 conditional focus return.
+ *
+ * Isolated from CitationComponent because the React Compiler can't handle a ref
+ * that's both read in an effect (focus trap) and mutated in callbacks (click/keydown).
+ * "use no memo" tells the compiler to skip this hook without throwing, so the rest
+ * of the file compiles normally.
+ */
+function useKeyboardOpenTracking(isHovering: boolean, popoverContentRef: React.RefObject<HTMLDivElement | null>) {
+  "use no memo";
+  const openedViaKeyboardRef = useRef(false);
+
+  // A.5.1 Focus trap: set `inert` on background content when the popover is
+  // opened via keyboard. This prevents Tab from escaping the popover into
+  // background content. Mouse-opened popovers don't need this because users
+  // can click outside to dismiss.
+  //
+  // When <main> exists, we set inert on it (the popover portal is a sibling
+  // of <main> inside document.body, so it stays interactive).
+  // When no <main> exists, we cannot set inert on document.body because the
+  // popover portal renders inside body — that would make the popover
+  // itself inert. Instead, we inert each direct child of body except the
+  // one containing the popover.
+  useEffect(() => {
+    if (!isHovering || !openedViaKeyboardRef.current) return;
+    const main = document.querySelector("main");
+    if (main) {
+      main.setAttribute("inert", "");
+      return () => main.removeAttribute("inert");
+    }
+    // Fallback: inert all body children except the popover portal.
+    // Defer with rAF so the portal is in the DOM before we scan.
+    const inerted: Element[] = [];
+    const rafId = requestAnimationFrame(() => {
+      const popoverEl = popoverContentRef.current;
+      if (!popoverEl) return; // portal not mounted — nothing to trap
+      for (const child of Array.from(document.body.children)) {
+        if (child.contains(popoverEl)) continue;
+        if (!child.hasAttribute("inert")) {
+          child.setAttribute("inert", "");
+          inerted.push(child);
+        }
+      }
+    });
+    return () => {
+      cancelAnimationFrame(rafId);
+      for (const el of inerted) el.removeAttribute("inert");
+    };
+  }, [isHovering, popoverContentRef]);
+
+  // A.5.2 Conditional focus return: keyboard users need focus returned to the
+  // trigger so they can continue navigating. Mouse/touch users don't — returning
+  // focus would scroll the trigger into view, disorienting users who scrolled away.
+  const handleCloseAutoFocus = useCallback((e: Event) => {
+    if (!openedViaKeyboardRef.current) {
+      e.preventDefault();
+    }
+    openedViaKeyboardRef.current = false;
+  }, []);
+
+  return { openedViaKeyboardRef, handleCloseAutoFocus };
 }
 
 // =============================================================================
@@ -396,15 +502,19 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     },
     ref,
   ) => {
-    if (process.env.NODE_ENV !== "production") {
-      if (eventHandlers?.onClick && behaviorConfig?.onClick && !deprecationWarned.has("eventHandlers.onClick")) {
-        deprecationWarned.add("eventHandlers.onClick");
-        console.warn(
-          "CitationComponent: eventHandlers.onClick is ignored when behaviorConfig.onClick is provided. " +
-            "Prefer behaviorConfig.onClick for customizing click behavior.",
-        );
+    // Deprecation warning moved to useEffect to avoid mutating module-level state during render
+    // (which triggers a React Compiler critical error).
+    useEffect(() => {
+      if (process.env.NODE_ENV !== "production") {
+        if (eventHandlers?.onClick && behaviorConfig?.onClick && !deprecationWarned.has("eventHandlers.onClick")) {
+          deprecationWarned.add("eventHandlers.onClick");
+          console.warn(
+            "CitationComponent: eventHandlers.onClick is ignored when behaviorConfig.onClick is provided. " +
+              "Prefer behaviorConfig.onClick for customizing click behavior.",
+          );
+        }
       }
-    }
+    }, [eventHandlers?.onClick, behaviorConfig?.onClick]);
 
     const indicatorVariant: IndicatorVariant = indicatorVariantProp;
 
@@ -498,6 +608,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           if (isExpanding) triggerHaptic("expand");
           else if (isCollapsing) triggerHaptic("collapse");
         }
+        // Track which state we entered expanded-page from, so Escape can navigate back.
+        // Lifted from DefaultPopoverContent's handleExpand to eliminate a ref mutation
+        // that caused a React Compiler bailout in that file.
+        if (newState === "expanded-page" && prev !== "expanded-page") {
+          prevBeforeExpandedPageRef.current = prev === "expanded-keyhole" ? "expanded-keyhole" : "summary";
+        }
         // Determine collapse direction for View Transition timing.
         // Full-page transitions are handled by an annotation-anchored VT marker
         // in InlineExpandedImage — the marker is positioned at the annotation rect
@@ -507,6 +623,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         // crossfade behavior as before.
         const ORDER: Record<PopoverViewState, number> = { summary: 0, "expanded-keyhole": 1, "expanded-page": 2 };
         const isCollapse = ORDER[newState] < ORDER[prev];
+        const isPageExpand = !isCollapse && newState === "expanded-page";
         startEvidenceViewTransition(
           () => {
             if (newState === "summary") {
@@ -515,7 +632,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
             }
             setPopoverViewState(newState);
           },
-          { isCollapse, skipAnimation: prefersReducedMotion },
+          { isCollapse, isPageExpand, skipAnimation: prefersReducedMotion },
         );
       },
       [experimentalHaptics, isMobile, prefersReducedMotion],
@@ -532,73 +649,11 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       return () => releaseScrollLock();
     }, [isHovering, popoverViewState]);
 
-    // A.5.1 Focus trap: set `inert` on background content when the popover is
-    // opened via keyboard. This prevents Tab from escaping the popover into
-    // background content. Mouse-opened popovers don't need this because users
-    // can click outside to dismiss.
-    //
-    // When <main> exists, we set inert on it (the popover portal is a sibling
-    // of <main> inside document.body, so it stays interactive).
-    // When no <main> exists, we cannot set inert on document.body because the
-    // The popover portal renders inside body — that would make the popover
-    // itself inert. Instead, we inert each direct child of body except the
-    // one containing the popover.
-    useEffect(() => {
-      if (!isHovering || !openedViaKeyboardRef.current) return;
-      const main = document.querySelector("main");
-      if (main) {
-        main.setAttribute("inert", "");
-        return () => main.removeAttribute("inert");
-      }
-      // Fallback: inert all body children except the popover portal.
-      // Defer with rAF so the portal is in the DOM before we scan.
-      const inerted: Element[] = [];
-      const rafId = requestAnimationFrame(() => {
-        const popoverEl = popoverContentRef.current;
-        if (!popoverEl) return; // portal not mounted — nothing to trap
-        for (const child of Array.from(document.body.children)) {
-          if (child.contains(popoverEl)) continue;
-          if (!child.hasAttribute("inert")) {
-            child.setAttribute("inert", "");
-            inerted.push(child);
-          }
-        }
-      });
-      return () => {
-        cancelAnimationFrame(rafId);
-        for (const el of inerted) el.removeAttribute("inert");
-      };
-    }, [isHovering]);
-
     // Dismiss the popover.
     // Keep view/layout state intact during the exit animation; resetting to
     // summary here causes a visible jump before fade-out.
     const closePopover = useCallback(() => {
       setIsHovering(false);
-    }, []);
-
-    // Track if popover was already open before current interaction (for mobile/lazy mode).
-    // Lifecycle:
-    // 1. Set in handleTouchStart to capture isHovering state BEFORE the touch triggers any changes
-    // 2. Read in handleTouchEnd/handleClick to determine if this is a "first tap" or "second tap"
-    // 3. First tap (ref=false): Opens popover
-    // 4. Second tap (ref=true): Closes popover
-    // Track whether the popover was opened via keyboard (Enter/Space) vs mouse/touch.
-    // Used by:
-    // - A.5.1 Focus trap: only set `inert` on background when keyboard-opened
-    // - A.5.2 Focus return: only return focus to trigger when keyboard-opened
-    const openedViaKeyboardRef = useRef(false);
-
-    // A.5.2 Conditional focus return: keyboard users need focus returned to the
-    // trigger so they can continue navigating. Mouse/touch users don't — returning
-    // focus would scroll the trigger into view, disorienting users who scrolled away.
-    // Extracted from inline JSX to avoid mutating ref.current in render scope
-    // (React Compiler: "This value cannot be modified").
-    const handleCloseAutoFocus = useCallback((e: Event) => {
-      if (!openedViaKeyboardRef.current) {
-        e.preventDefault();
-      }
-      openedViaKeyboardRef.current = false;
     }, []);
 
     const wasPopoverOpenBeforeTap = useRef(false);
@@ -629,6 +684,12 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Object ref (not callback ref) so the React Compiler can optimize this component —
     // callback refs that mutate .current trigger "cannot modify local variables after render".
     const popoverContentRef = useRef<HTMLDivElement | null>(null);
+
+    // A.5.1 + A.5.2: Keyboard-open tracking, focus trap, and conditional focus return.
+    // Isolated into a custom hook because the React Compiler can't handle a ref that's
+    // both read in an effect (focus trap) and mutated in callbacks (click/keydown handlers).
+    // The hook has "use no memo" so the compiler skips it, and CitationComponent stays compilable.
+    const { openedViaKeyboardRef, handleCloseAutoFocus } = useKeyboardOpenTracking(isHovering, popoverContentRef);
 
     // Ref for the trigger element (for mobile click-outside dismiss detection)
     // We need our own ref in addition to the forwarded ref to reliably check click targets
@@ -956,7 +1017,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           handleTapAction(e, "hidePopover");
         }
       },
-      [isMobile, isHovering, handleTapAction],
+      // openedViaKeyboardRef: stable ref identity, included so the compiler's
+      // inferred deps match the manual deps (avoids "could not preserve" bailout).
+      [isMobile, isHovering, handleTapAction, openedViaKeyboardRef],
     );
 
     // Keyboard handler for accessibility - Enter/Space triggers tap action
@@ -975,7 +1038,8 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           }
         }
       },
-      [isHovering, handleTapAction],
+      // openedViaKeyboardRef: stable ref identity, included for compiler dep tracking.
+      [isHovering, handleTapAction, openedViaKeyboardRef],
     );
 
     const handleMouseEnter = useCallback(() => {
@@ -1216,6 +1280,47 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Self-contained variants (chip, badge, brackets) set their own text color.
     // Superscript is excluded: its anchor text inherits naturally, and its <sup> element
     // is a distinct UI element (footnote reference) that keeps its own styling.
+    // Extracted from inline JSX arrows so the React Compiler can cache them.
+    // All three read refs (event-time, not render-time) — safe for useCallback.
+    // Placed before the early return to satisfy the Rules of Hooks (consistent call order).
+    const handlePopoverOpenChange = useCallback(
+      (open: boolean) => {
+        if (!open && !isAnyOverlayOpenRef.current) {
+          if (popoverViewStateRef.current !== "summary") return;
+          closePopover();
+        }
+      },
+      [closePopover],
+    );
+
+    const handlePopoverEscapeKeyDown = useCallback(
+      (e: KeyboardEvent) => {
+        e.preventDefault();
+        if (escapeInterceptRef.current) {
+          escapeInterceptRef.current();
+          return;
+        }
+        const vs = popoverViewStateRef.current;
+        if (vs === "summary") {
+          closePopover();
+        } else if (vs === "expanded-page") {
+          const prev = prevBeforeExpandedPageRef.current;
+          setViewStateWithHaptics(prev);
+          if (prev === "summary") setCustomExpandedSrc(null);
+        } else {
+          setViewStateWithHaptics("summary");
+        }
+      },
+      [closePopover, setViewStateWithHaptics],
+    );
+
+    const handlePopoverBackdropClick = useCallback(
+      (e: React.MouseEvent) => {
+        if (e.target === e.currentTarget) closePopover();
+      },
+      [closePopover],
+    );
+
     const isInlineVariant = variant === "text" || variant === "linter";
 
     // Early return for miss with fallback display (only when showing anchorText)
@@ -1328,7 +1433,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       tabIndex: 0,
       "aria-expanded": isHovering,
       "aria-controls": shouldShowPopover ? popoverId : undefined,
-      "aria-label": displayText ? `Citation: ${displayText}` : "Citation",
+      "aria-label": displayText ? t("aria.citationWithText", { displayText }) : t("aria.citation"),
       "aria-describedby": statusDescId,
       // Event handlers
       onMouseEnter: handleMouseEnter,
@@ -1380,21 +1485,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           <span id={statusDescId} className="sr-only" aria-live="polite" aria-atomic="true">
             {statusDescription}
           </span>
-          <Popover
-            open={isHovering}
-            onOpenChange={open => {
-              if (!open && !isAnyOverlayOpenRef.current) {
-                // In non-summary states, Escape steps back instead of closing.
-                // The onEscapeKeyDown handler manages the view-state transition;
-                // this guard prevents a redundant onOpenChange from closing early.
-                // Use the ref (not the closure) — the ref is kept in sync by
-                // useLayoutEffect, guaranteeing it reflects the current committed
-                // state even if this onOpenChange closure is slightly stale.
-                if (popoverViewStateRef.current !== "summary") return;
-                closePopover();
-              }
-            }}
-          >
+          <Popover open={isHovering} onOpenChange={handlePopoverOpenChange}>
             <PopoverTrigger asChild>
               <span ref={setTriggerRef} {...triggerProps}>
                 {citationContentNode}
@@ -1408,33 +1499,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
               sideOffset={expandedPageSideOffset}
               alignOffset={popoverAlignOffset}
               onCloseAutoFocus={handleCloseAutoFocus}
-              onEscapeKeyDown={e => {
-                // Take ownership — e.preventDefault() tells Popover.tsx's document
-                // keydown listener to skip calling onOpenChange(false). Reading
-                // popoverViewStateRef (not the closure value) ensures correctness
-                // even if the ref trails the latest render by one effect cycle.
-                e.preventDefault();
-
-                // Let sub-components (e.g. expanded search log) consume Escape first.
-                if (escapeInterceptRef.current) {
-                  escapeInterceptRef.current();
-                  return;
-                }
-
-                const vs = popoverViewStateRef.current;
-                if (vs === "summary") {
-                  // Already at summary: close the popover.
-                  closePopover();
-                } else if (vs === "expanded-page") {
-                  // Step back to whichever state preceded expanded-page.
-                  const prev = prevBeforeExpandedPageRef.current;
-                  setViewStateWithHaptics(prev);
-                  if (prev === "summary") setCustomExpandedSrc(null);
-                } else {
-                  // expanded-keyhole → summary
-                  setViewStateWithHaptics("summary");
-                }
-              }}
+              onEscapeKeyDown={handlePopoverEscapeKeyDown}
               style={
                 popoverViewState === "expanded-page"
                   ? {
@@ -1460,12 +1525,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
                       }
                     : undefined
               }
-              onClick={(e: React.MouseEvent) => {
-                // Clicking directly on the popover backdrop (not on inner content) dismisses it.
-                // e.target === e.currentTarget means the click hit the dialog's own element,
-                // not a child element — so this only fires when clicking the outer wrapper area.
-                if (e.target === e.currentTarget) closePopover();
-              }}
+              onClick={handlePopoverBackdropClick}
             >
               {popoverContentElement}
             </PopoverContent>
@@ -1503,11 +1563,7 @@ export const MemoizedCitationComponent = memo(CitationComponent);
  * Uses DOT_COLORS.gray for consistency across components (gray for pending state).
  */
 const PendingDot = () => (
-  <span
-    className={cn("w-1.5 h-1.5 rounded-full animate-pulse", DOT_COLORS.gray)}
-    role="img"
-    aria-label="Verification in progress"
-  />
+  <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", DOT_COLORS.gray)} aria-hidden="true" />
 );
 
 /**
@@ -1515,7 +1571,7 @@ const PendingDot = () => (
  * Uses green-600 color to match DOT_COLORS.green for visual consistency.
  */
 const VerifiedCheck = () => (
-  <span role="img" aria-label="Verified">
+  <span aria-hidden="true">
     <CheckIcon className={cn("w-full h-full", "text-green-600 dark:text-green-500")} />
   </span>
 );
@@ -1575,6 +1631,8 @@ interface ExternalLinkButtonProps {
   show: boolean;
   alwaysVisible: boolean;
   handleExternalLinkClick: (e: React.MouseEvent) => void;
+  ariaLabel: string;
+  title: string;
 }
 
 /**
@@ -1582,7 +1640,13 @@ interface ExternalLinkButtonProps {
  * Uses CSS `group-hover:` / `group-focus-within:` instead of React state so it
  * works regardless of whether JS event handlers are attached (e.g. preventTooltips).
  */
-const ExternalLinkButton = ({ show, alwaysVisible, handleExternalLinkClick }: ExternalLinkButtonProps) => {
+const ExternalLinkButton = ({
+  show,
+  alwaysVisible,
+  handleExternalLinkClick,
+  ariaLabel,
+  title,
+}: ExternalLinkButtonProps) => {
   if (!show) return null;
   return (
     <button
@@ -1593,8 +1657,8 @@ const ExternalLinkButton = ({ show, alwaysVisible, handleExternalLinkClick }: Ex
         "text-gray-400 group-hover:text-blue-500 dark:text-gray-500 dark:group-hover:text-blue-400",
         !alwaysVisible && "opacity-30 group-hover:opacity-100 group-focus-within:opacity-100",
       )}
-      aria-label="Open in new tab"
-      title="Open in new tab"
+      aria-label={ariaLabel}
+      title={title}
     >
       <ExternalLinkIcon className="w-full h-full" />
     </button>
@@ -1610,7 +1674,8 @@ interface UrlStatusIndicatorProps {
   isPending: boolean;
   fetchStatus: UrlFetchStatus;
   errorMessage?: string;
-  statusInfo: { label: string };
+  statusLabel: string;
+  t: TranslateFunction;
   renderBlockedIndicator?: (status: UrlFetchStatus, errorMessage?: string) => React.ReactNode;
 }
 
@@ -1623,7 +1688,8 @@ const UrlStatusIndicator = ({
   isPending,
   fetchStatus,
   errorMessage,
-  statusInfo,
+  statusLabel,
+  t,
   renderBlockedIndicator,
 }: UrlStatusIndicatorProps) => {
   // "none" means no status indicator at all
@@ -1633,7 +1699,7 @@ const UrlStatusIndicator = ({
   if (indicatorVariant === "dot") {
     if (isVerified) {
       return (
-        <StatusIconWrapper ariaLabel="Verified">
+        <StatusIconWrapper ariaLabel={t("indicator.verified")}>
           <span
             className={cn("rounded-full", DOT_COLORS.green)}
             style={DOT_INDICATOR_FIXED_SIZE_STYLE}
@@ -1644,7 +1710,7 @@ const UrlStatusIndicator = ({
     }
     if (isPartial) {
       return (
-        <StatusIconWrapper ariaLabel="Partial match">
+        <StatusIconWrapper ariaLabel={t("indicator.partial")}>
           <span
             className={cn("rounded-full", DOT_COLORS.amber)}
             style={DOT_INDICATOR_FIXED_SIZE_STYLE}
@@ -1656,7 +1722,7 @@ const UrlStatusIndicator = ({
     if (isBlocked) {
       if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
       return (
-        <StatusIconWrapper ariaLabel={statusInfo.label}>
+        <StatusIconWrapper ariaLabel={statusLabel}>
           <span
             className={cn("rounded-full", DOT_COLORS.amber)}
             style={DOT_INDICATOR_FIXED_SIZE_STYLE}
@@ -1668,7 +1734,7 @@ const UrlStatusIndicator = ({
     if (isError) {
       if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
       return (
-        <StatusIconWrapper ariaLabel={statusInfo.label}>
+        <StatusIconWrapper ariaLabel={statusLabel}>
           <span
             className={cn("rounded-full", DOT_COLORS.red)}
             style={DOT_INDICATOR_FIXED_SIZE_STYLE}
@@ -1679,7 +1745,7 @@ const UrlStatusIndicator = ({
     }
     if (isPending) {
       return (
-        <StatusIconWrapper ariaLabel="Verification in progress">
+        <StatusIconWrapper ariaLabel={t("indicator.verifying")}>
           <PendingDot />
         </StatusIconWrapper>
       );
@@ -1691,7 +1757,7 @@ const UrlStatusIndicator = ({
   // Verified: Green checkmark
   if (isVerified) {
     return (
-      <StatusIconWrapper ariaLabel="Verified">
+      <StatusIconWrapper ariaLabel={t("indicator.verified")}>
         <VerifiedCheck />
       </StatusIconWrapper>
     );
@@ -1700,7 +1766,7 @@ const UrlStatusIndicator = ({
   // Partial: Amber check
   if (isPartial) {
     return (
-      <StatusIconWrapper className="text-amber-500 dark:text-amber-400" ariaLabel="Partial match">
+      <StatusIconWrapper className="text-amber-500 dark:text-amber-400" ariaLabel={t("indicator.partial")}>
         <CheckIcon className="w-full h-full" />
       </StatusIconWrapper>
     );
@@ -1710,7 +1776,7 @@ const UrlStatusIndicator = ({
   if (isBlocked) {
     if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
     return (
-      <StatusIconWrapper className="text-amber-500 dark:text-amber-400" ariaLabel={statusInfo.label}>
+      <StatusIconWrapper className="text-amber-500 dark:text-amber-400" ariaLabel={statusLabel}>
         <LockIcon className="w-full h-full" />
       </StatusIconWrapper>
     );
@@ -1720,7 +1786,7 @@ const UrlStatusIndicator = ({
   if (isError) {
     if (renderBlockedIndicator) return <>{renderBlockedIndicator(fetchStatus, errorMessage)}</>;
     return (
-      <StatusIconWrapper className="text-red-500 dark:text-red-400" ariaLabel={statusInfo.label}>
+      <StatusIconWrapper className="text-red-500 dark:text-red-400" ariaLabel={statusLabel}>
         <XCircleIcon className="w-full h-full" />
       </StatusIconWrapper>
     );
@@ -1729,7 +1795,7 @@ const UrlStatusIndicator = ({
   // Pending: Pulsing dot
   if (isPending) {
     return (
-      <StatusIconWrapper ariaLabel="Verification in progress">
+      <StatusIconWrapper ariaLabel={t("indicator.verifying")}>
         <PendingDot />
       </StatusIconWrapper>
     );
@@ -1786,6 +1852,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
     ref,
   ) => {
     const isTouchDevice = useIsTouchDevice();
+    const t = useTranslation();
     const { url, domain: providedDomain, title, fetchStatus, faviconUrl, errorMessage } = urlMeta;
 
     // Derive citation from URL meta if not provided
@@ -1814,13 +1881,13 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
       return pathPart ? `${domain}${pathPart}` : domain;
     }, [showTitle, title, domain, path, maxDisplayLength]);
 
-    const statusInfo = STATUS_ICONS[fetchStatus];
     const isBlocked = isBlockedStatus(fetchStatus);
     const isError = isErrorStatus(fetchStatus);
     const isVerified = fetchStatus === "verified";
     const isPartial = fetchStatus === "partial";
     const isPending = fetchStatus === "pending";
     const isBroken = isError;
+    const statusLabel = useMemo(() => getUrlStatusLabel(fetchStatus, t), [fetchStatus, t]);
 
     const handleClick = useCallback(
       (e: React.MouseEvent<HTMLSpanElement>) => {
@@ -1881,6 +1948,8 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
         show={showExternalLinkOnHover}
         alwaysVisible={isTouchDevice}
         handleExternalLinkClick={handleExternalLinkClick}
+        ariaLabel={t("action.openInNewTab")}
+        title={t("action.openInNewTab")}
       />
     );
 
@@ -1894,7 +1963,8 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
         isPending={isPending}
         fetchStatus={fetchStatus}
         errorMessage={errorMessage}
-        statusInfo={statusInfo}
+        statusLabel={statusLabel}
+        t={t}
         renderBlockedIndicator={renderBlockedIndicator}
       />
     );
@@ -1935,7 +2005,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             onKeyDown={handleKeyDown}
             role="button"
             tabIndex={0}
-            aria-label={`Link to ${domain}: ${statusInfo.label}`}
+            aria-label={t("aria.linkToDomainStatus", { domain, status: statusLabel })}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} isBroken={isBroken} />}
             <span
@@ -1980,7 +2050,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             onKeyDown={handleKeyDown}
             role="button"
             tabIndex={0}
-            aria-label={`Link to ${domain}: ${statusInfo.label}`}
+            aria-label={t("aria.linkToDomainStatus", { domain, status: statusLabel })}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} />}
             <span className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">
@@ -2020,7 +2090,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
             onKeyDown={handleKeyDown}
             role="button"
             tabIndex={0}
-            aria-label={`Link to ${domain}: ${statusInfo.label}`}
+            aria-label={t("aria.linkToDomainStatus", { domain, status: statusLabel })}
           >
             {showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} />}
             <span>{displayText}</span>
@@ -2056,7 +2126,7 @@ export const UrlCitationComponent = forwardRef<HTMLSpanElement, UrlCitationProps
           onKeyDown={handleKeyDown}
           role="button"
           tabIndex={0}
-          aria-label={`Link to ${domain}: ${statusInfo.label}`}
+          aria-label={t("aria.linkToDomainStatus", { domain, status: statusLabel })}
         >
           [{showFavicon && <DefaultFavicon url={url} faviconUrl={faviconUrl} />}
           <span

@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
 import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
@@ -57,25 +57,6 @@ export function usePopoverAlignOffset(
   projectedWidthPx?: number | null,
 ): number {
   const [offset, setOffset] = useState(0);
-
-  // Pre-render alignment for deterministic first-frame placement.
-  // When projected width is known, avoid waiting for DOM measurement/ResizeObserver.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: triggerRef has stable identity
-  const precomputedOffset = useMemo(() => {
-    if (!isOpen) return null;
-    if (
-      projectedWidthPx === null ||
-      projectedWidthPx === undefined ||
-      !Number.isFinite(projectedWidthPx) ||
-      projectedWidthPx <= 0
-    ) {
-      return null;
-    }
-    const triggerRect = triggerRef.current?.getBoundingClientRect();
-    if (!triggerRect) return null;
-    const viewportWidth = document.documentElement.clientWidth;
-    return computeAlignOffset(viewportWidth, triggerRect.left, triggerRect.width, projectedWidthPx);
-  }, [isOpen, popoverViewState, projectedWidthPx, triggerRef]);
 
   // Shared measurement logic — called from useLayoutEffect and resize listener.
   const recompute = useCallback(() => {
@@ -177,5 +158,5 @@ export function usePopoverAlignOffset(
     return () => ro.disconnect();
   }, [isOpen, recompute, projectedWidthPx]);
 
-  return precomputedOffset ?? offset;
+  return offset;
 }

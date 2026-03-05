@@ -31,6 +31,7 @@ export function Popover({ open = false, onOpenChange, children }: PopoverRootPro
   const triggerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLElement | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: triggerRef and contentRef have stable identity but must be in deps for React Compiler dependency tracking
   const value = useMemo<PopoverContextValue>(
     () => ({
       open,
@@ -38,7 +39,7 @@ export function Popover({ open = false, onOpenChange, children }: PopoverRootPro
       triggerRef,
       contentRef,
     }),
-    [open, onOpenChange],
+    [open, onOpenChange, triggerRef, contentRef],
   );
 
   return <PopoverContext.Provider value={value}>{children}</PopoverContext.Provider>;
@@ -51,6 +52,7 @@ export interface PopoverTriggerProps extends HTMLAttributes<HTMLElement> {
 
 export const PopoverTrigger = forwardRef<HTMLElement, PopoverTriggerProps>(
   ({ asChild = false, children, ...props }, forwardedRef) => {
+    "use no memo";
     const { triggerRef } = usePopoverContext();
 
     if (asChild) {

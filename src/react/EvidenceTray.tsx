@@ -11,7 +11,7 @@
 
 import type React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isStrategyOverride, shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
+import { ANCHOR_HIGHLIGHT_COLOR, isStrategyOverride, shouldHighlightAnchorText } from "../drawing/citationDrawing.js";
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt } from "../types/search.js";
@@ -59,6 +59,7 @@ import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { useWheelZoom, type WheelZoomAnchor } from "./hooks/useWheelZoom.js";
+import { useTranslation } from "./i18n.js";
 import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget, toPercentRect } from "./overlayGeometry.js";
@@ -424,16 +425,20 @@ export function AnchorTextFocusedImage({
   src,
   verification,
   onImageClick,
+  onPageExpand,
   onKeyholeWidth,
   onScrollCapture,
 }: {
   src: string;
   verification?: Verification | null;
   onImageClick?: () => void;
+  /** Skip-to-page callback when keyhole already fits — goes straight to expanded-page. */
+  onPageExpand?: () => void;
   onKeyholeWidth?: (width: number) => void;
   /** Called with natural-pixel scroll coords just before onImageClick fires. */
   onScrollCapture?: (left: number, top: number) => void;
 }) {
+  const t = useTranslation();
   // Anchor item and renderScale for scroll positioning.
   // Uses anchorTextMatchDeepItems[0] (specific cited word) with phraseMatchDeepItem fallback.
   // renderScale is required to convert PDF point coords → image pixel coords, matching
@@ -647,14 +652,24 @@ export function AnchorTextFocusedImage({
 
   // When the image fits entirely in the keyhole, expanding would show nothing new — suppress affordances.
   const canExpand = !imageFitInfo?.imageFitsCompletely && !!onImageClick;
-  const interactionCursor = isDragging ? "grabbing" : canExpand ? "zoom-in" : isPannable ? "grab" : "default";
-  let keyholeAriaLabel = "Verification image";
+  // When keyhole fits completely but a full-page view exists, skip straight to expanded-page.
+  const canExpandToPage = !canExpand && !!imageFitInfo?.imageFitsCompletely && !!onPageExpand;
+  const interactionCursor = isDragging
+    ? "grabbing"
+    : canExpand || canExpandToPage
+      ? "zoom-in"
+      : isPannable
+        ? "grab"
+        : "default";
+  let keyholeAriaLabel = t("aria.keyhole.image");
   if (isPannable && canExpand) {
-    keyholeAriaLabel = "Drag or click arrows to pan, click to view full size";
+    keyholeAriaLabel = t("aria.keyhole.panAndExpand");
   } else if (isPannable) {
-    keyholeAriaLabel = "Drag or click arrows to pan";
+    keyholeAriaLabel = t("aria.keyhole.panOnly");
   } else if (canExpand) {
-    keyholeAriaLabel = "Click to view full size";
+    keyholeAriaLabel = t("aria.keyhole.expandImage");
+  } else if (canExpandToPage) {
+    keyholeAriaLabel = t("aria.keyhole.expandPage");
   }
 
   const getDisplayedScale = useCallback(
@@ -681,7 +696,11 @@ export function AnchorTextFocusedImage({
         <button
           type="button"
           className="block relative w-full"
-          title={!canExpand && !isPannable && imageFitInfo?.imageFitsCompletely ? "Already full size" : undefined}
+          title={
+            !canExpand && !canExpandToPage && !isPannable && imageFitInfo?.imageFitsCompletely
+              ? "Already full size"
+              : undefined
+          }
           style={{
             cursor: interactionCursor,
           }}
@@ -717,6 +736,9 @@ export function AnchorTextFocusedImage({
                 onScrollCapture(container.scrollLeft / ds, container.scrollTop / ds);
               }
               onImageClick?.();
+            } else if (canExpandToPage) {
+              // Keyhole already shows everything — skip to full page view
+              onPageExpand?.();
             }
           }}
           aria-label={keyholeAriaLabel}
@@ -880,11 +902,13 @@ function EvidenceTrayFooter({
   /** Location label to append after search count (e.g. "page 1", "full document") */
   locationLabel?: string;
 }) {
+  const t = useTranslation();
   const formatted = formatCaptureDate(verifiedAt);
   const dateStr = formatted?.display ?? "";
   const showToggle = onToggleSearchLog && searchCount != null && searchCount > 0;
   const hasPageForCta = pageNumberForCta != null && pageNumberForCta > 0;
-  const resolvedPageCtaLabel = pageCtaLabel ?? (hasPageForCta ? `View page ${pageNumberForCta}` : "View page");
+  const resolvedPageCtaLabel =
+    pageCtaLabel ?? (hasPageForCta ? t("aria.viewPageNum", { pageNumber: pageNumberForCta }) : t("aria.viewPage"));
 
   return (
     <div className="px-3 py-2 min-h-[44px] flex items-center text-[11px] text-gray-400 dark:text-gray-500">
@@ -1050,6 +1074,7 @@ export function EvidenceTray({
   /** Ref the parent reads in its Escape handler — set to a collapse fn when the search log is open. */
   escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
+  const t = useTranslation();
   const resolvedEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
   const isMiss = status.isMiss;
   const isPartialMatch = status.isPartialMatch;
@@ -1232,6 +1257,7 @@ export function EvidenceTray({
           src={resolvedEvidenceSrc}
           verification={verification}
           onImageClick={onImageClick}
+          onPageExpand={onExpand}
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}
         />
@@ -1240,6 +1266,7 @@ export function EvidenceTray({
           key={proofImageSrc}
           src={proofImageSrc}
           onImageClick={onImageClick}
+          onPageExpand={onExpand}
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}
         />
@@ -1313,7 +1340,7 @@ export function EvidenceTray({
             "transition-opacity",
             borderClass,
           )}
-          aria-label="Expand to full page"
+          aria-label={t("action.expandFullPage")}
         >
           {content}
         </div>
@@ -1414,7 +1441,9 @@ export function InlineExpandedImage({
    */
   initialScroll?: { left: number; top: number };
 }) {
+  const t = useTranslation();
   const { containerRef, isDragging, handlers: panHandlers, wasDraggingRef } = useDragToPan({ direction: "xy" });
+  const expandedImgRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null);
@@ -1510,14 +1539,15 @@ export function InlineExpandedImage({
     return () => observer.disconnect();
   }, [fill]);
 
-  // Reset all image state when src changes — spinner, dimensions, zoom, overlay.
-  // Uses a useEffect (not render-time setState) to avoid a React Compiler bailout
-  // from multiple setState calls in the render body. The one-frame delay is
-  // imperceptible since InlineExpandedImage is typically hidden (display:none) in
-  // the triple-always-render pattern during view-state transitions.
+  // Reset all image state when src changes, then synchronously detect cached
+  // images via img.complete. useLayoutEffect (not useEffect) is critical here:
+  // when a View Transition wraps the viewState change in flushSync, layout
+  // effects fire before the VT captures its "new" snapshot. Detecting the
+  // cached image synchronously lets the VT snapshot include the real content
+  // (not a spinner) at the correct scroll position — eliminating the "aim off"
+  // artifact where the morph targets a blank or mis-scrolled frame.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref identities are stable; initialOverlayHidden is the reset target value, not a reactive dependency
-  useEffect(() => {
-    setImageLoaded(false);
+  useLayoutEffect(() => {
     setNaturalWidth(null);
     setNaturalHeight(null);
     setZoom(1);
@@ -1530,26 +1560,38 @@ export function InlineExpandedImage({
     touchGestureAnchorRef.current = null;
     expandedWheelAnchorRef.current = null;
     lastAppliedInitialScrollRef.current = null;
+
+    // Sync-detect cached images: if the browser already has the decoded pixels
+    // (same src was just displayed in the keyhole strip), skip the onLoad
+    // roundtrip so the View Transition captures the real image, not a spinner.
+    const img = expandedImgRef.current;
+    if (img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setImageLoaded(true);
+      setNaturalWidth(img.naturalWidth);
+      setNaturalHeight(img.naturalHeight);
+      if (!fill) onNaturalSize?.(img.naturalWidth, img.naturalHeight);
+    } else {
+      setImageLoaded(false);
+    }
   }, [src]);
 
   // Apply initial scroll position from the keyhole — expanded-keyhole mode (fill=false) only.
-  // Uses rAF (matching the annotation auto-scroll pattern) to wait for the browser to lay out
-  // the newly-visible container before writing scrollTop/scrollLeft. useLayoutEffect is too
-  // early: the container transitions from display:none in this same commit, so the browser
-  // hasn't computed its scroll geometry yet when useLayoutEffect fires — the write is a no-op.
+  // useLayoutEffect + forced reflow ensures the scroll position is set before the View
+  // Transition captures its "new" snapshot. Reading scrollHeight forces the browser to
+  // compute scroll geometry for the container even though it transitioned from display:none
+  // in this same commit. Without the forced reflow, the write would be a no-op.
   // Reference-equality check prevents re-applying the same position after the user pans away.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (fill || !imageLoaded || !initialScroll) return;
     if (lastAppliedInitialScrollRef.current === initialScroll) return;
     lastAppliedInitialScrollRef.current = initialScroll;
     const { left, top } = initialScroll;
-    const rafId = requestAnimationFrame(() => {
-      const el = containerRef.current;
-      if (!el) return;
-      el.scrollLeft = left;
-      el.scrollTop = top;
-    });
-    return () => cancelAnimationFrame(rafId);
+    const el = containerRef.current;
+    if (!el) return;
+    // Force synchronous reflow so geometry is available even after display:none removal.
+    void el.scrollHeight;
+    el.scrollLeft = left;
+    el.scrollTop = top;
   }, [fill, imageLoaded, initialScroll, containerRef]);
 
   // ---------------------------------------------------------------------------
@@ -1995,7 +2037,7 @@ export function InlineExpandedImage({
           data-dc-inline-expanded=""
           role="button"
           tabIndex={0}
-          aria-label="Expanded verification image. Press Escape or Enter to collapse. Use arrow keys to pan."
+          aria-label={t("aria.expandedImageViewer")}
           className={cn(
             "relative select-none overflow-auto rounded-t-sm",
             DOCUMENT_CANVAS_BG_CLASSES,
@@ -2105,11 +2147,13 @@ export function InlineExpandedImage({
               }}
             >
               <img
+                ref={expandedImgRef}
                 src={isValidProofImageSrc(src) ? src : undefined}
                 alt="Verification evidence"
                 className={cn("block", DOCUMENT_IMAGE_EDGE_CLASSES, !imageLoaded && "hidden")}
                 style={zoomedWidth !== undefined ? { width: zoomedWidth, maxWidth: "none" } : { maxWidth: "none" }}
                 onLoad={e => {
+                  if (imageLoaded) return; // Already sync-detected from cache
                   const w = e.currentTarget.naturalWidth;
                   const h = e.currentTarget.naturalHeight;
                   setImageLoaded(true);
@@ -2148,7 +2192,9 @@ export function InlineExpandedImage({
                   VT geometry morph tracks the annotation region between views.
                   The keyhole strip's VT name covers the evidence crop; this marker
                   covers the corresponding region on the full page. The browser
-                  morphs between the two rects, creating a "fly to position" effect. */}
+                  morphs between the two rects, creating a "fly to position" effect.
+                  The highlight background ensures the VT captures a visible snapshot
+                  (an empty transparent div produces an invisible snapshot). */}
               {annotationVtRect && (
                 <div
                   aria-hidden
@@ -2156,6 +2202,8 @@ export function InlineExpandedImage({
                     position: "absolute",
                     ...annotationVtRect,
                     viewTransitionName: DC_EVIDENCE_VT_NAME,
+                    backgroundColor: ANCHOR_HIGHLIGHT_COLOR,
+                    borderRadius: "2px",
                     pointerEvents: "none",
                   }}
                 />
