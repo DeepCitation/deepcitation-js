@@ -334,6 +334,7 @@ export function resolveExpandedImage(verification: Verification | null | undefin
  * Resolve an expanded image for a specific page number.
  * Falls back to resolveExpandedImage() when an exact page image isn't present.
  */
+// biome-ignore lint/style/useComponentExportOnlyModules: resolveExpandedImageForPage calls internal helpers in this file (toExpandedImageSource, resolveExpandedImage) and cannot be cleanly extracted
 export function resolveExpandedImageForPage(
   verification: Verification | null | undefined,
   pageNumber: number | null | undefined,
