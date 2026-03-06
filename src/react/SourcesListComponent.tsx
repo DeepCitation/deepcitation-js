@@ -176,13 +176,9 @@ export const SourcesListItem = forwardRef<HTMLDivElement, SourcesListItemProps>(
         onKeyDown={e => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            // SourcesListItemProps.onClick is typed as React.MouseEvent (public API constraint).
-            // Keyboard activation uses the same handler; only common Event properties
-            // (preventDefault, stopPropagation, target) are accessed — no clientX/clientY.
-            // Cast through unknown: KeyboardEvent and MouseEvent don't overlap enough for a
-            // direct cast (TS5.x), but the cast is safe because handleClick only uses shared
-            // SyntheticEvent properties.
-            handleClick(e as unknown as React.MouseEvent<HTMLDivElement>);
+            // Trigger a real click event so handleClick receives a proper MouseEvent —
+            // avoids an unsafe KeyboardEvent→MouseEvent cast.
+            e.currentTarget.click();
           }
         }}
         aria-label={t("aria.sourceFromPlatform", { title, platformName })}
