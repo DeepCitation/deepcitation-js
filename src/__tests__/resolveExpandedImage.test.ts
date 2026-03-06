@@ -172,7 +172,10 @@ describe("resolveExpandedImage", () => {
     });
 
     it("fallback page (non-match) does NOT apply document overrides", () => {
-      // When falling back to anyPage (not a match), overrides are not applied
+      // When falling back to anyPage (not a match), toExpandedImageSource is called without overrides.
+      // page has no highlightBox itself, so the result is null — not the document's highlightBox.
+      // Using a page without highlightBox makes this explicit: if overrides were (wrongly) applied,
+      // result.highlightBox would be { x: 50, y: 60, width: 200, height: 80 } instead of null.
       const page = { pageNumber: 99, imageUrl: TRUSTED_CDN_IMG, dimensions: { width: 800, height: 1200 } };
       const verification: Verification = {
         status: "found",
@@ -181,8 +184,7 @@ describe("resolveExpandedImage", () => {
 
       const result = resolveExpandedImage(verification, [page]); // no match for page 1, falls to anyPage
       expect(result?.src).toBe(TRUSTED_CDN_IMG);
-      // Fallback uses toExpandedImageSource without overrides
-      expect(result?.highlightBox).toBeNull();
+      expect(result?.highlightBox).toBeNull(); // document.highlightBox NOT applied on anyPage fallback
     });
   });
 
