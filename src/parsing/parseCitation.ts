@@ -750,12 +750,14 @@ export function groupCitationsByAttachmentIdObject(
  *
  * @throws Error if `type` is `"url"` but `url` field is missing or empty
  */
-function isUrlCitationRecord(citation: Record<string, unknown>): citation is UrlCitation {
-  return typeof citation.url === "string" && citation.url.length > 0;
+function isUrlCitationRecord(citation: object): citation is UrlCitation {
+  const rec = citation as Record<string, unknown>;
+  return typeof rec.url === "string" && rec.url.length > 0;
 }
 
-function isDocumentCitationRecord(citation: Record<string, unknown>): citation is DocumentCitation {
-  return !(typeof citation.url === "string" && citation.url.length > 0);
+function isDocumentCitationRecord(citation: object): citation is DocumentCitation {
+  const rec = citation as Record<string, unknown>;
+  return !(typeof rec.url === "string" && rec.url.length > 0);
 }
 
 export function normalizeCitationType(citation: Record<string, unknown>): Citation {
