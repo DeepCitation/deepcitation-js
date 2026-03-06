@@ -4,7 +4,7 @@ import type React from "react";
 import { createRef } from "react";
 import { EvidenceTray, InlineExpandedImage, resolveExpandedImageForPage } from "../react/EvidenceTray";
 import type { CitationStatus } from "../types/citation";
-import type { Verification } from "../types/verification";
+import type { PageImage, Verification } from "../types/verification";
 
 const baseStatus: CitationStatus = {
   isVerified: true,
@@ -15,10 +15,8 @@ const baseStatus: CitationStatus = {
 
 const baseVerification: Verification = {
   status: "found",
-  assets: {
-    evidenceSnippet: {
-      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
-    },
+  evidence: {
+    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
   },
 };
 
@@ -210,17 +208,13 @@ describe("EvidenceTray interaction styles", () => {
   it("resolves exact page image when verification pageNumber values are numeric strings", () => {
     const page1Src = "https://proof.deepcitation.com/page1.png";
     const page5Src = "https://proof.deepcitation.com/page5.png";
-    const verificationWithStringPages = {
-      status: "found",
-      assets: {
-        pageRenders: [
-          { pageNumber: "1", imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
-          { pageNumber: "5", imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
-        ],
-      },
-    } as unknown as Verification;
+    const verificationWithStringPages = { status: "found" } as Verification;
+    const pageImages = [
+      { pageNumber: "1", imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+      { pageNumber: "5", imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
+    ] as unknown as PageImage[];
 
-    const resolved = resolveExpandedImageForPage(verificationWithStringPages, 5);
+    const resolved = resolveExpandedImageForPage(verificationWithStringPages, 5, pageImages);
     expect(resolved?.src).toBe(page5Src);
   });
 

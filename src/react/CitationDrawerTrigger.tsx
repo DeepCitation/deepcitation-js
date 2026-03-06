@@ -167,9 +167,9 @@ function CitationTooltip({
   const anchorText = item.citation.anchorText?.toString() || item.citation.fullPhrase || null;
   const displayAnchorText = anchorText ? (anchorText.length > 60 ? `${anchorText.slice(0, 60)}...` : anchorText) : null;
 
-  // Find proof image for this specific citation, validating the source
-  const rawProofImage = showProofThumbnail ? item.verification?.assets?.evidenceSnippet?.src : null;
-  const proofImage = isValidProofImageSrc(rawProofImage) ? rawProofImage : null;
+  // Find evidence image for this specific citation, validating the source
+  const rawEvidenceImage = showProofThumbnail ? item.verification?.evidence?.src : null;
+  const evidenceImage = isValidProofImageSrc(rawEvidenceImage) ? rawEvidenceImage : null;
 
   const handleProofClick = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -243,8 +243,8 @@ function CitationTooltip({
         <div className="px-3 pb-2 text-[11px] text-gray-500 dark:text-gray-400 truncate">{displayAnchorText}</div>
       )}
 
-      {/* Proof image thumbnail */}
-      {proofImage && (
+      {/* Evidence image thumbnail */}
+      {evidenceImage && (
         <div className="px-2 pb-2">
           <div
             role="button"
@@ -260,7 +260,7 @@ function CitationTooltip({
             aria-label={t("aria.viewProofForSource", { sourceName })}
           >
             <img
-              src={proofImage}
+              src={evidenceImage}
               alt={t("aria.verificationProof")}
               className="w-full h-auto max-h-16 object-cover"
               loading="lazy"

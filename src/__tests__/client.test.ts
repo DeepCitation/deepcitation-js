@@ -161,9 +161,12 @@ describe("DeepCitation Client", () => {
       ]);
 
       expect(result.fileDataParts).toHaveLength(2);
+      expect(result.attachments).toHaveLength(2);
 
       expect(result.fileDataParts[0].attachmentId).toBe("file_1");
       expect(result.fileDataParts[1].attachmentId).toBe("file_2");
+      expect(result.attachments[0].attachmentId).toBe("file_1");
+      expect(result.attachments[1].attachmentId).toBe("file_2");
 
       // deepTextPromptPortion is now a single combined string on the result
       expect(result.deepTextPromptPortion).toContain("Content from file 1");
@@ -192,6 +195,7 @@ describe("DeepCitation Client", () => {
       const result = await client.prepareAttachments([{ file: blob, filename: "single.pdf" }]);
 
       expect(result.fileDataParts).toHaveLength(1);
+      expect(result.attachments).toHaveLength(1);
       expect(result.deepTextPromptPortion).toContain("Single content");
     });
 
@@ -201,6 +205,7 @@ describe("DeepCitation Client", () => {
       const result = await client.prepareAttachments([]);
 
       expect(result.fileDataParts).toHaveLength(0);
+      expect(result.attachments).toHaveLength(0);
     });
 
     it("propagates upload errors", async () => {
@@ -275,10 +280,8 @@ describe("DeepCitation Client", () => {
               document: {
                 verifiedPageNumber: 1,
               },
-              assets: {
-                evidenceSnippet: {
-                  src: "base64data",
-                },
+              evidence: {
+                src: "base64data",
               },
               status: "found",
               verifiedMatchSnippet: "Revenue grew 15%",
@@ -334,78 +337,6 @@ describe("DeepCitation Client", () => {
       expect(result.verifications).toEqual({});
     });
 
-    it("passes generateProofUrls and proofConfig through to verifyAttachment", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          verifications: {
-            key1: {
-              status: "found",
-              assets: {
-                proofPage: {
-                  url: "https://proof.example.com/abc",
-                },
-              },
-            },
-          },
-        }),
-      } as Response);
-
-      const llmOutput =
-        "<cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' anchor_text='Test' line_ids='1' />";
-
-      await client.verify({
-        llmOutput,
-        generateProofUrls: true,
-        proofConfig: {
-          access: "signed",
-          signedUrlExpiry: "7d",
-          imageFormat: "png",
-        },
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(requestBody.data.generateProofUrls).toBe(true);
-      expect(requestBody.data.proofConfig).toEqual({
-        access: "signed",
-        signedUrlExpiry: "7d",
-        imageFormat: "png",
-      });
-    });
-
-    it("omits proofConfig from request when generateProofUrls is false", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      // Suppress expected warning
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          verifications: {
-            key1: { status: "found" },
-          },
-        }),
-      } as Response);
-
-      const llmOutput =
-        "<cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' anchor_text='Test' line_ids='1' />";
-
-      await client.verify({
-        llmOutput,
-        proofConfig: { access: "public" },
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(requestBody.data.generateProofUrls).toBeUndefined();
-      expect(requestBody.data.proofConfig).toBeUndefined();
-
-      warnSpy.mockRestore();
-    });
   });
 
   describe("verifyAttachment", () => {
@@ -525,77 +456,6 @@ describe("DeepCitation Client", () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
-    it("propagates top-level documentFiles into each verification's assets", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      const docFiles = {
-        verificationPdf: {
-          origin: "converted_from_url" as const,
-          mimeType: "application/pdf",
-          download: { url: "https://api.deepcitation.com/download/pdf/123" },
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          verifications: {
-            c1: { status: "found", assets: { webCapture: { src: "https://img.example.com/shot.png" } } },
-            c2: { status: "partial_text_found" },
-          },
-          documentFiles: docFiles,
-        }),
-      } as Response);
-
-      const result = await client.verifyAttachment("att_url", {
-        c1: { type: "url", fullPhrase: "test", url: "https://example.com" },
-        c2: { type: "url", fullPhrase: "other", url: "https://example.com/page" },
-      });
-
-      // Both verifications should have documentFiles in assets
-      expect(result.verifications.c1.assets?.documentFiles).toEqual(docFiles);
-      expect(result.verifications.c2.assets?.documentFiles).toEqual(docFiles);
-      // Existing assets should be preserved
-      expect(result.verifications.c1.assets?.webCapture?.src).toBe("https://img.example.com/shot.png");
-      // Top-level documentFiles should still be present
-      expect(result.documentFiles).toEqual(docFiles);
-    });
-
-    it("does not overwrite existing per-verification documentFiles", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      const topLevelDocs = {
-        verificationPdf: {
-          origin: "converted_from_url" as const,
-          mimeType: "application/pdf",
-          download: { url: "https://api.deepcitation.com/download/top-level" },
-        },
-      };
-      const perVerificationDocs = {
-        originalFile: {
-          origin: "upload" as const,
-          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          download: { url: "https://api.deepcitation.com/download/original" },
-        },
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          verifications: {
-            c1: { status: "found", assets: { documentFiles: perVerificationDocs } },
-          },
-          documentFiles: topLevelDocs,
-        }),
-      } as Response);
-
-      const result = await client.verifyAttachment("att_doc", {
-        c1: { type: "document", fullPhrase: "test", attachmentId: "att_doc" },
-      });
-
-      // Per-verification documentFiles should NOT be overwritten
-      expect(result.verifications.c1.assets?.documentFiles).toEqual(perVerificationDocs);
-    });
   });
 
   describe("prepareAttachments with concurrency limits", () => {
@@ -705,7 +565,7 @@ describe("DeepCitation Client", () => {
           originalFilename: "test.pdf",
           mimeType: "application/pdf",
           pageCount: 3,
-          pageRenders: [],
+          pageImages: [],
           verifications: {},
         }),
       } as Response);
@@ -1022,7 +882,7 @@ describe("DeepCitation Client", () => {
           originalFilename: "test.pdf",
           mimeType: "application/pdf",
           pageCount: 1,
-          pageRenders: [],
+          pageImages: [],
           verifications: {},
         }),
       } as Response);

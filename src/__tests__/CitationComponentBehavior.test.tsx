@@ -49,10 +49,8 @@ describe("CitationComponent behaviorConfig", () => {
   };
 
   const verificationWithImage: Verification = {
-    assets: {
-      evidenceSnippet: {
-        src: "data:image/png;base64,iVBORw0KGgo=",
-      },
+    evidence: {
+      src: "data:image/png;base64,iVBORw0KGgo=",
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -552,7 +550,7 @@ describe("CitationComponent behaviorConfig", () => {
       });
 
       // Expanded-page portal opens (setImageExpanded: true path) but custom src is rejected;
-      // falls back to the baseline evidenceSnippet src, not the malicious URI
+      // falls back to the baseline evidence src, not the malicious URI
       const overlayImage = document.querySelector("img[alt='Full page verification']");
       expect(overlayImage?.getAttribute("src")).not.toBe("javascript:alert(1)");
     });
@@ -1320,10 +1318,8 @@ describe("CitationComponent mobile/touch detection", () => {
   };
 
   const verificationWithImage: Verification = {
-    assets: {
-      evidenceSnippet: {
-        src: "data:image/png;base64,iVBORw0KGgo=",
-      },
+    evidence: {
+      src: "data:image/png;base64,iVBORw0KGgo=",
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -1956,10 +1952,8 @@ describe("CitationComponent interactionMode", () => {
   };
 
   const verificationWithImage: Verification = {
-    assets: {
-      evidenceSnippet: {
-        src: "data:image/png;base64,iVBORw0KGgo=",
-      },
+    evidence: {
+      src: "data:image/png;base64,iVBORw0KGgo=",
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -2515,82 +2509,4 @@ describe("CitationComponent proof URL links", () => {
     expect(proofLinks.length).toBe(0);
   });
 
-  it("does not render link for unsafe proof URL (javascript: protocol)", async () => {
-    const verification: Verification = {
-      status: "found",
-      label: "Document.pdf",
-      verifiedMatchSnippet: "test citation phrase",
-      document: { verifiedPageNumber: 5 },
-      assets: { proofPage: { url: "javascript:alert('XSS')" } },
-    };
-
-    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
-
-    // Click to open popover
-    const trigger = container.querySelector("[data-citation-id]");
-    await act(async () => {
-      fireEvent.click(trigger as HTMLElement);
-    });
-
-    await waitForPopoverVisible(container);
-
-    // Should not have any javascript: protocol links
-    const links = container.querySelectorAll("a");
-    // This test checks that our security code (sanitizeUrl) blocks javascript: URLs.
-    // Production code uses whitelist approach (http/https only) which blocks ALL dangerous protocols.
-    const javascriptLinks = Array.from(links).filter(link => link.getAttribute("href")?.startsWith("javascript:")); // codeql[js/incomplete-url-scheme-check]
-    expect(javascriptLinks.length).toBe(0);
-  });
-
-  it("does not render link for unsafe proof URL (data: protocol)", async () => {
-    const verification: Verification = {
-      status: "found",
-      label: "Document.pdf",
-      verifiedMatchSnippet: "test citation phrase",
-      document: { verifiedPageNumber: 5 },
-      assets: { proofPage: { url: "data:text/html,<script>alert('XSS')</script>" } },
-    };
-
-    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
-
-    // Click to open popover
-    const trigger = container.querySelector("[data-citation-id]");
-    await act(async () => {
-      fireEvent.click(trigger as HTMLElement);
-    });
-
-    await waitForPopoverVisible(container);
-
-    // Should not have any data: protocol links
-    const links = container.querySelectorAll("a");
-    const dataLinks = Array.from(links).filter(link => link.getAttribute("href")?.startsWith("data:"));
-    expect(dataLinks.length).toBe(0);
-  });
-
-  it("blocks proof URL from untrusted domain", async () => {
-    const verification: Verification = {
-      status: "found",
-      label: "Document.pdf",
-      verifiedMatchSnippet: "test citation phrase",
-      document: { verifiedPageNumber: 5 },
-      assets: { proofPage: { url: "https://evil.com/fake-proof" } },
-    };
-
-    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
-
-    // Click to open popover
-    const trigger = container.querySelector("[data-citation-id]");
-    await act(async () => {
-      fireEvent.click(trigger as HTMLElement);
-    });
-
-    await waitForPopoverVisible(container);
-
-    // Should not have any links with evil.com
-    const links = container.querySelectorAll("a");
-    // This test checks that our security code (isApprovedDomain) blocks untrusted domains.
-    // Production code uses proper URL parsing and domain validation, not substring matching.
-    const evilLinks = Array.from(links).filter(link => link.getAttribute("href")?.includes("evil.com")); // codeql[js/incomplete-url-substring-sanitization]
-    expect(evilLinks.length).toBe(0);
-  });
 });

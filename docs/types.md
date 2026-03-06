@@ -49,13 +49,6 @@ interface VerifyCitationRequest {
   attachmentId: string;
   citations: { [key: string]: Citation };
   outputImageFormat?: "jpeg" | "png" | "avif";
-  generateProofUrls?: boolean;
-  proofConfig?: {
-    access?: "signed" | "workspace" | "public";
-    signedUrlExpiry?: "1h" | "24h" | "7d" | "30d" | "90d" | "1y";
-    imageFormat?: "png" | "jpeg" | "avif" | "webp";
-    includeBase64?: boolean;
-  };
   apiKey?: string;
 }
 ```
@@ -74,9 +67,9 @@ interface Verification {
   attachmentId?: string | null;
   citation?: Citation;
 
+  evidence?: EvidenceImage;
   document?: DocumentVerificationResult;
   url?: UrlVerificationResult;
-  assets?: VerificationAssets;
 }
 
 type SearchStatus =
@@ -146,34 +139,13 @@ interface SearchAttempt {
 
 ---
 
-## Verification Assets (DX Model)
+## Evidence + Page Images (DX Model)
 
-Artifacts are intentionally split by purpose so proof links, proof images, page renders, and source downloads are not conflated.
+Artifacts are split by purpose so evidence (crop), page images, and source downloads are not conflated.
 
 ```typescript
-interface VerificationAssets {
-  documentFiles?: VerificationDocumentAssets;
-  proofPage?: ProofPageAsset;
-  proofImage?: ProofImageAsset;
-  evidenceSnippet?: EvidenceSnippetAsset;
-  webCapture?: WebCaptureAsset;
-  pageRenders?: PageRenderAsset[];
-}
-
-interface ProofPageAsset {
-  id?: string;
-  url?: string;
-}
-
-interface ProofImageAsset {
-  url?: string;
-  format?: "png" | "jpeg" | "avif" | "webp";
-  width?: number;
-  height?: number;
-}
-
-interface EvidenceSnippetAsset {
-  src?: string | null;
+interface EvidenceImage {
+  src: string | null;
   dimensions?: { width: number; height: number } | null;
 }
 
@@ -182,20 +154,19 @@ interface WebCaptureAsset {
   capturedAt?: Date | string | null;
 }
 
-interface PageRenderAsset {
+interface PageImage {
   pageNumber: number;
   dimensions: { width: number; height: number };
   imageUrl: string;
   thumbnailUrl?: string;
-  isMatchPage?: boolean;
 }
 ```
 
 ---
 
-## Source vs Verification PDF Downloads
+## Source Downloads
 
-Source downloads are modeled under `verification.assets.documentFiles`.
+Source downloads are flat fields on each `PreparedAttachment`:
 
 ```typescript
 interface DownloadLink {
@@ -203,43 +174,39 @@ interface DownloadLink {
   expiresAt?: string | "never";
 }
 
-interface OriginalFileAsset {
-  origin: "upload";
+interface FileDownload {
   filename?: string;
-  mimeType: string;
-  download?: DownloadLink;
+  mimeType?: string;
+  link: DownloadLink;
 }
 
-interface VerificationPdfAsset {
-  origin: "upload_pdf" | "converted_from_office" | "converted_from_url";
-  sourceUrl?: string;
-  filename?: string;
-  mimeType: string;
-  download?: DownloadLink;
-}
-
-interface VerificationDocumentAssets {
-  originalFile?: OriginalFileAsset;
-  verificationPdf?: VerificationPdfAsset;
+interface PreparedAttachment {
+  attachmentId: string;
+  urlSource?: UrlSource;           // present for URL inputs only
+  originalDownload?: FileDownload; // file as received (PDF, DOCX, MP4, …)
+  convertedDownload?: FileDownload;// PDF rendition / transcript / URL PDF capture
+  pageImages?: PageImage[];
+  pageImagesStatus?: PageImagesStatus;
 }
 ```
 
-Naming intent:
-
-- `originalFile`: the user-uploaded file (`.docx`, `.xlsx`, `.pdf`, etc.)
-- `verificationPdf`: the PDF actually used by DeepCitation verification
-- `verificationPdf.origin`: explicit origin of that PDF conversion path
+| Input type | `urlSource` | `originalDownload` | `convertedDownload` |
+|---|---|---|---|
+| Document (PDF) | absent | ✓ (PDF) | absent |
+| Document (DOCX) | absent | ✓ (DOCX) | ✓ (PDF rendition) |
+| URL | ✓ | absent | ✓ (PDF capture) |
+| Audio/Video | absent | ✓ (MP4/MP3) | ✓ (transcript) |
 
 ---
 
 ## Verify Response
 
-`verifyAttachment()` / `verify()` responses use `documentFiles`, not `downloadUrl`.
+`verifyAttachment()` / `verify()` responses contain only verification results.
+File download artifacts are on the attachment, not the verification.
 
 ```typescript
 interface VerifyCitationResponse {
   verifications: { [citationKey: string]: Verification };
-  documentFiles?: VerificationDocumentAssets;
 }
 ```
 
@@ -290,7 +257,8 @@ Relevant props:
 
 ```typescript
 interface CitationComponentProps {
-  documentFiles?: VerificationDocumentAssets;
+  originalDownload?: FileDownload;   // file as received
+  convertedDownload?: FileDownload;  // PDF rendition / URL PDF capture
   downloadPolicy?: CitationDownloadPolicy; // default: "original_plus_url_pdf"
   onSourceDownload?: (citation: Citation) => void;
 }
@@ -298,5 +266,6 @@ interface CitationComponentProps {
 
 Default UI behavior:
 
-- `original_plus_url_pdf`: show original upload download when present, and URL-converted PDF download when present
-- does not show Office-converted PDF by default
+- `original_plus_url_pdf`: show `originalDownload` when present; for URL inputs (no `originalDownload`), show `convertedDownload`
+- `original_plus_all_pdf`: show `originalDownload` when present, else show `convertedDownload`
+- `original_only`: show `originalDownload` only, never `convertedDownload`

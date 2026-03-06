@@ -67,11 +67,4 @@ describe("buildProofUrls", () => {
     expect(urls.key2).toContain("/p/key2");
   });
 
-  it("uses proofId from verification when available", () => {
-    const verifications: VerificationRecord = {
-      key1: { status: "found" as const, assets: { proofPage: { id: "proof_abc" } } },
-    };
-    const urls = buildProofUrls(verifications, { baseUrl: "https://proof.deepcitation.com" });
-    expect(urls.key1).toContain("/p/proof_abc");
-  });
 });

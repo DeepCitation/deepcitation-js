@@ -2,12 +2,11 @@ import type {
   Citation,
   DeepTextItem,
   ExpiresAt,
+  FileDownload,
   ImageFormat,
-  PageRendersStatus,
-  ProofOptions,
-  SourcePage,
+  PageImagesStatus,
+  PageImage,
   Verification,
-  VerificationDocumentAssets,
   VerifyCitationResponse,
 } from "../types/index.js";
 
@@ -135,16 +134,18 @@ export interface UploadFileResponse {
   error?: string;
   /** Optional expiration date for the attachment. */
   expiresAt?: ExpiresAt;
-  /** Downloadable original/converted files associated with this attachment. */
-  documentFiles?: VerificationDocumentAssets;
+  /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
+  originalDownload?: FileDownload;
+  /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. Absent for plain PDF uploads. */
+  convertedDownload?: FileDownload;
   /**
    * Pre-assigned page structure with dimensions and storage paths.
-   * For PDFs, images are generated asynchronously after upload (check pageRendersStatus).
+   * For PDFs, images are generated asynchronously after upload (check pageImagesStatus).
    * For images, contains a single completed page entry.
    */
-  pageRenders?: SourcePage[];
+  pageImages?: PageImage[];
   /** Status of page image generation. */
-  pageRendersStatus?: PageRendersStatus;
+  pageImagesStatus?: PageImagesStatus;
   /**
    * Cache information for URL-based requests.
    * Only present when the request was for a URL (not file upload).
@@ -154,7 +155,7 @@ export interface UploadFileResponse {
    * Source URL information when the attachment originated from a URL.
    * Use this to populate Citation.url and Citation.domain when creating citations.
    */
-  urlSource?: UrlSourceInfo;
+  urlSource?: UrlSource;
 }
 
 // ==========================================================================
@@ -219,7 +220,7 @@ export interface UrlCacheInfo {
  * This information should be used to populate Citation.url and Citation.domain
  * when creating citations for verification.
  */
-export interface UrlSourceInfo {
+export interface UrlSource {
   /** The original URL that was converted */
   url: string;
   /** The domain extracted from the URL (e.g., "example.com") */
@@ -235,9 +236,8 @@ export type VerifyCitationsResponse = VerifyCitationResponse;
 
 /**
  * Options for citation verification.
- * Extends ProofOptions for proof URL generation settings.
  */
-export interface VerifyCitationsOptions extends ProofOptions {
+export interface VerifyCitationsOptions {
   /** Output image format for verification screenshots */
   outputImageFormat?: ImageFormat;
   /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
@@ -272,6 +272,24 @@ export interface FileDataPart {
 }
 
 /**
+ * Per-attachment assets returned from prepareAttachments
+ */
+export interface PreparedAttachment {
+  /** The attachment ID assigned by DeepCitation */
+  attachmentId: string;
+  /** Source URL information when the attachment originated from a URL. Absent for document inputs. */
+  urlSource?: UrlSource;
+  /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
+  originalDownload?: FileDownload;
+  /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. */
+  convertedDownload?: FileDownload;
+  /** Renderable page images for inspection and viewer views */
+  pageImages?: PageImage[];
+  /** Status of page image generation. */
+  pageImagesStatus?: PageImagesStatus;
+}
+
+/**
  * Result from prepareAttachments
  */
 export interface PrepareAttachmentsResult {
@@ -279,13 +297,14 @@ export interface PrepareAttachmentsResult {
   fileDataParts: FileDataPart[];
   /** The combined formatted text content for LLM prompts (with page markers and line IDs) for all files */
   deepTextPromptPortion: string;
+  /** Per-attachment assets for downloads and page images */
+  attachments: PreparedAttachment[];
 }
 
 /**
  * Input for verify method.
- * Extends ProofOptions for proof URL generation settings.
  */
-export interface VerifyInput extends ProofOptions {
+export interface VerifyInput {
   /** The LLM response containing citations */
   llmOutput: string;
   /** Optional file references (required for Zero Data Retention or after storage expires) */
@@ -426,9 +445,9 @@ export interface AttachmentResponse {
   /** Total text content size in bytes */
   textByteSize?: number;
   /** Extracted page data with text and geometry */
-  pageRenders: SourcePage[];
+  pageImages: PageImage[];
   /** Status of page image generation */
-  pageRendersStatus?: PageRendersStatus;
+  pageImagesStatus?: PageImagesStatus;
   /** Verification results keyed by citation key */
   verifications: Record<string, Verification>;
   /** Deep text items by page index (Phase 1: from verification results) */
@@ -438,9 +457,11 @@ export interface AttachmentResponse {
   /** ISO 8601 timestamp when processing completed */
   processedAt?: string;
   /** Source URL information when the attachment originated from a URL */
-  urlSource?: UrlSourceInfo;
+  urlSource?: UrlSource;
   /** Expiration date */
   expiresAt?: ExpiresAt;
-  /** Downloadable original/converted files associated with this attachment. */
-  documentFiles?: VerificationDocumentAssets;
+  /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
+  originalDownload?: FileDownload;
+  /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. */
+  convertedDownload?: FileDownload;
 }

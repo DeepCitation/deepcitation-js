@@ -5,6 +5,7 @@ import type { Verification } from "../../../src/types/verification";
 
 const baseCitation: Citation = {
   type: "document",
+  attachmentId: "att-generated-image",
   citationNumber: 1,
   anchorText: "Functional status",
   fullPhrase: "Functional status: He is at baseline, no assistance needed, independent ADLs",
@@ -41,27 +42,38 @@ export function GeneratedImageCitation({
   const verification = useMemo<Verification>(
     () => ({
       status: "found",
+      attachmentId: "att-generated-image",
       verifiedMatchSnippet: "Functional status: He is at baseline",
       document: {
         verifiedPageNumber: 5,
       },
-      assets: {
-        evidenceSnippet: {
-          src: imageSrc,
-          dimensions: { width, height },
-        },
-        pageRenders: [
-          {
-            pageNumber: 5,
-            dimensions: { width, height },
-            imageUrl: imageSrc,
-            isMatchPage: true,
-          },
-        ],
+      evidence: {
+        src: imageSrc,
+        dimensions: { width, height },
       },
     }),
     [height, imageSrc, width],
   );
 
-  return <CitationComponent citation={baseCitation} verification={verification} />;
+  const pageImagesByAttachmentId = useMemo(
+    () => ({
+      "att-generated-image": [
+        {
+          pageNumber: 5,
+          dimensions: { width, height },
+          imageUrl: imageSrc,
+          isMatchPage: true,
+        },
+      ],
+    }),
+    [height, imageSrc, width],
+  );
+
+  return (
+    <CitationComponent
+      citation={baseCitation}
+      verification={verification}
+      pageImagesByAttachmentId={pageImagesByAttachmentId}
+    />
+  );
 }

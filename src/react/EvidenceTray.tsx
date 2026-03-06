@@ -15,7 +15,7 @@ import { isStrategyOverride, shouldHighlightAnchorText } from "../drawing/citati
 import type { DeepTextItem, ScreenBox } from "../types/boxes.js";
 import type { CitationStatus } from "../types/citation.js";
 import type { SearchAttempt } from "../types/search.js";
-import type { PageRenderAsset, Verification } from "../types/verification.js";
+import type { PageImage, Verification } from "../types/verification.js";
 import { CitationAnnotationOverlay } from "./CitationAnnotationOverlay.js";
 import { computeKeyholeOffset } from "./computeKeyholeOffset.js";
 import {
@@ -183,157 +183,71 @@ export interface ExpandedImageSource {
   textItems?: DeepTextItem[];
 }
 
-function toExpandedImageSource(page: PageRenderAsset): ExpandedImageSource {
+function toExpandedImageSource(
+  page: PageImage,
+  overrides?: {
+    highlightBox?: ScreenBox | null;
+    renderScale?: { x: number; y: number } | null;
+    textItems?: DeepTextItem[] | null;
+  },
+): ExpandedImageSource {
   return {
     src: page.imageUrl,
     dimensions: page.dimensions,
-    highlightBox: page.highlightBox ?? null,
-    renderScale: page.renderScale ?? null,
-    textItems: page.textItems ?? [],
+    highlightBox: overrides?.highlightBox ?? page.highlightBox ?? null,
+    renderScale: overrides?.renderScale ?? page.renderScale ?? null,
+    textItems: overrides?.textItems ?? page.textItems ?? [],
   };
 }
 
 /**
- * Normalizes a web capture screenshot field to a usable data URI.
- * The field may arrive as raw base64 or as a complete data URI; both forms are accepted.
- * @throws {Error} If the input is invalid (empty, not a string, or malformed)
- * @internal Exported for testing purposes only
- */
-// biome-ignore lint/style/useComponentExportOnlyModules: Utility function exported for testing
-export function normalizeScreenshotSrc(raw: string): string {
-  // Validate input is a non-empty string
-  if (!raw || typeof raw !== "string") {
-    throw new Error("normalizeScreenshotSrc: Invalid screenshot data - expected non-empty string");
-  }
-
-  // Reject payloads larger than 10 MB before any regex work.
-  // A base64-encoded JPEG screenshot is at most ~3–4 MB for typical pages;
-  // anything beyond 10 MB is almost certainly malformed or malicious input
-  // and would cause memory exhaustion if processed downstream.
-  const MAX_SCREENSHOT_SIZE_BYTES = 10 * 1024 * 1024;
-  if (raw.length > MAX_SCREENSHOT_SIZE_BYTES) {
-    throw new Error("normalizeScreenshotSrc: Screenshot data exceeds 10 MB limit");
-  }
-
-  // Already a data URI - return as-is
-  if (raw.startsWith("data:")) {
-    return raw;
-  }
-
-  // Validate base64 format (basic check - should only contain valid base64 chars + max 2 padding chars).
-  // Only the first 100 chars are tested as a fast-path rejection: screenshot base64 strings
-  // can be megabytes, and obvious non-base64 payloads (e.g. "<script>", "javascript:") are
-  // caught within the first few characters. Security does NOT depend on this check alone —
-  // the constructed data URI is always validated by isValidProofImageSrc() downstream, which
-  // blocks SVG data URIs, javascript: schemes, and untrusted hosts.
-  const BASE64_VALIDATION_PREFIX_LENGTH = 100;
-  if (!/^[A-Za-z0-9+/]+(={0,2})?$/.test(raw.slice(0, BASE64_VALIDATION_PREFIX_LENGTH))) {
-    throw new Error("normalizeScreenshotSrc: Invalid base64 format detected");
-  }
-
-  return `data:image/jpeg;base64,${raw}`;
-}
-
-/**
  * Resolves the evidence crop image (keyhole source) from verification data.
- * Prefers the document verification image; falls back to the URL page screenshot.
- * Returns `null` when no valid source is available.
+ * Returns `verification.evidence.src` when present and valid, otherwise `null`.
  */
 // biome-ignore lint/style/useComponentExportOnlyModules: Utility function used by CitationDrawer
 export function resolveEvidenceSrc(verification: Verification | null | undefined): string | null {
-  const snippetSrc = verification?.assets?.evidenceSnippet?.src;
-  if (snippetSrc) {
-    const s = snippetSrc;
-    return isValidProofImageSrc(s) ? s : null;
-  }
-  const raw = verification?.assets?.webCapture?.src;
-  if (!raw) return null;
-  try {
-    if (isValidProofImageSrc(raw)) return raw;
-    const s = normalizeScreenshotSrc(raw);
-    return isValidProofImageSrc(s) ? s : null;
-  } catch (e) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("Failed to normalize screenshot src:", e);
-    }
-    return null;
-  }
+  const snippetSrc = verification?.evidence?.src;
+  if (!snippetSrc) return null;
+  return isValidProofImageSrc(snippetSrc) ? snippetSrc : null;
 }
 
 /**
  * Single resolver for the best available full-page image from verification data.
  * Tries in order:
- * 1. matchPage from verification.assets.pageRenders (best: has image, dimensions, highlight, textItems)
- * 2. assets.proofImage.url (good: CDN image, no overlay data)
- * 2b. First non-match page from verification.assets.pageRenders (for not_found)
- * 2c. Derived from assets.proofPage.url + ?view=page&format=png (proof service full-page render)
- * 3. assets.webCapture.src (URL citations: full page screenshot)
+ * 1. match page from pageImages (best: has image + dimensions)
+ * 2. first page fallback from pageImages (for not_found or unknown page)
  *
- * Note: assets.evidenceSnippet.src is intentionally excluded — it is the keyhole crop, not a
+ * Note: evidence.src is intentionally excluded — it is the keyhole crop, not a
  * full-page image. Using it here would make "View page" re-show the same image as the keyhole.
+ * URL full-page screenshots are now in attachment.pageImages (not on the verification object).
  *
  * Each source is validated with isValidProofImageSrc() before use, blocking SVG data URIs
  * (which can contain scripts), javascript: URIs, and untrusted hosts. Localhost is allowed
  * for development. Invalid sources are skipped and the next tier is tried.
  */
 // biome-ignore lint/style/useComponentExportOnlyModules: exported for testing
-export function resolveExpandedImage(verification: Verification | null | undefined): ExpandedImageSource | null {
+export function resolveExpandedImage(
+  verification: Verification | null | undefined,
+  pageImages?: PageImage[] | null,
+): ExpandedImageSource | null {
   if (!verification) return null;
 
-  // 1. Best: matching page from verification.assets.pageRenders array
-  const matchPage = verification.assets?.pageRenders?.find(p => p.isMatchPage);
+  const matchPageNumber = verification.document?.verifiedPageNumber;
+  const matchPage =
+    pageImages?.find(p => p.isMatchPage) ??
+    (matchPageNumber ? pageImages?.find(p => p.pageNumber === matchPageNumber) : undefined);
   if (matchPage?.imageUrl && isValidProofImageSrc(matchPage.imageUrl)) {
-    return toExpandedImageSource(matchPage);
+    return toExpandedImageSource(matchPage, {
+      highlightBox: verification.document?.highlightBox ?? null,
+      renderScale: verification.document?.renderScale ?? null,
+      textItems: verification.document?.textItems ?? null,
+    });
   }
 
-  // 2. Good: CDN-hosted proof image
-  const proofImageUrl = verification.assets?.proofImage?.url;
-  if (proofImageUrl && isValidProofImageSrc(proofImageUrl)) {
-    return {
-      src: proofImageUrl,
-      dimensions: null,
-      highlightBox: null,
-      textItems: [],
-    };
-  }
-
-  // 2b. Non-match page fallback (for not_found -- page renders exist but none is a match)
-  const anyPage = verification.assets?.pageRenders?.[0];
+  // Fallback: first available page image
+  const anyPage = pageImages?.[0];
   if (anyPage?.imageUrl && isValidProofImageSrc(anyPage.imageUrl)) {
     return toExpandedImageSource(anyPage);
-  }
-
-  // 2c. Derive full-page PNG from proofPage.url by appending ?view=page&format=png.
-  // The proof service serves the same resource in different representations via these params.
-  const proofPageUrl = verification.assets?.proofPage?.url;
-  if (proofPageUrl) {
-    try {
-      const url = new URL(proofPageUrl);
-      url.searchParams.set("view", "page");
-      url.searchParams.set("format", "png");
-      const derivedSrc = url.toString();
-      if (isValidProofImageSrc(derivedSrc)) {
-        return { src: derivedSrc, dimensions: null, highlightBox: null, textItems: [] };
-      }
-    } catch {
-      // Malformed proofPage.url — fall through
-    }
-  }
-
-  // 3. URL screenshot — base64-encoded page screenshot (URL citations)
-  const urlScreenshot = verification.assets?.webCapture?.src;
-  if (urlScreenshot) {
-    try {
-      if (isValidProofImageSrc(urlScreenshot)) {
-        return { src: urlScreenshot, dimensions: null, highlightBox: null, textItems: [] };
-      }
-      const src = normalizeScreenshotSrc(urlScreenshot);
-      if (isValidProofImageSrc(src)) {
-        return { src, dimensions: null, highlightBox: null, textItems: [] };
-      }
-    } catch {
-      // Malformed base64 — fall through to next candidate
-    }
   }
 
   return null;
@@ -347,16 +261,17 @@ export function resolveExpandedImage(verification: Verification | null | undefin
 export function resolveExpandedImageForPage(
   verification: Verification | null | undefined,
   pageNumber: number | null | undefined,
+  pageImages?: PageImage[] | null,
 ): ExpandedImageSource | null {
   const normalizedPage = Number(pageNumber);
-  if (verification?.assets?.pageRenders && Number.isFinite(normalizedPage) && normalizedPage > 0) {
-    const exactPage = verification.assets.pageRenders.find(p => {
+  if (pageImages && Number.isFinite(normalizedPage) && normalizedPage > 0) {
+    const exactPage = pageImages.find(p => {
       const pNum = Number(p.pageNumber);
       return Number.isFinite(pNum) && pNum === normalizedPage && isValidProofImageSrc(p.imageUrl);
     });
     if (exactPage) return toExpandedImageSource(exactPage);
   }
-  return resolveExpandedImage(verification);
+  return resolveExpandedImage(verification, pageImages);
 }
 
 // =============================================================================
@@ -474,7 +389,7 @@ export function AnchorTextFocusedImage({
     const anchorItem =
       verification.document?.anchorTextMatchDeepItems?.[0] ?? verification.document?.phraseMatchDeepItem;
     if (!anchorItem) return null;
-    const renderScale = verification.assets?.pageRenders?.find(p => p.isMatchPage)?.renderScale;
+    const renderScale = verification.document?.renderScale ?? null;
     if (!renderScale) return null;
     return { anchorItem, renderScale };
   }, [verification]);
@@ -727,6 +642,7 @@ export function AnchorTextFocusedImage({
               ? t("evidence.alreadyFullSize")
               : undefined
           }
+          onDragStart={e => e.preventDefault()}
           style={{
             cursor: interactionCursor,
           }}
@@ -813,6 +729,7 @@ export function AnchorTextFocusedImage({
                 loading="eager"
                 decoding="async"
                 draggable={false}
+                onDragStart={e => e.preventDefault()}
                 onLoad={() => setImageLoaded(true)}
                 onError={handleImageError}
               />
@@ -1071,7 +988,7 @@ export function SearchAnalysisSummary({
  * For not-found: Shows search analysis summary + footer with log toggle + CTA.
  * When `onExpand` is provided, the tray is clickable. Otherwise, it's informational only.
  *
- * @param proofImageSrc - Full-page proof image used as keyhole source for miss states
+ * @param pageImageSrc - Full-page page image used as keyhole source for miss states
  *   when no evidence crop is available from verification.
  */
 export function EvidenceTray({
@@ -1079,7 +996,7 @@ export function EvidenceTray({
   status,
   onExpand,
   onImageClick,
-  proofImageSrc,
+  pageImageSrc,
   pageNumberForCta,
   pageCtaLabel,
   onKeyholeWidth,
@@ -1090,7 +1007,7 @@ export function EvidenceTray({
   status: CitationStatus;
   onExpand?: () => void;
   onImageClick?: () => void;
-  proofImageSrc?: string;
+  pageImageSrc?: string;
   /** Optional page number shown in "View page N" CTA for drawer context. */
   pageNumberForCta?: number | null;
   /** Optional footer CTA label override (for example, "View image"). */
@@ -1276,7 +1193,7 @@ export function EvidenceTray({
   // Shared inner content
   const content = (
     <>
-      {/* Content: keyhole image (verified/partial AND miss with proof image) or search analysis.
+      {/* Content: keyhole image (verified/partial AND miss with page image) or search analysis.
           Keys prevent React from reusing fibers across component-type swaps. */}
       {resolvedEvidenceSrc ? (
         <AnchorTextFocusedImage
@@ -1288,10 +1205,10 @@ export function EvidenceTray({
           onKeyholeWidth={onKeyholeWidth}
           onScrollCapture={onScrollCapture}
         />
-      ) : (isMiss || isPartialMatch) && isValidProofImageSrc(proofImageSrc) ? (
+      ) : (isMiss || isPartialMatch) && isValidProofImageSrc(pageImageSrc) ? (
         <AnchorTextFocusedImage
-          key={proofImageSrc}
-          src={proofImageSrc}
+          key={pageImageSrc}
+          src={pageImageSrc}
           onImageClick={onImageClick}
           onPageExpand={onExpand}
           onKeyholeWidth={onKeyholeWidth}

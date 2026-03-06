@@ -943,7 +943,7 @@ describe("CitationDrawerTrigger", () => {
     expect(queryByTestId("source-tooltip")).toBeInTheDocument();
   });
 
-  it("calls onSourceClick when proof thumbnail is clicked in tooltip", () => {
+  it("calls onSourceClick when evidence thumbnail is clicked in tooltip", () => {
     const onSourceClick = jest.fn();
     const groups: SourceCitationGroup[] = [
       {
@@ -956,10 +956,8 @@ describe("CitationDrawerTrigger", () => {
             citation: { type: "url", siteName: "TestSource", title: "Article 1" },
             verification: {
               status: "found",
-              assets: {
-                evidenceSnippet: {
-                  src: "data:image/png;base64,abc123",
-                },
+              evidence: {
+                src: "data:image/png;base64,abc123",
               },
             },
           },
@@ -972,10 +970,10 @@ describe("CitationDrawerTrigger", () => {
     const trigger = getByTestId("citation-drawer-trigger");
     hoverFirstIcon(trigger);
 
-    // Click the proof thumbnail (now a div with role="button" to avoid nesting buttons)
-    const proofButton = trigger.querySelector("[aria-label='View proof for TestSource']");
-    expect(proofButton).toBeInTheDocument();
-    if (proofButton) fireEvent.click(proofButton);
+    // Click the evidence thumbnail (now a div with role="button" to avoid nesting buttons)
+    const evidenceButton = trigger.querySelector("[aria-label='View proof for TestSource']");
+    expect(evidenceButton).toBeInTheDocument();
+    if (evidenceButton) fireEvent.click(evidenceButton);
 
     expect(onSourceClick).toHaveBeenCalledWith(groups[0]);
   });
@@ -1031,7 +1029,7 @@ describe("CitationDrawerTrigger", () => {
     expect(tooltip?.textContent).toContain("Source");
   });
 
-  it("rejects invalid proof image URLs", () => {
+  it("rejects invalid evidence image URLs", () => {
     const groups: SourceCitationGroup[] = [
       {
         sourceName: "TestSource",
@@ -1042,10 +1040,8 @@ describe("CitationDrawerTrigger", () => {
             citation: { type: "url", siteName: "TestSource", title: "Article 1" },
             verification: {
               status: "found",
-              assets: {
-                evidenceSnippet: {
-                  src: "javascript:alert('xss')",
-                },
+              evidence: {
+                src: "javascript:alert('xss')",
               },
             },
           },
@@ -1058,9 +1054,9 @@ describe("CitationDrawerTrigger", () => {
     const trigger = getByTestId("citation-drawer-trigger");
     hoverFirstIcon(trigger);
 
-    // Should not render proof image for invalid URL
-    const proofButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
-    expect(proofButton).not.toBeInTheDocument();
+    // Should not render evidence image for invalid URL
+    const evidenceButton = trigger.querySelector("button[aria-label='View proof for TestSource']");
+    expect(evidenceButton).not.toBeInTheDocument();
   });
 });
 
@@ -1381,6 +1377,14 @@ describe("CitationDrawer page badges", () => {
     const page1Src = "https://proof.deepcitation.com/page1.png";
     const page2Src = "https://proof.deepcitation.com/page2.png";
     const page5Src = "https://proof.deepcitation.com/page5.png";
+    const attachmentId = "att_doc_1";
+    const pageImagesByAttachmentId = {
+      [attachmentId]: [
+        { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+        { pageNumber: 2, imageUrl: page2Src, dimensions: { width: 1000, height: 1400 } },
+        { pageNumber: 5, imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
+      ],
+    };
     const groups: SourceCitationGroup[] = [
       {
         sourceName: "Doc",
@@ -1389,36 +1393,28 @@ describe("CitationDrawer page badges", () => {
             citationKey: "c1",
             citation: {
               type: "document" as const,
+              attachmentId,
               pageNumber: 2,
               anchorText: "first text",
               fullPhrase: "First text on page 2",
             },
             verification: {
               status: "found" as const,
-              assets: {
-                pageRenders: [
-                  { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
-                  { pageNumber: 2, imageUrl: page2Src, dimensions: { width: 1000, height: 1400 } },
-                ],
-              },
+              attachmentId,
             },
           },
           {
             citationKey: "c2",
             citation: {
               type: "document" as const,
+              attachmentId,
               pageNumber: 5,
               anchorText: "second text",
               fullPhrase: "Second text on page 5",
             },
             verification: {
               status: "found" as const,
-              assets: {
-                pageRenders: [
-                  { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
-                  { pageNumber: 5, imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
-                ],
-              },
+              attachmentId,
             },
           },
         ],
@@ -1426,7 +1422,14 @@ describe("CitationDrawer page badges", () => {
       },
     ];
 
-    const { container } = render(<CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />);
+    const { container } = render(
+      <CitationDrawer
+        isOpen={true}
+        onClose={() => {}}
+        citationGroups={groups}
+        pageImagesByAttachmentId={pageImagesByAttachmentId}
+      />,
+    );
 
     const page5Button = container.querySelector("button[aria-label='Expand to full page 5']");
     expect(page5Button).toBeInTheDocument();
@@ -1441,6 +1444,14 @@ describe("CitationDrawer page badges", () => {
     const page1Src = "https://proof.deepcitation.com/page1.png";
     const page2Src = "https://proof.deepcitation.com/page2.png";
     const page5Src = "https://proof.deepcitation.com/page5.png";
+    const attachmentId = "att_extra_pages";
+    const pageImagesByAttachmentId = {
+      [attachmentId]: [
+        { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
+        { pageNumber: 2, imageUrl: page2Src, dimensions: { width: 1000, height: 1400 } },
+        { pageNumber: 5, imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
+      ],
+    };
     const groups: SourceCitationGroup[] = [
       {
         sourceName: "Doc",
@@ -1449,19 +1460,14 @@ describe("CitationDrawer page badges", () => {
             citationKey: "c-extra-pages",
             citation: {
               type: "document" as const,
+              attachmentId,
               pageNumber: 2,
               anchorText: "test text",
               fullPhrase: "This is test text on page 2",
             },
             verification: {
               status: "found" as const,
-              assets: {
-                pageRenders: [
-                  { pageNumber: 1, imageUrl: page1Src, dimensions: { width: 1000, height: 1400 } },
-                  { pageNumber: 2, imageUrl: page2Src, dimensions: { width: 1000, height: 1400 } },
-                  { pageNumber: 5, imageUrl: page5Src, dimensions: { width: 1000, height: 1400 } },
-                ],
-              },
+              attachmentId,
             },
           },
         ],
@@ -1469,7 +1475,14 @@ describe("CitationDrawer page badges", () => {
       },
     ];
 
-    const { container } = render(<CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />);
+    const { container } = render(
+      <CitationDrawer
+        isOpen={true}
+        onClose={() => {}}
+        citationGroups={groups}
+        pageImagesByAttachmentId={pageImagesByAttachmentId}
+      />,
+    );
 
     const page1Button = container.querySelector("button[aria-label='Expand to full page 1']");
     const page2Button = container.querySelector("button[aria-label='Expand to full page 2']");
@@ -1492,6 +1505,10 @@ describe("CitationDrawer evidence tray interactions", () => {
   it("shows page number in drawer tray CTA and expands keyhole inline on click", () => {
     const evidenceSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
     const page4Src = "https://proof.deepcitation.com/page4.png";
+    const attachmentId = "att_drawer_evidence_1";
+    const pageImagesByAttachmentId = {
+      [attachmentId]: [{ pageNumber: 4, imageUrl: page4Src, dimensions: { width: 1000, height: 1400 } }],
+    };
     const groups: SourceCitationGroup[] = [
       {
         sourceName: "Doc",
@@ -1500,16 +1517,15 @@ describe("CitationDrawer evidence tray interactions", () => {
             citationKey: "c1",
             citation: {
               type: "document" as const,
+              attachmentId,
               pageNumber: 4,
               anchorText: "test text",
               fullPhrase: "This is test text on page 4",
             },
             verification: {
               status: "found" as const,
-              assets: {
-                evidenceSnippet: { src: evidenceSrc },
-                pageRenders: [{ pageNumber: 4, imageUrl: page4Src, dimensions: { width: 1000, height: 1400 } }],
-              },
+              attachmentId,
+              evidence: { src: evidenceSrc },
             },
           },
         ],
@@ -1517,7 +1533,14 @@ describe("CitationDrawer evidence tray interactions", () => {
       },
     ];
 
-    const { container } = render(<CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />);
+    const { container } = render(
+      <CitationDrawer
+        isOpen={true}
+        onClose={() => {}}
+        citationGroups={groups}
+        pageImagesByAttachmentId={pageImagesByAttachmentId}
+      />,
+    );
 
     const itemRow = container.querySelector("[data-citation-key='c1']");
     expect(itemRow).toBeInTheDocument();
@@ -1537,6 +1560,10 @@ describe("CitationDrawer evidence tray interactions", () => {
   it("clicking 'View page N' CTA opens the header panel with the full-page image", () => {
     const evidenceSrc = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
     const page4Src = "https://proof.deepcitation.com/page4.png";
+    const attachmentId = "att_drawer_evidence_2";
+    const pageImagesByAttachmentId = {
+      [attachmentId]: [{ pageNumber: 4, imageUrl: page4Src, dimensions: { width: 1000, height: 1400 } }],
+    };
     const groups: SourceCitationGroup[] = [
       {
         sourceName: "Doc",
@@ -1545,16 +1572,15 @@ describe("CitationDrawer evidence tray interactions", () => {
             citationKey: "c1",
             citation: {
               type: "document" as const,
+              attachmentId,
               pageNumber: 4,
               anchorText: "test text",
               fullPhrase: "This is test text on page 4",
             },
             verification: {
               status: "found" as const,
-              assets: {
-                evidenceSnippet: { src: evidenceSrc },
-                pageRenders: [{ pageNumber: 4, imageUrl: page4Src, dimensions: { width: 1000, height: 1400 } }],
-              },
+              attachmentId,
+              evidence: { src: evidenceSrc },
             },
           },
         ],
@@ -1562,7 +1588,14 @@ describe("CitationDrawer evidence tray interactions", () => {
       },
     ];
 
-    const { container } = render(<CitationDrawer isOpen={true} onClose={() => {}} citationGroups={groups} />);
+    const { container } = render(
+      <CitationDrawer
+        isOpen={true}
+        onClose={() => {}}
+        citationGroups={groups}
+        pageImagesByAttachmentId={pageImagesByAttachmentId}
+      />,
+    );
 
     // Expand the accordion item first
     const itemRow = container.querySelector("[data-citation-key='c1']");

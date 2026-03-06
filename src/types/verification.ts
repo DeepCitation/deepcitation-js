@@ -1,5 +1,5 @@
 import type { DeepTextItem, ScreenBox, SourcePage } from "./boxes.js";
-import type { Citation, ImageFormat } from "./citation.js";
+import type { Citation } from "./citation.js";
 import type { SearchAttempt, SearchStatus } from "./search.js";
 
 // ==========================================================================
@@ -35,28 +35,22 @@ export interface DownloadLink {
 }
 
 /**
- * Shared file metadata for downloadable artifacts.
+ * A downloadable file artifact (original upload or converted version).
+ * Replaces the previous nested VerificationDocumentAssets / OriginalFileAsset / VerificationPdfAsset hierarchy.
+ *
+ * - `originalDownload`: the file as received (PDF, DOCX, MP4, …)
+ * - `convertedDownload`: a processing artifact (PDF rendition, AV transcript, …)
  */
-export interface FileAsset {
+export interface FileDownload {
   filename?: string;
-  mimeType: string;
-  download?: DownloadLink;
+  mimeType?: string;
+  /** Signed download link */
+  link: DownloadLink;
 }
 
-/**
- * Original user-uploaded file (if one exists).
- */
-export interface OriginalFileAsset extends FileAsset {
-  origin: "upload";
-}
-
-/**
- * Origin of the verification PDF.
- * - `"upload_pdf"`: User uploaded a PDF directly
- * - `"converted_from_office"`: Converted from an Office document (.docx, .xlsx, etc.)
- * - `"converted_from_url"`: Converted from a web page URL
- */
-export type PdfOrigin = "upload_pdf" | "converted_from_office" | "converted_from_url";
+// ==========================================================================
+// Evidence / page image types
+// ==========================================================================
 
 /**
  * Status of page image generation for an attachment.
@@ -65,82 +59,17 @@ export type PdfOrigin = "upload_pdf" | "converted_from_office" | "converted_from
  * - `"completed"`: All page images are available
  * - `"failed"`: Page image generation encountered an error
  */
-export type PageRendersStatus = "pending" | "generating" | "completed" | "failed";
+export type PageImagesStatus = "pending" | "generating" | "completed" | "failed";
 
 /**
- * Configuration for proof URL generation.
- * Controls access control, expiry, image format, and inline base64 for proof artifacts.
- * Only used when `generateProofUrls` is `true`.
+ * Evidence image artifact — keyhole crop of the verified region.
+ * Carries its own `textItems` scoped to the crop region for overlay rendering.
  */
-export interface ProofConfig {
-  /** Access control for proof URLs */
-  access?: "signed" | "workspace" | "public";
-  /** Expiry duration for signed URLs (only used when access is "signed") */
-  signedUrlExpiry?: "1h" | "24h" | "7d" | "30d" | "90d" | "1y";
-  /** Image format for proof images */
-  imageFormat?: ImageFormat;
-  /** Whether to also return base64 images inline (in addition to URLs) */
-  includeBase64?: boolean;
-}
-
-/**
- * PDF used by the verification engine.
- */
-export interface VerificationPdfAsset extends FileAsset {
-  origin: PdfOrigin;
-  /** Present for URL conversions where the verification PDF was derived from a URL. */
-  sourceUrl?: string;
-}
-
-/**
- * Document file artifacts tied to this verification.
- */
-export interface VerificationDocumentAssets {
-  /** Original uploaded file (e.g., .docx, .xlsx, .pdf). */
-  originalFile?: OriginalFileAsset;
-  /** Verification PDF used for page-based extraction and matching. */
-  verificationPdf?: VerificationPdfAsset;
-}
-
-// ==========================================================================
-// Proof / evidence artifact types
-// ==========================================================================
-
-/**
- * Interactive proof page artifact.
- */
-export interface ProofPageAsset {
-  id?: string;
-  /** URL to the interactive proof page. Always present when the asset is returned. */
-  url: string;
-}
-
-/**
- * Hosted proof image artifact.
- */
-export interface ProofImageAsset {
-  /** URL to the proof image. Always present when the asset is returned. */
-  url: string;
-  format?: ImageFormat;
-  width?: number;
-  height?: number;
-}
-
-/**
- * Inline snippet evidence artifact (image crop, base64 data URI, or URL).
- */
-export interface EvidenceSnippetAsset {
-  src?: string;
+export interface EvidenceImage {
+  src: string;
   dimensions?: { width: number; height: number };
-}
-
-/**
- * URL/web capture artifact (screenshot for URL citations).
- */
-export interface WebCaptureAsset {
-  src?: string;
-  /** ISO 8601 timestamp when the capture was taken. */
-  capturedAt?: string;
+  /** DeepTextItems for the highlighted crop region */
+  textItems?: DeepTextItem[];
 }
 
 /**
@@ -177,7 +106,7 @@ export type UrlAccessStatus =
  * ```typescript
  * if (verification.document) {
  *   const pageNumber = verification.document.verifiedPageNumber;
- *   const image = verification.assets?.evidenceSnippet?.src;
+ *   const image = verification.evidence?.src;
  *   console.log(`Verified on page ${pageNumber}`);
  * }
  * ```
@@ -195,6 +124,12 @@ export interface DocumentVerificationResult {
   hitIndexWithinPage?: number;
   phraseMatchDeepItem?: DeepTextItem;
   anchorTextMatchDeepItems?: DeepTextItem[];
+  /** OCR text items for the verified page */
+  textItems?: DeepTextItem[];
+  /** Highlighted region on the verified page (image pixel coordinates) */
+  highlightBox?: ScreenBox;
+  /** Scale factors from PDF coordinate units to page image pixels */
+  renderScale?: { x: number; y: number };
 }
 
 /**
@@ -237,7 +172,7 @@ export interface UrlVerificationResult {
  * A page render returned from verification for user inspection.
  * Extends SourcePage from boxes.ts with verification-specific metadata.
  */
-export interface PageRenderAsset extends SourcePage {
+export interface PageImage extends SourcePage {
   /** Whether this page contains the verified citation match */
   isMatchPage?: boolean;
   /** Highlighted region on this page (if match found) */
@@ -247,33 +182,6 @@ export interface PageRenderAsset extends SourcePage {
   renderScale?: { x: number; y: number };
   /** OCR text items on this page (forward-compatible: text selection, annotations) */
   textItems?: DeepTextItem[];
-}
-
-/**
- * Verification artifacts grouped by user intent.
- *
- * @example
- * ```typescript
- * if (verification.assets?.proofPage?.url) {
- *   const proofLink = verification.assets.proofPage.url;
- *   const image = verification.assets.proofImage?.url;
- *   console.log(`Proof available at: ${proofLink}`);
- * }
- * ```
- */
-export interface VerificationAssets {
-  /** Source/converted files associated with the verification flow */
-  documentFiles?: VerificationDocumentAssets;
-  /** Interactive proof page (HTML) */
-  proofPage?: ProofPageAsset;
-  /** Hosted proof image (CDN/full-page image) */
-  proofImage?: ProofImageAsset;
-  /** Inline evidence snippet (crop image) */
-  evidenceSnippet?: EvidenceSnippetAsset;
-  /** Web screenshot capture for URL citations */
-  webCapture?: WebCaptureAsset;
-  /** Renderable page images for inspection and drawer views */
-  pageRenders?: PageRenderAsset[];
 }
 
 // ==========================================================================
@@ -320,8 +228,8 @@ export interface Verification {
   /** URL-specific verification results */
   url?: UrlVerificationResult;
 
-  /** Verification artifacts grouped by user intent */
-  assets?: VerificationAssets;
+  /** Evidence image (keyhole crop + crop-region DeepTextItems) */
+  evidence?: EvidenceImage;
 
   // ========== Timing ==========
   /** Wall-clock ms the system took to verify this citation.

@@ -552,234 +552,7 @@ describe("SourceContextHeader", () => {
   // PROOF URL LINK TESTS
   // ==========================================================================
 
-  describe("Proof URL links", () => {
-    it("does not render proof link when proofUrl prop is omitted (even if verification has proofUrl)", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        lineIds: [12, 13],
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-        assets: { proofPage: { url: "https://api.deepcitation.com/proof/123" } },
-      };
-
-      const { queryByRole, container } = render(
-        <SourceContextHeader citation={citation} verification={verification} />,
-      );
-
-      // proofUrl prop not passed — no link rendered
-      expect(queryByRole("link")).toBeNull();
-      // Should show static page text instead
-      expect(container.textContent).toContain("p.5");
-    });
-
-    // Temporarily skipped — proof link is disabled in SourceContextHeader (not ready for production)
-    it.skip("renders proof link when valid proofUrl prop is passed", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        lineIds: [12, 13],
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-      };
-
-      const { getByRole } = render(
-        <SourceContextHeader
-          citation={citation}
-          verification={verification}
-          proofUrl="https://api.deepcitation.com/proof/123"
-          onClose={() => {}}
-        />,
-      );
-
-      const link = getByRole("link", { name: /open proof in new tab/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "https://api.deepcitation.com/proof/123");
-      expect(link).toHaveAttribute("target", "_blank");
-      expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    });
-
-    it("renders static text when proof URL is not available", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        lineIds: [12, 13],
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-      };
-
-      const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
-
-      expect(queryByRole("link")).toBeNull();
-    });
-
-    it("does not render link for unsafe proof URL (javascript: protocol)", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-        assets: { proofPage: { url: "javascript:alert('XSS')" } },
-      };
-
-      const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
-
-      // Should render static text, not a link
-      expect(queryByRole("link")).toBeNull();
-    });
-
-    it("does not render link for unsafe proof URL (data: protocol)", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-        assets: { proofPage: { url: "data:text/html,<script>alert('XSS')</script>" } },
-      };
-
-      const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
-
-      // Should render static text, not a link
-      expect(queryByRole("link")).toBeNull();
-    });
-
-    it("does not render link when proofUrl prop is omitted even with deepcitation.com URL in verification", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-        assets: { proofPage: { url: "https://cdn.deepcitation.com/proof/456" } },
-      };
-
-      const { queryByRole, container } = render(
-        <SourceContextHeader citation={citation} verification={verification} />,
-      );
-
-      // proofUrl prop not passed — no link rendered
-      expect(queryByRole("link")).toBeNull();
-      // Should show static page text
-      expect(container.textContent).toContain("p.5");
-    });
-
-    it("blocks proof link when proofUrl prop contains javascript: protocol", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-      };
-
-      const { queryByRole } = render(
-        <SourceContextHeader
-          citation={citation}
-          verification={verification}
-          proofUrl="javascript:alert('XSS')"
-          onClose={() => {}}
-        />,
-      );
-
-      // Component-level validation blocks unsafe protocols
-      expect(queryByRole("link")).toBeNull();
-    });
-
-    it("blocks proof link when proofUrl prop contains untrusted domain", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-      };
-
-      const { queryByRole } = render(
-        <SourceContextHeader
-          citation={citation}
-          verification={verification}
-          proofUrl="https://evil.com/fake-proof"
-          onClose={() => {}}
-        />,
-      );
-
-      // Component-level validation blocks untrusted domains
-      expect(queryByRole("link")).toBeNull();
-    });
-
-    it("blocks proof URL from untrusted domain", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-        assets: { proofPage: { url: "https://evil.com/fake-proof" } },
-      };
-
-      const { queryByRole } = render(<SourceContextHeader citation={citation} verification={verification} />);
-
-      // Should render static text, not a link (untrusted domain blocked)
-      expect(queryByRole("link")).toBeNull();
-    });
-
-    it("handles empty proof URL gracefully", () => {
-      const citation: Citation = {
-        type: "document",
-        attachmentId: "abc123",
-        pageNumber: 5,
-        fullPhrase: "Test phrase",
-      };
-      const verification: Verification = {
-        label: "Document.pdf",
-        document: { verifiedPageNumber: 5 },
-        assets: { proofPage: { url: "" } },
-      };
-
-      const { queryByRole, container } = render(
-        <SourceContextHeader citation={citation} verification={verification} />,
-      );
-
-      // Should render static text, not a link (empty string blocked)
-      expect(queryByRole("link")).toBeNull();
-      // Should not crash
-      expect(container).toBeInTheDocument();
-    });
-  });
-
-  describe("Page pill interaction styles", () => {
+describe("Page pill interaction styles", () => {
     it("uses explicit neutral hover/focus styling for expandable page pills", () => {
       const citation: Citation = {
         type: "document",
@@ -908,10 +681,8 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        assets: {
-          evidenceSnippet: {
-            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
-          },
+        evidence: {
+          src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
       const onSourceDownload = () => {};
@@ -979,10 +750,8 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        assets: {
-          evidenceSnippet: {
-            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
-          },
+        evidence: {
+          src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
 
@@ -1000,10 +769,8 @@ describe("SourceContextHeader", () => {
       const verification: Verification = {
         attachmentId: "att-url-123",
         label: "example.com.pdf",
-        assets: {
-          evidenceSnippet: {
-            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
-          },
+        evidence: {
+          src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
       const onSourceDownload = () => {};
@@ -1037,10 +804,8 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        assets: {
-          evidenceSnippet: {
-            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
-          },
+        evidence: {
+          src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
       const parentClick = jest.fn();
@@ -1062,6 +827,39 @@ describe("SourceContextHeader", () => {
       expect(parentClick).not.toHaveBeenCalled();
     });
 
+    
+
+    it("prefers source download when onSourceDownload is available", () => {
+      const citation: Citation = {
+        type: "url",
+        url: "https://example.com/article",
+        domain: "example.com",
+        fullPhrase: "Test phrase from article",
+      };
+      const verification: Verification = {
+        status: "found",
+        evidence: {
+          src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
+        },
+      };
+
+      const onSourceDownload = jest.fn();
+
+      const { getByRole, queryByRole } = render(
+        <SourceContextHeader citation={citation} verification={verification} onSourceDownload={onSourceDownload} />,
+      );
+
+      // Source download button must be visible, image download must not
+      expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
+      expect(queryByRole("button", { name: /download image/i })).toBeNull();
+
+      // Click the download button
+      fireEvent.click(getByRole("button", { name: /download source/i }));
+
+      // Must call onSourceDownload (which points to the real file), not triggerBackgroundDownload
+      expect(onSourceDownload).toHaveBeenCalledTimes(1);
+    });
+
     it("starts image download without navigating the current view", () => {
       const citation: Citation = {
         type: "document",
@@ -1070,10 +868,8 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
       const verification: Verification = {
-        assets: {
-          evidenceSnippet: {
-            src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
-          },
+        evidence: {
+          src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
 

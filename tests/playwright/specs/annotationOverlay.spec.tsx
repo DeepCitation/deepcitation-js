@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/experimental-ct-react";
 import { CitationComponent } from "../../../src/react/Citation";
 import type { DeepTextItem } from "../../../src/types/boxes";
 import type { Citation } from "../../../src/types/citation";
-import type { Verification } from "../../../src/types/verification";
+import type { PageImage, Verification } from "../../../src/types/verification";
 
 // =============================================================================
 // TEST FIXTURES
@@ -14,11 +14,22 @@ const baseCitation: Citation = {
   anchorText: "Functional status",
   fullPhrase: "Functional status: He is at baseline, no assistance needed, independent ADLs",
   pageNumber: 5,
+  attachmentId: "att-annotation-overlay",
 };
 
 // Static 800×1600 white PNG (1-bit grayscale, ~600 bytes).
 const tallImageBase64 =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAZAAQAAAACpxxs4AAACPklEQVR42u3NMQEAAAwCIPuX1hZ7BgVID0QikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUTyNRnb9LNzJVTWGwAAAABJRU5ErkJggg==";
+const attachmentId = "att-annotation-overlay";
+
+const pageImages: PageImage[] = [
+  {
+    pageNumber: 5,
+    dimensions: { width: 800, height: 1600 },
+    imageUrl: tallImageBase64,
+    isMatchPage: true,
+  },
+];
 
 // Phrase item at y=200 (PDF bottom-up) on 800×1600 image.
 // → imageY = 1600 - 200 = 1400px from top (87.5% — below fold)
@@ -46,24 +57,15 @@ const verificationWithAnnotation: Verification = {
   verifiedMatchSnippet: "Functional status: He is at baseline",
   verifiedAnchorText: "Functional status",
   verifiedFullPhrase: "Functional status: He is at baseline, no assistance needed, independent ADLs",
+  attachmentId,
   document: {
     verifiedPageNumber: 5,
     phraseMatchDeepItem: PHRASE_ITEM,
     anchorTextMatchDeepItems: [ANCHOR_ITEM],
+    renderScale: { x: 1, y: 1 },
   },
-  assets: {
-    evidenceSnippet: {
-      src: tallImageBase64,
-    },
-    pageRenders: [
-      {
-        pageNumber: 5,
-        dimensions: { width: 800, height: 1600 },
-        imageUrl: tallImageBase64,
-        isMatchPage: true,
-        renderScale: { x: 1, y: 1 },
-      },
-    ],
+  evidence: {
+    src: tallImageBase64,
   },
 };
 
@@ -73,24 +75,14 @@ const verificationNoRenderScale: Verification = {
   verifiedMatchSnippet: "Functional status: He is at baseline",
   verifiedAnchorText: "Functional status",
   verifiedFullPhrase: "Functional status: He is at baseline, no assistance needed, independent ADLs",
+  attachmentId,
   document: {
     verifiedPageNumber: 5,
     phraseMatchDeepItem: PHRASE_ITEM,
     anchorTextMatchDeepItems: [ANCHOR_ITEM],
   },
-  assets: {
-    evidenceSnippet: {
-      src: tallImageBase64,
-    },
-    pageRenders: [
-      {
-        pageNumber: 5,
-        dimensions: { width: 800, height: 1600 },
-        imageUrl: tallImageBase64,
-        isMatchPage: true,
-        // no renderScale
-      },
-    ],
+  evidence: {
+    src: tallImageBase64,
   },
 };
 
@@ -98,22 +90,12 @@ const verificationNoRenderScale: Verification = {
 const verificationNoPhraseItem: Verification = {
   status: "found",
   verifiedMatchSnippet: "Functional status: He is at baseline",
+  attachmentId,
   document: {
     verifiedPageNumber: 5,
   },
-  assets: {
-    evidenceSnippet: {
-      src: tallImageBase64,
-    },
-    pageRenders: [
-      {
-        pageNumber: 5,
-        dimensions: { width: 800, height: 1600 },
-        imageUrl: tallImageBase64,
-        isMatchPage: true,
-        renderScale: { x: 1, y: 1 },
-      },
-    ],
+  evidence: {
+    src: tallImageBase64,
   },
 };
 
@@ -154,7 +136,7 @@ test.describe("Annotation Overlay — rendering", () => {
   test("annotation overlay renders in expanded-page view", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -168,7 +150,7 @@ test.describe("Annotation Overlay — rendering", () => {
   test("spotlight, left bracket, right bracket elements are present", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -188,7 +170,7 @@ test.describe("Annotation Overlay — rendering", () => {
   }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -203,7 +185,7 @@ test.describe("Annotation Overlay — rendering", () => {
   test("annotation overlay absent when no renderScale on match page", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationNoRenderScale} />
+        <CitationComponent citation={baseCitation} verification={verificationNoRenderScale} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -223,7 +205,7 @@ test.describe("Annotation Overlay — dismiss", () => {
   test("hide overlay triggers a one-shot locate icon pulse", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -245,7 +227,7 @@ test.describe("Annotation Overlay — dismiss", () => {
   test("hiding overlay twice re-triggers locate icon pulse", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -281,7 +263,7 @@ test.describe("Annotation Overlay — scroll-to", () => {
   }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -296,7 +278,7 @@ test.describe("Annotation Overlay — scroll-to", () => {
   test("scroll-to-annotation button visible when annotation data present", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -312,7 +294,7 @@ test.describe("Annotation Overlay — scroll-to", () => {
   }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} />
+        <CitationComponent citation={baseCitation} verification={verificationWithAnnotation} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 
@@ -351,7 +333,7 @@ test.describe("Annotation Overlay — scroll-to", () => {
   test("scroll-to-annotation button hidden when no phraseMatchDeepItem", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationNoPhraseItem} />
+        <CitationComponent citation={baseCitation} verification={verificationNoPhraseItem} pageImagesByAttachmentId={{ [attachmentId]: pageImages }} />
       </div>,
     );
 

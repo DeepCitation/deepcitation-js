@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CitationStatus } from "../types/citation.js";
-import type { Verification } from "../types/verification.js";
+import type { PageImage, Verification } from "../types/verification.js";
 import type {
   CitationDrawerItem,
   CitationDrawerItemProps,
@@ -94,7 +94,10 @@ function normalizePageNumber(raw: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
+function computeUniquePageNumbers(
+  groups: SourceCitationGroup[],
+  pageImagesByAttachmentId?: Record<string, PageImage[]>,
+): number[] {
   const pages = new Set<number>();
   for (const group of groups) {
     for (const { citation, verification } of group.citations) {
@@ -102,7 +105,9 @@ function computeUniquePageNumbers(groups: SourceCitationGroup[]): number[] {
         (citation.type !== "url" ? citation.pageNumber : undefined) ?? verification?.document?.verifiedPageNumber,
       );
       if (page !== null) pages.add(page);
-      for (const candidate of verification?.assets?.pageRenders ?? []) {
+      const attachmentId = verification?.attachmentId;
+      const pageImages = attachmentId ? pageImagesByAttachmentId?.[attachmentId] : undefined;
+      for (const candidate of pageImages ?? []) {
         const candidatePage = normalizePageNumber(candidate.pageNumber);
         if (candidatePage !== null) pages.add(candidatePage);
       }
@@ -259,6 +264,7 @@ function SourceGroupHeader({ group }: { group: SourceCitationGroup }) {
  */
 export const CitationDrawerItemComponent = React.memo(function CitationDrawerItemComponent({
   item,
+  pageImages,
   isLast = false,
   onClick,
   className,
@@ -322,10 +328,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
   // Full-page image — resolve against this citation's page number first.
   const expandedPageImage = useMemo(
-    () => resolveExpandedImageForPage(verification, itemPageNumber),
-    [verification, itemPageNumber],
+    () => resolveExpandedImageForPage(verification, itemPageNumber, pageImages),
+    [verification, itemPageNumber, pageImages],
   );
-  const proofImage = expandedPageImage?.src ?? null;
+  const pageImageSrc = expandedPageImage?.src ?? null;
 
   // Evidence image — the verification crop (keyhole source), separate from the full page.
   const evidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
@@ -378,16 +384,16 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
 
   // Keyhole click expands inline inside the citation row.
   const handleExpandKeyholeInline = useCallback(() => {
-    const source = evidenceSrc ?? proofImage;
+    const source = evidenceSrc ?? pageImageSrc;
     if (!source) return;
     setInlineKeyholeSrc(source);
-  }, [evidenceSrc, proofImage]);
+  }, [evidenceSrc, pageImageSrc]);
 
   // Footer CTA ("View page N") opens the full page in the drawer header panel.
   const handleExpandToPage = useCallback(() => {
-    if (proofImage)
-      escCtx?.onInlineExpand(citationKey, proofImage, verification, expandedPageImage?.renderScale, itemPageNumber);
-  }, [proofImage, citationKey, verification, expandedPageImage, escCtx, itemPageNumber]);
+    if (pageImageSrc)
+      escCtx?.onInlineExpand(citationKey, pageImageSrc, verification, expandedPageImage?.renderScale, itemPageNumber);
+  }, [pageImageSrc, citationKey, verification, expandedPageImage, escCtx, itemPageNumber]);
 
   return (
     <div
@@ -484,7 +490,7 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                     setInlineKeyholeSrc(null);
                     setInlineKeyholeInitialScroll(null);
                   }}
-                  onExpand={proofImage ? handleExpandToPage : undefined}
+                  onExpand={pageImageSrc ? handleExpandToPage : undefined}
                   verification={verification ?? undefined}
                   initialScroll={inlineKeyholeInitialScroll ?? undefined}
                   pageNumberForCta={itemPageNumber}
@@ -493,9 +499,9 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
                 <EvidenceTray
                   verification={verification ?? null}
                   status={citationStatus}
-                  onImageClick={evidenceSrc || proofImage ? handleExpandKeyholeInline : undefined}
-                  onExpand={proofImage ? handleExpandToPage : undefined}
-                  proofImageSrc={proofImage ?? undefined}
+                  onImageClick={evidenceSrc || pageImageSrc ? handleExpandKeyholeInline : undefined}
+                  onExpand={pageImageSrc ? handleExpandToPage : undefined}
+                  pageImageSrc={pageImageSrc ?? undefined}
                   pageNumberForCta={itemPageNumber}
                   onScrollCapture={(left, top) => setInlineKeyholeInitialScroll({ left, top })}
                 />
@@ -620,6 +626,7 @@ interface DrawerSourceGroupProps {
   onCitationClick?: (item: CitationDrawerItem) => void;
   indicatorVariant: IndicatorVariant;
   renderCitationItem?: (item: CitationDrawerItem) => React.ReactNode;
+  pageImagesByAttachmentId?: Record<string, PageImage[]>;
   /** When true, the drawer header already identifies the source — omit group headers and source names */
   isSingleGroup?: boolean;
 }
@@ -642,9 +649,17 @@ function DrawerSourceGroup({
   onCitationClick,
   indicatorVariant,
   renderCitationItem,
+  pageImagesByAttachmentId,
   isSingleGroup = false,
 }: DrawerSourceGroupProps) {
   const key = `${group.sourceDomain ?? group.sourceName}-${groupIndex}`;
+  const getPageImages = useCallback(
+    (item: CitationDrawerItem) => {
+      const attachmentId = item.verification?.attachmentId;
+      return attachmentId ? pageImagesByAttachmentId?.[attachmentId] : undefined;
+    },
+    [pageImagesByAttachmentId],
+  );
 
   // Single-group drawer: header already identifies the source, render items directly
   if (isSingleGroup) {
@@ -655,6 +670,7 @@ function DrawerSourceGroup({
         <CitationDrawerItemComponent
           key={key}
           item={item}
+          pageImages={getPageImages(item)}
           isLast={isLastGroup}
           onClick={onCitationClick}
           indicatorVariant={indicatorVariant}
@@ -678,6 +694,7 @@ function DrawerSourceGroup({
             <CitationDrawerItemComponent
               key={item.citationKey}
               item={item}
+              pageImages={getPageImages(item)}
               isLast={isLastGroup && index === group.citations.length - 1}
               onClick={onCitationClick}
               indicatorVariant={indicatorVariant}
@@ -720,6 +737,7 @@ function DrawerSourceGroup({
             <CitationDrawerItemComponent
               key={item.citationKey}
               item={item}
+              pageImages={getPageImages(item)}
               isLast={isLastGroup && index === group.citations.length - 1}
               onClick={onCitationClick}
               indicatorVariant={indicatorVariant}
@@ -892,6 +910,7 @@ function OpenCitationDrawer({
   renderCitationItem,
   indicatorVariant = "icon",
   sourceLabelMap,
+  pageImagesByAttachmentId,
   isClosing = false,
 }: Omit<CitationDrawerProps, "isOpen"> & { isClosing?: boolean }): React.ReactNode {
   const t = useTranslation();
@@ -924,11 +943,14 @@ function OpenCitationDrawer({
   const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
 
   // Page numbers for header — computed from all groups, shown top-right as clickable badges
-  const drawerPages = useMemo(() => computeUniquePageNumbers(sortedGroups), [sortedGroups]);
+  const drawerPages = useMemo(
+    () => computeUniquePageNumbers(sortedGroups, pageImagesByAttachmentId),
+    [sortedGroups, pageImagesByAttachmentId],
+  );
 
   // Bidirectional page↔key lookup maps — O(1) instead of linear scans per interaction
   // pageToItems groups all citations by page for the header panel indicator row.
-  // pageToAnyItem includes pages from verification.assets.pageRenders so "extra" pages are still clickable.
+  // pageToAnyItem includes pages from pageImages so "extra" pages are still clickable.
   const { keyToPage, pageToItems, pageToAnyItem } = useMemo(() => {
     const k2p = new Map<string, number>();
     const p2i = new Map<number, CitationDrawerItem[]>();
@@ -949,7 +971,9 @@ function OpenCitationDrawer({
           }
           if (!p2any.has(page)) p2any.set(page, item);
         }
-        for (const candidate of verification?.assets?.pageRenders ?? []) {
+        const attachmentId = verification?.attachmentId;
+        const pageImages = attachmentId ? pageImagesByAttachmentId?.[attachmentId] : undefined;
+        for (const candidate of pageImages ?? []) {
           const candidatePage = normalizePageNumber(candidate.pageNumber);
           if (candidatePage !== null && !p2any.has(candidatePage)) {
             p2any.set(candidatePage, item);
@@ -958,7 +982,7 @@ function OpenCitationDrawer({
       }
     }
     return { keyToPage: k2p, pageToItems: p2i, pageToAnyItem: p2any };
-  }, [sortedGroups]);
+  }, [sortedGroups, pageImagesByAttachmentId]);
 
   // Accordion state — only one item expanded at a time
   const [expandedCitationKey, setExpandedCitationKey] = useState<string | null>(null);
@@ -1008,14 +1032,16 @@ function OpenCitationDrawer({
     (page: number) => {
       const first = pageToItems.get(page)?.[0] ?? pageToAnyItem.get(page);
       if (first) {
-        const expanded = resolveExpandedImageForPage(first.verification, page);
+        const attachmentId = first.verification?.attachmentId;
+        const pageImages = attachmentId ? pageImagesByAttachmentId?.[attachmentId] : undefined;
+        const expanded = resolveExpandedImageForPage(first.verification, page, pageImages);
         if (expanded) {
           handleInlineExpand(first.citationKey, expanded.src, first.verification, expanded.renderScale, page);
         }
       }
       setPageAnnouncement(`Navigated to page ${page}`);
     },
-    [pageToItems, pageToAnyItem, handleInlineExpand],
+    [pageToItems, pageToAnyItem, handleInlineExpand, pageImagesByAttachmentId],
   );
 
   // Full-page mode: header inline panel open or manual drag-up gesture
@@ -1299,6 +1325,7 @@ function OpenCitationDrawer({
                   onCitationClick={onCitationClick}
                   indicatorVariant={indicatorVariant}
                   renderCitationItem={renderCitationItem}
+                  pageImagesByAttachmentId={pageImagesByAttachmentId}
                   isSingleGroup={isSingleGroup}
                 />
               ))

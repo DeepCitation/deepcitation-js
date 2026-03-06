@@ -19,7 +19,7 @@ import {
 import { createPortal } from "react-dom";
 import { getPortalContainer } from "./constants.js";
 import { PopoverContext, type PopoverContextValue, usePopoverContext } from "./popoverContext.js";
-import { composeRefs } from "./refUtils.js";
+import { assignRef } from "./refUtils.js";
 
 export interface PopoverRootProps {
   open?: boolean;
@@ -52,8 +52,7 @@ export interface PopoverTriggerProps extends HTMLAttributes<HTMLElement> {
 
 export const PopoverTrigger = forwardRef<HTMLElement, PopoverTriggerProps>(
   ({ asChild = false, children, ...props }, forwardedRef) => {
-    // "use no memo" — React Compiler opt-out: composeRefs callback captures forwardedRef
-    // in a way the compiler can't safely memoize.
+    "use no memo"; // React Compiler opt-out: cloneElement with ref callback is opaque to the compiler
     const { triggerRef } = usePopoverContext();
 
     if (asChild) {
@@ -62,9 +61,11 @@ export const PopoverTrigger = forwardRef<HTMLElement, PopoverTriggerProps>(
       const childRef = (child.props as { ref?: Ref<HTMLElement> }).ref;
       return cloneElement(child, {
         ...props,
-        ref: composeRefs(childRef, forwardedRef, (node: HTMLElement | null) => {
+        ref: (node: HTMLElement | null) => {
+          assignRef(childRef, node);
+          assignRef(forwardedRef, node);
           triggerRef.current = node;
-        }),
+        },
       });
     }
 
@@ -72,9 +73,10 @@ export const PopoverTrigger = forwardRef<HTMLElement, PopoverTriggerProps>(
       <button
         type="button"
         {...props}
-        ref={composeRefs(forwardedRef, (node: HTMLElement | null) => {
+        ref={(node: HTMLElement | null) => {
+          assignRef(forwardedRef, node);
           triggerRef.current = node;
-        })}
+        }}
       >
         {children}
       </button>

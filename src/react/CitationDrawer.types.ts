@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Citation } from "../types/citation.js";
-import type { PageRenderAsset, Verification } from "../types/verification.js";
+import type { PageImage, Verification } from "../types/verification.js";
 import type { IndicatorVariant } from "./types.js";
 
 /**
@@ -13,8 +13,8 @@ export interface CitationDrawerItem {
   citation: Citation;
   /** Verification result if available */
   verification: Verification | null;
-  /** Optional page render for the citation's verified page */
-  page?: PageRenderAsset | null;
+  /** Optional page image for the citation's verified page */
+  page?: PageImage | null;
 }
 
 /**
@@ -78,6 +78,8 @@ export interface CitationDrawerProps {
    * Lookup tries citation.attachmentId first, then citation.url.
    */
   sourceLabelMap?: Record<string, string>;
+  /** Optional page images keyed by attachmentId (used for full-page rendering). */
+  pageImagesByAttachmentId?: Record<string, PageImage[]>;
 }
 
 /**
@@ -86,6 +88,8 @@ export interface CitationDrawerProps {
 export interface CitationDrawerItemProps {
   /** The citation item to display */
   item: CitationDrawerItem;
+  /** Page images for the item's attachment (used for full-page rendering). */
+  pageImages?: PageImage[];
   /** Whether this is the last item (no bottom border) */
   isLast?: boolean;
   /** Callback when item is clicked */

@@ -540,7 +540,7 @@ export class DeepCitation {
    *
    * @example
    * ```typescript
-   * const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareAttachments([
+   * const { fileDataParts, deepTextPromptPortion, attachments } = await deepcitation.prepareAttachments([
    *   { file: pdfBuffer, filename: "report.pdf" },
    *   { file: invoiceBuffer, filename: "invoice.pdf" },
    * ]);
@@ -558,7 +558,7 @@ export class DeepCitation {
    */
   async prepareAttachments(files: FileInput[]): Promise<PrepareAttachmentsResult> {
     if (files.length === 0) {
-      return { fileDataParts: [], deepTextPromptPortion: "" };
+      return { fileDataParts: [], deepTextPromptPortion: "", attachments: [] };
     }
 
     this.logger.info?.("Preparing files", { count: files.length });
@@ -584,11 +584,20 @@ export class DeepCitation {
       filename: filename || result.metadata?.filename,
     }));
 
+    const attachments = uploadResults.map(({ result }) => ({
+      attachmentId: result.attachmentId,
+      urlSource: result.urlSource,
+      originalDownload: result.originalDownload,
+      convertedDownload: result.convertedDownload,
+      pageImages: result.pageImages,
+      pageImagesStatus: result.pageImagesStatus,
+    }));
+
     // Combine all file texts into a single deepTextPromptPortion string
     const deepTextPromptPortion = uploadResults.map(({ result }) => result.deepTextPromptPortion).join("\n\n");
 
     this.logger.info?.("Prepare files complete", { count: fileDataParts.length });
-    return { fileDataParts, deepTextPromptPortion };
+    return { fileDataParts, deepTextPromptPortion, attachments };
   }
 
   /**
@@ -680,10 +689,6 @@ export class DeepCitation {
       return cached.promise;
     }
 
-    if (options?.proofConfig && !options?.generateProofUrls) {
-      console.warn("DeepCitation: proofConfig is ignored when generateProofUrls is not true");
-    }
-
     const resolvedEndUserId = this.resolveEndUserId(options?.endUserId);
     this.logger.info?.("Verifying citations", { attachmentId, citationCount });
     const requestUrl = `${this.apiUrl}/verifyCitations`;
@@ -692,8 +697,6 @@ export class DeepCitation {
         attachmentId,
         citations: citationMap,
         outputImageFormat: options?.outputImageFormat || "avif",
-        generateProofUrls: options?.generateProofUrls,
-        proofConfig: options?.generateProofUrls ? options?.proofConfig : undefined,
         endUserId: resolvedEndUserId,
       },
     };
@@ -717,16 +720,6 @@ export class DeepCitation {
       }
 
       const result = (await response.json()) as VerifyCitationsResponse;
-
-      // Propagate top-level documentFiles into each verification's assets so
-      // React components can access it at verification.assets.documentFiles
-      // without the consumer having to thread the prop manually.
-      if (result.documentFiles) {
-        for (const v of Object.values(result.verifications)) {
-          if (!v.assets) v.assets = {};
-          if (!v.assets.documentFiles) v.assets.documentFiles = result.documentFiles;
-        }
-      }
 
       return result;
     })();
@@ -780,7 +773,7 @@ export class DeepCitation {
    * ```
    */
   async verify(input: VerifyInput, citations?: { [key: string]: Citation }): Promise<VerifyCitationsResponse> {
-    const { llmOutput, outputImageFormat = "avif", generateProofUrls, proofConfig, endUserId } = input;
+    const { llmOutput, outputImageFormat = "avif", endUserId } = input;
 
     // Parse citations from LLM output
     if (!citations) citations = getAllCitationsFromLlmOutput(llmOutput);
@@ -815,8 +808,6 @@ export class DeepCitation {
         verificationPromises.push(
           this.verifyAttachment(attachmentId, fileCitations, {
             outputImageFormat,
-            generateProofUrls,
-            proofConfig,
             endUserId,
           }),
         );
@@ -829,17 +820,15 @@ export class DeepCitation {
 
     const results = await Promise.all(verificationPromises);
     const allVerifications: VerifyCitationsResponse["verifications"] = {};
-    let documentFiles: VerifyCitationsResponse["documentFiles"] | undefined;
     for (const result of results) {
       Object.assign(allVerifications, result.verifications);
-      if (result.documentFiles) documentFiles = result.documentFiles;
     }
 
     for (const key of Object.keys(skippedCitations)) {
       allVerifications[key] = { status: "skipped" };
     }
 
-    return { verifications: allVerifications, documentFiles };
+    return { verifications: allVerifications };
   }
 
   /**

@@ -105,6 +105,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     },
     forwardedRef,
   ) => {
+    "use no memo"; // React Compiler opt-out: coordsRef.current read during render is intentional (imperative positioning)
     const { open, onOpenChange, triggerRef, contentRef } = usePopoverContext();
     const localContentRef = React.useRef<HTMLDivElement | null>(null);
     const wrapperRef = React.useRef<HTMLDivElement | null>(null);
@@ -123,6 +124,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     );
 
     const recomputePosition = React.useCallback(() => {
+      if (!open) return;
       const triggerEl = triggerRef.current;
       const contentEl = localContentRef.current;
       const wrapper = wrapperRef.current;
@@ -133,12 +135,12 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       if (Math.abs(coordsRef.current.x - next.x) < 0.5 && Math.abs(coordsRef.current.y - next.y) < 0.5) return;
       coordsRef.current = next;
       wrapper.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`;
-    }, [align, alignOffset, isMounted, side, sideOffset, triggerRef]);
+    }, [align, alignOffset, isMounted, open, side, sideOffset, triggerRef]);
 
     React.useLayoutEffect(() => {
-      if (!isMounted) return;
+      if (!isMounted || !open) return;
       recomputePosition();
-    }, [isMounted, recomputePosition]);
+    }, [isMounted, open, recomputePosition]);
 
     React.useEffect(() => {
       if (prevOpenRef.current && !open) {
@@ -148,7 +150,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     }, [open, onCloseAutoFocus]);
 
     React.useEffect(() => {
-      if (!isMounted) return;
+      if (!isMounted || !open) return;
 
       let rafId = 0;
       const scheduleRecompute = () => {
@@ -426,7 +428,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             width: "max-content",
             zIndex: `var(${Z_INDEX_POPOVER_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})`,
             pointerEvents: dataState === "open" ? "auto" : "none",
-            transform: "translate3d(0, 0, 0)",
+            transform: `translate3d(${coordsRef.current.x}px, ${coordsRef.current.y}px, 0)`,
           }}
         >
           <style>{`[data-dc-popover-content]::-webkit-scrollbar { display: none; }`}</style>

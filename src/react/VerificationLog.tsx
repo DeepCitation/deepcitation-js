@@ -14,7 +14,6 @@ import {
   TERTIARY_ACTION_IDLE_CLASSES,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
-import { normalizeScreenshotSrc } from "./EvidenceTray.js";
 import { type MessageKey, type TranslateFunction, useTranslation } from "./i18n.js";
 import {
   CheckIcon,
@@ -139,12 +138,6 @@ export interface SourceContextHeaderProps {
    */
   onClose?: () => void;
   /**
-   * Proof URL to link to in the expanded view header.
-   * Rendered whenever a valid URL is provided.
-   * Validated internally via `isValidProofUrl()` — safe to pass untrusted input.
-   */
-  proofUrl?: string | null;
-  /**
    * Callback when the user clicks the download button.
    * The button only renders when this prop is provided.
    * Receives the full Citation object so the consumer can determine download logic.
@@ -185,28 +178,11 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
 }
 
 function resolveImageDownloadUrl(verification: Verification | null | undefined): string | null {
-  const proofImageUrl = verification?.assets?.proofImage?.url;
-  if (proofImageUrl && isValidProofImageSrc(proofImageUrl)) {
-    return proofImageUrl;
-  }
-
-  const verificationImageSrc = verification?.assets?.evidenceSnippet?.src;
+  const verificationImageSrc = verification?.evidence?.src;
   if (verificationImageSrc && isValidProofImageSrc(verificationImageSrc)) {
     return verificationImageSrc;
   }
-
-  const rawScreenshot = verification?.assets?.webCapture?.src;
-  if (!rawScreenshot || typeof rawScreenshot !== "string") {
-    return null;
-  }
-
-  try {
-    if (isValidProofImageSrc(rawScreenshot)) return rawScreenshot;
-    const screenshotSrc = normalizeScreenshotSrc(rawScreenshot);
-    return isValidProofImageSrc(screenshotSrc) ? screenshotSrc : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
@@ -475,7 +451,6 @@ export function SourceContextHeader({
   sourceLabel,
   onExpand,
   onClose,
-  proofUrl: _proofUrl,
   onSourceDownload,
 }: SourceContextHeaderProps) {
   const t = useTranslation();
@@ -493,10 +468,10 @@ export function SourceContextHeader({
   const showPagePill = !!onExpand || !!onClose;
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
-  // Show the source download button whenever the caller provides onSourceDownload.
-  // The caller (CitationComponent) already resolved whether a downloadable source
-  // exists from documentFiles/origin policy, so we trust that signal unconditionally.
-  const shouldShowSourceDownloadButton = !!onSourceDownload;
+
+  const effectiveSourceDownload = onSourceDownload;
+
+  const shouldShowSourceDownloadButton = !!effectiveSourceDownload;
   const imageDownloadUrl = resolveImageDownloadUrl(verification);
   // Keep a single download action visible: explicit source-download callback wins.
   const shouldShowImageDownloadButton = !!imageDownloadUrl && !shouldShowSourceDownloadButton;
@@ -572,7 +547,7 @@ export function SourceContextHeader({
             className={cn(HEADER_DOWNLOAD_BUTTON_BASE_CLASSES, HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES)}
             onClick={e => {
               e.stopPropagation();
-              onSourceDownload?.(citation);
+              effectiveSourceDownload?.(citation);
             }}
           >
             <span className="size-3.5 block">

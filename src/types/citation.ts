@@ -1,5 +1,5 @@
 import type { ScreenBox } from "./boxes.js";
-import type { ProofConfig, Verification, VerificationDocumentAssets } from "./verification.js";
+import type { Verification } from "./verification.js";
 
 /**
  * Image format for proof images, verification screenshots, and output.
@@ -64,28 +64,9 @@ export const DEFAULT_OUTPUT_IMAGE_FORMAT = "avif" as const;
 
 export interface VerifyCitationResponse {
   verifications: VerificationRecord;
-  /** Downloadable source and verification files for this attachment. */
-  documentFiles?: VerificationDocumentAssets;
 }
 
-/**
- * Proof generation options shared across request types.
- * Used by VerifyCitationRequest, VerifyCitationsOptions, and VerifyInput.
- */
-export interface ProofOptions {
-  /**
-   * When true, the backend will persist proof artifacts and return
-   * fields under verification.assets.proofPage and verification.assets.proofImage.
-   * @default false
-   */
-  generateProofUrls?: boolean;
-  /**
-   * Proof URL configuration. Only used when generateProofUrls is true.
-   */
-  proofConfig?: ProofConfig;
-}
-
-export interface VerifyCitationRequest extends ProofOptions {
+export interface VerifyCitationRequest {
   attachmentId: string;
   citations: CitationRecord;
   outputImageFormat?: ImageFormat;

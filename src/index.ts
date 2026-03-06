@@ -31,7 +31,7 @@ export type {
   UploadFileOptions,
   UploadFileResponse,
   UrlCacheInfo,
-  UrlSourceInfo,
+  UrlSource,
   VerifyCitationsOptions,
   VerifyCitationsResponse,
 } from "./client/index.js";
@@ -122,9 +122,6 @@ export {
   generateCitationKey,
   generateVerificationKey,
 } from "./react/utils.js";
-// Proof URL Builders
-export type { ProofUrlOptions } from "./rendering/proofUrl.js";
-export { buildProofUrl, buildProofUrls, buildSnippetImageUrl } from "./rendering/proofUrl.js";
 export type { DeepTextItem, ScreenBox, SourcePage } from "./types/boxes.js";
 // Types
 export type {
@@ -136,7 +133,6 @@ export type {
   CitationType,
   DocumentCitation,
   ImageFormat,
-  ProofOptions,
   SourceMeta,
   // Source types for categorization
   SourceType,
@@ -159,23 +155,14 @@ export type {
   ContentMatchStatus,
   DocumentVerificationResult,
   DownloadLink,
-  EvidenceSnippetAsset,
+  EvidenceImage,
   ExpiresAt,
-  FileAsset,
-  OriginalFileAsset,
-  PageRenderAsset,
-  PageRendersStatus,
-  PdfOrigin,
-  ProofConfig,
-  ProofImageAsset,
-  ProofPageAsset,
+  FileDownload,
+  PageImage,
+  PageImagesStatus,
   UrlAccessStatus,
   UrlVerificationResult,
   Verification,
-  VerificationAssets,
-  VerificationDocumentAssets,
-  VerificationPdfAsset,
-  WebCaptureAsset,
 } from "./types/verification.js";
 export { BLANK_VERIFICATION } from "./types/verification.js";
 // File validation

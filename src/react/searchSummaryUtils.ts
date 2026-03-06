@@ -278,16 +278,17 @@ export function buildIntentSummary(
 }
 
 /**
- * Find textItems for a specific page from verification.assets.pageRenders.
+ * Find textItems for a specific page from verification.document.textItems.
  * Returns undefined if no textItems are available.
  */
 function findPageTextItems(
   verification: Verification | null | undefined,
   pageNumber: number | null | undefined,
 ): DeepTextItem[] | undefined {
-  if (!verification?.assets?.pageRenders || !pageNumber) return undefined;
-  const page = verification.assets.pageRenders.find(p => p.pageNumber === pageNumber);
-  return page?.textItems;
+  if (!pageNumber || !verification?.document?.textItems) return undefined;
+  const matchPage = verification.document?.verifiedPageNumber;
+  if (!matchPage || matchPage !== pageNumber) return undefined;
+  return verification.document.textItems;
 }
 
 export interface SearchQueryGroup {

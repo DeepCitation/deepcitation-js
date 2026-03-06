@@ -26,10 +26,8 @@ const verificationWithWideImage: Verification = {
   document: {
     verifiedPageNumber: 5,
   },
-  assets: {
-    evidenceSnippet: {
-      src: wideImageBase64,
-    },
+  evidence: {
+    src: wideImageBase64,
   },
 };
 
@@ -39,10 +37,8 @@ const verificationWithPartialMatch: Verification = {
   document: {
     verifiedPageNumber: 5,
   },
-  assets: {
-    evidenceSnippet: {
-      src: wideImageBase64,
-    },
+  evidence: {
+    src: wideImageBase64,
   },
 };
 

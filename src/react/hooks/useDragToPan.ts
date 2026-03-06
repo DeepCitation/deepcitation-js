@@ -316,6 +316,14 @@ export function useDragToPan(options: { direction?: "x" | "xy" } = {}): {
     return () => document.removeEventListener("mouseup", handler);
   }, []);
 
+  // Native HTML5 drag can steal the pointer stream and skip mouseup.
+  // If a drag ever slips through, force cleanup so we don't get stuck in "grabbing".
+  useEffect(() => {
+    const handler = () => finishDragRef.current();
+    document.addEventListener("dragend", handler);
+    return () => document.removeEventListener("dragend", handler);
+  }, []);
+
   const onMouseUp = finishDrag;
   const onMouseLeave = finishDrag;
 

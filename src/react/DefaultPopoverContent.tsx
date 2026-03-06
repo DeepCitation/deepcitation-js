@@ -11,7 +11,7 @@
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Citation, CitationStatus } from "../types/citation.js";
 import { isUrlCitation } from "../types/citation.js";
-import type { Verification } from "../types/verification.js";
+import type { PageImage, Verification } from "../types/verification.js";
 import { getStatusLabel } from "./citationStatus.js";
 import {
   BLINK_ENTER_EASING,
@@ -42,7 +42,6 @@ import {
   mapUrlAccessStatusToFetchStatus,
   type UrlAccessExplanation,
 } from "./urlAccessExplanation.js";
-import { isValidProofUrl } from "./urlUtils.js";
 import { cn, isImageSource } from "./utils.js";
 import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
 import { DC_EVIDENCE_VT_NAME } from "./viewTransition.js";
@@ -67,6 +66,8 @@ export type PopoverViewState = "summary" | "expanded-keyhole" | "expanded-page";
 export interface PopoverContentProps {
   citation: BaseCitationProps["citation"];
   verification: Verification | null;
+  /** Page images for the current attachment (used for expanded page view). */
+  pageImages?: PageImage[];
   status: CitationStatus;
   isLoading?: boolean;
   /** Whether the popover is currently visible (used for Activity prefetching) */
@@ -708,6 +709,7 @@ function PopoverFallbackView({
 export function DefaultPopoverContent({
   citation,
   verification,
+  pageImages,
   status,
   isLoading = false,
   isVisible = true,
@@ -723,9 +725,7 @@ export function DefaultPopoverContent({
 }: PopoverContentProps) {
   const t = useTranslation();
   const hasImage =
-    verification?.assets?.evidenceSnippet?.src ||
-    verification?.assets?.webCapture?.src ||
-    verification?.assets?.proofImage?.url;
+    verification?.evidence?.src || (pageImages && pageImages.length > 0);
   const expandCtaLabel = isImageSource(verification) ? t("action.viewImage") : undefined;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
@@ -759,13 +759,13 @@ export function DefaultPopoverContent({
 
   // Resolve expanded image for the full-page viewer; allow caller to override the src
   const expandedImage = useMemo(() => {
-    const resolved = resolveExpandedImage(verification);
+    const resolved = resolveExpandedImage(verification, pageImages);
     if (!expandedImageSrcOverride || !isValidProofImageSrc(expandedImageSrcOverride)) return resolved;
     // Custom src provided: clear overlay metadata since dimensions belong to the original image
     return resolved
       ? { ...resolved, src: expandedImageSrcOverride, dimensions: null, highlightBox: null, renderScale: null }
       : { src: expandedImageSrcOverride };
-  }, [verification, expandedImageSrcOverride]);
+  }, [verification, pageImages, expandedImageSrcOverride]);
 
   // Suppress page expand when page image dimensions are known and already fit within
   // the evidence view constraints (≤480px wide, ≤600px tall) — expanding adds no value.
@@ -774,16 +774,16 @@ export function DefaultPopoverContent({
   // Content-adaptive summary width: pre-seed from verification dimensions to avoid
   // a width flash, then confirm/correct when the keyhole image actually renders.
   const [keyholeDisplayedWidth, setKeyholeDisplayedWidth] = useState<number | null>(() => {
-    const dims = verification?.assets?.evidenceSnippet?.dimensions;
+    const dims = verification?.evidence?.dimensions;
     if (!dims || dims.height <= 0) return null;
     return dims.width * (KEYHOLE_STRIP_HEIGHT_DEFAULT / dims.height);
   });
 
   const summaryWidth = useMemo(() => getSummaryPopoverWidth(keyholeDisplayedWidth), [keyholeDisplayedWidth]);
   const keyholeNaturalWidthSeed = useMemo(() => {
-    const width = verification?.assets?.evidenceSnippet?.dimensions?.width;
+    const width = verification?.evidence?.dimensions?.width;
     return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : null;
-  }, [verification?.assets?.evidenceSnippet?.dimensions?.width]);
+  }, [verification?.evidence?.dimensions?.width]);
   const pageNaturalWidthSeed = useMemo(() => {
     const width = expandedImage?.dimensions?.width;
     return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : null;
@@ -1002,8 +1002,6 @@ export function DefaultPopoverContent({
   if ((isVerified && !isPartialMatch && !isMiss && hasImage && verification) || isMiss || isPartialMatch) {
     const isExpanded = viewState === "expanded-keyhole" || viewState === "expanded-page";
     const isFullPage = viewState === "expanded-page";
-    const validProofUrl =
-      isFullPage && verification?.assets?.proofPage?.url ? isValidProofUrl(verification.assets.proofPage.url) : null;
 
     const claimBorderColor = isMiss
       ? "border-red-500 dark:border-red-400"
@@ -1033,7 +1031,7 @@ export function DefaultPopoverContent({
           }
           pageCtaLabel={expandCtaLabel}
           onScrollCapture={evidenceSrc ? handleKeyholeScrollCapture : undefined}
-          proofImageSrc={expandedImage?.src}
+          pageImageSrc={expandedImage?.src}
           onKeyholeWidth={setKeyholeDisplayedWidth}
           escapeInterceptRef={escapeInterceptRef}
         />
@@ -1057,7 +1055,6 @@ export function DefaultPopoverContent({
               sourceLabel={sourceLabel}
               onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
               onClose={isFullPage ? handleCollapseFromExpandedPage : undefined}
-              proofUrl={validProofUrl}
               onSourceDownload={onSourceDownload}
             />
             {/* Zone 2: Claim Body — Status + highlighted phrase */}

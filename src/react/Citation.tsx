@@ -1,7 +1,7 @@
 import type React from "react";
 import { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Citation, CitationStatus } from "../types/citation.js";
-import type { Verification, VerificationDocumentAssets } from "../types/verification.js";
+import type { FileDownload, PageImage, Verification } from "../types/verification.js";
 import { CitationContentDisplay } from "./CitationContentDisplay.js";
 import {
   getDefaultContent,
@@ -72,20 +72,25 @@ const deprecationWarned = new Set<string>();
 export type CitationDownloadPolicy = "original_only" | "original_plus_url_pdf" | "original_plus_all_pdf";
 
 function resolveSourceDownloadUrl(
-  documentFiles: VerificationDocumentAssets | undefined,
+  originalDownload: FileDownload | undefined,
+  convertedDownload: FileDownload | undefined,
   policy: CitationDownloadPolicy,
 ): string | null {
-  if (!documentFiles) return null;
-
-  const originalUrl = documentFiles.originalFile?.download?.url;
+  // Original download always takes priority
+  const originalUrl = originalDownload?.link.url;
   if (originalUrl) return originalUrl;
 
-  const pdf = documentFiles.verificationPdf;
-  const pdfUrl = pdf?.download?.url;
-  if (!pdf || !pdfUrl) return null;
+  if (policy === "original_only") return null;
 
-  if (policy === "original_plus_all_pdf") return pdfUrl;
-  if (policy === "original_plus_url_pdf" && pdf.origin === "converted_from_url") return pdfUrl;
+  const convertedUrl = convertedDownload?.link.url;
+  if (!convertedUrl) return null;
+
+  // "original_plus_all_pdf": expose any converted artifact
+  if (policy === "original_plus_all_pdf") return convertedUrl;
+
+  // "original_plus_url_pdf" (default): expose converted only when no original exists.
+  // URL inputs have no originalDownload — their convertedDownload is the PDF capture.
+  if (policy === "original_plus_url_pdf" && !originalDownload) return convertedUrl;
 
   return null;
 }
@@ -273,8 +278,12 @@ export interface CitationComponentProps extends BaseCitationProps {
    * ```
    */
   onSourceDownload?: (citation: Citation) => void;
-  /** Optional explicit file artifacts to use for source download decisions. */
-  documentFiles?: VerificationDocumentAssets;
+  /** Original file as received (PDF, DOCX, …). Absent for URL inputs. Used for source download. */
+  originalDownload?: FileDownload;
+  /** Converted artifact (PDF rendition, transcript, …). Used for source download with URL inputs. */
+  convertedDownload?: FileDownload;
+  /** Optional page images keyed by attachmentId (used for full-page rendering). */
+  pageImagesByAttachmentId?: Record<string, PageImage[]>;
   /**
    * Source download behavior when `onSourceDownload` is not provided.
    * - "original_only": only original upload downloads are shown
@@ -299,7 +308,7 @@ export interface CitationComponentProps extends BaseCitationProps {
 // FooterHint, EvidenceTray components — imported from ./EvidenceTray.js
 // CitationContentDisplay — imported from ./CitationContentDisplay.js
 
-// ExpandedImageSource, normalizeScreenshotSrc, resolveExpandedImage,
+// ExpandedImageSource, resolveExpandedImage,
 // AnchorTextFocusedImage, EvidenceTray, InlineExpandedImage, SearchAnalysisSummary
 // — imported from ./EvidenceTray.js (canonical location)
 
@@ -432,6 +441,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   onViewStateChange,
   expandedImageSrcOverride,
   onExpandedWidthChange,
+  pageImages,
   prevBeforeExpandedPageRef,
   onSourceDownload,
   escapeInterceptRef,
@@ -448,6 +458,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   onViewStateChange: (viewState: PopoverViewState) => void;
   expandedImageSrcOverride: string | null;
   onExpandedWidthChange?: (width: number | null, source?: "expanded-keyhole" | "expanded-page" | null) => void;
+  pageImages?: PageImage[];
   prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-keyhole">;
   onSourceDownload?: (citation: Citation) => void;
   escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
@@ -474,6 +485,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
         onViewStateChange={onViewStateChange}
         expandedImageSrcOverride={expandedImageSrcOverride}
         onExpandedWidthChange={onExpandedWidthChange}
+        pageImages={pageImages}
         prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
         onSourceDownload={onSourceDownload}
         escapeInterceptRef={escapeInterceptRef}
@@ -526,7 +538,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       sourceLabel,
       onTimingEvent,
       onSourceDownload,
-      documentFiles,
+      originalDownload,
+      convertedDownload,
+      pageImagesByAttachmentId,
       downloadPolicy = "original_plus_url_pdf",
       experimentalHaptics = false,
     },
@@ -548,10 +562,14 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
     const indicatorVariant: IndicatorVariant = indicatorVariantProp;
 
-    const resolvedDocumentFiles = documentFiles ?? verification?.assets?.documentFiles;
+    const pageImages = useMemo(() => {
+      const attachmentId = verification?.attachmentId;
+      if (!attachmentId || !pageImagesByAttachmentId) return undefined;
+      return pageImagesByAttachmentId[attachmentId];
+    }, [pageImagesByAttachmentId, verification?.attachmentId]);
     const fallbackDownloadUrl = useMemo(
-      () => resolveSourceDownloadUrl(resolvedDocumentFiles, downloadPolicy),
-      [resolvedDocumentFiles, downloadPolicy],
+      () => resolveSourceDownloadUrl(originalDownload, convertedDownload, downloadPolicy),
+      [originalDownload, convertedDownload, downloadPolicy],
     );
 
     // Resolve effective download handler: explicit callback wins, else trigger browser download
@@ -754,13 +772,13 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // (setState in useLayoutEffect causes a compiler bailout for the entire component).
     const expandedPageSideOffset = useExpandedPageSideOffset(popoverViewState, triggerRef, lockedSide);
     const projectedSummaryKeyholeWidth = useMemo(() => {
-      const dims = verification?.assets?.evidenceSnippet?.dimensions;
+      const dims = verification?.evidence?.dimensions;
       if (!dims) return null;
       const width = dims.width;
       const height = dims.height;
       if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
       return width * (KEYHOLE_STRIP_HEIGHT_DEFAULT / height);
-    }, [verification?.assets?.evidenceSnippet?.dimensions]);
+    }, [verification?.evidence?.dimensions]);
     const projectedPopoverWidthPx = useMemo(() => {
       if (!isHovering || typeof document === "undefined") return null;
       const viewportWidth = document.documentElement.clientWidth;
@@ -863,7 +881,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const { isMiss, isPartialMatch, isVerified, isPending } = status;
 
     // Resolve the evidence snippet image source for spinner finalization logic.
-    const resolvedImageSrc = verification?.assets?.evidenceSnippet?.src ?? null;
+    const resolvedImageSrc = verification?.evidence?.src ?? null;
 
     const hasDefinitiveResult =
       resolvedImageSrc ||
@@ -890,7 +908,10 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     // Dependencies: resolved URL strings (not the verification object) so re-renders
     // with the same verification data don't re-fire.
     const prefetchEvidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
-    const prefetchExpandedSrc = useMemo(() => resolveExpandedImage(verification)?.src ?? null, [verification]);
+    const prefetchExpandedSrc = useMemo(
+      () => resolveExpandedImage(verification, pageImages)?.src ?? null,
+      [verification, pageImages],
+    );
     useEffect(() => {
       const images: HTMLImageElement[] = [];
 
@@ -1498,6 +1519,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           onViewStateChange={setViewStateWithHaptics}
           expandedImageSrcOverride={customExpandedSrc}
           onExpandedWidthChange={handleExpandedWidthChange}
+          pageImages={pageImages}
           prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
           onSourceDownload={effectiveOnSourceDownload}
           escapeInterceptRef={escapeInterceptRef}
