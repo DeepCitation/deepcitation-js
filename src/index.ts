@@ -28,6 +28,7 @@ export type {
   FileInput,
   GetAttachmentOptions,
   PrepareAttachmentsResult,
+  PreparedAttachment,
   UploadFileOptions,
   UploadFileResponse,
   UrlCacheInfo,

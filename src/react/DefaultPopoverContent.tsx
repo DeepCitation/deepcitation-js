@@ -724,8 +724,9 @@ export function DefaultPopoverContent({
   escapeInterceptRef,
 }: PopoverContentProps) {
   const t = useTranslation();
-  const hasImage =
-    verification?.evidence?.src || (pageImages && pageImages.length > 0);
+  // Resolve evidence src up-front so hasImage reflects only actually-renderable images.
+  const evidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
+  const hasImage = !!evidenceSrc || (pageImages != null && pageImages.length > 0);
   const expandCtaLabel = isImageSource(verification) ? t("action.viewImage") : undefined;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
@@ -823,9 +824,6 @@ export function DefaultPopoverContent({
     // means this rarely triggers extra re-creation.
     [viewState, expandedImage],
   );
-
-  // Resolve the evidence image src — used by handleKeyholeClick and the prefetch effect.
-  const evidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
 
   const keyholeImageNaturalWidth =
     evidenceSrc && keyholeImageNatural?.src === evidenceSrc ? keyholeImageNatural.width : null;

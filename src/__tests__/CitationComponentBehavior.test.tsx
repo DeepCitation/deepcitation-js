@@ -2508,5 +2508,4 @@ describe("CitationComponent proof URL links", () => {
     const proofLinks = Array.from(links).filter(link => link.textContent?.includes("Page 5"));
     expect(proofLinks.length).toBe(0);
   });
-
 });

@@ -552,7 +552,7 @@ describe("SourceContextHeader", () => {
   // PROOF URL LINK TESTS
   // ==========================================================================
 
-describe("Page pill interaction styles", () => {
+  describe("Page pill interaction styles", () => {
     it("uses explicit neutral hover/focus styling for expandable page pills", () => {
       const citation: Citation = {
         type: "document",
@@ -826,8 +826,6 @@ describe("Page pill interaction styles", () => {
 
       expect(parentClick).not.toHaveBeenCalled();
     });
-
-    
 
     it("prefers source download when onSourceDownload is available", () => {
       const citation: Citation = {

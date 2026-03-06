@@ -4,8 +4,8 @@ import type {
   ExpiresAt,
   FileDownload,
   ImageFormat,
-  PageImagesStatus,
   PageImage,
+  PageImagesStatus,
   Verification,
   VerifyCitationResponse,
 } from "../types/index.js";

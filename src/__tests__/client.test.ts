@@ -336,7 +336,6 @@ describe("DeepCitation Client", () => {
 
       expect(result.verifications).toEqual({});
     });
-
   });
 
   describe("verifyAttachment", () => {
@@ -455,7 +454,6 @@ describe("DeepCitation Client", () => {
       // Different citations should make separate calls
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
-
   });
 
   describe("prepareAttachments with concurrency limits", () => {
