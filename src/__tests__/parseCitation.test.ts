@@ -2931,13 +2931,13 @@ describe("normalizeCitationType", () => {
   it("returns DocumentCitation when no url field is present", () => {
     const raw = { attachmentId: "abc", pageNumber: 1, fullPhrase: "test" };
     const result = normalizeCitationType(raw);
-    expect(result.type).toBeUndefined();
+    expect(result.type).toBe("document");
   });
 
   it("returns DocumentCitation when url is not a string", () => {
     const raw = { url: 123, fullPhrase: "test" };
     const result = normalizeCitationType(raw);
-    expect(result.type).toBeUndefined();
+    expect(result.type).toBe("document");
   });
 });
 

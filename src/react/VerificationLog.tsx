@@ -469,9 +469,7 @@ export function SourceContextHeader({
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
 
-  const effectiveSourceDownload = onSourceDownload;
-
-  const shouldShowSourceDownloadButton = !!effectiveSourceDownload;
+  const shouldShowSourceDownloadButton = !!onSourceDownload;
   const imageDownloadUrl = resolveImageDownloadUrl(verification);
   // Keep a single download action visible: explicit source-download callback wins.
   const shouldShowImageDownloadButton = !!imageDownloadUrl && !shouldShowSourceDownloadButton;
@@ -547,7 +545,7 @@ export function SourceContextHeader({
             className={cn(HEADER_DOWNLOAD_BUTTON_BASE_CLASSES, HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES)}
             onClick={e => {
               e.stopPropagation();
-              effectiveSourceDownload?.(citation);
+              onSourceDownload?.(citation);
             }}
           >
             <span className="size-3.5 block">

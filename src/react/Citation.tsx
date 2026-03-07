@@ -127,8 +127,15 @@ function getUrlStatusLabel(fetchStatus: UrlFetchStatus, t: TranslateFunction): s
       return t("urlStatus.errorServer");
     case "error_network":
       return t("urlStatus.errorNetwork");
-    default:
+    case "unknown":
       return t("urlStatus.unknown");
+    default: {
+      // TypeScript exhaustive guard: errors at compile time if a new UrlFetchStatus
+      // member is added without a corresponding case above.
+      const _exhaustive: never = fetchStatus;
+      void _exhaustive;
+      return t("urlStatus.unknown");
+    }
   }
 }
 

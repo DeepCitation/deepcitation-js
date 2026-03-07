@@ -743,43 +743,20 @@ export function groupCitationsByAttachmentIdObject(
  * const correct = { type: "url", url: "https://example.com" };
  * normalizeCitationType(correct); // unchanged
  *
- * // Document citation — passes through
+ * // Document citation — type discriminator is always injected
  * const doc = { attachmentId: "abc", pageNumber: 1 };
- * normalizeCitationType(doc); // unchanged, type stays undefined (DocumentCitation)
+ * normalizeCitationType(doc); // { type: "document", attachmentId: "abc", pageNumber: 1 }
  * ```
  *
  * @throws Error if `type` is `"url"` but `url` field is missing or empty
  */
-function isUrlCitationRecord(citation: object): citation is UrlCitation {
-  const rec = citation as Record<string, unknown>;
-  return typeof rec.url === "string" && rec.url.length > 0;
-}
-
-function isDocumentCitationRecord(citation: object): citation is DocumentCitation {
-  const rec = citation as Record<string, unknown>;
-  return !(typeof rec.url === "string" && rec.url.length > 0);
-}
-
 export function normalizeCitationType(citation: Record<string, unknown>): Citation {
-  if (citation.type === "url") {
+  if (citation.type === "url" || (typeof citation.url === "string" && citation.url.length > 0)) {
     if (typeof citation.url !== "string" || !citation.url) {
       throw new Error("URL citation missing required 'url' field");
     }
-    // isUrlCitationRecord guards that url is a non-empty string, already validated above.
-    // Other UrlCitation fields (fullPhrase, anchorText) are validated by the caller.
-    if (isUrlCitationRecord(citation)) return citation;
-    throw new Error("URL citation missing required 'url' field");
+    return { ...citation, type: "url" as const } as UrlCitation;
   }
-  if (typeof citation.url === "string" && citation.url.length > 0) {
-    // Add missing type discriminator; spread so the guard sees the updated type field.
-    const withType = { ...citation, type: "url" as const };
-    if (isUrlCitationRecord(withType)) return withType;
-  }
-  // No url field → treat as DocumentCitation.
-  // The discriminator field (type: "document") may be absent for legacy data;
-  // isDocumentCitationRecord checks absence of a valid url field, not presence of type.
-  // Do NOT spread a type field here — callers rely on type being undefined for legacy data.
-  if (isDocumentCitationRecord(citation)) return citation;
-  // Unreachable: isDocumentCitationRecord covers all remaining cases
-  return citation as unknown as DocumentCitation;
+  // No url field → DocumentCitation. Always inject the type discriminator.
+  return { ...citation, type: "document" as const } as DocumentCitation;
 }

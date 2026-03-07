@@ -28,8 +28,8 @@ describe("locale message dictionaries", () => {
   });
 
   it("overrides a core status label for each locale", () => {
-    expect(frMessages["status.verified"]).toBe("Verifie");
+    expect(frMessages["status.verified"]).toBe("Vérifié");
     expect(esMessages["status.verified"]).toBe("Verificado");
-    expect(viMessages["status.verified"]).toBe("Da xac minh");
+    expect(viMessages["status.verified"]).toBe("Đã xác minh");
   });
 });

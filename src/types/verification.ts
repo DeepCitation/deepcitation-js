@@ -14,7 +14,8 @@ export type ExpiresAt = (string & {}) | "never";
 
 /**
  * Default empty verification object.
- * Immutable — cannot be accidentally mutated at runtime.
+ * Shallow-frozen — top-level fields cannot be reassigned at runtime.
+ * (Nested objects added in future must also be frozen to maintain immutability.)
  */
 export const BLANK_VERIFICATION: Verification = Object.freeze({
   status: "not_found",
