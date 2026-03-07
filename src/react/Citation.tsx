@@ -1077,6 +1077,17 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     useEffect(() => {
       if (!isMobile || !isHovering) return;
 
+      // Snapshot triggerRef at effect setup time — the trigger element is always mounted
+      // and the ref is guaranteed non-null when effects run (after DOM commit + ref attach).
+      // Reading triggerRef.current at handler call time is unsafe in React 18: the inline
+      // ref function inside PopoverTrigger asChild is recreated every render, causing React
+      // to briefly set triggerRef.current = null during the old-ref cleanup phase.
+      //
+      // Note: popoverContentRef.current is intentionally read at call time (not snapshotted)
+      // because the popover content mounts asynchronously after useBlinkMotionStage's effect
+      // runs setMounted(true). By handler call time, the ref is always populated.
+      const triggerEl = triggerRef.current;
+
       // Track touch state to distinguish taps from scrolls/swipes.
       // Only dismiss on touchend if the finger didn't move significantly (< 10px).
       let startX = 0;
@@ -1088,7 +1099,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
 
       const isOutsidePopover = (target: EventTarget | null): boolean => {
         if (!(target instanceof Node)) return false;
-        if (triggerRef.current?.contains(target)) return false;
+        if (triggerEl?.contains(target)) return false;
         if (popoverContentRef.current?.contains(target)) return false;
         return true;
       };
@@ -1161,6 +1172,17 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     useEffect(() => {
       if (isMobile || !isHovering) return;
 
+      // Snapshot triggerRef at effect setup time — the trigger element is always mounted
+      // and the ref is guaranteed non-null when effects run (after DOM commit + ref attach).
+      // Reading triggerRef.current at handler call time is unsafe in React 18: the inline
+      // ref function inside PopoverTrigger asChild is recreated every render, causing React
+      // to briefly set triggerRef.current = null during the old-ref cleanup phase.
+      //
+      // Note: popoverContentRef.current is intentionally read at call time (not snapshotted)
+      // because the popover content mounts asynchronously after useBlinkMotionStage's effect
+      // runs setMounted(true). By handler call time, the ref is always populated.
+      const triggerEl = triggerRef.current;
+
       const handleOutsideClick = (e: MouseEvent) => {
         // Don't dismiss popover while an image overlay is open - user expects to return
         // to the popover after closing the zoomed image. Uses ref to avoid stale closure.
@@ -1175,7 +1197,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
         }
 
         // Check if click is inside the trigger element
-        if (triggerRef.current?.contains(target)) {
+        if (triggerEl?.contains(target)) {
           return;
         }
 
