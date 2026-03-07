@@ -454,10 +454,10 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
       [citationGroups, sourceLabelMap],
     );
 
-    const displayLabel = label ?? generateDefaultLabel(resolvedGroups);
+    const displayLabel = label ?? generateDefaultLabel(resolvedGroups, t);
 
     // Flatten citation groups into individual items for per-citation icons
-    const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
+    const flatCitations = useMemo(() => flattenCitations(resolvedGroups, t), [resolvedGroups, t]);
 
     // On touch devices, skip the hover-spread animation — tap goes straight to drawer
     const handleMouseEnter = useCallback(() => {
@@ -550,7 +550,9 @@ export const CitationDrawerTrigger = forwardRef<HTMLButtonElement, CitationDrawe
 
         {/* Aggregate TtC — shows average user review time when metrics are available */}
         {timingMetrics && timingMetrics.resolvedCount > 0 && (
-          <span style={TTC_TEXT_STYLE}>avg rev {formatTtc(timingMetrics.avgTtcMs)}</span>
+          <span style={TTC_TEXT_STYLE}>
+            {t("drawer.avgReviewTime", { time: formatTtc(timingMetrics.avgTtcMs) })}
+          </span>
         )}
 
         {/* Chevron */}

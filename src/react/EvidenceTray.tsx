@@ -716,7 +716,7 @@ export function AnchorTextFocusedImage({
               <img
                 ref={imageRef}
                 src={imageSrc}
-                alt="Citation verification"
+                alt={t("aria.verificationEvidence")}
                 className={cn(
                   DOCUMENT_IMAGE_EDGE_CLASSES,
                   isWidthFit ? "block select-none" : "block w-auto max-w-none select-none",
@@ -938,7 +938,9 @@ function MatchSnippetDisplay({ snippet }: { snippet: import("./searchSummaryUtil
       </strong>
       {after && <span className="text-gray-400 dark:text-gray-500">{after}...</span>}
       {snippet.page != null && (
-        <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">(p.{snippet.page})</span>
+        <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">
+          ({t("location.page", { pageNumber: snippet.page })})
+        </span>
       )}
       {!snippet.isProximate && (
         <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">

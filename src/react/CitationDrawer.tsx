@@ -272,8 +272,12 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   defaultExpanded = false,
   animationDelay: _animationDelay,
 }: CitationDrawerItemProps) {
+  const t = useTranslation();
   const { citation, verification } = item;
-  const statusInfo = useMemo(() => getStatusInfo(verification, indicatorVariant), [verification, indicatorVariant]);
+  const statusInfo = useMemo(
+    () => getStatusInfo(verification, indicatorVariant, t),
+    [verification, indicatorVariant, t],
+  );
 
   // Escape navigation context — null when rendered outside CitationDrawer
   const escCtx = React.useContext(DrawerEscapeContext);
@@ -551,12 +555,13 @@ function CompactSingleCitationRow({
   onClick?: (item: CitationDrawerItem) => void;
   indicatorVariant?: IndicatorVariant;
 }) {
+  const t = useTranslation();
   const item = group.citations[0];
   const { citation, verification } = item;
-  const statusInfo = getStatusInfo(verification, indicatorVariant);
+  const statusInfo = getStatusInfo(verification, indicatorVariant, t);
   const isPending = !verification?.status || verification.status === "pending" || verification.status === "loading";
 
-  const sourceName = group.sourceName || "Source";
+  const sourceName = group.sourceName || t("drawer.source");
   const isUrlSource = !!group.sourceDomain;
 
   const anchorText = citation.anchorText?.toString() || citation.fullPhrase;
@@ -779,7 +784,7 @@ function DrawerSourceHeading({
   const firstGroup = citationGroups[0];
   // Use the exact same label as CitationDrawerTrigger — generateDefaultLabel handles
   // truncation and "+N" overflow in one place, ensuring heading and trigger always match.
-  const displayLabel = label?.trim() || generateDefaultLabel(citationGroups);
+  const displayLabel = label?.trim() || generateDefaultLabel(citationGroups, t);
   const isUrlSource = !!firstGroup.sourceDomain;
 
   return (
@@ -829,8 +834,8 @@ function IndicatorRow({
     <div className="flex items-center gap-2 px-4 py-1.5 border-t border-gray-100 dark:border-gray-800">
       {citations.map(item => {
         const isActive = item.citationKey === activeKey;
-        const statusInfo = getStatusInfo(item.verification, indicatorVariant);
-        const label = item.citation.anchorText?.toString() ?? item.citation.fullPhrase ?? "Citation";
+        const statusInfo = getStatusInfo(item.verification, indicatorVariant, t);
+        const label = item.citation.anchorText?.toString() ?? item.citation.fullPhrase ?? t("aria.citation");
         return (
           <button
             key={item.citationKey}
@@ -943,7 +948,7 @@ function OpenCitationDrawer({
 
   // Flatten all citations for total count and header icons
   const totalCitations = summary.total;
-  const flatCitations = useMemo(() => flattenCitations(resolvedGroups), [resolvedGroups]);
+  const flatCitations = useMemo(() => flattenCitations(resolvedGroups, t), [resolvedGroups, t]);
 
   // Page numbers for header — computed from all groups, shown top-right as clickable badges
   const drawerPages = useMemo(
@@ -1316,7 +1321,9 @@ function OpenCitationDrawer({
         <DrawerEscapeContext.Provider value={escCtxValue}>
           <div className="flex-1 overflow-y-auto" style={{ overscrollBehavior: "contain" }}>
             {totalCitations === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No citations to display</div>
+              <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                {t("drawer.noCitationsToDisplay")}
+              </div>
             ) : (
               sortedGroups.map((group, groupIndex) => (
                 <DrawerSourceGroup

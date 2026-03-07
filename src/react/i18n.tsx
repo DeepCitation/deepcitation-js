@@ -48,6 +48,9 @@ export const defaultMessages = {
   "outcome.exactMatch": "Exact match",
   "outcome.normalizedMatch": "Normalized match",
   "outcome.anchorTextMatch": "Anchor text match",
+  "outcome.partialMatch": "Partial match",
+  "outcome.firstWordMatch": "First word match",
+  "outcome.foundDifferentLocation": "Found at different location",
   "outcome.matchFound": "Match found",
   "outcome.scanComplete_one": "Scan complete \u00b7 {count} search",
   "outcome.scanComplete_other": "Scan complete \u00b7 {count} searches",
@@ -96,6 +99,12 @@ export const defaultMessages = {
   "diff.actuallyFound": "Actually found in source",
   "diff.inlineView": "Inline diff view",
   "diff.splitView": "Split view",
+  "diff.expectedText": "Expected text",
+  "diff.actualTextFound": "Actual text found",
+  "diff.showLess": "Show less",
+  "diff.showFullText": "Show full text",
+  "diff.expectedLabel": "Expected:",
+  "diff.foundLabel": "Found:",
 
   // ── Drawer / source labels ─────────────────────────────────────
   "drawer.citations": "Citations",
@@ -103,11 +112,13 @@ export const defaultMessages = {
   "drawer.source": "Source",
   "drawer.document": "Document",
   "drawer.unknownSource": "Unknown Source",
+  "drawer.noCitationsToDisplay": "No citations to display",
   "drawer.close": "Close",
   "drawer.showAnnotation": "Show annotation",
   "drawer.hideAnnotation": "Hide annotation",
   "drawer.citationCount_one": "{count} citation",
   "drawer.citationCount_other": "{count} citations",
+  "drawer.avgReviewTime": "avg rev {time}",
 
   // ── Zoom controls ──────────────────────────────────────────────
   "zoom.controls": "Zoom controls",
@@ -258,7 +269,15 @@ export const defaultMessages = {
 
   // ── Page / location labels ─────────────────────────────────────
   "location.page": "p.\u202f{pageNumber}",
+  "location.pageLabel": "Page",
+  "location.pageFull": "Page {pageNumber}",
+  "location.pageLineFull": "Page {pageNumber}, line {lineNumber}",
+  "location.line": "l.\u202f{lineNumber}",
+  "location.pageLine": "p.\u202f{pageNumber} \u00b7 l.\u202f{lineNumber}",
   "location.image": "Image",
+  "location.unknown": "unknown",
+  "location.matchingLocations_one": "{count} matching location",
+  "location.matchingLocations_other": "{count} matching locations",
 
   // ── Evidence / popover inline labels ────────────────────────────
   "evidence.textNotFound": "Text not found in document",
@@ -278,6 +297,19 @@ export const defaultMessages = {
   "ambiguity.found": "Found {totalOccurrences} occurrences",
   "ambiguity.onExpectedPage": "({occurrencesOnExpectedPage} on expected page)",
   "error.citation": "Citation error: {message}",
+
+  // ── Sources / loading ──────────────────────────────────────────
+  "sources.loading": "Loading sources\u2026",
+  "sources.empty": "No sources available",
+
+  // ── Verification log ───────────────────────────────────────────
+  "verification.details": "Verification details",
+  "verification.checkedAt": "Checked {date}",
+  "verification.verifiedAt": "Verified {date}",
+  "verification.attemptsTried_one": "{count} attempt tried",
+  "verification.attemptsTried_other": "{count} attempts tried",
+  "verification.lookingFor": "Looking for",
+  "verification.searchedFor": "Searched for",
 
   // ── Sources list ───────────────────────────────────────────────
   "sourcesList.verified": "Verified",

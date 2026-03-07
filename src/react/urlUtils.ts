@@ -7,6 +7,7 @@
 
 import { isApprovedDomain } from "../utils/urlSafety.js";
 import type { UrlFetchStatus } from "./types.js";
+import { defaultMessages } from "./i18n.js";
 import { isBlockedStatus, isErrorStatus, isVerifiedStatus } from "./urlStatus.js";
 
 /**
@@ -135,82 +136,82 @@ export function getUrlPath(url: string): string {
 export const STATUS_ICONS: Record<UrlFetchStatus, { icon: string; label: string; className: string }> = {
   verified: {
     icon: "✓",
-    label: "Verified",
+    label: defaultMessages["urlStatus.verified"],
     className: "text-green-600 dark:text-green-500",
   },
   partial: {
     icon: "~",
-    label: "Partial match",
+    label: defaultMessages["urlStatus.partial"],
     className: "text-amber-500 dark:text-amber-400",
   },
   pending: {
     icon: "…",
-    label: "Verifying",
+    label: defaultMessages["urlStatus.pending"],
     className: "text-gray-400 dark:text-gray-500",
   },
   accessible: {
     icon: "○",
-    label: "Accessible",
+    label: defaultMessages["urlStatus.accessible"],
     className: "text-blue-500 dark:text-blue-400",
   },
   redirected: {
     icon: "↪",
-    label: "Redirected",
+    label: defaultMessages["urlStatus.redirected"],
     className: "text-amber-500 dark:text-amber-400",
   },
   redirected_valid: {
     icon: "↪✓",
-    label: "Redirected (valid)",
+    label: defaultMessages["urlStatus.redirectedValid"],
     className: "text-green-600 dark:text-green-500",
   },
   blocked_antibot: {
     icon: "⊘",
-    label: "Blocked by anti-bot",
+    label: defaultMessages["urlStatus.blockedAntibot"],
     className: "text-amber-500 dark:text-amber-400",
   },
   blocked_login: {
     icon: "⊙",
-    label: "Login required",
+    label: defaultMessages["urlStatus.blockedLogin"],
     className: "text-amber-500 dark:text-amber-400",
   },
   blocked_paywall: {
     icon: "$",
-    label: "Paywall",
+    label: defaultMessages["urlStatus.blockedPaywall"],
     className: "text-amber-500 dark:text-amber-400",
   },
   blocked_geo: {
     icon: "⊕",
-    label: "Geo-restricted",
+    label: defaultMessages["urlStatus.blockedGeo"],
     className: "text-amber-500 dark:text-amber-400",
   },
   blocked_rate_limit: {
     icon: "◔",
-    label: "Rate limited",
+    label: defaultMessages["urlStatus.blockedRateLimit"],
     className: "text-amber-500 dark:text-amber-400",
   },
   error_timeout: {
     icon: "⊗",
-    label: "Timed out",
+    label: defaultMessages["urlStatus.errorTimeout"],
     className: "text-red-500 dark:text-red-400",
   },
   error_not_found: {
     icon: "⊗",
-    label: "Not found",
+    label: defaultMessages["urlStatus.errorNotFound"],
     className: "text-red-500 dark:text-red-400",
   },
   error_server: {
     icon: "⊗",
-    label: "Server error",
+    label: defaultMessages["urlStatus.errorServer"],
     className: "text-red-500 dark:text-red-400",
   },
   error_network: {
     icon: "⊗",
-    label: "Network error",
+    label: defaultMessages["urlStatus.errorNetwork"],
     className: "text-red-500 dark:text-red-400",
   },
   unknown: {
     icon: "?",
-    label: "Unknown status",
+    label: defaultMessages["urlStatus.unknown"],
     className: "text-gray-400 dark:text-gray-500",
   },
 };
