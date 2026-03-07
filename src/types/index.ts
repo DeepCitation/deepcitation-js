@@ -37,4 +37,3 @@ export type {
   UrlVerificationResult,
   Verification,
 } from "./verification.js";
-export { BLANK_VERIFICATION } from "./verification.js";

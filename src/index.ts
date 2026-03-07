@@ -161,7 +161,6 @@ export type {
   UrlVerificationResult,
   Verification,
 } from "./types/verification.js";
-export { BLANK_VERIFICATION } from "./types/verification.js";
 // File validation
 export {
   ALLOWED_UPLOAD_MIME_TYPES,
