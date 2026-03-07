@@ -27,6 +27,36 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { safeReplace } from "../utils/regexSafety.js";
 
 // =============================================================================
+// LOCALE CONTEXT
+// =============================================================================
+
+/**
+ * Context for the BCP 47 locale tag used by `Intl.*` APIs (date/number formatting).
+ * Distinct from message translations — a French-translated UI might still use
+ * a browser-default date format if no explicit locale is provided.
+ *
+ * Defaults to `undefined`, which tells `Intl.DateTimeFormat` to use the
+ * browser's runtime locale automatically.
+ */
+const LocaleContext = createContext<string | undefined>(undefined);
+
+/**
+ * Returns the BCP 47 locale tag provided by the nearest `DeepCitationI18nProvider`,
+ * or `undefined` if none is present (falls back to browser locale in `Intl.*` calls).
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const locale = useLocale();
+ *   const formatted = new Intl.DateTimeFormat(locale).format(date);
+ * }
+ * ```
+ */
+export function useLocale(): string | undefined {
+  return useContext(LocaleContext);
+}
+
+// =============================================================================
 // DEFAULT MESSAGES (English)
 // =============================================================================
 
@@ -282,7 +312,6 @@ export const defaultMessages = {
   // ── Evidence / popover inline labels ────────────────────────────
   "evidence.textNotFound": "Text not found in document",
   "evidence.similarTextFound": "Similar text found",
-  "evidence.scrollToZoom": "Scroll to zoom",
   "evidence.differentSection": "(different section)",
   "evidence.andMore": "\u2026and {count} more",
   "evidence.alreadyFullSize": "Already full size",
@@ -408,6 +437,12 @@ const I18nContext = createContext<TranslateFunction>(defaultTranslator);
 export interface DeepCitationI18nProviderProps {
   /** Partial or full message overrides. Missing keys fall back to English. */
   messages: Partial<DeepCitationMessages>;
+  /**
+   * BCP 47 locale tag for `Intl.*` formatting APIs (dates, numbers).
+   * Defaults to the browser's runtime locale when omitted.
+   * @example `"fr"`, `"es"`, `"vi"`, `"en-GB"`
+   */
+  locale?: string;
   children: ReactNode;
 }
 
@@ -427,9 +462,13 @@ export interface DeepCitationI18nProviderProps {
  * </DeepCitationI18nProvider>
  * ```
  */
-export function DeepCitationI18nProvider({ messages, children }: DeepCitationI18nProviderProps) {
+export function DeepCitationI18nProvider({ messages, locale, children }: DeepCitationI18nProviderProps) {
   const t = useMemo(() => createTranslator(messages), [messages]);
-  return <I18nContext.Provider value={t}>{children}</I18nContext.Provider>;
+  return (
+    <LocaleContext.Provider value={locale}>
+      <I18nContext.Provider value={t}>{children}</I18nContext.Provider>
+    </LocaleContext.Provider>
+  );
 }
 
 /**

@@ -10,13 +10,14 @@
  */
 export function formatCaptureDate(
   date: Date | string | null | undefined,
-  options?: { showTime?: boolean },
+  options?: { showTime?: boolean; locale?: string },
 ): { display: string; tooltip: string } | null {
   if (!date) return null;
 
   const parsed = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(parsed.getTime())) return null;
 
+  const locale = options?.locale; // undefined → browser runtime locale
   const now = new Date();
   const sameYear = parsed.getFullYear() === now.getFullYear();
 
@@ -24,10 +25,10 @@ export function formatCaptureDate(
     ? { month: "short", day: "numeric" }
     : { month: "short", day: "numeric", year: "numeric" };
 
-  let display = new Intl.DateTimeFormat("en-US", dateFormatOptions).format(parsed);
+  let display = new Intl.DateTimeFormat(locale, dateFormatOptions).format(parsed);
 
   if (options?.showTime) {
-    const timeStr = new Intl.DateTimeFormat("en-US", {
+    const timeStr = new Intl.DateTimeFormat(locale, {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
