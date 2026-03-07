@@ -201,9 +201,9 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     const popover = page.getByRole("dialog");
     await expect(popover).toBeVisible();
 
-    // Click the evidence tray's "Expand to full page" button inside the popover.
-    // Use exact match to avoid ambiguity with the page pill ("Expand to full page 5").
-    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    // Click the evidence tray's "View image" button inside the popover.
+    // In success state with evidence, the aria-label is "View image" (not "Expand to full page").
+    const expandButton = popover.getByRole("button", { name: "View image", exact: true });
     await expect(expandButton).toBeVisible();
     await expandButton.dispatchEvent("click");
 
@@ -226,7 +226,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     await expect(popover).toBeVisible();
 
     // Click evidence tray to expand — verifying the popover survives the transition.
-    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    const expandButton = popover.getByRole("button", { name: "View image", exact: true });
     await expect(expandButton).toBeVisible();
     await expandButton.dispatchEvent("click");
     await page.waitForTimeout(100);
@@ -293,7 +293,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
       return { left: rect.left, width: rect.width };
     });
 
-    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    const expandButton = popover.getByRole("button", { name: "View image", exact: true });
     await expect(expandButton).toBeVisible();
     await expandButton.dispatchEvent("click");
 
@@ -437,7 +437,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
     const popover = page.getByRole("dialog");
     await expect(popover).toBeVisible();
 
-    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    const expandButton = popover.getByRole("button", { name: "View image", exact: true });
     await expect(expandButton).toBeVisible();
     await expandButton.dispatchEvent("click");
 
@@ -626,9 +626,8 @@ test.describe("Citation Popover - Mobile/Touch Behavior", () => {
     const popover = page.getByRole("dialog");
     await expect(popover).toBeVisible();
 
-    // Tap the evidence tray to expand to full page view.
-    // Use exact match to avoid ambiguity with the page pill ("Expand to full page 5").
-    const expandButton = popover.getByRole("button", { name: "Expand to full page", exact: true });
+    // Tap the evidence tray to expand (success state with evidence → "View image").
+    const expandButton = popover.getByRole("button", { name: "View image", exact: true });
     await expandButton.tap();
 
     // Popover should still be visible and transitioned to expanded view —
