@@ -61,12 +61,14 @@ Use existing utilities in `src/utils/` and avoid ad-hoc equivalents.
 - Type-only re-exports are acceptable.
 
 ## Performance
+
 - No N+1 query patterns
 - No performance anti-patterns
 - No unnecessary re-renders, or inefficient algorithms
 - `useMemo`/`useCallback` dependency arrays complete
 
 ## Enhance Clarity: Simplify code structure by:
+
 - Reducing unnecessary complexity and nesting
 - Eliminating redundant code and abstractions
 - Improving readability through clear variable and function names
