@@ -34,7 +34,7 @@ import { useLockedPopoverSide } from "./hooks/useLockedPopoverSide.js";
 import { usePopoverAlignOffset } from "./hooks/usePopoverAlignOffset.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { useViewportBoundaryGuard } from "./hooks/useViewportBoundaryGuard.js";
-import { type TranslateFunction, useTranslation } from "./i18n.js";
+import { type MessageKey, type TranslateFunction, useTranslation } from "./i18n.js";
 import { CheckIcon, ExternalLinkIcon, LockIcon, XCircleIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
 import { PopoverContent } from "./Popover.js";
@@ -88,55 +88,35 @@ function resolveSourceDownloadUrl(
   // "original_plus_all_pdf": expose any converted artifact
   if (policy === "original_plus_all_pdf") return convertedUrl;
 
-  // "original_plus_url_pdf" (default): expose converted only when no original exists.
+  // "original_plus_url_pdf" (default): expose converted only when no usable original URL exists.
   // URL inputs have no originalDownload — their convertedDownload is the PDF capture.
-  if (policy === "original_plus_url_pdf" && !originalDownload) return convertedUrl;
+  if (policy === "original_plus_url_pdf" && !originalUrl) return convertedUrl;
 
   return null;
 }
 
 function getUrlStatusLabel(fetchStatus: UrlFetchStatus, t: TranslateFunction): string {
-  switch (fetchStatus) {
-    case "verified":
-      return t("urlStatus.verified");
-    case "partial":
-      return t("urlStatus.partial");
-    case "pending":
-      return t("urlStatus.pending");
-    case "accessible":
-      return t("urlStatus.accessible");
-    case "redirected":
-      return t("urlStatus.redirected");
-    case "redirected_valid":
-      return t("urlStatus.redirectedValid");
-    case "blocked_antibot":
-      return t("urlStatus.blockedAntibot");
-    case "blocked_login":
-      return t("urlStatus.blockedLogin");
-    case "blocked_paywall":
-      return t("urlStatus.blockedPaywall");
-    case "blocked_geo":
-      return t("urlStatus.blockedGeo");
-    case "blocked_rate_limit":
-      return t("urlStatus.blockedRateLimit");
-    case "error_timeout":
-      return t("urlStatus.errorTimeout");
-    case "error_not_found":
-      return t("urlStatus.errorNotFound");
-    case "error_server":
-      return t("urlStatus.errorServer");
-    case "error_network":
-      return t("urlStatus.errorNetwork");
-    case "unknown":
-      return t("urlStatus.unknown");
-    default: {
-      // TypeScript exhaustive guard: errors at compile time if a new UrlFetchStatus
-      // member is added without a corresponding case above.
-      const _exhaustive: never = fetchStatus;
-      void _exhaustive;
-      return t("urlStatus.unknown");
-    }
-  }
+  const KEY_MAP: Record<UrlFetchStatus, MessageKey> = {
+    verified: "urlStatus.verified",
+    partial: "urlStatus.partial",
+    pending: "urlStatus.pending",
+    accessible: "urlStatus.accessible",
+    redirected: "urlStatus.redirected",
+    redirected_valid: "urlStatus.redirectedValid",
+    blocked_antibot: "urlStatus.blockedAntibot",
+    blocked_login: "urlStatus.blockedLogin",
+    blocked_paywall: "urlStatus.blockedPaywall",
+    blocked_geo: "urlStatus.blockedGeo",
+    blocked_rate_limit: "urlStatus.blockedRateLimit",
+    error_timeout: "urlStatus.errorTimeout",
+    error_not_found: "urlStatus.errorNotFound",
+    error_server: "urlStatus.errorServer",
+    error_network: "urlStatus.errorNetwork",
+    unknown: "urlStatus.unknown",
+  };
+  // TypeScript errors at compile time if UrlFetchStatus gains a new member
+  // without a corresponding entry in KEY_MAP.
+  return t(KEY_MAP[fetchStatus]);
 }
 
 // Body scroll lock — imported from scrollLock.ts (canonical location, ref-counted)

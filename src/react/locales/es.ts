@@ -7,9 +7,11 @@ import { type DeepCitationMessages, defaultMessages } from "../i18n.js";
  * - This dictionary intentionally starts from `defaultMessages` so new keys
  *   added upstream always fall back to English until translated.
  * - Use `satisfies DeepCitationMessages` to keep compile-time key safety.
+ *
+ * `esOverrides` contains ONLY the locale-specific translations (no spread).
+ * It is used by the i18n parity test to verify all keys are covered.
  */
-export const esMessages = {
-  ...defaultMessages,
+export const esOverrides = {
   "status.verified": "Verificado",
   "status.partialMatch": "Coincidencia parcial",
   "status.notFound": "No encontrado",
@@ -183,4 +185,44 @@ export const esMessages = {
   "sourcesList.pending": "Pendiente",
   "sourcesList.failed": "Fallido",
   "sourcesList.unknown": "Desconocido",
+  "action.tapToViewDetails": "Toca para ver detalles",
+  "action.clickToViewDetails": "Haz clic para ver detalles",
+  "aria.verificationEvidence": "Evidencia de verificación",
+  "aria.verificationProof": "Prueba de verificación",
+  "evidence.alreadyFullSize": "Ya es tamaño completo",
+  "search.method.exactLineMatch": "Ubicación exacta",
+  "search.method.lineWithBuffer": "Líneas cercanas",
+  "search.method.expandedLineBuffer": "Líneas cercanas extendidas",
+  "search.method.currentPage": "Página esperada",
+  "search.method.anchorTextFallback": "Texto ancla",
+  "search.method.adjacentPages": "Páginas cercanas",
+  "search.method.expandedWindow": "Área más amplia",
+  "search.method.regexSearch": "Documento completo",
+  "search.method.firstWordFallback": "Primera palabra",
+  "search.method.firstHalfFallback": "Primera mitad",
+  "search.method.lastHalfFallback": "Última mitad",
+  "search.method.firstQuarterFallback": "Primer cuarto",
+  "search.method.secondQuarterFallback": "Segundo cuarto",
+  "search.method.thirdQuarterFallback": "Tercer cuarto",
+  "search.method.fourthQuarterFallback": "Cuarto cuarto",
+  "search.method.longestWordFallback": "Palabra más larga",
+  "search.method.customPhraseFallback": "Búsqueda personalizada",
+  "search.method.keyspanFallback": "Texto ancla",
+  "search.empty": "(vacío)",
+  "searchPhrase.anchorText": "Texto ancla",
+  "searchPhrase.fullPhrase": "Frase completa",
+  "searchPhrase.firstHalf": "Primera mitad",
+  "searchPhrase.lastHalf": "Última mitad",
+  "searchPhrase.firstQuarter": "Primer cuarto",
+  "searchPhrase.secondQuarter": "Segundo cuarto",
+  "searchPhrase.thirdQuarter": "Tercer cuarto",
+  "searchPhrase.fourthQuarter": "Cuarto cuarto",
+  "searchPhrase.firstWord": "Primera palabra",
+  "searchPhrase.longestWord": "Palabra más larga",
+  "searchPhrase.customPhrase": "Frase personalizada",
+} as const satisfies DeepCitationMessages;
+
+export const esMessages = {
+  ...defaultMessages,
+  ...esOverrides,
 } as const satisfies DeepCitationMessages;

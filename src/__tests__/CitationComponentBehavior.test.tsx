@@ -2509,3 +2509,88 @@ describe("CitationComponent proof URL links", () => {
     expect(proofLinks.length).toBe(0);
   });
 });
+
+describe("security: evidence src validation", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const baseCitation: Citation = {
+    type: "document",
+    attachmentId: "abc123",
+    citationNumber: 1,
+    pageNumber: 5,
+    anchorText: "test citation",
+    fullPhrase: "This is a test citation phrase",
+  };
+
+  it("does not render javascript: URI from evidence.src as <img src>", async () => {
+    const verification: Verification = {
+      status: "found",
+      label: "Document.pdf",
+      verifiedMatchSnippet: "test citation phrase",
+      document: { verifiedPageNumber: 5 },
+      evidence: { src: "javascript:alert('XSS')" },
+    };
+
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
+
+    const trigger = container.querySelector("[data-citation-id]");
+    await act(async () => {
+      fireEvent.click(trigger as HTMLElement);
+    });
+
+    await waitForPopoverVisible(container);
+
+    const imgs = Array.from(container.querySelectorAll("img"));
+    const maliciousImgs = imgs.filter(img => img.getAttribute("src")?.startsWith("javascript:"));
+    expect(maliciousImgs.length).toBe(0);
+  });
+
+  it("does not render data:text/html URI from evidence.src as <img src>", async () => {
+    const verification: Verification = {
+      status: "found",
+      label: "Document.pdf",
+      verifiedMatchSnippet: "test citation phrase",
+      document: { verifiedPageNumber: 5 },
+      evidence: { src: "data:text/html,<script>alert('XSS')</script>" },
+    };
+
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
+
+    const trigger = container.querySelector("[data-citation-id]");
+    await act(async () => {
+      fireEvent.click(trigger as HTMLElement);
+    });
+
+    await waitForPopoverVisible(container);
+
+    const imgs = Array.from(container.querySelectorAll("img"));
+    const maliciousImgs = imgs.filter(img => img.getAttribute("src")?.startsWith("data:text/html"));
+    expect(maliciousImgs.length).toBe(0);
+  });
+
+  it("does not render SVG data URI from evidence.src as <img src>", async () => {
+    const svgSrc = "data:image/svg+xml,<svg onload=alert(1)></svg>";
+    const verification: Verification = {
+      status: "found",
+      label: "Document.pdf",
+      verifiedMatchSnippet: "test citation phrase",
+      document: { verifiedPageNumber: 5 },
+      evidence: { src: svgSrc },
+    };
+
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
+
+    const trigger = container.querySelector("[data-citation-id]");
+    await act(async () => {
+      fireEvent.click(trigger as HTMLElement);
+    });
+
+    await waitForPopoverVisible(container);
+
+    const imgs = Array.from(container.querySelectorAll("img"));
+    const maliciousImgs = imgs.filter(img => img.getAttribute("src") === svgSrc);
+    expect(maliciousImgs.length).toBe(0);
+  });
+});

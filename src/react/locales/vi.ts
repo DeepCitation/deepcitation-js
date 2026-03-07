@@ -7,9 +7,11 @@ import { type DeepCitationMessages, defaultMessages } from "../i18n.js";
  * - This dictionary intentionally starts from `defaultMessages` so new keys
  *   added upstream always fall back to English until translated.
  * - Use `satisfies DeepCitationMessages` to keep compile-time key safety.
+ *
+ * `viOverrides` contains ONLY the locale-specific translations (no spread).
+ * It is used by the i18n parity test to verify all keys are covered.
  */
-export const viMessages = {
-  ...defaultMessages,
+export const viOverrides = {
   "status.verified": "Đã xác minh",
   "status.partialMatch": "Khớp một phần",
   "status.notFound": "Không tìm thấy",
@@ -187,4 +189,39 @@ export const viMessages = {
   "sourcesList.pending": "Đang chờ",
   "sourcesList.failed": "Thất bại",
   "sourcesList.unknown": "Không rõ",
+  "search.method.exactLineMatch": "Vị trí chính xác",
+  "search.method.lineWithBuffer": "Dòng lân cận",
+  "search.method.expandedLineBuffer": "Dòng lân cận mở rộng",
+  "search.method.currentPage": "Trang dự kiến",
+  "search.method.anchorTextFallback": "Văn bản neo",
+  "search.method.adjacentPages": "Trang kề",
+  "search.method.expandedWindow": "Vùng rộng hơn",
+  "search.method.regexSearch": "Toàn bộ tài liệu",
+  "search.method.firstWordFallback": "Từ đầu tiên",
+  "search.method.firstHalfFallback": "Nửa đầu",
+  "search.method.lastHalfFallback": "Nửa sau",
+  "search.method.firstQuarterFallback": "Phần tư đầu",
+  "search.method.secondQuarterFallback": "Phần tư thứ hai",
+  "search.method.thirdQuarterFallback": "Phần tư thứ ba",
+  "search.method.fourthQuarterFallback": "Phần tư thứ tư",
+  "search.method.longestWordFallback": "Từ dài nhất",
+  "search.method.customPhraseFallback": "Tìm kiếm tùy chỉnh",
+  "search.method.keyspanFallback": "Văn bản neo",
+  "search.empty": "(trống)",
+  "searchPhrase.anchorText": "Văn bản neo",
+  "searchPhrase.fullPhrase": "Cụm từ đầy đủ",
+  "searchPhrase.firstHalf": "Nửa đầu",
+  "searchPhrase.lastHalf": "Nửa sau",
+  "searchPhrase.firstQuarter": "Phần tư đầu",
+  "searchPhrase.secondQuarter": "Phần tư thứ hai",
+  "searchPhrase.thirdQuarter": "Phần tư thứ ba",
+  "searchPhrase.fourthQuarter": "Phần tư thứ tư",
+  "searchPhrase.firstWord": "Từ đầu tiên",
+  "searchPhrase.longestWord": "Từ dài nhất",
+  "searchPhrase.customPhrase": "Cụm từ tùy chỉnh",
+} as const satisfies DeepCitationMessages;
+
+export const viMessages = {
+  ...defaultMessages,
+  ...viOverrides,
 } as const satisfies DeepCitationMessages;

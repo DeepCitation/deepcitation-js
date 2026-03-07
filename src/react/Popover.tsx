@@ -175,7 +175,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         window.removeEventListener("scroll", scheduleRecompute, { capture: true });
         window.removeEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, scheduleRecompute as EventListener);
       };
-    }, [isMounted, recomputePosition, triggerRef]);
+    }, [isMounted, open, recomputePosition, triggerRef]);
 
     // Refs keep document-level listeners stable — only added/removed when the
     // popover opens/closes, not on every render. Without refs, inline callback

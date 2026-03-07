@@ -248,32 +248,3 @@ export interface CitationStatus {
   isPartialMatch: boolean;
   isPending: boolean;
 }
-
-/**
- * Metadata for a source in an aggregated sources list.
- * Used by SourcesListComponent to display collected citations.
- */
-interface SourceMeta {
-  /** Unique identifier for this source */
-  id: string;
-  /** The source URL */
-  url: string;
-  /** Page/document title */
-  title: string;
-  /** Display domain without www prefix */
-  domain: string;
-  /** Platform/source type */
-  sourceType?: SourceType;
-  /** Favicon URL */
-  faviconUrl?: string;
-  /** Citation numbers that reference this source */
-  citationNumbers?: number[];
-  /** Number of times this source is cited */
-  citationCount?: number;
-  /** Relevant excerpts/quotes from this source */
-  excerpts?: string[];
-  /** Verification status if verified */
-  verificationStatus?: "verified" | "partial" | "pending" | "failed" | "unknown";
-  /** When the source was accessed (ISO 8601 string) */
-  accessedAt?: string;
-}

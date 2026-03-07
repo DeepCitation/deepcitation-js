@@ -16,4 +16,3 @@ export interface ScreenBox {
 export interface DeepTextItem extends ScreenBox {
   text?: string;
 }
-

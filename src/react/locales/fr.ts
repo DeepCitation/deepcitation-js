@@ -7,9 +7,11 @@ import { type DeepCitationMessages, defaultMessages } from "../i18n.js";
  * - This dictionary intentionally starts from `defaultMessages` so new keys
  *   added upstream always fall back to English until translated.
  * - Use `satisfies DeepCitationMessages` to keep compile-time key safety.
+ *
+ * `frOverrides` contains ONLY the locale-specific translations (no spread).
+ * It is used by the i18n parity test to verify all keys are covered.
  */
-export const frMessages = {
-  ...defaultMessages,
+export const frOverrides = {
   "status.verified": "Vérifié",
   "status.partialMatch": "Correspondance partielle",
   "status.notFound": "Introuvable",
@@ -184,4 +186,44 @@ export const frMessages = {
   "sourcesList.pending": "En attente",
   "sourcesList.failed": "Échec",
   "sourcesList.unknown": "Inconnu",
+  "action.tapToViewDetails": "Toucher pour voir les détails",
+  "action.clickToViewDetails": "Cliquer pour voir les détails",
+  "aria.verificationEvidence": "Preuve de vérification",
+  "aria.verificationProof": "Justificatif de vérification",
+  "evidence.alreadyFullSize": "Déjà en taille complete",
+  "search.method.exactLineMatch": "Emplacement exact",
+  "search.method.lineWithBuffer": "Lignes proches",
+  "search.method.expandedLineBuffer": "Lignes proches étendues",
+  "search.method.currentPage": "Page attendue",
+  "search.method.anchorTextFallback": "Texte d'ancrage",
+  "search.method.adjacentPages": "Pages voisines",
+  "search.method.expandedWindow": "Zone élargie",
+  "search.method.regexSearch": "Document entier",
+  "search.method.firstWordFallback": "Premier mot",
+  "search.method.firstHalfFallback": "Première moitié",
+  "search.method.lastHalfFallback": "Dernière moitié",
+  "search.method.firstQuarterFallback": "Premier quart",
+  "search.method.secondQuarterFallback": "Deuxième quart",
+  "search.method.thirdQuarterFallback": "Troisième quart",
+  "search.method.fourthQuarterFallback": "Quatrième quart",
+  "search.method.longestWordFallback": "Mot le plus long",
+  "search.method.customPhraseFallback": "Recherche personnalisée",
+  "search.method.keyspanFallback": "Texte d'ancrage",
+  "search.empty": "(vide)",
+  "searchPhrase.anchorText": "Texte d'ancrage",
+  "searchPhrase.fullPhrase": "Phrase complète",
+  "searchPhrase.firstHalf": "Première moitié",
+  "searchPhrase.lastHalf": "Dernière moitié",
+  "searchPhrase.firstQuarter": "Premier quart",
+  "searchPhrase.secondQuarter": "Deuxième quart",
+  "searchPhrase.thirdQuarter": "Troisième quart",
+  "searchPhrase.fourthQuarter": "Quatrième quart",
+  "searchPhrase.firstWord": "Premier mot",
+  "searchPhrase.longestWord": "Mot le plus long",
+  "searchPhrase.customPhrase": "Expression personnalisée",
+} as const satisfies DeepCitationMessages;
+
+export const frMessages = {
+  ...defaultMessages,
+  ...frOverrides,
 } as const satisfies DeepCitationMessages;

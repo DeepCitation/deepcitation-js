@@ -578,10 +578,12 @@ export class DeepCitation {
 
     const uploadResults = await Promise.all(uploadPromises);
 
-    const fileDataParts: Array<{ attachmentId: string; filename?: string }> = uploadResults.map(({ result, filename }) => ({
-      attachmentId: result.attachmentId,
-      filename: filename || result.metadata?.filename,
-    }));
+    const fileDataParts: Array<{ attachmentId: string; filename?: string }> = uploadResults.map(
+      ({ result, filename }) => ({
+        attachmentId: result.attachmentId,
+        filename: filename || result.metadata?.filename,
+      }),
+    );
 
     const attachments = uploadResults.map(({ result }) => ({
       attachmentId: result.attachmentId,

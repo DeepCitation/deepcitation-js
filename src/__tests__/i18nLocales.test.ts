@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { defaultMessages } from "../react/i18n";
-import { esMessages } from "../react/locales/es";
-import { frMessages } from "../react/locales/fr";
-import { viMessages } from "../react/locales/vi";
+import { esMessages, esOverrides } from "../react/locales/es";
+import { frMessages, frOverrides } from "../react/locales/fr";
+import { viMessages, viOverrides } from "../react/locales/vi";
 
 describe("locale message dictionaries", () => {
   const defaultKeys = Object.keys(defaultMessages).sort();
@@ -13,8 +13,15 @@ describe("locale message dictionaries", () => {
   ] as const;
 
   it("keeps locale keys in sync with defaultMessages", () => {
-    for (const [, messages] of locales) {
-      expect(Object.keys(messages).sort()).toEqual(defaultKeys);
+    // Check the *Overrides objects (no spread) so the test is non-trivially true.
+    // If a locale is missing a key, the overrides won't cover it and the test fails.
+    const overrides = [
+      ["fr", frOverrides],
+      ["es", esOverrides],
+      ["vi", viOverrides],
+    ] as const;
+    for (const [, overridesObj] of overrides) {
+      expect(Object.keys(overridesObj).sort()).toEqual(defaultKeys);
     }
   });
 

@@ -650,7 +650,6 @@ describe("DeepCitation Client", () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
-
     it("uses same cache for identical citations with different numbering", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });
 
