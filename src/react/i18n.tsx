@@ -267,6 +267,8 @@ export const defaultMessages = {
   "evidence.differentSection": "(different section)",
   "evidence.andMore": "\u2026and {count} more",
   "evidence.alreadyFullSize": "Already full size",
+  "evidence.searchAttempts_one": "{count} attempt",
+  "evidence.searchAttempts_other": "{count} attempts",
 
   // ── Misc ───────────────────────────────────────────────────────
   "misc.noTextFound": "No text found",

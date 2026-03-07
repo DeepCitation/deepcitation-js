@@ -106,10 +106,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     forwardedRef,
   ) => {
     // coordsRef holds the last-computed position. It is written imperatively in recomputePosition
-    // (via wrapper.style.transform) and read during render to seed the initial inline style.
-    // Invariant: coordsRef.current is always updated before wrapper.style.transform, so React
-    // re-renders never overwrite the imperative style with a stale value.
-    // React Compiler opt-out: coordsRef.current is intentionally read during render.
+    // (via wrapper.style.transform). The transform is NOT included in the JSX style object —
+    // React only manages style properties it controls, so omitting transform here means React
+    // never overwrites the imperatively-set value on re-renders. recomputePosition is called in
+    // useLayoutEffect (fires before paint) so the initial position is set before first paint.
     const { open, onOpenChange, triggerRef, contentRef } = usePopoverContext();
     const localContentRef = React.useRef<HTMLDivElement | null>(null);
     const wrapperRef = React.useRef<HTMLDivElement | null>(null);
@@ -432,7 +432,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             width: "max-content",
             zIndex: `var(${Z_INDEX_POPOVER_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})`,
             pointerEvents: dataState === "open" ? "auto" : "none",
-            transform: `translate3d(${coordsRef.current.x}px, ${coordsRef.current.y}px, 0)`,
+            // transform is managed imperatively by recomputePosition — not in JSX style
+            // so React never clears it on re-renders. The wrapper starts at (0,0) until
+            // the first recomputePosition call; pointerEvents:"none" while closed ensures
+            // the unpositioned wrapper is never interactive or visible before that runs.
           }}
         >
           <style>{`[data-dc-popover-content]::-webkit-scrollbar { display: none; }`}</style>

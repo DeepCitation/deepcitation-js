@@ -176,6 +176,8 @@ export const viOverrides = {
   "evidence.differentSection": "(phần khác)",
   "evidence.andMore": "\u2026và {count} mục khác",
   "evidence.alreadyFullSize": "Đã ở kích thước đầy đủ",
+  "evidence.searchAttempts_one": "{count} lần thử",
+  "evidence.searchAttempts_other": "{count} lần thử",
   "misc.noTextFound": "Không tìm thấy văn bản",
   "misc.warning": "Cảnh báo",
   "misc.error": "Lỗi",

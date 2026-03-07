@@ -59,7 +59,7 @@ import { formatCaptureDate } from "./dateUtils.js";
 import { useDragToPan } from "./hooks/useDragToPan.js";
 import { usePrefersReducedMotion } from "./hooks/usePrefersReducedMotion.js";
 import { applyGestureTransform, useWheelZoom, type WheelZoomAnchor } from "./hooks/useWheelZoom.js";
-import { useTranslation } from "./i18n.js";
+import { tPlural, useTranslation } from "./i18n.js";
 import { ChevronRightIcon, SpinnerIcon } from "./icons.js";
 import { handleImageError } from "./imageUtils.js";
 import { computeAnnotationOriginPercent, computeAnnotationScrollTarget, toPercentRect } from "./overlayGeometry.js";
@@ -463,6 +463,8 @@ export function AnchorTextFocusedImage({
   // Set initial scroll position after image loads.
   // useLayoutEffect guarantees refs are populated and runs before paint,
   // so the strip appears at the correct offset without a flash of misposition.
+  // NOTE: Was a React Compiler opt-out — compiler removed for React 18 compat.
+  // DOM measurement → setZoomEligible is the correct pattern for DOM-derived state; the double-render is unavoidable here.
   // biome-ignore lint/correctness/useExhaustiveDependencies: containerRef and imageRef are stable refs that never change identity; useLayoutEffect guarantees the DOM nodes they point to are ready
   useLayoutEffect(() => {
     if (!imageLoaded) return;
@@ -884,7 +886,7 @@ function EvidenceTrayFooter({
                 <ChevronRightIcon />
               </span>
               <span>
-                {searchCount} attempt{searchCount === 1 ? "" : "s"}
+                {tPlural(t, "evidence.searchAttempts", searchCount, { count: searchCount })}
                 {locationLabel && <> · {locationLabel}</>}
               </span>
             </button>
@@ -923,6 +925,7 @@ function EvidenceTrayFooter({
  * Shows surrounding context text with the match portion bolded.
  */
 function MatchSnippetDisplay({ snippet }: { snippet: import("./searchSummaryUtils.js").MatchSnippet }) {
+  const t = useTranslation();
   const before = snippet.contextText.slice(0, snippet.matchStart);
   const match = snippet.contextText.slice(snippet.matchStart, snippet.matchEnd);
   const after = snippet.contextText.slice(snippet.matchEnd);
@@ -938,7 +941,9 @@ function MatchSnippetDisplay({ snippet }: { snippet: import("./searchSummaryUtil
         <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">(p.{snippet.page})</span>
       )}
       {!snippet.isProximate && (
-        <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">(different section)</span>
+        <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">
+          {t("evidence.differentSection")}
+        </span>
       )}
     </div>
   );
@@ -1072,6 +1077,8 @@ export function EvidenceTray({
     };
   }, [showSearchLog, escapeInterceptRef]);
 
+  // NOTE: Was a React Compiler opt-out — compiler removed for React 18 compat.
+  // Multiple setState calls in this effect are intentional (React batches them) and drive the search-log enter/exit animation sequence.
   useEffect(() => {
     const clearScheduled = () => {
       cancelAnimationFrame(searchLogEnterRafRef.current);
@@ -1472,6 +1479,8 @@ export function InlineExpandedImage({
   // cached image synchronously lets the VT snapshot include the real content
   // (not a spinner) at the correct scroll position — eliminating the "aim off"
   // artifact where the morph targets a blank or mis-scrolled frame.
+  // NOTE: Was a React Compiler opt-out — compiler removed for React 18 compat.
+  // Multiple setState resets are intentional here; this useLayoutEffect is the authoritative view-transition reset and must fire synchronously.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref identities are stable; initialOverlayHidden is the reset target value, not a reactive dependency
   useLayoutEffect(() => {
     setNaturalWidth(null);
@@ -1542,6 +1551,8 @@ export function InlineExpandedImage({
   // Height uses containerSize.height from the ResizeObserver — the flex layout
   // (flex-1 min-h-0 under a maxHeight-constrained column) has already allocated
   // exactly the vertical space remaining after header zones and margins.
+  // NOTE: Was a React Compiler opt-out — compiler removed for React 18 compat.
+  // setZoom/setZoomFloor are derived-state writes that require DOM measurements and are intentionally in a useEffect.
   useEffect(() => {
     if (!fill || !imageLoaded || !naturalWidth || !naturalHeight) return;
     if (!containerSize || containerSize.width <= 0 || containerSize.height <= 0) return;

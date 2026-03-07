@@ -189,6 +189,8 @@ export const esOverrides = {
   "aria.verificationEvidence": "Evidencia de verificación",
   "aria.verificationProof": "Prueba de verificación",
   "evidence.alreadyFullSize": "Ya es tamaño completo",
+  "evidence.searchAttempts_one": "{count} intento",
+  "evidence.searchAttempts_other": "{count} intentos",
   "search.method.exactLineMatch": "Ubicación exacta",
   "search.method.lineWithBuffer": "Líneas cercanas",
   "search.method.expandedLineBuffer": "Líneas cercanas extendidas",

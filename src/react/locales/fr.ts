@@ -190,6 +190,8 @@ export const frOverrides = {
   "aria.verificationEvidence": "Preuve de vérification",
   "aria.verificationProof": "Justificatif de vérification",
   "evidence.alreadyFullSize": "Déjà en taille complete",
+  "evidence.searchAttempts_one": "{count} tentative",
+  "evidence.searchAttempts_other": "{count} tentatives",
   "search.method.exactLineMatch": "Emplacement exact",
   "search.method.lineWithBuffer": "Lignes proches",
   "search.method.expandedLineBuffer": "Lignes proches étendues",
