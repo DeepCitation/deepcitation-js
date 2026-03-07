@@ -106,10 +106,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     forwardedRef,
   ) => {
     // coordsRef holds the last-computed position. It is written imperatively in recomputePosition
-    // (via wrapper.style.transform) and read during render to seed the initial inline style.
-    // Invariant: coordsRef.current is always updated before wrapper.style.transform, so React
-    // re-renders never overwrite the imperative style with a stale value.
-    // React Compiler opt-out: coordsRef.current is intentionally read during render.
+    // (via wrapper.style.transform). The transform is NOT included in the JSX style object —
+    // React only manages style properties it controls, so omitting transform here means React
+    // never overwrites the imperatively-set value on re-renders. recomputePosition is called in
+    // useLayoutEffect (fires before paint) so the initial position is set before first paint.
     const { open, onOpenChange, triggerRef, contentRef } = usePopoverContext();
     const localContentRef = React.useRef<HTMLDivElement | null>(null);
     const wrapperRef = React.useRef<HTMLDivElement | null>(null);
@@ -136,7 +136,16 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       const triggerRect = triggerEl.getBoundingClientRect();
       const contentRect = contentEl.getBoundingClientRect();
       const next = computePosition(triggerRect, contentRect, side, align, sideOffset, alignOffset);
-      if (Math.abs(coordsRef.current.x - next.x) < 0.5 && Math.abs(coordsRef.current.y - next.y) < 0.5) return;
+      // Skip if coords haven't changed — BUT only when the wrapper already has a transform.
+      // On remount the wrapper is a fresh DOM node with no transform; coordsRef still holds
+      // the previous open's coords, so the diff check would fire and leave the wrapper at (0,0).
+      const alreadyPositioned = wrapper.style.transform !== "";
+      if (
+        alreadyPositioned &&
+        Math.abs(coordsRef.current.x - next.x) < 0.5 &&
+        Math.abs(coordsRef.current.y - next.y) < 0.5
+      )
+        return;
       coordsRef.current = next;
       wrapper.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`;
     }, [align, alignOffset, isMounted, open, side, sideOffset, triggerRef]);
@@ -432,7 +441,10 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             width: "max-content",
             zIndex: `var(${Z_INDEX_POPOVER_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})`,
             pointerEvents: dataState === "open" ? "auto" : "none",
-            transform: `translate3d(${coordsRef.current.x}px, ${coordsRef.current.y}px, 0)`,
+            // transform is managed imperatively by recomputePosition — not in JSX style
+            // so React never clears it on re-renders. The wrapper starts at (0,0) until
+            // the first recomputePosition call; pointerEvents:"none" while closed ensures
+            // the unpositioned wrapper is never interactive or visible before that runs.
           }}
         >
           <style>{`[data-dc-popover-content]::-webkit-scrollbar { display: none; }`}</style>

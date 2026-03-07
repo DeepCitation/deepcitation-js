@@ -1,5 +1,12 @@
 import { generateCitationKey } from "../react/utils.js";
-import type { Citation, CitationRecord, CitationStatus, DocumentCitation, UrlCitation } from "../types/citation.js";
+import type {
+  AudioVideoCitation,
+  Citation,
+  CitationRecord,
+  CitationStatus,
+  DocumentCitation,
+  UrlCitation,
+} from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { createSafeObject, isSafeKey } from "../utils/objectSafety.js";
 import { safeMatch } from "../utils/regexSafety.js";
@@ -253,15 +260,6 @@ export const parseCitation = (
     if (isVerbose) console.error("Error parsing lineIds", e);
   }
 
-  // Check for AV citation (has timestamps instead of line_ids)
-  const timestampsRaw = extractAttribute(middleCite, ["timestamps"]);
-  let timestamps: { startTime?: string; endTime?: string } | undefined;
-
-  if (timestampsRaw) {
-    const [startTime, endTime] = timestampsRaw.split("-") || [];
-    timestamps = { startTime, endTime };
-  }
-
   // Extract URL-specific attributes
   const url = cleanAndUnescape(extractAttribute(middleCite, ["url"]));
   const domain = cleanAndUnescape(extractAttribute(middleCite, ["domain"]));
@@ -284,7 +282,6 @@ export const parseCitation = (
           fullPhrase,
           anchorText: anchorText || value,
           citationNumber,
-          timestamps,
           reasoning,
         } as UrlCitation)
       : ({
@@ -296,7 +293,6 @@ export const parseCitation = (
           anchorText: anchorText || value,
           citationNumber,
           lineIds,
-          timestamps,
           reasoning,
         } as DocumentCitation);
 
@@ -751,6 +747,13 @@ export function groupCitationsByAttachmentIdObject(
  * @throws Error if `type` is `"url"` but `url` field is missing or empty
  */
 export function normalizeCitationType(citation: Record<string, unknown>): Citation {
+  // Pass through audio/video citations with their existing type discriminator.
+  if (citation.type === "audio" || citation.type === "video") {
+    // Type is narrowed by the discriminator check above. The spread produces
+    // { [x: string]: unknown } which TypeScript can't directly assert to AudioVideoCitation,
+    // so we go through unknown. Safe: type field is validated by the if-check above.
+    return { ...citation } as unknown as AudioVideoCitation;
+  }
   if (citation.type === "url" || (typeof citation.url === "string" && citation.url.length > 0)) {
     if (typeof citation.url !== "string" || !citation.url) {
       throw new Error("URL citation missing required 'url' field");

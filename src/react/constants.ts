@@ -5,6 +5,7 @@
 
 import type React from "react";
 import { ANCHOR_HIGHLIGHT_COLOR } from "../drawing/citationDrawing.js";
+import { isDomainMatch } from "../utils/urlSafety.js";
 
 /**
  * CSS custom property name for the wavy underline color.
@@ -361,8 +362,29 @@ export const SAFE_DATA_IMAGE_PREFIXES = [
   "data:image/gif",
 ] as const;
 
-/** Trusted CDN hostnames for proof images. */
-export const TRUSTED_IMAGE_HOSTS = ["api.deepcitation.com", "cdn.deepcitation.com", "proof.deepcitation.com"] as const;
+/** Base trusted CDN hostnames for proof images (always included). */
+const BASE_TRUSTED_IMAGE_HOSTS = ["api.deepcitation.com", "cdn.deepcitation.com", "proof.deepcitation.com"] as const;
+
+/**
+ * Trusted CDN hostnames for proof images.
+ * Includes the base hosts plus any additional hosts from the `DC_TRUSTED_IMAGE_HOSTS`
+ * environment variable (comma-separated, e.g. `"my-cdn.com,assets.example.com"`).
+ *
+ * @example .env
+ * ```
+ * DC_TRUSTED_IMAGE_HOSTS=my-cdn.com,assets.example.com
+ * ```
+ */
+export const TRUSTED_IMAGE_HOSTS: readonly string[] = (() => {
+  const envVar = typeof process !== "undefined" ? process.env?.DC_TRUSTED_IMAGE_HOSTS : undefined;
+  const extra = envVar
+    ? envVar
+        .split(",")
+        .map(h => h.trim())
+        .filter(Boolean)
+    : [];
+  return [...BASE_TRUSTED_IMAGE_HOSTS, ...extra];
+})();
 
 /** Localhost hostnames allowed for development environments. */
 const DEV_HOSTNAMES = ["localhost", "127.0.0.1"] as const;
@@ -434,7 +456,7 @@ export function isValidProofImageSrc(src: unknown): src is string {
   try {
     const url = new URL(trimmed);
     const isLocalhost = (DEV_HOSTNAMES as readonly string[]).includes(url.hostname);
-    const isTrustedHost = (TRUSTED_IMAGE_HOSTS as readonly string[]).includes(url.hostname);
+    const isTrustedHost = TRUSTED_IMAGE_HOSTS.some(trustedHost => isDomainMatch(trimmed, trustedHost));
     return (url.protocol === "https:" && isTrustedHost) || isLocalhost;
   } catch {
     return false;

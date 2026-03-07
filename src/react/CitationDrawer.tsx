@@ -362,7 +362,10 @@ export const CitationDrawerItemComponent = React.memo(function CitationDrawerIte
   // (e.g. Escape key calls setExpandedCitationKey(null) in the parent,
   // bypassing handleClick). Without this, inlineKeyholeSrc persists and
   // re-shows a stale expanded keyhole the next time the item is opened.
-  useEffect(() => {
+  // useLayoutEffect (not useEffect): clearing visual state before paint avoids
+  // a flash of stale keyhole content on collapse. CitationDrawer is client-only
+  // (never SSR'd), so the useLayoutEffect SSR warning does not apply.
+  useLayoutEffect(() => {
     if (!isExpanded) {
       setInlineKeyholeSrc(null);
       setInlineKeyholeInitialScroll(null);

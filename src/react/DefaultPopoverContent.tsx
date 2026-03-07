@@ -9,7 +9,7 @@
  */
 
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Citation, CitationStatus } from "../types/citation.js";
+import type { CitationStatus } from "../types/citation.js";
 import { isUrlCitation } from "../types/citation.js";
 import type { PageImage, Verification } from "../types/verification.js";
 import { getStatusLabel } from "./citationStatus.js";
@@ -93,10 +93,9 @@ export interface PopoverContentProps {
   /** Ref tracking which state preceded expanded-page, for correct Escape back-navigation. */
   prevBeforeExpandedPageRef?: RefObject<"summary" | "expanded-keyhole">;
   /**
-   * Callback when the user clicks the download button in the popover header.
-   * The button only renders when this prop is provided.
+   * Download URL for the source file. When provided, renders a download button in the popover header.
    */
-  onSourceDownload?: (citation: Citation) => void;
+  downloadUrl?: string;
   /**
    * Ref that sub-components set to a collapse function when they have an
    * expanded section (e.g. search log) that should consume Escape before the
@@ -576,12 +575,12 @@ function PopoverLoadingView({
   citation,
   verification,
   sourceLabel,
-  onSourceDownload,
+  downloadUrl,
 }: {
   citation: BaseCitationProps["citation"];
   verification: Verification | null;
   sourceLabel?: string;
-  onSourceDownload?: (citation: Citation) => void;
+  downloadUrl?: string;
 }) {
   const t = useTranslation();
   const anchorText = citation.anchorText?.toString();
@@ -595,7 +594,7 @@ function PopoverLoadingView({
         verification={verification}
         status={searchStatus}
         sourceLabel={sourceLabel}
-        onSourceDownload={onSourceDownload}
+        downloadUrl={downloadUrl}
       />
       <div className="p-3 flex flex-col gap-2.5">
         {/* Skeleton: status bar placeholder */}
@@ -642,7 +641,7 @@ function PopoverFallbackView({
   status,
   urlAccessExplanation,
   indicatorVariant = "icon",
-  onSourceDownload,
+  downloadUrl,
 }: {
   citation: BaseCitationProps["citation"];
   verification: Verification | null;
@@ -650,7 +649,7 @@ function PopoverFallbackView({
   status: CitationStatus;
   urlAccessExplanation: UrlAccessExplanation | null;
   indicatorVariant?: IndicatorVariant;
-  onSourceDownload?: (citation: Citation) => void;
+  downloadUrl?: string;
 }) {
   const t = useTranslation();
   const searchStatus = verification?.status;
@@ -667,7 +666,7 @@ function PopoverFallbackView({
         verification={verification}
         status={searchStatus}
         sourceLabel={sourceLabel}
-        onSourceDownload={onSourceDownload}
+        downloadUrl={downloadUrl}
       />
       {urlAccessExplanation && <UrlAccessExplanationSection explanation={urlAccessExplanation} />}
       <div className="p-3 flex flex-col gap-2">
@@ -720,7 +719,7 @@ export function DefaultPopoverContent({
   expandedImageSrcOverride,
   onExpandedWidthChange,
   prevBeforeExpandedPageRef: propPrevBeforeExpandedPageRef,
-  onSourceDownload,
+  downloadUrl,
   escapeInterceptRef,
 }: PopoverContentProps) {
   const t = useTranslation();
@@ -988,7 +987,7 @@ export function DefaultPopoverContent({
           citation={citation}
           verification={verification}
           sourceLabel={sourceLabel}
-          onSourceDownload={onSourceDownload}
+          downloadUrl={downloadUrl}
         />
       </>
     );
@@ -1053,7 +1052,7 @@ export function DefaultPopoverContent({
               sourceLabel={sourceLabel}
               onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
               onClose={isFullPage ? handleCollapseFromExpandedPage : undefined}
-              onSourceDownload={onSourceDownload}
+              downloadUrl={downloadUrl}
             />
             {/* Zone 2: Claim Body — Status + highlighted phrase */}
             <StatusHeader
@@ -1122,7 +1121,7 @@ export function DefaultPopoverContent({
         status={status}
         urlAccessExplanation={urlAccessExplanation}
         indicatorVariant={indicatorVariant}
-        onSourceDownload={onSourceDownload}
+        downloadUrl={downloadUrl}
       />
     </>
   );

@@ -155,8 +155,8 @@ export const defaultMessages = {
   "aria.closeImageView": "Close image view",
   "aria.closePageView": "Close page view",
   "aria.closePageViewNum": "Close page {pageNumber} view",
-  "aria.downloadImage": "Download image",
   "aria.downloadSource": "Download source",
+  "aria.downloadSourceName": "Download {name}",
   "aria.collapseSearchLog": "Collapse search log",
   "aria.verificationEvidence": "Verification evidence",
   "aria.verificationProof": "Verification proof",
@@ -267,6 +267,8 @@ export const defaultMessages = {
   "evidence.differentSection": "(different section)",
   "evidence.andMore": "\u2026and {count} more",
   "evidence.alreadyFullSize": "Already full size",
+  "evidence.searchAttempts_one": "{count} attempt",
+  "evidence.searchAttempts_other": "{count} attempts",
 
   // ── Misc ───────────────────────────────────────────────────────
   "misc.noTextFound": "No text found",

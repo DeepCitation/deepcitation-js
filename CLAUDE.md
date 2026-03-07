@@ -142,6 +142,12 @@ return { pageNumber, lineIds, fullPhrase }; // ❌ Missing type: "document"
 return { type: "document", pageNumber, lineIds, fullPhrase }; // ✓
 ```
 
+### Citation Base Fields Are Shared by Design
+
+`CitationBase` carries `attachmentId`, `pageNumber`, `lineIds`, and `startPageId` on **all** citation types — including `UrlCitation`. This is intentional: URL citations are fetched and converted to PDFs before verification, so any citation type can carry a page location after a verification pass. Do not flag this as incorrect in reviews.
+
+> The `type` discriminator indicates the *source* of the citation, not whether page/line fields will be populated.
+
 ### No Unsafe Casts
 
 **Avoid `as unknown as T` casts.** Use type guards instead:
