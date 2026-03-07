@@ -104,19 +104,36 @@ export type SourceType =
 
 /**
  * Common fields shared by all citation types.
- * Only contains fields that are semantically valid for both document and URL citations.
+ *
+ * `attachmentId`, `pageNumber`, `lineIds`, and `startPageId` are present on the
+ * base type because URL citations are converted to PDFs before verification —
+ * after conversion, every citation type can have a page location. A URL citation
+ * without these fields is simply one that has not yet been converted/verified.
  */
 interface CitationBase {
-  /** Attachment ID for document or URL citations */
+  /**
+   * Attachment ID of the source document.
+   * For document/audio/video citations: the uploaded file ID.
+   * For URL citations: populated after the URL is fetched and converted to a PDF for verification.
+   */
   attachmentId?: string;
 
-  /** Page number in the document or URL citation */
+  /**
+   * Page number within the (possibly converted) document.
+   * Populated for document citations and for URL citations after PDF conversion.
+   */
   pageNumber?: number;
 
-  /** Line IDs within the page or URL citation */
+  /**
+   * Line IDs within the page, used for precise location matching.
+   * Populated for document citations and for URL citations after PDF conversion.
+   */
   lineIds?: number[];
 
-  /** Start page ID for multi-page document or URL citations */
+  /**
+   * Canonical page identifier (e.g. "page_number_3_index_0").
+   * Populated for document citations and for URL citations after PDF conversion.
+   */
   startPageId?: string;
 
   /** The full context/excerpt containing the cited information */
@@ -233,8 +250,10 @@ export interface UrlCitation extends CitationBase {
  * `citation.type === "document"` to get `DocumentCitation`,
  * or `citation.type === "audio" | "video"` to get `AudioVideoCitation`.
  *
- * Common fields (`fullPhrase`, `anchorText`, etc.) are accessible without narrowing.
- * Document-specific fields (`pageNumber`, `lineIds`, etc.) require narrowing first.
+ * Common fields (`fullPhrase`, `anchorText`, `pageNumber`, `lineIds`, etc.) are
+ * accessible without narrowing. URL citations are converted to PDFs for verification,
+ * so `pageNumber`, `lineIds`, and `startPageId` may be populated on any citation type
+ * after a verification pass — not just document citations.
  */
 export type Citation = DocumentCitation | UrlCitation | AudioVideoCitation;
 

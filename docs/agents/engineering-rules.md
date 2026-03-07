@@ -25,6 +25,14 @@ Run these before opening a PR:
 - Prefer lightweight custom implementations over heavy dependencies to protect bundle size.
 - Keep react module bundle size at or below 15KB (`npm run size`).
 
+## Citation Type Model
+
+`CitationBase` intentionally carries `attachmentId`, `pageNumber`, `lineIds`, and `startPageId` on **all** citation types, including `UrlCitation`. This is because URL citations are fetched and converted to PDFs before verification — after that conversion, every citation type can carry a page location. A `UrlCitation` without these fields simply hasn't been verified yet.
+
+Do **not** flag these shared fields as "semantically document-only" in code reviews. The correct mental model is:
+
+> All citations are potentially verifiable against a page-indexed document. The `type` discriminator indicates the *source* of the citation, not whether page/line fields will be populated.
+
 ## Testing Rules
 
 - Tests must validate implemented behavior, not aspirational behavior.
