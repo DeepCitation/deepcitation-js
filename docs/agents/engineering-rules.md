@@ -60,6 +60,31 @@ Use existing utilities in `src/utils/` and avoid ad-hoc equivalents.
 - Import symbols from canonical locations directly.
 - Type-only re-exports are acceptable.
 
+## Performance
+- No N+1 query patterns
+- No performance anti-patterns
+- No unnecessary re-renders, or inefficient algorithms
+- `useMemo`/`useCallback` dependency arrays complete
+
+## Enhance Clarity: Simplify code structure by:
+- Reducing unnecessary complexity and nesting
+- Eliminating redundant code and abstractions
+- Improving readability through clear variable and function names
+- Consolidating related logic
+- Removing unnecessary comments that describe obvious code
+- IMPORTANT: Avoid nested ternary operators - prefer switch statements or if/else chains for multiple conditions
+- Choose clarity over brevity - explicit code is often better than overly compact code
+
+
+## Maintain Balance: Avoid over-simplification that could:
+
+- Reduce code clarity or maintainability
+- Create overly clever solutions that are hard to understand
+- Combine too many concerns into single functions or components
+- Remove helpful abstractions that improve code organization
+- Prioritize "fewer lines" over readability (e.g., nested ternaries, dense one-liners)
+- Make the code harder to debug or extend
+
 ## PR Description Rules
 
 - Description must match actual diff.
