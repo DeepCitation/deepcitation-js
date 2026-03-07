@@ -307,10 +307,10 @@ describe("VerificationLogTimeline attempts table", () => {
     expect(getByText("Revenue increased by 15% in Q4 2024.")).toBeInTheDocument();
     expect(getByText("increased by 15%")).toBeInTheDocument();
 
-    const mutedLocation = getByText("p.5");
+    const mutedLocation = getByText(/^p[.\s\u202f]+5$/);
     expect(mutedLocation.className).toContain("text-gray-400");
 
-    const highlightedLocation = getByText("p.7");
+    const highlightedLocation = getByText(/^p[.\s\u202f]+7$/);
     expect(highlightedLocation.className).toContain("font-semibold");
   });
 
@@ -334,7 +334,7 @@ describe("VerificationLogTimeline attempts table", () => {
       />,
     );
 
-    const unexpectedLocation = getByText("p.7 · l.22");
+    const unexpectedLocation = getByText(/^p[.\s\u202f]+7\s*[·\u00b7]\s*l[.\s\u202f]+22$/);
     expect(unexpectedLocation.className).toContain("font-semibold");
   });
 });
@@ -501,7 +501,7 @@ describe("SourceContextHeader", () => {
 
       expect(container.textContent).toContain("Invoice.pdf");
       // Page info is now shown as "p.X" format
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
       // Should have SVG for document icon
       const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
@@ -519,7 +519,7 @@ describe("SourceContextHeader", () => {
 
       // attachmentId should never be shown to users - only show page info
       expect(container.textContent).not.toContain("abc123");
-      expect(container.textContent).toContain("p.1");
+      expect(container.textContent).toContain("p.\u202f1");
     });
 
     it("shows 'Document' fallback when no label available", () => {
@@ -544,7 +544,7 @@ describe("SourceContextHeader", () => {
       const { container } = render(<SourceContextHeader citation={citation} />);
 
       // Page info is now shown as "p.X" format
-      expect(container.textContent).toContain("p.10");
+      expect(container.textContent).toContain("p.\u202f10");
     });
   });
 

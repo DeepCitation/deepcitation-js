@@ -16,7 +16,7 @@ describe("StatusHeader", () => {
       const { container } = render(<StatusHeader status="found" foundPage={5} />);
       // "Verified" text was removed - the checkmark icon is self-explanatory
       // Just verifies the header renders with page info
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
     });
 
     it("renders 'Found on different page' for found_on_other_page", () => {
@@ -33,7 +33,7 @@ describe("StatusHeader", () => {
 
     it("renders 'Verifying...' for pending status", () => {
       const { container } = render(<StatusHeader status="pending" />);
-      expect(container.textContent).toContain("Verifying...");
+      expect(container.textContent).toContain("Verifying\u2026");
     });
   });
 
@@ -46,7 +46,7 @@ describe("StatusHeader", () => {
       const { container } = render(<StatusHeader status="found" foundPage={5} expectedPage={5} />);
 
       // Should show "Pg 5" once (pages match, no arrow)
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
       // Should NOT have arrow (pages match)
       expect(container.textContent).not.toContain("→");
     });
@@ -55,7 +55,7 @@ describe("StatusHeader", () => {
       const { container } = render(<StatusHeader status="found_on_other_page" foundPage={7} expectedPage={5} />);
 
       // Should show arrow format: Pg 5 → 7
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
       expect(container.textContent).toContain("→");
       expect(container.textContent).toContain("7");
     });
@@ -66,14 +66,14 @@ describe("StatusHeader", () => {
       // For same page but different line, foundPage === expectedPage,
       // so no arrow should appear
       expect(container.textContent).not.toContain("→");
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
     });
 
     it("shows only expectedPage when status is not_found (no foundPage)", () => {
       const { container } = render(<StatusHeader status="not_found" expectedPage={5} />);
 
       // Should show expected page for not_found
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
     });
 
     it("shows nothing when no page info provided", () => {
@@ -87,7 +87,7 @@ describe("StatusHeader", () => {
       const { container } = render(<StatusHeader status="found" foundPage={5} expectedPage={undefined} />);
 
       // Should show foundPage
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
       // No arrow (no expected page to compare)
       expect(container.textContent).not.toContain("→");
     });
@@ -103,15 +103,15 @@ describe("StatusHeader", () => {
       const { container } = render(<StatusHeader status="found" foundPage={5} anchorText="increased by 15%" />);
 
       expect(container.textContent).toContain("Verified");
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
     });
 
     it("renders status text for not found citations", () => {
       // Status text "Not found" is now shown
       const { container } = render(<StatusHeader status="not_found" expectedPage={5} anchorText="increased by 15%" />);
 
-      expect(container.textContent).toContain("Not found");
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("Not Found");
+      expect(container.textContent).toContain("p.\u202f5");
     });
 
     it("shows arrow format page badge for partial match", () => {
@@ -120,7 +120,7 @@ describe("StatusHeader", () => {
       );
 
       // Should show arrow format: Pg 5 → 7 (not strikethrough)
-      expect(container.textContent).toContain("p.5");
+      expect(container.textContent).toContain("p.\u202f5");
       expect(container.textContent).toContain("→");
       expect(container.textContent).toContain("7");
     });

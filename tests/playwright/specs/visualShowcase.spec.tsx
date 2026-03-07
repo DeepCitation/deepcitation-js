@@ -358,7 +358,7 @@ test.describe("Popover Showcase - Interactive Click", () => {
     await expect(popover).toBeVisible();
 
     // The popover should contain the "Not found" status header
-    await expect(popover).toContainText("Not found");
+    await expect(popover).toContainText("Not Found");
   });
 
   test("clicking pending citation shows loading state", async ({ mount, page }) => {
@@ -611,6 +611,6 @@ test.describe("Popover Showcase - Interactive Click Dark Mode", () => {
     await expect(popover).toBeVisible();
 
     // The popover should contain the "Not found" status header
-    await expect(popover).toContainText("Not found");
+    await expect(popover).toContainText("Not Found");
   });
 });
