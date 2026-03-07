@@ -82,7 +82,8 @@ const response = await yourLLM.chat({
 
 // 3) Verify citations
 const { verifications } = await deepCitation.verify({ llmOutput: response.content });
-// IMPORTANT: 'verifications' is a Record<string, Verification> (an object map), not an array.
+// IMPORTANT: 'verifications' is a Record<string, Verification> (object map, not an array).
+// Use Object.keys(verifications).length to count results, not .length.
 
 // 4) Strip citation metadata before showing model text to users
 const visibleText = extractVisibleText(response.content);

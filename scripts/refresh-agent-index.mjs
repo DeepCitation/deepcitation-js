@@ -415,7 +415,8 @@ function inventoryPublicDocs(gitInfo) {
     const sha = data.commit_sha;
     let status = "NO_TRACKING";
     let commits = 0;
-    const threshold = parseInt(data.stale_after_commits || "20", 10);
+    const parsedThreshold = parseInt(data.stale_after_commits || "20", 10);
+    const threshold = Number.isNaN(parsedThreshold) ? 20 : parsedThreshold;
 
     if (sha && watchPaths.length > 0) {
       try {
@@ -521,7 +522,8 @@ function checkReviewNoteStaleness() {
     const { data, watchPaths } = parseYamlFrontmatter(content);
 
     const sha = data.commit_sha;
-    const threshold = parseInt(data.stale_after_commits || "20", 10);
+    const parsedThreshold = parseInt(data.stale_after_commits || "20", 10);
+    const threshold = Number.isNaN(parsedThreshold) ? 20 : parsedThreshold;
 
     if (!sha || watchPaths.length === 0) {
       results.push({ file, status: "UNKNOWN", commits: 0, threshold, reason: "missing frontmatter" });
