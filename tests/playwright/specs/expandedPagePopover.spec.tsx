@@ -11,6 +11,7 @@ import { GeneratedImageCitation } from "./GeneratedImageCitation";
 
 const baseCitation: Citation = {
   type: "document",
+  attachmentId: "att-1",
   citationNumber: 1,
   anchorText: "Functional status",
   fullPhrase: "Functional status: He is at baseline, no assistance needed, independent ADLs",
@@ -23,20 +24,24 @@ const baseCitation: Citation = {
 const tallImageBase64 =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAZAAQAAAACpxxs4AAACPklEQVR42u3NMQEAAAwCIPuX1hZ7BgVID0QikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUQikUgkEolEIpFIJBKJRCKRSCQSiUTyNRnb9LNzJVTWGwAAAABJRU5ErkJggg==";
 
-// Verification with pages[] array so resolveExpandedImage finds a match page,
-// enabling the "Expand to full page" button.
 const verificationWithTallImage: Verification = {
   status: "found",
+  attachmentId: "att-1",
   verifiedMatchSnippet: "Functional status: He is at baseline",
   document: {
     verifiedPageNumber: 5,
-    verificationImageSrc: tallImageBase64,
   },
-  pages: [
+  evidence: {
+    src: tallImageBase64,
+  },
+};
+
+const pageImagesByAttachmentId = {
+  "att-1": [
     {
       pageNumber: 5,
       dimensions: { width: 800, height: 1600 },
-      source: tallImageBase64,
+      imageUrl: tallImageBase64,
       isMatchPage: true,
     },
   ],
@@ -99,17 +104,21 @@ async function dispatchCtrlWheel(
   clientY: number,
   deltaY: number,
 ) {
-  await locator.evaluate(
+  // Dispatch on the img element so the useWheelZoom wrapper.contains(e.target) check
+  // passes — the wheel handler rejects events whose target is outside the image wrapper.
+  const target = locator.locator("img").first();
+  await target.evaluate(
     (el, args) => {
-      const event = new WheelEvent("wheel", {
-        deltaY: args.deltaY,
-        clientX: args.clientX,
-        clientY: args.clientY,
-        ctrlKey: true,
-        bubbles: true,
-        cancelable: true,
-      });
-      el.dispatchEvent(event);
+      el.dispatchEvent(
+        new WheelEvent("wheel", {
+          deltaY: args.deltaY,
+          clientX: args.clientX,
+          clientY: args.clientY,
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     },
     { clientX, clientY, deltaY },
   );
@@ -126,7 +135,7 @@ test.describe("Expanded-Page Basics", () => {
   }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -143,7 +152,7 @@ test.describe("Expanded-Page Basics", () => {
   test("expanded page surface uses contrasted canvas background in light mode", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -161,7 +170,7 @@ test.describe("Expanded-Page Basics", () => {
   test("scroll container has usable height, not collapsed to content", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -177,7 +186,7 @@ test.describe("Expanded-Page Basics", () => {
   test("tall image is scrollable within the container", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -199,7 +208,7 @@ test.describe("Expanded-Page Basics - Dark Mode", () => {
   test("expanded page surface uses contrasted canvas background in dark mode", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -225,7 +234,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
   test("desktop: trigger near top — popover stays in viewport", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "20px", paddingLeft: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -236,7 +245,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
   test("desktop: trigger in center — popover stays in viewport", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "300px", paddingLeft: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -247,7 +256,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
   test("desktop: trigger near bottom — popover stays in viewport", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "600px", paddingLeft: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -259,7 +268,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     await mount(
       <div style={{ position: "relative", height: "2600px" }}>
         <div style={{ position: "absolute", top: "1600px", left: "2px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>
       </div>,
     );
@@ -280,7 +289,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     test("tablet: trigger near top — popover stays in viewport", async ({ mount, page }) => {
       await mount(
         <div style={{ paddingTop: "20px", paddingLeft: "50px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>,
       );
 
@@ -291,7 +300,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     test("tablet: trigger in center — popover stays in viewport", async ({ mount, page }) => {
       await mount(
         <div style={{ paddingTop: "450px", paddingLeft: "50px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>,
       );
 
@@ -302,7 +311,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     test("tablet: trigger near bottom — popover stays in viewport", async ({ mount, page }) => {
       await mount(
         <div style={{ paddingTop: "900px", paddingLeft: "50px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>,
       );
 
@@ -313,7 +322,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     test("tablet: image width fills available space", async ({ mount, page }) => {
       await mount(
         <div style={{ paddingTop: "100px", paddingLeft: "50px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>,
       );
 
@@ -331,7 +340,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     test("tablet: scroll container fills available height", async ({ mount, page }) => {
       await mount(
         <div style={{ paddingTop: "100px", paddingLeft: "50px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>,
       );
 
@@ -356,7 +365,7 @@ test.describe("Expanded-Page Viewport Containment", () => {
     }) => {
       await mount(
         <div style={{ paddingTop: "300px", paddingLeft: "100px" }}>
-          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+          <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>,
       );
 
@@ -374,7 +383,7 @@ test.describe("Expanded-Page Popover Sizing", () => {
   test("popover width exceeds default for tall images", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -388,7 +397,7 @@ test.describe("Expanded-Page Popover Sizing", () => {
   test("popover height fills most of viewport", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -482,7 +491,7 @@ test.describe("Expanded-Page Popover Sizing", () => {
   test("popover shell width stays stable during wheel zoom", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -506,7 +515,7 @@ test.describe("Expanded-Page Popover Sizing", () => {
   test("wheel zoom preserves non-zero viewport scroll (no top-left reset)", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 
@@ -561,7 +570,7 @@ test.describe("Expanded-Page Regression: Keyhole Strip", () => {
   test("keyhole strip remains at normal dimensions before expanding", async ({ mount, page }) => {
     await mount(
       <div style={{ padding: "100px" }}>
-        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} />
+        <CitationComponent citation={baseCitation} verification={verificationWithTallImage} pageImagesByAttachmentId={pageImagesByAttachmentId} />
       </div>,
     );
 

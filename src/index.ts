@@ -17,21 +17,21 @@ export {
 export type {
   AttachmentResponse,
   CitationInput,
+  ConvertedPdfDownloadPolicy,
   DeepCitationConfig,
   DeepCitationLogger,
   DeleteAttachmentResponse,
-  ExpirationValue,
   ExtendExpirationDuration,
   ExtendExpirationOptions,
   ExtendExpirationResponse,
-  FileDataPart,
   FileInput,
   GetAttachmentOptions,
   PrepareAttachmentsResult,
+  PreparedAttachment,
   UploadFileOptions,
   UploadFileResponse,
   UrlCacheInfo,
-  UrlSourceInfo,
+  UrlSource,
   VerifyCitationsOptions,
   VerifyCitationsResponse,
 } from "./client/index.js";
@@ -122,21 +122,16 @@ export {
   generateCitationKey,
   generateVerificationKey,
 } from "./react/utils.js";
-// Proof URL Builders
-export type { ProofUrlOptions } from "./rendering/proofUrl.js";
-export { buildProofUrl, buildProofUrls, buildSnippetImageUrl } from "./rendering/proofUrl.js";
-export type { DeepTextItem, IVertex, ScreenBox, SourcePage } from "./types/boxes.js";
+export type { DeepTextItem, ScreenBox } from "./types/boxes.js";
 // Types
 export type {
   Citation,
-  CitationBase,
   // Record types (object dictionaries, NOT arrays)
   CitationRecord,
   CitationStatus,
   CitationType,
   DocumentCitation,
-  OutputImageFormat,
-  SourceMeta,
+  ImageFormat,
   // Source types for categorization
   SourceType,
   UrlCitation,
@@ -144,7 +139,7 @@ export type {
   VerifyCitationRequest,
   VerifyCitationResponse,
 } from "./types/citation.js";
-export { DEFAULT_OUTPUT_IMAGE_FORMAT } from "./types/citation.js";
+export { DEFAULT_OUTPUT_IMAGE_FORMAT, isDocumentCitation, isUrlCitation } from "./types/citation.js";
 export type {
   SearchAttempt,
   SearchMethod,
@@ -157,16 +152,14 @@ export type {
 export type {
   ContentMatchStatus,
   DocumentVerificationResult,
-  ProofHosting,
+  DownloadLink,
+  EvidenceImage,
+  FileDownload,
+  PageImage,
+  PageImagesStatus,
   UrlAccessStatus,
   UrlVerificationResult,
   Verification,
-  VerificationPage,
-} from "./types/verification.js";
-export {
-  BLANK_VERIFICATION,
-  NOT_FOUND_VERIFICATION_INDEX,
-  PENDING_VERIFICATION_INDEX,
 } from "./types/verification.js";
 // File validation
 export {

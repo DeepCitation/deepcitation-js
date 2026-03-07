@@ -251,8 +251,8 @@ test("links to open-source prompts", () => {
   expect(skillContent).toContain("github.com/DeepCitation/deepcitation");
 });
 
-test("links to dashboard for API key", () => {
-  expect(skillContent).toContain("deepcitation.com/usage");
+test("links to keys page for API key", () => {
+  expect(skillContent).toContain("deepcitation.com/keys");
 });
 
 console.log("\n" + "=".repeat(50));

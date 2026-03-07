@@ -10,9 +10,11 @@ import type { SourceCitationGroup } from "../CitationDrawer.types";
 export function DrawerInteractionHarness({
   groups,
   startOpen = true,
+  pageImagesByAttachmentId,
 }: {
   groups: SourceCitationGroup[];
   startOpen?: boolean;
+  pageImagesByAttachmentId?: Record<string, import("../../types/verification").PageImage[]>;
 }) {
   const [isOpen, setIsOpen] = useState(startOpen);
 
@@ -29,6 +31,7 @@ export function DrawerInteractionHarness({
         citationGroups={groups}
         title="Citations"
         position="bottom"
+        pageImagesByAttachmentId={pageImagesByAttachmentId}
       />
     </div>
   );

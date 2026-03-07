@@ -31,9 +31,6 @@ const verification: Verification = {
 const missFoundCitation: Verification = {
   label: "test",
   status: "not_found",
-  document: {
-    verifiedPageNumber: -1, // NOT_FOUND_VERIFICATION_INDEX
-  },
 };
 
 const partialFoundCitation: Verification = {

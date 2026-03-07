@@ -1,6 +1,6 @@
 import type React from "react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { VIEWPORT_MARGIN_PX } from "../constants.js";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { POPOVER_WIDTH_DEFAULT_PX, VIEWPORT_MARGIN_PX } from "../constants.js";
 import type { PopoverViewState } from "../DefaultPopoverContent.js";
 import { SCROLL_LOCK_LAYOUT_SHIFT_EVENT } from "../scrollLock.js";
 
@@ -57,25 +57,7 @@ export function usePopoverAlignOffset(
   projectedWidthPx?: number | null,
 ): number {
   const [offset, setOffset] = useState(0);
-
-  // Pre-render alignment for deterministic first-frame placement.
-  // When projected width is known, avoid waiting for DOM measurement/ResizeObserver.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: triggerRef has stable identity
-  const precomputedOffset = useMemo(() => {
-    if (!isOpen) return null;
-    if (
-      projectedWidthPx === null ||
-      projectedWidthPx === undefined ||
-      !Number.isFinite(projectedWidthPx) ||
-      projectedWidthPx <= 0
-    ) {
-      return null;
-    }
-    const triggerRect = triggerRef.current?.getBoundingClientRect();
-    if (!triggerRect) return null;
-    const viewportWidth = document.documentElement.clientWidth;
-    return computeAlignOffset(viewportWidth, triggerRect.left, triggerRect.width, projectedWidthPx);
-  }, [isOpen, popoverViewState, projectedWidthPx, triggerRef]);
+  const prevOpenRef = useRef(isOpen);
 
   // Shared measurement logic — called from useLayoutEffect and resize listener.
   const recompute = useCallback(() => {
@@ -95,7 +77,7 @@ export function usePopoverAlignOffset(
     // Use clientWidth (visible viewport excluding scrollbar) instead of
     // window.innerWidth (which includes scrollbar like CSS 100dvw).
     const viewportWidth = document.documentElement.clientWidth;
-    const popoverWidth =
+    let popoverWidth =
       projectedWidthPx !== null &&
       projectedWidthPx !== undefined &&
       Number.isFinite(projectedWidthPx) &&
@@ -103,12 +85,21 @@ export function usePopoverAlignOffset(
         ? projectedWidthPx
         : (popoverContentRef.current?.getBoundingClientRect().width ?? 0);
     if (popoverWidth <= 0) {
-      // Preserve the previous offset to avoid a one-frame left snap while
-      // the popover is remeasuring after a view-state change.
-      return;
+      // Fall back to the default width instead of preserving a stale offset.
+      // This prevents reopening with an offset from a previous expanded view.
+      popoverWidth = POPOVER_WIDTH_DEFAULT_PX;
     }
     setOffset(computeAlignOffset(viewportWidth, triggerRect.left, triggerRect.width, popoverWidth));
   }, [isOpen, triggerRef, popoverContentRef, projectedWidthPx]);
+
+  // Reset alignment at the start of a new open cycle so stale offsets from a
+  // previous expanded view can't leak into the next open.
+  useLayoutEffect(() => {
+    if (isOpen && !prevOpenRef.current) {
+      setOffset(0);
+    }
+    prevOpenRef.current = isOpen;
+  }, [isOpen]);
 
   // Initial computation + re-run on viewState change (before paint).
   // Also schedule one post-layout pass: initial open can measure width=0 when
@@ -177,5 +168,5 @@ export function usePopoverAlignOffset(
     return () => ro.disconnect();
   }, [isOpen, recompute, projectedWidthPx]);
 
-  return precomputedOffset ?? offset;
+  return offset;
 }

@@ -40,12 +40,13 @@ export function reactCompilerPlugin(): Plugin {
             contents: result?.code ?? code,
             loader: isTSX ? "tsx" : "ts",
           };
-        } catch {
+        } catch (err) {
           // Compiler bailed out on this file (e.g. sync ref updates during render).
           // Fall back to uncompiled source — the component works fine, it just won't
           // get automatic memoization from the compiler.
           const file = basename(args.path);
-          console.warn(`[react-compiler] skipped ${file} (compiler bailout)`);
+          const msg = err instanceof Error ? `: ${err.message}` : "";
+          console.warn(`[react-compiler] skipped ${file} (compiler bailout${msg})`);
           return { contents: code, loader: isTSX ? "tsx" : "ts" };
         }
       });

@@ -6,6 +6,7 @@ import { AuthenticationError, type DeepCitationError, RateLimitError, ServerErro
 import type {
   AttachmentResponse,
   CitationInput,
+  ConvertedPdfDownloadPolicy,
   ConvertFileInput,
   ConvertFileResponse,
   DeepCitationConfig,
@@ -13,7 +14,6 @@ import type {
   DeleteAttachmentResponse,
   ExtendExpirationOptions,
   ExtendExpirationResponse,
-  FileDataPart,
   FileInput,
   GetAttachmentOptions,
   PrepareAttachmentsResult,
@@ -154,6 +154,8 @@ export class DeepCitation {
   private readonly apiUrl: string;
   private readonly logger: DeepCitationLogger;
   private readonly endUserId?: string;
+  private readonly endFileId?: string;
+  private readonly convertedPdfDownloadPolicy: ConvertedPdfDownloadPolicy;
 
   /**
    * Request deduplication cache for verify calls.
@@ -199,11 +201,23 @@ export class DeepCitation {
     this.uploadLimiter = createConcurrencyLimiter(config.maxUploadConcurrency ?? DEFAULT_UPLOAD_CONCURRENCY);
     this.logger = config.logger ?? {};
     this.endUserId = config.endUserId;
+    this.endFileId = config.endFileId;
+    this.convertedPdfDownloadPolicy = config.convertedPdfDownloadPolicy ?? "url_only";
   }
 
   /** Resolve endUserId: per-request override wins over instance default. */
   private resolveEndUserId(override?: string): string | undefined {
     return override ?? this.endUserId;
+  }
+
+  /** Resolve endFileId: per-request override wins over instance default. */
+  private resolveEndFileId(override?: string): string | undefined {
+    return override ?? this.endFileId;
+  }
+
+  /** Resolve converted PDF download policy: per-request override wins over instance default. */
+  private resolveConvertedPdfDownloadPolicy(override?: ConvertedPdfDownloadPolicy): ConvertedPdfDownloadPolicy {
+    return override ?? this.convertedPdfDownloadPolicy;
   }
 
   /**
@@ -278,7 +292,11 @@ export class DeepCitation {
     if (options?.attachmentId) formData.append("attachmentId", options.attachmentId);
     if (options?.filename) formData.append("filename", options.filename);
     const resolvedEndUserId = this.resolveEndUserId(options?.endUserId);
+    const resolvedEndFileId = this.resolveEndFileId(options?.endFileId);
+    const convertedPdfDownloadPolicy = this.resolveConvertedPdfDownloadPolicy(options?.convertedPdfDownloadPolicy);
     if (resolvedEndUserId) formData.append("endUserId", resolvedEndUserId);
+    if (resolvedEndFileId) formData.append("endFileId", resolvedEndFileId);
+    formData.append("convertedPdfDownloadPolicy", convertedPdfDownloadPolicy);
 
     const response = await fetch(`${this.apiUrl}/prepareAttachments`, {
       method: "POST",
@@ -337,6 +355,8 @@ export class DeepCitation {
     }
 
     const resolvedEndUserId = this.resolveEndUserId(inputObj.endUserId);
+    const resolvedEndFileId = this.resolveEndFileId(inputObj.endFileId);
+    const convertedPdfDownloadPolicy = this.resolveConvertedPdfDownloadPolicy(inputObj.convertedPdfDownloadPolicy);
     this.logger.info?.("Converting to PDF", { url, filename, attachmentId });
     let response: Response;
 
@@ -347,7 +367,14 @@ export class DeepCitation {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, filename, attachmentId, endUserId: resolvedEndUserId }),
+        body: JSON.stringify({
+          url,
+          filename,
+          attachmentId,
+          endUserId: resolvedEndUserId,
+          endFileId: resolvedEndFileId,
+          convertedPdfDownloadPolicy,
+        }),
       });
     } else if (file) {
       const { blob, name } = toBlob(file, filename);
@@ -356,6 +383,8 @@ export class DeepCitation {
       if (attachmentId) formData.append("attachmentId", attachmentId);
       if (filename) formData.append("filename", filename);
       if (resolvedEndUserId) formData.append("endUserId", resolvedEndUserId);
+      if (resolvedEndFileId) formData.append("endFileId", resolvedEndFileId);
+      formData.append("convertedPdfDownloadPolicy", convertedPdfDownloadPolicy);
 
       response = await fetch(`${this.apiUrl}/convertFile`, {
         method: "POST",
@@ -399,6 +428,8 @@ export class DeepCitation {
   async prepareConvertedFile(options: PrepareConvertedFileOptions): Promise<UploadFileResponse> {
     this.logger.info?.("Preparing converted file", { attachmentId: options.attachmentId });
     const resolvedEndUserId = this.resolveEndUserId(options.endUserId);
+    const resolvedEndFileId = this.resolveEndFileId(options.endFileId);
+    const convertedPdfDownloadPolicy = this.resolveConvertedPdfDownloadPolicy(options.convertedPdfDownloadPolicy);
 
     const response = await fetch(`${this.apiUrl}/prepareAttachments`, {
       method: "POST",
@@ -409,6 +440,8 @@ export class DeepCitation {
       body: JSON.stringify({
         attachmentId: options.attachmentId,
         endUserId: resolvedEndUserId,
+        endFileId: resolvedEndFileId,
+        convertedPdfDownloadPolicy,
       }),
     });
 
@@ -463,6 +496,8 @@ export class DeepCitation {
     });
 
     const resolvedEndUserId = this.resolveEndUserId(options.endUserId);
+    const resolvedEndFileId = this.resolveEndFileId(options.endFileId);
+    const convertedPdfDownloadPolicy = this.resolveConvertedPdfDownloadPolicy(options.convertedPdfDownloadPolicy);
     const response = await fetch(`${this.apiUrl}/prepareAttachments`, {
       method: "POST",
       headers: {
@@ -476,6 +511,8 @@ export class DeepCitation {
         unsafeFastUrlOutput: options.unsafeFastUrlOutput,
         skipCache: options.skipCache,
         endUserId: resolvedEndUserId,
+        endFileId: resolvedEndFileId,
+        convertedPdfDownloadPolicy,
       }),
     });
 
@@ -502,7 +539,7 @@ export class DeepCitation {
    *
    * @example
    * ```typescript
-   * const { fileDataParts, deepTextPromptPortion } = await deepcitation.prepareAttachments([
+   * const { fileDataParts, deepTextPromptPortion, attachments } = await deepcitation.prepareAttachments([
    *   { file: pdfBuffer, filename: "report.pdf" },
    *   { file: invoiceBuffer, filename: "invoice.pdf" },
    * ]);
@@ -520,40 +557,56 @@ export class DeepCitation {
    */
   async prepareAttachments(files: FileInput[]): Promise<PrepareAttachmentsResult> {
     if (files.length === 0) {
-      return { fileDataParts: [], deepTextPromptPortion: "" };
+      return { fileDataParts: [], deepTextPromptPortion: "", attachments: [] };
     }
 
     this.logger.info?.("Preparing files", { count: files.length });
 
     // Upload files with concurrency limit to prevent overwhelming network/server
     // Performance fix: limits concurrent uploads to DEFAULT_UPLOAD_CONCURRENCY
-    const uploadPromises = files.map(({ file, filename, attachmentId, endUserId }) =>
-      this.uploadLimiter(() =>
-        this.uploadFile(file, { filename, attachmentId, endUserId }).then(result => ({
-          result,
-          filename,
-        })),
-      ),
+    const uploadPromises = files.map(
+      ({ file, filename, attachmentId, endUserId, endFileId, convertedPdfDownloadPolicy }) =>
+        this.uploadLimiter(() =>
+          this.uploadFile(file, { filename, attachmentId, endUserId, endFileId, convertedPdfDownloadPolicy }).then(
+            result => ({
+              result,
+              filename,
+            }),
+          ),
+        ),
     );
 
     const uploadResults = await Promise.all(uploadPromises);
 
-    const fileDataParts: FileDataPart[] = uploadResults.map(({ result, filename }) => ({
+    const fileDataParts: Array<{ attachmentId: string; filename?: string }> = uploadResults.map(
+      ({ result, filename }) => ({
+        attachmentId: result.attachmentId,
+        filename: filename || result.metadata?.filename,
+      }),
+    );
+
+    const attachments = uploadResults.map(({ result }) => ({
       attachmentId: result.attachmentId,
-      filename: filename || result.metadata?.filename,
+      urlSource: result.urlSource,
+      originalDownload: result.originalDownload,
+      convertedDownload: result.convertedDownload,
+      pageImages: result.pageImages,
+      pageImagesStatus: result.pageImagesStatus,
     }));
 
     // Combine all file texts into a single deepTextPromptPortion string
     const deepTextPromptPortion = uploadResults.map(({ result }) => result.deepTextPromptPortion).join("\n\n");
 
     this.logger.info?.("Prepare files complete", { count: fileDataParts.length });
-    return { fileDataParts, deepTextPromptPortion };
+    return { fileDataParts, deepTextPromptPortion, attachments };
   }
 
   /**
    * @deprecated Use `prepareAttachments()` (plural) instead. This method will be removed in a future major release.
    *
    * Backward-compatible alias that accepts a single file input and delegates to `prepareAttachments`.
+   * The return type is `PrepareAttachmentsResult` (plural) — use `result.attachments[0]` to access
+   * the single prepared attachment.
    */
   async prepareAttachment(file: FileInput): Promise<PrepareAttachmentsResult> {
     return this.prepareAttachments([file]);
@@ -569,7 +622,7 @@ export class DeepCitation {
    * @param attachmentId - The attachment ID returned from uploadFile
    * @param citations - Citations to verify (from getAllCitationsFromLlmOutput)
    * @param options - Optional verification options
-   * @returns Verification results with status and proof images
+   * @returns Verification results with status and verification artifacts
    *
    * @example
    * ```typescript
@@ -626,11 +679,7 @@ export class DeepCitation {
     // Note: We use Object.values, not Object.entries, because the map key (citation number)
     // is just a display identifier - verification results depend only on citation content
     const citationKeys = Object.values(citationMap)
-      .map(citation => {
-        const baseKey = generateCitationKey(citation);
-        const selectionKey = citation.type !== "url" && citation.selection ? JSON.stringify(citation.selection) : "";
-        return `${baseKey}:${selectionKey}`;
-      })
+      .map(citation => generateCitationKey(citation))
       .sort()
       .join("|");
     const rawKey = `${attachmentId}:${citationKeys}:${options?.outputImageFormat || "avif"}`;
@@ -648,10 +697,6 @@ export class DeepCitation {
       return cached.promise;
     }
 
-    if (options?.proofConfig && !options?.generateProofUrls) {
-      console.warn("DeepCitation: proofConfig is ignored when generateProofUrls is not true");
-    }
-
     const resolvedEndUserId = this.resolveEndUserId(options?.endUserId);
     this.logger.info?.("Verifying citations", { attachmentId, citationCount });
     const requestUrl = `${this.apiUrl}/verifyCitations`;
@@ -660,8 +705,6 @@ export class DeepCitation {
         attachmentId,
         citations: citationMap,
         outputImageFormat: options?.outputImageFormat || "avif",
-        generateProofUrls: options?.generateProofUrls,
-        proofConfig: options?.generateProofUrls ? options?.proofConfig : undefined,
         endUserId: resolvedEndUserId,
       },
     };
@@ -684,7 +727,9 @@ export class DeepCitation {
         throw await createApiError(response, "Verification");
       }
 
-      return (await response.json()) as VerifyCitationsResponse;
+      const result = (await response.json()) as VerifyCitationsResponse;
+
+      return result;
     })();
 
     // Force cleanup if cache is at or approaching the limit to prevent memory leaks
@@ -722,7 +767,7 @@ export class DeepCitation {
    *
    * @param input - Object containing llmOutput and optional outputImageFormat
    * @param citations - Optional pre-parsed citations (skips parsing if provided)
-   * @returns Verification results with status and proof images
+   * @returns Verification results with status and verification artifacts
    *
    * @example
    * ```typescript
@@ -736,7 +781,7 @@ export class DeepCitation {
    * ```
    */
   async verify(input: VerifyInput, citations?: { [key: string]: Citation }): Promise<VerifyCitationsResponse> {
-    const { llmOutput, outputImageFormat = "avif", generateProofUrls, proofConfig, endUserId } = input;
+    const { llmOutput, outputImageFormat = "avif", endUserId } = input;
 
     // Parse citations from LLM output
     if (!citations) citations = getAllCitationsFromLlmOutput(llmOutput);
@@ -771,8 +816,6 @@ export class DeepCitation {
         verificationPromises.push(
           this.verifyAttachment(attachmentId, fileCitations, {
             outputImageFormat,
-            generateProofUrls,
-            proofConfig,
             endUserId,
           }),
         );
@@ -785,17 +828,15 @@ export class DeepCitation {
 
     const results = await Promise.all(verificationPromises);
     const allVerifications: VerifyCitationsResponse["verifications"] = {};
-    let downloadUrl: string | undefined;
     for (const result of results) {
       Object.assign(allVerifications, result.verifications);
-      if (result.downloadUrl) downloadUrl = result.downloadUrl;
     }
 
     for (const key of Object.keys(skippedCitations)) {
       allVerifications[key] = { status: "skipped" };
     }
 
-    return { verifications: allVerifications, downloadUrl };
+    return { verifications: allVerifications };
   }
 
   /**

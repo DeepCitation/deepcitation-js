@@ -13,7 +13,8 @@ Run these before opening a PR:
 5. `npm run size`
 6. Verify all new public functions/types are exported from `src/index.ts` or `src/react/index.ts`.
 7. If you extracted a shared constant/utility, remove remaining duplicates.
-8. Ensure PR description matches diff scope (`git diff main...HEAD --stat`).
+8. Verify all user-facing strings and aria-labels use i18n keys (no hardcoded text). See `i18n-policy.md`.
+9. Ensure PR description matches diff scope (`git diff main...HEAD --stat`).
 
 `npm run check:fix` is required before lint because CI runs `biome ci ./src` in check-only mode.
 
@@ -58,6 +59,33 @@ Use existing utilities in `src/utils/` and avoid ad-hoc equivalents.
 - Keep each variable/function/class in one canonical definition file.
 - Import symbols from canonical locations directly.
 - Type-only re-exports are acceptable.
+
+## Performance
+
+- No N+1 query patterns
+- No performance anti-patterns
+- No unnecessary re-renders, or inefficient algorithms
+- `useMemo`/`useCallback` dependency arrays complete
+
+## Enhance Clarity: Simplify code structure by:
+
+- Reducing unnecessary complexity and nesting
+- Eliminating redundant code and abstractions
+- Improving readability through clear variable and function names
+- Consolidating related logic
+- Removing unnecessary comments that describe obvious code
+- IMPORTANT: Avoid nested ternary operators - prefer switch statements or if/else chains for multiple conditions
+- Choose clarity over brevity - explicit code is often better than overly compact code
+
+
+## Maintain Balance: Avoid over-simplification that could:
+
+- Reduce code clarity or maintainability
+- Create overly clever solutions that are hard to understand
+- Combine too many concerns into single functions or components
+- Remove helpful abstractions that improve code organization
+- Prioritize "fewer lines" over readability (e.g., nested ternaries, dense one-liners)
+- Make the code harder to debug or extend
 
 ## PR Description Rules
 

@@ -1,6 +1,6 @@
 import type { Citation, CitationStatus } from "../types/citation.js";
 import type { SearchStatus } from "../types/search.js";
-import type { Verification } from "../types/verification.js";
+import type { ContentMatchStatus, Verification } from "../types/verification.js";
 
 /**
  * Indicator style variant for verification status display.
@@ -96,13 +96,8 @@ export type UrlFetchStatus =
  * | `not_checked` | Content not yet verified (URL inaccessible or pending)   |
  * | `inconclusive`| Could not determine match (e.g., dynamic content)        |
  */
-export type ContentMatchStatus =
-  | "exact" // Content exactly matches AI's claim
-  | "partial" // Content partially matches (paraphrase, summary)
-  | "mismatch" // URL exists but content doesn't match claim
-  | "not_found" // Claimed content not found on page
-  | "not_checked" // Content not yet verified (URL inaccessible or pending)
-  | "inconclusive"; // Could not determine match (e.g., dynamic content)
+// ContentMatchStatus is imported from ../types/verification.js (canonical location)
+export type { ContentMatchStatus };
 
 /**
  * URL citation metadata.
@@ -379,6 +374,17 @@ export interface CitationEventHandlers {
    * - `KeyboardEvent`: Keyboard activation (Enter/Space)
    */
   onClick?: (
+    citation: Citation,
+    citationKey: string,
+    event: React.MouseEvent | React.TouchEvent | React.KeyboardEvent,
+  ) => void;
+  /**
+   * Called after the default click behavior runs.
+   *
+   * Unlike `onClick`, this does not replace default behavior. Use this for
+   * side effects that should run while preserving built-in popover interactions.
+   */
+  onClickAfterDefault?: (
     citation: Citation,
     citationKey: string,
     event: React.MouseEvent | React.TouchEvent | React.KeyboardEvent,

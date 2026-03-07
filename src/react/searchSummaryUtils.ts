@@ -1,8 +1,8 @@
 import type { DeepTextItem } from "../types/boxes.js";
+import { isDocumentCitation } from "../types/citation.js";
 import type { MatchedVariation, SearchAttempt, SearchMethod } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
 import { defaultTranslator, type MessageKey, type TranslateFunction } from "./i18n.js";
-import { isDocumentCitation } from "./utils.js";
 import { getVariationLabel } from "./variationLabels.js";
 
 // =============================================================================
@@ -278,16 +278,17 @@ export function buildIntentSummary(
 }
 
 /**
- * Find textItems for a specific page from the verification's pages array.
+ * Find textItems for a specific page from verification.document.textItems.
  * Returns undefined if no textItems are available.
  */
 function findPageTextItems(
   verification: Verification | null | undefined,
   pageNumber: number | null | undefined,
 ): DeepTextItem[] | undefined {
-  if (!verification?.pages || !pageNumber) return undefined;
-  const page = verification.pages.find(p => p.pageNumber === pageNumber);
-  return page?.textItems;
+  if (!pageNumber || !verification?.document?.textItems) return undefined;
+  const matchPage = verification.document?.verifiedPageNumber;
+  if (!matchPage || matchPage !== pageNumber) return undefined;
+  return verification.document.textItems;
 }
 
 export interface SearchQueryGroup {

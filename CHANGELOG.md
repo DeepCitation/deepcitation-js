@@ -13,6 +13,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DownloadIcon` SVG component exported from `deepcitation/react`.
 - `footnote` display variant — a clean numeric footnote marker with neutral gray default and status-aware coloring after verification.
 
+### Breaking Changes
+
+#### Removed constants (`"deepcitation"`)
+- Removed: `NOT_FOUND_VERIFICATION_INDEX` — Use instead: `verification.status === "not_found"`
+- Removed: `PENDING_VERIFICATION_INDEX` — Use instead: `verification.status === "pending"`
+
+#### Renamed types
+- `OutputImageFormat` → `ImageFormat` (in `src/types/citation.ts`)
+- `UrlSourceInfo` → `UrlSource` (in `src/client/types.ts`)
+- `VerificationPage` → `PageImage` (in `src/types/verification.ts`)
+- Removed: `ExpirationValue` — no replacement
+- Removed: `ProofHosting` — no replacement
+- Removed: `IVertex` — no replacement
+
+#### Proof URL builders removed from `"deepcitation"` root
+- Before: `import { buildProofUrl, buildProofUrls, buildSnippetImageUrl, ProofUrlOptions } from "deepcitation"`
+- After: `import { buildProofUrl, buildProofUrls, buildSnippetImageUrl, ProofUrlOptions } from "deepcitation/rendering/proofUrl"`
+
+#### Verification assets model — field renames
+- Before: `verification.document.verificationImageSrc` — After: `verification.evidence.src`
+- Before: `verification.document.verificationImageDimensions` — After: `verification.evidence.dimensions`
+- Before: `VerificationPage.source` — After: `PageImage.imageUrl`
+- Removed: `verification.pages[]` — Page images are now passed separately via the `pageImagesByAttachmentId` prop on `CitationComponent` and `CitationDrawer`
+
 ### Deprecated
 
 - `prepareAttachment()` is deprecated in favor of `prepareAttachments()`. The old method remains as a compatibility alias and will be removed in the next major release.

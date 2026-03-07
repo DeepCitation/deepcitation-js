@@ -1,4 +1,10 @@
-import type { VerificationRecord } from "../types/citation.js";
+/**
+ * @internal
+ * Proof URL utilities used by internal rendering targets (HTML, GitHub, Slack renderers).
+ * These are NOT part of the public API and are no longer exported from the package root.
+ * If you were using `buildProofUrl` or `buildSnippetImageUrl` via `import from "deepcitation"`,
+ * import directly from `"deepcitation/rendering/proofUrl"` or build proof URLs manually.
+ */
 
 /**
  * Options for building proof page URLs.
@@ -51,22 +57,4 @@ export function buildProofUrl(proofId: string, options: ProofUrlOptions): string
  */
 export function buildSnippetImageUrl(proofId: string, options: ProofUrlOptions): string {
   return buildProofUrl(proofId, { ...options, format: "png", view: "snippet" });
-}
-
-/**
- * Build proof URLs for all citations in a verification record.
- * Returns a map of citationKey -> proofUrl.
- *
- * Uses `proofId` from each verification if available, otherwise falls back
- * to the citationKey as the proof ID.
- */
-export function buildProofUrls(verifications: VerificationRecord, options: ProofUrlOptions): Record<string, string> {
-  const urls: Record<string, string> = {};
-
-  for (const [citationKey, verification] of Object.entries(verifications)) {
-    const proofId = verification.proof?.proofId || citationKey;
-    urls[citationKey] = buildProofUrl(proofId, options);
-  }
-
-  return urls;
 }

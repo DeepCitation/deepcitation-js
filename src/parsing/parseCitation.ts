@@ -288,6 +288,7 @@ export const parseCitation = (
           reasoning,
         } as UrlCitation)
       : ({
+          type: "document" as const,
           attachmentId: attachmentId,
           pageNumber,
           startPageId: `page_number_${pageNumber || 1}_index_${pageIndex || 0}`,
@@ -401,6 +402,7 @@ const parseJsonCitation = (jsonCitation: unknown, citationNumber?: number): Cita
   }
 
   const citation: DocumentCitation = {
+    type: "document",
     attachmentId,
     pageNumber,
     fullPhrase,
@@ -741,22 +743,20 @@ export function groupCitationsByAttachmentIdObject(
  * const correct = { type: "url", url: "https://example.com" };
  * normalizeCitationType(correct); // unchanged
  *
- * // Document citation — passes through
+ * // Document citation — type discriminator is always injected
  * const doc = { attachmentId: "abc", pageNumber: 1 };
- * normalizeCitationType(doc); // unchanged, type stays undefined (DocumentCitation)
+ * normalizeCitationType(doc); // { type: "document", attachmentId: "abc", pageNumber: 1 }
  * ```
  *
  * @throws Error if `type` is `"url"` but `url` field is missing or empty
  */
 export function normalizeCitationType(citation: Record<string, unknown>): Citation {
-  if (citation.type === "url") {
+  if (citation.type === "url" || (typeof citation.url === "string" && citation.url.length > 0)) {
     if (typeof citation.url !== "string" || !citation.url) {
       throw new Error("URL citation missing required 'url' field");
     }
-    return citation as unknown as UrlCitation;
+    return { ...citation, type: "url" as const } as UrlCitation;
   }
-  if (typeof citation.url === "string" && citation.url.length > 0) {
-    return { ...citation, type: "url" as const } as unknown as UrlCitation;
-  }
-  return citation as unknown as DocumentCitation;
+  // No url field → DocumentCitation. Always inject the type discriminator.
+  return { ...citation, type: "document" as const } as DocumentCitation;
 }

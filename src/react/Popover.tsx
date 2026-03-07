@@ -105,12 +105,17 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     },
     forwardedRef,
   ) => {
+    // coordsRef holds the last-computed position. It is written imperatively in recomputePosition
+    // (via wrapper.style.transform) and read during render to seed the initial inline style.
+    // Invariant: coordsRef.current is always updated before wrapper.style.transform, so React
+    // re-renders never overwrite the imperative style with a stale value.
+    // React Compiler opt-out: coordsRef.current is intentionally read during render.
     const { open, onOpenChange, triggerRef, contentRef } = usePopoverContext();
     const localContentRef = React.useRef<HTMLDivElement | null>(null);
     const wrapperRef = React.useRef<HTMLDivElement | null>(null);
     const prevOpenRef = React.useRef(open);
     const { mounted: isMounted, stage: blinkStage, prefersReducedMotion } = useBlinkMotionStage(open, "container");
-    const [coords, setCoords] = React.useState<Coords>({ x: 0, y: 0 });
+    const coordsRef = React.useRef<Coords>({ x: 0, y: 0 });
     const dataState: "open" | "closed" = open ? "open" : "closed";
 
     const setContentRefs = React.useCallback(
@@ -123,21 +128,23 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     );
 
     const recomputePosition = React.useCallback(() => {
+      if (!open) return;
       const triggerEl = triggerRef.current;
       const contentEl = localContentRef.current;
-      if (!isMounted || !triggerEl || !contentEl) return;
+      const wrapper = wrapperRef.current;
+      if (!isMounted || !triggerEl || !contentEl || !wrapper) return;
       const triggerRect = triggerEl.getBoundingClientRect();
       const contentRect = contentEl.getBoundingClientRect();
       const next = computePosition(triggerRect, contentRect, side, align, sideOffset, alignOffset);
-      setCoords(prev =>
-        Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 ? prev : { x: next.x, y: next.y },
-      );
-    }, [align, alignOffset, isMounted, side, sideOffset, triggerRef]);
+      if (Math.abs(coordsRef.current.x - next.x) < 0.5 && Math.abs(coordsRef.current.y - next.y) < 0.5) return;
+      coordsRef.current = next;
+      wrapper.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`;
+    }, [align, alignOffset, isMounted, open, side, sideOffset, triggerRef]);
 
     React.useLayoutEffect(() => {
-      if (!isMounted) return;
+      if (!isMounted || !open) return;
       recomputePosition();
-    }, [isMounted, recomputePosition]);
+    }, [isMounted, open, recomputePosition]);
 
     React.useEffect(() => {
       if (prevOpenRef.current && !open) {
@@ -147,7 +154,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     }, [open, onCloseAutoFocus]);
 
     React.useEffect(() => {
-      if (!isMounted) return;
+      if (!isMounted || !open) return;
 
       let rafId = 0;
       const scheduleRecompute = () => {
@@ -172,7 +179,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
         window.removeEventListener("scroll", scheduleRecompute, { capture: true });
         window.removeEventListener(SCROLL_LOCK_LAYOUT_SHIFT_EVENT, scheduleRecompute as EventListener);
       };
-    }, [isMounted, recomputePosition, triggerRef]);
+    }, [isMounted, open, recomputePosition, triggerRef]);
 
     // Refs keep document-level listeners stable — only added/removed when the
     // popover opens/closes, not on every render. Without refs, inline callback
@@ -425,7 +432,7 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
             width: "max-content",
             zIndex: `var(${Z_INDEX_POPOVER_VAR}, ${Z_INDEX_BACKDROP_DEFAULT})`,
             pointerEvents: dataState === "open" ? "auto" : "none",
-            transform: `translate3d(${coords.x}px, ${coords.y}px, 0)`,
+            transform: `translate3d(${coordsRef.current.x}px, ${coordsRef.current.y}px, 0)`,
           }}
         >
           <style>{`[data-dc-popover-content]::-webkit-scrollbar { display: none; }`}</style>

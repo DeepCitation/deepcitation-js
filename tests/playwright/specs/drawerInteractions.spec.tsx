@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/experimental-ct-react";
 import type { CitationDrawerItem, SourceCitationGroup } from "../../../src/react/CitationDrawer.types";
 import { DrawerInteractionHarness } from "../../../src/react/testing/DrawerInteractionHarness";
 import type { Citation } from "../../../src/types/citation";
-import type { Verification } from "../../../src/types/verification";
+import type { PageImage, Verification } from "../../../src/types/verification";
 
 // =============================================================================
 // TEST FIXTURES
@@ -33,6 +33,15 @@ const testProofImage = makeTestImage(800, 1000, "#e0e0e0");
 // Evidence crop — tall enough that the keyhole can't display it fully,
 // ensuring canExpand=true and aria-label="Click to expand verification image"
 const testEvidenceImage = makeTestImage(800, 400, "#b0d0ff");
+const attachmentId = "att-drawer-tests";
+
+function makePageImages(pages: number[]): PageImage[] {
+  return pages.map(pageNumber => ({
+    pageNumber,
+    imageUrl: testProofImage,
+    dimensions: { width: 800, height: 1000 },
+  }));
+}
 
 function makeCitation(overrides: Partial<Citation> & { pageNumber: number }): Citation {
   return {
@@ -48,12 +57,14 @@ function makeCitation(overrides: Partial<Citation> & { pageNumber: number }): Ci
 function makeVerification(page: number, status: "found" | "not_found" = "found"): Verification {
   return {
     status,
+    attachmentId,
     document: {
       verifiedPageNumber: page,
-      verificationImageSrc: testEvidenceImage,
-      verificationImageDimensions: { width: 800, height: 400 },
     },
-    pages: [{ pageNumber: page, source: testProofImage }],
+    evidence: {
+      src: testEvidenceImage,
+      dimensions: { width: 800, height: 400 },
+    },
   };
 }
 
@@ -127,7 +138,12 @@ async function expandToLevel3ViaPagePill(
 
 test.describe("Drawer - Page Pill Highlighting", () => {
   test("page pills render in header for multi-page citations", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -138,7 +154,12 @@ test.describe("Drawer - Page Pill Highlighting", () => {
   });
 
   test("clicking a page pill activates it (blue + X icon)", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -151,7 +172,12 @@ test.describe("Drawer - Page Pill Highlighting", () => {
   });
 
   test("clicking active page pill X deactivates it", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -169,7 +195,12 @@ test.describe("Drawer - Page Pill Highlighting", () => {
   });
 
   test("activating one page pill shows the inline expanded image for that citation", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -182,7 +213,12 @@ test.describe("Drawer - Page Pill Highlighting", () => {
   });
 
   test("page pill announces navigation for screen readers", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -207,7 +243,12 @@ test.describe("Drawer - Page Pill Highlighting", () => {
 
 test.describe("Drawer - Evidence vs Full-Page Click Routing", () => {
   test("expanding a citation item shows EvidenceTray with keyhole", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -221,7 +262,12 @@ test.describe("Drawer - Evidence vs Full-Page Click Routing", () => {
   });
 
   test("page pill click opens full-page InlineExpandedImage directly", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -237,7 +283,12 @@ test.describe("Drawer - Evidence vs Full-Page Click Routing", () => {
   });
 
   test("closing header panel InlineExpandedImage returns to drawer list", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeTwoPageGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeTwoPageGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([3, 7]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -275,7 +326,12 @@ test.describe("Drawer - Evidence vs Full-Page Click Routing", () => {
 
 test.describe("Drawer - Escape Cascade", () => {
   test("Escape from Level 1 (no expansion) closes the drawer", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeEscapeCascadeGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([1, 5]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -286,7 +342,12 @@ test.describe("Drawer - Escape Cascade", () => {
   });
 
   test("Escape from Level 2 (expanded accordion) collapses accordion, keeps drawer open", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeEscapeCascadeGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([1, 5]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -305,7 +366,12 @@ test.describe("Drawer - Escape Cascade", () => {
   });
 
   test("Escape from header panel collapses image, keeps accordion expanded", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeEscapeCascadeGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([1, 5]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -331,7 +397,12 @@ test.describe("Drawer - Escape Cascade", () => {
   });
 
   test("full three-level escape cascade: header panel → accordion → drawer", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeEscapeCascadeGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([1, 5]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });
@@ -362,7 +433,12 @@ test.describe("Drawer - Escape Cascade", () => {
   });
 
   test("page pill opens header panel directly, Escape cascades back", async ({ mount, page }) => {
-    await mount(<DrawerInteractionHarness groups={makeEscapeCascadeGroups()} />);
+    await mount(
+      <DrawerInteractionHarness
+        groups={makeEscapeCascadeGroups()}
+        pageImagesByAttachmentId={{ [attachmentId]: makePageImages([1, 5]) }}
+      />
+    );
 
     const dialog = page.locator("[role='dialog']");
     await expect(dialog).toBeVisible({ timeout: 5000 });

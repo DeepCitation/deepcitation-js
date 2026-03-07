@@ -161,9 +161,12 @@ describe("DeepCitation Client", () => {
       ]);
 
       expect(result.fileDataParts).toHaveLength(2);
+      expect(result.attachments).toHaveLength(2);
 
       expect(result.fileDataParts[0].attachmentId).toBe("file_1");
       expect(result.fileDataParts[1].attachmentId).toBe("file_2");
+      expect(result.attachments[0].attachmentId).toBe("file_1");
+      expect(result.attachments[1].attachmentId).toBe("file_2");
 
       // deepTextPromptPortion is now a single combined string on the result
       expect(result.deepTextPromptPortion).toContain("Content from file 1");
@@ -192,6 +195,7 @@ describe("DeepCitation Client", () => {
       const result = await client.prepareAttachments([{ file: blob, filename: "single.pdf" }]);
 
       expect(result.fileDataParts).toHaveLength(1);
+      expect(result.attachments).toHaveLength(1);
       expect(result.deepTextPromptPortion).toContain("Single content");
     });
 
@@ -201,6 +205,7 @@ describe("DeepCitation Client", () => {
       const result = await client.prepareAttachments([]);
 
       expect(result.fileDataParts).toHaveLength(0);
+      expect(result.attachments).toHaveLength(0);
     });
 
     it("propagates upload errors", async () => {
@@ -274,7 +279,9 @@ describe("DeepCitation Client", () => {
             citation_key_1: {
               document: {
                 verifiedPageNumber: 1,
-                verificationImageSrc: "base64data",
+              },
+              evidence: {
+                src: "base64data",
               },
               status: "found",
               verifiedMatchSnippet: "Revenue grew 15%",
@@ -328,75 +335,6 @@ describe("DeepCitation Client", () => {
       });
 
       expect(result.verifications).toEqual({});
-    });
-
-    it("passes generateProofUrls and proofConfig through to verifyAttachment", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          verifications: {
-            key1: {
-              status: "found",
-              proofUrl: "https://proof.example.com/abc",
-            },
-          },
-        }),
-      } as Response);
-
-      const llmOutput =
-        "<cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' anchor_text='Test' line_ids='1' />";
-
-      await client.verify({
-        llmOutput,
-        generateProofUrls: true,
-        proofConfig: {
-          access: "signed",
-          signedUrlExpiry: "7d",
-          imageFormat: "png",
-        },
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(requestBody.data.generateProofUrls).toBe(true);
-      expect(requestBody.data.proofConfig).toEqual({
-        access: "signed",
-        signedUrlExpiry: "7d",
-        imageFormat: "png",
-      });
-    });
-
-    it("omits proofConfig from request when generateProofUrls is false", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      // Suppress expected warning
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          verifications: {
-            key1: { status: "found" },
-          },
-        }),
-      } as Response);
-
-      const llmOutput =
-        "<cite attachment_id='file_123' start_page_key='page_number_1_index_0' full_phrase='Test content' anchor_text='Test' line_ids='1' />";
-
-      await client.verify({
-        llmOutput,
-        proofConfig: { access: "public" },
-      });
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(requestBody.data.generateProofUrls).toBeUndefined();
-      expect(requestBody.data.proofConfig).toBeUndefined();
-
-      warnSpy.mockRestore();
     });
   });
 
@@ -625,7 +563,7 @@ describe("DeepCitation Client", () => {
           originalFilename: "test.pdf",
           mimeType: "application/pdf",
           pageCount: 3,
-          pages: [],
+          pageImages: [],
           verifications: {},
         }),
       } as Response);
@@ -709,50 +647,6 @@ describe("DeepCitation Client", () => {
       await client.verifyAttachment("file_abc", citations2);
 
       // Different lineIds should result in separate API calls
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
-
-    it("differentiates citations with same text but different selection", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            verifications: { "1": { status: "found" } },
-          }),
-        } as Response)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            verifications: { "1": { status: "found" } },
-          }),
-        } as Response);
-
-      // Same text, different selection
-      const citations1 = {
-        "1": {
-          fullPhrase: "test phrase",
-          anchorText: "test",
-          pageNumber: 1,
-          selection: { x: 0, y: 0, width: 100, height: 20 },
-          attachmentId: "file_abc",
-        },
-      };
-      const citations2 = {
-        "1": {
-          fullPhrase: "test phrase",
-          anchorText: "test",
-          pageNumber: 1,
-          selection: { x: 50, y: 100, width: 100, height: 20 },
-          attachmentId: "file_abc",
-        },
-      };
-
-      await client.verifyAttachment("file_abc", citations1);
-      await client.verifyAttachment("file_abc", citations2);
-
-      // Different selection should result in separate API calls
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
@@ -942,7 +836,7 @@ describe("DeepCitation Client", () => {
           originalFilename: "test.pdf",
           mimeType: "application/pdf",
           pageCount: 1,
-          pages: [],
+          pageImages: [],
           verifications: {},
         }),
       } as Response);

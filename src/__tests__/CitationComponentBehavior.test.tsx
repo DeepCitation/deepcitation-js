@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock } from "@jest/globals";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type React from "react";
-import { CitationComponent } from "../react/Citation";
+import { CitationComponent, resolveSourceDownloadUrl } from "../react/Citation";
 import type { CitationBehaviorActions, CitationBehaviorContext } from "../react/types";
 import type { Citation } from "../types/citation";
-import type { Verification } from "../types/verification";
+import type { FileDownload } from "../types/verification";
 
 // Mock createPortal to render content in place instead of portal.
 // This allows us to query overlay elements in the same container.
@@ -49,8 +49,8 @@ describe("CitationComponent behaviorConfig", () => {
   };
 
   const verificationWithImage: Verification = {
-    document: {
-      verificationImageSrc: "data:image/png;base64,iVBORw0KGgo=",
+    evidence: {
+      src: "data:image/png;base64,iVBORw0KGgo=",
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -550,7 +550,7 @@ describe("CitationComponent behaviorConfig", () => {
       });
 
       // Expanded-page portal opens (setImageExpanded: true path) but custom src is rejected;
-      // falls back to the baseline verificationImageSrc — not the malicious URI
+      // falls back to the baseline evidence src, not the malicious URI
       const overlayImage = document.querySelector("img[alt='Full page verification']");
       expect(overlayImage?.getAttribute("src")).not.toBe("javascript:alert(1)");
     });
@@ -744,6 +744,72 @@ describe("CitationComponent behaviorConfig", () => {
       // Both handlers were called
       expect(behaviorConfigCalls).toHaveLength(1);
       expect(eventHandlerCalls).toHaveLength(1);
+    });
+  });
+
+  describe("eventHandlers.onClickAfterDefault", () => {
+    it("runs after default click behavior and keeps popover interactions", async () => {
+      const onClickAfterDefault = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          eventHandlers={{ onClickAfterDefault }}
+        />,
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      await act(async () => {
+        fireEvent.click(citation as HTMLElement);
+      });
+
+      await waitForPopoverVisible(container);
+      expect(onClickAfterDefault).toHaveBeenCalledTimes(1);
+      expect(onClickAfterDefault).toHaveBeenCalledWith(baseCitation, expect.any(String), expect.any(Object));
+    });
+
+    it("does not run when click behavior is replaced by eventHandlers.onClick", async () => {
+      const onClick = jest.fn();
+      const onClickAfterDefault = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          eventHandlers={{ onClick, onClickAfterDefault }}
+        />,
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      await act(async () => {
+        fireEvent.click(citation as HTMLElement);
+      });
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onClickAfterDefault).not.toHaveBeenCalled();
+    });
+
+    it("does not run when click behavior is replaced by behaviorConfig.onClick", async () => {
+      const customOnClick = jest.fn();
+      const onClickAfterDefault = jest.fn();
+
+      const { container } = render(
+        <CitationComponent
+          citation={baseCitation}
+          verification={verificationWithImage}
+          behaviorConfig={{ onClick: customOnClick }}
+          eventHandlers={{ onClickAfterDefault }}
+        />,
+      );
+
+      const citation = container.querySelector("[data-citation-id]");
+      await act(async () => {
+        fireEvent.click(citation as HTMLElement);
+      });
+
+      expect(customOnClick).toHaveBeenCalledTimes(1);
+      expect(onClickAfterDefault).not.toHaveBeenCalled();
     });
   });
 
@@ -1252,8 +1318,8 @@ describe("CitationComponent mobile/touch detection", () => {
   };
 
   const verificationWithImage: Verification = {
-    document: {
-      verificationImageSrc: "data:image/png;base64,iVBORw0KGgo=",
+    evidence: {
+      src: "data:image/png;base64,iVBORw0KGgo=",
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -1886,8 +1952,8 @@ describe("CitationComponent interactionMode", () => {
   };
 
   const verificationWithImage: Verification = {
-    document: {
-      verificationImageSrc: "data:image/png;base64,iVBORw0KGgo=",
+    evidence: {
+      src: "data:image/png;base64,iVBORw0KGgo=",
     },
     verifiedMatchSnippet: "test citation phrase",
     status: "found",
@@ -2442,46 +2508,33 @@ describe("CitationComponent proof URL links", () => {
     const proofLinks = Array.from(links).filter(link => link.textContent?.includes("Page 5"));
     expect(proofLinks.length).toBe(0);
   });
+});
 
-  it("does not render link for unsafe proof URL (javascript: protocol)", async () => {
-    const verification: Verification = {
-      status: "found",
-      label: "Document.pdf",
-      verifiedMatchSnippet: "test citation phrase",
-      document: { verifiedPageNumber: 5 },
-      proof: { proofUrl: "javascript:alert('XSS')" },
-    };
-
-    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
-
-    // Click to open popover
-    const trigger = container.querySelector("[data-citation-id]");
-    await act(async () => {
-      fireEvent.click(trigger as HTMLElement);
-    });
-
-    await waitForPopoverVisible(container);
-
-    // Should not have any javascript: protocol links
-    const links = container.querySelectorAll("a");
-    // This test checks that our security code (sanitizeUrl) blocks javascript: URLs.
-    // Production code uses whitelist approach (http/https only) which blocks ALL dangerous protocols.
-    const javascriptLinks = Array.from(links).filter(link => link.getAttribute("href")?.startsWith("javascript:")); // codeql[js/incomplete-url-scheme-check]
-    expect(javascriptLinks.length).toBe(0);
+describe("security: evidence src validation", () => {
+  afterEach(() => {
+    cleanup();
   });
 
-  it("does not render link for unsafe proof URL (data: protocol)", async () => {
+  const baseCitation: Citation = {
+    type: "document",
+    attachmentId: "abc123",
+    citationNumber: 1,
+    pageNumber: 5,
+    anchorText: "test citation",
+    fullPhrase: "This is a test citation phrase",
+  };
+
+  it("does not render javascript: URI from evidence.src as <img src>", async () => {
     const verification: Verification = {
       status: "found",
       label: "Document.pdf",
       verifiedMatchSnippet: "test citation phrase",
       document: { verifiedPageNumber: 5 },
-      proof: { proofUrl: "data:text/html,<script>alert('XSS')</script>" },
+      evidence: { src: "javascript:alert('XSS')" },
     };
 
     const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
 
-    // Click to open popover
     const trigger = container.querySelector("[data-citation-id]");
     await act(async () => {
       fireEvent.click(trigger as HTMLElement);
@@ -2489,24 +2542,22 @@ describe("CitationComponent proof URL links", () => {
 
     await waitForPopoverVisible(container);
 
-    // Should not have any data: protocol links
-    const links = container.querySelectorAll("a");
-    const dataLinks = Array.from(links).filter(link => link.getAttribute("href")?.startsWith("data:"));
-    expect(dataLinks.length).toBe(0);
+    const imgs = Array.from(container.querySelectorAll("img"));
+    const maliciousImgs = imgs.filter(img => img.getAttribute("src")?.startsWith("javascript:"));
+    expect(maliciousImgs.length).toBe(0);
   });
 
-  it("blocks proof URL from untrusted domain", async () => {
+  it("does not render data:text/html URI from evidence.src as <img src>", async () => {
     const verification: Verification = {
       status: "found",
       label: "Document.pdf",
       verifiedMatchSnippet: "test citation phrase",
       document: { verifiedPageNumber: 5 },
-      proof: { proofUrl: "https://evil.com/fake-proof" },
+      evidence: { src: "data:text/html,<script>alert('XSS')</script>" },
     };
 
     const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
 
-    // Click to open popover
     const trigger = container.querySelector("[data-citation-id]");
     await act(async () => {
       fireEvent.click(trigger as HTMLElement);
@@ -2514,11 +2565,76 @@ describe("CitationComponent proof URL links", () => {
 
     await waitForPopoverVisible(container);
 
-    // Should not have any links with evil.com
-    const links = container.querySelectorAll("a");
-    // This test checks that our security code (isApprovedDomain) blocks untrusted domains.
-    // Production code uses proper URL parsing and domain validation, not substring matching.
-    const evilLinks = Array.from(links).filter(link => link.getAttribute("href")?.includes("evil.com")); // codeql[js/incomplete-url-substring-sanitization]
-    expect(evilLinks.length).toBe(0);
+    const imgs = Array.from(container.querySelectorAll("img"));
+    const maliciousImgs = imgs.filter(img => img.getAttribute("src")?.startsWith("data:text/html"));
+    expect(maliciousImgs.length).toBe(0);
+  });
+
+  it("does not render SVG data URI from evidence.src as <img src>", async () => {
+    const svgSrc = "data:image/svg+xml,<svg onload=alert(1)></svg>";
+    const verification: Verification = {
+      status: "found",
+      label: "Document.pdf",
+      verifiedMatchSnippet: "test citation phrase",
+      document: { verifiedPageNumber: 5 },
+      evidence: { src: svgSrc },
+    };
+
+    const { container } = render(<CitationComponent citation={baseCitation} verification={verification} />);
+
+    const trigger = container.querySelector("[data-citation-id]");
+    await act(async () => {
+      fireEvent.click(trigger as HTMLElement);
+    });
+
+    await waitForPopoverVisible(container);
+
+    const imgs = Array.from(container.querySelectorAll("img"));
+    const maliciousImgs = imgs.filter(img => img.getAttribute("src") === svgSrc);
+    expect(maliciousImgs.length).toBe(0);
+  });
+});
+
+// =============================================================================
+// resolveSourceDownloadUrl unit tests
+// =============================================================================
+
+describe("resolveSourceDownloadUrl", () => {
+  const makeDownload = (url: string): FileDownload => ({ link: { url } });
+
+  it("returns originalDownload URL when present, regardless of policy", () => {
+    const orig = makeDownload("https://example.com/original.pdf");
+    const converted = makeDownload("https://example.com/converted.pdf");
+    expect(resolveSourceDownloadUrl(orig, converted, "original_only")).toBe("https://example.com/original.pdf");
+    expect(resolveSourceDownloadUrl(orig, converted, "original_plus_url_pdf")).toBe("https://example.com/original.pdf");
+    expect(resolveSourceDownloadUrl(orig, converted, "original_plus_all_pdf")).toBe("https://example.com/original.pdf");
+  });
+
+  it("original_only: returns null when no originalDownload", () => {
+    const converted = makeDownload("https://example.com/converted.pdf");
+    expect(resolveSourceDownloadUrl(undefined, converted, "original_only")).toBeNull();
+    expect(resolveSourceDownloadUrl(undefined, undefined, "original_only")).toBeNull();
+  });
+
+  it("original_plus_url_pdf: returns convertedDownload URL when no originalDownload", () => {
+    const converted = makeDownload("https://example.com/converted.pdf");
+    expect(resolveSourceDownloadUrl(undefined, converted, "original_plus_url_pdf")).toBe(
+      "https://example.com/converted.pdf",
+    );
+  });
+
+  it("original_plus_url_pdf: returns null when neither download is present", () => {
+    expect(resolveSourceDownloadUrl(undefined, undefined, "original_plus_url_pdf")).toBeNull();
+  });
+
+  it("original_plus_all_pdf: returns convertedDownload URL when no originalDownload", () => {
+    const converted = makeDownload("https://example.com/converted.pdf");
+    expect(resolveSourceDownloadUrl(undefined, converted, "original_plus_all_pdf")).toBe(
+      "https://example.com/converted.pdf",
+    );
+  });
+
+  it("original_plus_all_pdf: returns null when no downloads present", () => {
+    expect(resolveSourceDownloadUrl(undefined, undefined, "original_plus_all_pdf")).toBeNull();
   });
 });

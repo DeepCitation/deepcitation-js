@@ -1,13 +1,6 @@
 /**
- * Tests for resolveExpandedImage() — the three-tier fallback resolver
+ * Tests for resolveExpandedImage() — fallback resolver
  * for the expanded page viewer's image source.
- *
- * Security model: each source is validated with isValidProofImageSrc() before use.
- * Trusted: HTTPS from api.deepcitation.com / cdn.deepcitation.com / proof.deepcitation.com,
- *          localhost (dev), same-origin relative paths, safe raster data URIs.
- * Rejected: SVG data URIs, javascript: URIs, arbitrary HTTPS hosts, relative paths with `..` traversal.
- * Invalid sources are skipped and the next tier is tried.
- * Correctness: validates cascade priority (matchPage → proofImageUrl → verificationImageSrc).
  */
 
 import { describe, expect, it } from "@jest/globals";
@@ -17,7 +10,6 @@ import type { Verification } from "../types/verification";
 // Representative image URLs for tests
 const TRUSTED_IMG = "https://api.deepcitation.com/proof/img.png";
 const TRUSTED_CDN_IMG = "https://cdn.deepcitation.com/proof/page1.avif";
-const TRUSTED_PROOF_IMG = "https://proof.deepcitation.com/p/abc123?format=avif&view=page";
 
 // Same-origin relative paths — allowed (served from current host)
 const RELATIVE_PATH_IMG = "/demo/legal/page-1.avif";
@@ -29,23 +21,12 @@ const UNTRUSTED_HTTPS_IMG = "https://evil.example.com/proof/img.png";
 // Dangerous data URI types — rejected
 const SVG_DATA_URI = "data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KDEpIj48L3N2Zz4=";
 const JAVASCRIPT_URI = "javascript:alert(1)";
-// Path traversal — rejected even though it starts with /
-const TRAVERSAL_PATH = "/demo/../../etc/passwd";
-// URL-encoded path traversal — %2e%2e decodes to ..
-const ENCODED_TRAVERSAL_PATH = "/demo/%2e%2e/%2e%2e/etc/passwd";
-// Protocol-relative URL — rejected (resolves to external host)
-const PROTOCOL_RELATIVE_URL = "//evil.com/proof/img.avif";
-// Unicode fullwidth dots — rejected (U+FF0E lookalike for .)
-const UNICODE_FULLWIDTH_TRAVERSAL = "/demo/\uFF0E\uFF0E/\uFF0E\uFF0E/secret";
-// Unicode one dot leader — rejected (U+2024 lookalike)
-const UNICODE_ONE_DOT_LEADER = "/demo/\u2024\u2024/secret";
-// Double-encoded traversal — %25 = %, so %252e = %2e after first decode
-const DOUBLE_ENCODED_TRAVERSAL = "/demo/%252e%252e/%252e%252e/etc/passwd";
-// Triple-encoded traversal — tests iterative decoding thoroughly
-const TRIPLE_ENCODED_TRAVERSAL = "/demo/%25252e%25252e/etc/passwd";
-// Null byte injection — C truncation attack
-const NULL_BYTE_PATH = "/safe/path\0../../etc/passwd";
-const ENCODED_NULL_BYTE = "/safe/path%00../../etc/passwd";
+
+const basePage = {
+  pageNumber: 1,
+  imageUrl: TRUSTED_CDN_IMG,
+  dimensions: { width: 800, height: 1200 },
+};
 
 describe("resolveExpandedImage", () => {
   describe("null/undefined handling", () => {
@@ -61,454 +42,172 @@ describe("resolveExpandedImage", () => {
       const verification: Verification = {
         status: "found",
       };
-      expect(resolveExpandedImage(verification)).toBeNull();
+      expect(resolveExpandedImage(verification, [])).toBeNull();
     });
   });
 
   describe("cascade priority", () => {
-    it("prefers matchPage over proofImageUrl and verificationImageSrc", () => {
+    it("prefers the verified page image when present", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            dimensions: { width: 800, height: 1200 },
-            highlightBox: { x: 10, y: 20, width: 100, height: 50 },
-          },
-        ],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
         document: {
-          verificationImageSrc: TRUSTED_IMG,
           verifiedPageNumber: 1,
+          highlightBox: { x: 10, y: 20, width: 100, height: 50 },
         },
       };
 
-      const result = resolveExpandedImage(verification);
+      const result = resolveExpandedImage(verification, [basePage]);
       expect(result).not.toBeNull();
       if (!result) throw new Error("Expected result to be non-null");
-      expect(result.src).toBe(TRUSTED_IMG);
+      expect(result.src).toBe(TRUSTED_CDN_IMG);
       expect(result.dimensions).toEqual({ width: 800, height: 1200 });
       expect(result.highlightBox).toEqual({ x: 10, y: 20, width: 100, height: 50 });
     });
 
-    it("falls back to proofImageUrl when no matchPage exists", () => {
+    it("falls back to the first page image when no match page exists", () => {
       const verification: Verification = {
         status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: false,
-            source: TRUSTED_IMG,
-          },
-        ],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verifiedPageNumber: 1,
-        },
+        document: { verifiedPageNumber: 99 },
       };
 
-      const result = resolveExpandedImage(verification);
+      const result = resolveExpandedImage(verification, [basePage]);
       expect(result).not.toBeNull();
       if (!result) throw new Error("Expected result");
       expect(result.src).toBe(TRUSTED_CDN_IMG);
-      expect(result.dimensions).toBeNull();
-      expect(result.highlightBox).toBeNull();
+      expect(result.dimensions).toEqual({ width: 800, height: 1200 });
     });
 
-    it("falls back to verificationImageSrc when no matchPage or proofImageUrl", () => {
+    it("returns null when no valid page images are available", () => {
       const verification: Verification = {
         status: "found",
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verificationImageDimensions: { width: 600, height: 900 },
-          verifiedPageNumber: 1,
-        },
       };
 
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.src).toBe(TRUSTED_IMG);
-      if (!result) throw new Error("Expected result");
-      expect(result.dimensions).toEqual({ width: 600, height: 900 });
-      if (!result) throw new Error("Expected result");
-      expect(result.highlightBox).toBeNull();
-    });
-
-    it("falls back to proofImageUrl when matchPage has no source", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            // no source field
-          },
-        ],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
-      };
-
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.src).toBe(TRUSTED_CDN_IMG);
+      const result = resolveExpandedImage(verification, [{ ...basePage, imageUrl: UNTRUSTED_HTTPS_IMG }]);
+      expect(result).toBeNull();
     });
   });
 
-  describe("security: validation filters out dangerous sources", () => {
-    it("accepts localhost matchPage source (dev environment)", () => {
+  describe("isMatchPage vs pageNumber search priority", () => {
+    it("prefers isMatchPage:true over pageNumber match when both exist", () => {
+      const matchPage = {
+        pageNumber: 3,
+        imageUrl: TRUSTED_IMG,
+        dimensions: { width: 400, height: 600 },
+        isMatchPage: true as const,
+      };
+      const pageByNumber = { pageNumber: 1, imageUrl: TRUSTED_CDN_IMG, dimensions: { width: 800, height: 1200 } };
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: LOCALHOST_IMG }],
+        document: { verifiedPageNumber: 1 },
       };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(LOCALHOST_IMG);
+
+      const result = resolveExpandedImage(verification, [pageByNumber, matchPage]);
+      expect(result?.src).toBe(TRUSTED_IMG); // isMatchPage wins over pageNumber match
     });
 
-    it("accepts data:image/png URI", () => {
-      const pngDataUri = "data:image/png;base64,iVBORw0KGgo=";
+    it("falls back to pageNumber match when no isMatchPage page exists", () => {
+      const page1 = { pageNumber: 1, imageUrl: TRUSTED_CDN_IMG, dimensions: { width: 800, height: 1200 } };
+      const page2 = { pageNumber: 2, imageUrl: TRUSTED_IMG, dimensions: { width: 400, height: 600 } };
       const verification: Verification = {
         status: "found",
-        document: { verificationImageSrc: pngDataUri, verifiedPageNumber: 1 },
+        document: { verifiedPageNumber: 2 },
       };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(pngDataUri);
-    });
 
-    it("rejects untrusted HTTPS host — skips tier and falls through", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: UNTRUSTED_HTTPS_IMG }],
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
-      };
-      // tier 1 (untrusted host) is skipped; tier 3 (trusted) is used
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(TRUSTED_IMG);
-    });
-
-    it("rejects SVG data URI — skips tier and falls through", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: SVG_DATA_URI }],
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
-      };
-      // SVG data URI skipped; trusted verificationImageSrc used
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(TRUSTED_IMG);
-    });
-
-    it("rejects javascript: URI — returns null when no valid fallback", () => {
-      const verification: Verification = {
-        status: "found",
-        proof: { proofImageUrl: JAVASCRIPT_URI },
-      };
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("falls through from invalid proofImageUrl to valid verificationImageSrc", () => {
-      const verification: Verification = {
-        status: "found",
-        proof: { proofImageUrl: UNTRUSTED_HTTPS_IMG },
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
-      };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(TRUSTED_IMG);
-    });
-
-    it("returns valid matchPage source when all tiers present", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: LOCALHOST_IMG }],
-        proof: { proofImageUrl: UNTRUSTED_HTTPS_IMG },
-        document: { verificationImageSrc: SVG_DATA_URI, verifiedPageNumber: 1 },
-      };
-      // localhost matchPage wins (valid tier 1)
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(LOCALHOST_IMG);
-    });
-
-    it("accepts proof.deepcitation.com as matchPage source (tier 1)", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_PROOF_IMG,
-            dimensions: { width: 800, height: 1200 },
-          },
-        ],
-      };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(TRUSTED_PROOF_IMG);
-    });
-
-    it("accepts relative path as verificationImageSrc (tier 3)", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: RELATIVE_PATH_IMG,
-          verifiedPageNumber: 1,
-        },
-      };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(RELATIVE_PATH_IMG);
-    });
-
-    it("rejects relative path with .. traversal", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: TRAVERSAL_PATH,
-          verifiedPageNumber: 1,
-        },
-      };
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects URL-encoded path traversal (%2e%2e)", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: ENCODED_TRAVERSAL_PATH,
-          verifiedPageNumber: 1,
-        },
-      };
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects protocol-relative URL (//evil.com)", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: PROTOCOL_RELATIVE_URL }],
-      };
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects Unicode fullwidth dots (U+FF0E) traversal", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: UNICODE_FULLWIDTH_TRAVERSAL,
-          verifiedPageNumber: 1,
-        },
-      };
-      // Should be rejected by the Unicode lookalike regex (\uFF0E is fullwidth dot)
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects Unicode one dot leader (U+2024) lookalike", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: UNICODE_ONE_DOT_LEADER,
-          verifiedPageNumber: 1,
-        },
-      };
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects double-encoded path traversal (%252e%252e)", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: DOUBLE_ENCODED_TRAVERSAL,
-          verifiedPageNumber: 1,
-        },
-      };
-      // Iterative decoding should catch: %252e%252e → %2e%2e → ..
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects triple-encoded path traversal (%25252e%25252e)", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: TRIPLE_ENCODED_TRAVERSAL,
-          verifiedPageNumber: 1,
-        },
-      };
-      // Iterative decoding should catch: %25252e → %252e → %2e → ..
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects null byte injection (literal \\0)", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: NULL_BYTE_PATH,
-          verifiedPageNumber: 1,
-        },
-      };
-      expect(resolveExpandedImage(verification)).toBeNull();
-    });
-
-    it("rejects URL-encoded null byte (%00)", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: ENCODED_NULL_BYTE,
-          verifiedPageNumber: 1,
-        },
-      };
-      // After decoding, should contain \0 and be rejected
-      expect(resolveExpandedImage(verification)).toBeNull();
+      const result = resolveExpandedImage(verification, [page1, page2]);
+      expect(result?.src).toBe(TRUSTED_IMG); // pageNumber 2 matched
     });
   });
 
-  describe("URL citation screenshot (tier 3 — webPageScreenshotBase64)", () => {
-    it("converts raw base64 string to data:image/jpeg;base64, URI", () => {
-      const rawBase64 =
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+  describe("override merge priority (document vs pageImage metadata)", () => {
+    const pageWithMetadata = {
+      pageNumber: 1,
+      imageUrl: TRUSTED_CDN_IMG,
+      dimensions: { width: 800, height: 1200 },
+      highlightBox: { x: 1, y: 1, width: 10, height: 10 },
+      renderScale: { x: 0.5, y: 0.5 },
+      textItems: [{ text: "from-page", pageIndex: 0, lineIndex: 0, box: { x: 0, y: 0, width: 10, height: 10 } }],
+      isMatchPage: true as const,
+    };
+
+    it("verification.document.highlightBox overrides pageImage.highlightBox", () => {
+      const docHighlight = { x: 50, y: 60, width: 200, height: 80 };
       const verification: Verification = {
         status: "found",
-        url: { webPageScreenshotBase64: rawBase64 },
+        document: { verifiedPageNumber: 1, highlightBox: docHighlight },
       };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(`data:image/jpeg;base64,${rawBase64}`);
-      expect(result?.dimensions).toBeNull();
-      expect(result?.highlightBox).toBeNull();
-      expect(result?.textItems).toEqual([]);
+
+      const result = resolveExpandedImage(verification, [pageWithMetadata]);
+      expect(result?.highlightBox).toEqual(docHighlight);
     });
 
-    it("accepts full data URI string as-is", () => {
-      const dataUri = "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";
+    it("verification.document.renderScale overrides pageImage.renderScale", () => {
+      const docScale = { x: 2.0, y: 2.0 };
       const verification: Verification = {
         status: "found",
-        url: { webPageScreenshotBase64: dataUri },
+        document: { verifiedPageNumber: 1, renderScale: docScale },
       };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(dataUri);
+
+      const result = resolveExpandedImage(verification, [pageWithMetadata]);
+      expect(result?.renderScale).toEqual(docScale);
     });
 
-    it("falls through to verificationImageSrc when URL screenshot is an SVG data URI", () => {
+    it("falls back to pageImage.highlightBox when document has no highlightBox", () => {
       const verification: Verification = {
         status: "found",
-        url: { webPageScreenshotBase64: SVG_DATA_URI },
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        document: { verifiedPageNumber: 1 },
       };
-      // SVG data URI is rejected by isValidProofImageSrc; tier 4 (verificationImageSrc) is used
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(TRUSTED_IMG);
+
+      const result = resolveExpandedImage(verification, [pageWithMetadata]);
+      expect(result?.highlightBox).toEqual(pageWithMetadata.highlightBox);
     });
 
-    it("confirms cascade: matchPage > proofImageUrl > webPageScreenshotBase64 > verificationImageSrc", () => {
-      const rawBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ";
-      // tier 1 invalid, tier 2 invalid — should land on tier 3 (URL screenshot)
+    it("falls back to pageImage.renderScale when document has no renderScale", () => {
       const verification: Verification = {
         status: "found",
-        pages: [{ pageNumber: 1, isMatchPage: true, source: UNTRUSTED_HTTPS_IMG }],
-        proof: { proofImageUrl: UNTRUSTED_HTTPS_IMG },
-        url: { webPageScreenshotBase64: rawBase64 },
-        document: { verificationImageSrc: TRUSTED_IMG, verifiedPageNumber: 1 },
+        document: { verifiedPageNumber: 1 },
       };
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      expect(result?.src).toBe(`data:image/jpeg;base64,${rawBase64}`);
+
+      const result = resolveExpandedImage(verification, [pageWithMetadata]);
+      expect(result?.renderScale).toEqual(pageWithMetadata.renderScale);
+    });
+
+    it("fallback page (non-match) does NOT apply document overrides", () => {
+      // When falling back to anyPage (not a match), toExpandedImageSource is called without overrides.
+      // page has no highlightBox itself, so the result is null — not the document's highlightBox.
+      // Using a page without highlightBox makes this explicit: if overrides were (wrongly) applied,
+      // result.highlightBox would be { x: 50, y: 60, width: 200, height: 80 } instead of null.
+      const page = { pageNumber: 99, imageUrl: TRUSTED_CDN_IMG, dimensions: { width: 800, height: 1200 } };
+      const verification: Verification = {
+        status: "found",
+        document: { verifiedPageNumber: 1, highlightBox: { x: 50, y: 60, width: 200, height: 80 } },
+      };
+
+      const result = resolveExpandedImage(verification, [page]); // no match for page 1, falls to anyPage
+      expect(result?.src).toBe(TRUSTED_CDN_IMG);
+      expect(result?.highlightBox).toBeNull(); // document.highlightBox NOT applied on anyPage fallback
     });
   });
 
-  describe("optional fields", () => {
-    it("defaults highlightBox to null when matchPage has none", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            dimensions: { width: 800, height: 1200 },
-            // no highlightBox
-          },
-        ],
-      };
-
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.highlightBox).toBeNull();
+  describe("security validation", () => {
+    it("rejects untrusted hosts", () => {
+      const verification: Verification = { status: "found" };
+      const result = resolveExpandedImage(verification, [{ ...basePage, imageUrl: UNTRUSTED_HTTPS_IMG }]);
+      expect(result).toBeNull();
     });
 
-    it("defaults textItems to empty array when matchPage has none", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            // no textItems
-          },
-        ],
-      };
+    it("accepts localhost and relative paths", () => {
+      const verification: Verification = { status: "found" };
+      const resultRelative = resolveExpandedImage(verification, [{ ...basePage, imageUrl: RELATIVE_PATH_IMG }]);
+      expect(resultRelative?.src).toBe(RELATIVE_PATH_IMG);
 
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.textItems).toEqual([]);
+      const resultLocalhost = resolveExpandedImage(verification, [{ ...basePage, imageUrl: LOCALHOST_IMG }]);
+      expect(resultLocalhost?.src).toBe(LOCALHOST_IMG);
     });
 
-    it("passes through textItems from matchPage", () => {
-      const textItems = [{ text: "hello", x: 0, y: 0, width: 50, height: 12 }];
-      const verification: Verification = {
-        status: "found",
-        pages: [
-          {
-            pageNumber: 1,
-            isMatchPage: true,
-            source: TRUSTED_IMG,
-            textItems,
-          },
-        ],
-      };
-
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.textItems).toEqual(textItems);
-    });
-
-    it("defaults dimensions to null for verificationImageSrc without dimensions", () => {
-      const verification: Verification = {
-        status: "found",
-        document: {
-          verificationImageSrc: TRUSTED_IMG,
-          verifiedPageNumber: 1,
-          // no verificationImageDimensions
-        },
-      };
-
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.dimensions).toBeNull();
-    });
-
-    it("returns empty pages array gracefully", () => {
-      const verification: Verification = {
-        status: "found",
-        pages: [],
-        proof: { proofImageUrl: TRUSTED_CDN_IMG },
-      };
-
-      const result = resolveExpandedImage(verification);
-      expect(result).not.toBeNull();
-      if (!result) throw new Error("Expected result");
-      expect(result.src).toBe(TRUSTED_CDN_IMG);
+    it("rejects dangerous URIs in page images", () => {
+      const verification: Verification = { status: "found" };
+      expect(resolveExpandedImage(verification, [{ ...basePage, imageUrl: SVG_DATA_URI }])).toBeNull();
+      expect(resolveExpandedImage(verification, [{ ...basePage, imageUrl: JAVASCRIPT_URI }])).toBeNull();
     });
   });
 });

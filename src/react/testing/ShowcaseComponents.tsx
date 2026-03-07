@@ -185,20 +185,21 @@ const verifiedVerification: Verification = {
   verifiedMatchSnippet: "Revenue increased by 15% in Q4 2024.",
   document: {
     verifiedPageNumber: 5,
-    verificationImageSrc:
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  },
+  evidence: {
+    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   },
 };
 
 const partialVerification: Verification = {
   status: "found_on_other_page",
-  verifiedPageNumber: 7,
+  document: { verifiedPageNumber: 7 },
   verifiedMatchSnippet: "increased by 15%",
 };
 
 const notFoundVerification: Verification = {
   status: "not_found",
-  verifiedPageNumber: -1,
+  document: { verifiedPageNumber: -1 },
 };
 
 const pendingVerification: Verification = {
@@ -301,19 +302,19 @@ const lowTrustSearchAttempts: SearchAttempt[] = [
 
 const notFoundWithAudit: Verification = {
   status: "not_found",
-  verifiedPageNumber: -1,
+  document: { verifiedPageNumber: -1 },
   searchAttempts: failedSearchAttempts,
 };
 
 const partialWithAudit: Verification = {
   status: "found_on_other_page",
-  verifiedPageNumber: 7,
+  document: { verifiedPageNumber: 7 },
   searchAttempts: partialMatchSearchAttempts,
 };
 
 const lowTrustWithAudit: Verification = {
   status: "first_word_found",
-  verifiedPageNumber: 3,
+  document: { verifiedPageNumber: 3 },
   searchAttempts: lowTrustSearchAttempts,
 };
 
@@ -336,14 +337,15 @@ const urlVerifiedVerification: Verification = {
   verifiedMatchSnippet: "The TGU transitions and Halos require control, not brute strength.",
   document: {
     verifiedPageNumber: 1,
-    verificationImageSrc:
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  },
+  evidence: {
+    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   },
 };
 
 const urlNotFoundVerification: Verification = {
   status: "not_found",
-  verifiedPageNumber: -1,
+  document: { verifiedPageNumber: -1 },
   searchAttempts: failedSearchAttempts,
 };
 
@@ -415,7 +417,7 @@ const searchWithVariations: SearchAttempt[] = [
 
 const notFoundWithVariations: Verification = {
   status: "not_found",
-  verifiedPageNumber: -1,
+  document: { verifiedPageNumber: -1 },
   searchAttempts: searchWithVariations,
 };
 
@@ -460,7 +462,7 @@ const searchWithRejectedMatches: SearchAttempt[] = [
 
 const notFoundWithRejectedMatches: Verification = {
   status: "not_found",
-  verifiedPageNumber: -1,
+  document: { verifiedPageNumber: -1 },
   searchAttempts: searchWithRejectedMatches,
 };
 
@@ -526,7 +528,7 @@ const searchManyPages: SearchAttempt[] = [
 
 const notFoundManyPages: Verification = {
   status: "not_found",
-  verifiedPageNumber: -1,
+  document: { verifiedPageNumber: -1 },
   searchAttempts: searchManyPages,
 };
 
@@ -1912,7 +1914,7 @@ const drawerMixed: CitationDrawerItem[] = [
     },
     verification: {
       status: "found_on_other_page",
-      verifiedPageNumber: 3,
+      document: { verifiedPageNumber: 3 },
       verifiedMatchSnippet: "Utility-first CSS framework",
     },
   },
@@ -1928,7 +1930,7 @@ const drawerMixed: CitationDrawerItem[] = [
       anchorText: "Server components",
       citationNumber: 3,
     },
-    verification: { status: "not_found", verifiedPageNumber: -1 },
+    verification: { status: "not_found", document: { verifiedPageNumber: -1 } },
   },
   {
     citationKey: "dm-4",

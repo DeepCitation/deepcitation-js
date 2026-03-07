@@ -233,6 +233,7 @@ export const replaceCitations = (markdownWithCitations: string, options: Replace
         str?.replace(/\\'/g, "'").replace(/\\"/g, '"');
 
       const citation: Citation = {
+        type: "document",
         attachmentId: attrs.attachment_id,
         pageNumber: parsePageNumber(attrs.start_page_id),
         fullPhrase: unescapeQuotes(attrs.full_phrase),

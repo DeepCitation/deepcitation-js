@@ -8,48 +8,47 @@ description: "TypeScript interface definitions for DeepCitation"
 
 # Type Definitions
 
-TypeScript interfaces for the DeepCitation API.
+TypeScript interfaces for the DeepCitation SDK and React components.
 
 ---
 
-## Citation
+## Citation Types
 
-Represents a citation to verify against the source document.
+DeepCitation supports two citation shapes.
 
 ```typescript
-interface Citation {
-  /** Attachment ID from prepareAttachments response */
+interface DocumentCitation {
+  type?: "document";
   attachmentId?: string;
-  /** Page number where citation should be found (1-indexed) */
   pageNumber?: number | null;
-  /** The full phrase to search for in the document */
   fullPhrase?: string | null;
-  /** Short value/keyword to verify */
-  value?: string | null;
-  /** Span of text to search for in the document */
   anchorText?: string | null;
-  /** Line IDs for precise location (from promptContent) */
   lineIds?: number[] | null;
-  /** Optional reasoning for why this citation was made */
-  reasoning?: string | null;
 }
+
+interface UrlCitation {
+  type: "url";
+  url?: string;
+  domain?: string;
+  title?: string;
+  fullPhrase?: string | null;
+  anchorText?: string | null;
+}
+
+type Citation = DocumentCitation | UrlCitation;
 ```
 
 ---
 
 ## VerifyCitationRequest
 
-Request body for the /verifyCitations endpoint.
+Request body for `/verifyCitations`.
 
 ```typescript
 interface VerifyCitationRequest {
-  /** Attachment ID (from prepareAttachments response) */
   attachmentId: string;
-  /** Map of citation keys to Citation objects */
   citations: { [key: string]: Citation };
-  /** Output format for verification images */
   outputImageFormat?: "jpeg" | "png" | "avif";
-  /** API key (alternative to Authorization header) */
   apiKey?: string;
 }
 ```
@@ -58,239 +57,215 @@ interface VerifyCitationRequest {
 
 ## Verification (SDK)
 
-The SDK normalizes API responses into this Verification interface for use with React components.
+The SDK normalizes backend responses into this shape.
 
 ```typescript
 interface Verification {
-  /** Verification status */
   status?: SearchStatus | null;
-  /** Page number where citation was found (1-indexed) */
-  verifiedPageNumber?: number | null;
-  /** Text snippet showing match context */
   verifiedMatchSnippet?: string | null;
-  /** Base64-encoded verification image */
-  verificationImageBase64?: string | null;
-  /** Search attempts made */
   searchAttempts?: SearchAttempt[];
-  /** Attachment ID */
   attachmentId?: string | null;
-  /** The original citation object */
   citation?: Citation;
+
+  evidence?: EvidenceImage;
+  document?: DocumentVerificationResult;
+  url?: UrlVerificationResult;
 }
 
 type SearchStatus =
-  | "found"              // Exact match found
-  | "partial_text_found" // Partial match found
-  | "not_found"          // No match found
-  | "found_anchor_text_only"   // Only the value matched, not full phrase
-  | "found_on_other_page" // Found on different page than expected
-  | "found_on_other_line" // Found on different line than expected
-  | "first_word_found" // Found the first word of the phrase
-  | "pending";           // Still processing
+  | "loading"
+  | "pending"
+  | "not_found"
+  | "partial_text_found"
+  | "found"
+  | "found_anchor_text_only"
+  | "found_phrase_missed_anchor_text"
+  | "found_on_other_page"
+  | "found_on_other_line"
+  | "first_word_found"
+  | "timestamp_wip"
+  | "skipped";
 
 type SearchMethod =
-  | "exact"              // Exact string match
-  | "fuzzy"              // Fuzzy/approximate match
-  | "bm25"               // BM25 scoring
-  | "semantic";          // Semantic similarity
+  | "exact_line_match"
+  | "line_with_buffer"
+  | "expanded_line_buffer"
+  | "current_page"
+  | "anchor_text_fallback"
+  | "adjacent_pages"
+  | "expanded_window"
+  | "regex_search"
+  | "first_word_fallback"
+  | "first_half_fallback"
+  | "last_half_fallback"
+  | "first_quarter_fallback"
+  | "second_quarter_fallback"
+  | "third_quarter_fallback"
+  | "fourth_quarter_fallback"
+  | "longest_word_fallback"
+  | "custom_phrase_fallback"
+  | "keyspan_fallback";
 
 interface SearchAttempt {
   method: SearchMethod;
   success: boolean;
-  searchPhrases: string[]; // The actual phrase(s) searched for
+  searchPhrase: string;
+  searchPhraseType?: "full_phrase" | "anchor_text";
+  regexPattern?: string;
   pageSearched?: number;
-  matchScore?: number; // For BM25 and other scoring methods
+  lineSearched?: number | number[];
+  searchScope?: "line" | "page" | "document";
+  expectedLocation?: { page: number; line?: number };
+  foundLocation?: { page: number; line?: number };
+  matchedVariation?:
+    | "exact_full_phrase"
+    | "normalized_full_phrase"
+    | "exact_anchor_text"
+    | "normalized_anchor_text"
+    | "partial_full_phrase"
+    | "partial_anchor_text"
+    | "first_word_only";
+  matchedText?: string;
+  deepTextItems?: DeepTextItem[];
+  matchScore?: number;
   matchSnippet?: string;
-  notes?: string; // Additional context about why it failed/succeeded
-  durationMs?: number; // Time taken in milliseconds
+  note?: string;
+  durationMs?: number;
+  variationType?: "exact" | "normalized" | "currency" | "date" | "numeric" | "symbol" | "accent";
+  occurrencesFound?: number;
+  matchedExpectedOccurrence?: boolean;
 }
 ```
 
 ---
 
-## VerifyCitationResponse (Raw API)
+## Evidence + Page Images (DX Model)
 
-Raw response from the /verifyCitations endpoint. The SDK normalizes this to the Verification interface above.
+Artifacts are split by purpose so evidence (crop), page images, and source downloads are not conflated.
+
+```typescript
+interface EvidenceImage {
+  src: string | null;
+  dimensions?: { width: number; height: number } | null;
+}
+
+interface WebCaptureAsset {
+  src?: string | null;
+  capturedAt?: Date | string | null;
+}
+
+interface PageImage {
+  pageNumber: number;
+  dimensions: { width: number; height: number };
+  imageUrl: string;
+  thumbnailUrl?: string;
+}
+```
+
+---
+
+## Source Downloads
+
+Source downloads are flat fields on each `PreparedAttachment`:
+
+```typescript
+interface DownloadLink {
+  url: string;
+  expiresAt?: string | "never";
+}
+
+interface FileDownload {
+  filename?: string;
+  mimeType?: string;
+  link: DownloadLink;
+}
+
+interface PreparedAttachment {
+  attachmentId: string;
+  urlSource?: UrlSource;           // present for URL inputs only
+  originalDownload?: FileDownload; // file as received (PDF, DOCX, MP4, …)
+  convertedDownload?: FileDownload;// PDF rendition / transcript / URL PDF capture
+  pageImages?: PageImage[];
+  pageImagesStatus?: PageImagesStatus;
+}
+```
+
+| Input type | `urlSource` | `originalDownload` | `convertedDownload` |
+|---|---|---|---|
+| Document (PDF) | absent | ✓ (PDF) | absent |
+| Document (DOCX) | absent | ✓ (DOCX) | ✓ (PDF rendition) |
+| URL | ✓ | absent | ✓ (PDF capture) |
+| Audio/Video | absent | ✓ (MP4/MP3) | ✓ (transcript) |
+
+---
+
+## Verify Response
+
+`verifyAttachment()` / `verify()` responses contain only verification results.
+File download artifacts are on the attachment, not the verification.
 
 ```typescript
 interface VerifyCitationResponse {
-  /** Map of citation keys to verification results */
-  verifications: { [key: string]: RawVerification };
-}
-
-interface RawVerification {
-  /** Page number where citation was found (1-indexed) */
-  pageNumber?: number | null;
-  /** The search term used (lowercase) */
-  lowerCaseSearchTerm: string | null;
-  /** Text snippet showing match context */
-  matchSnippet?: string | null;
-  /** Base64-encoded verification image */
-  verificationImageBase64?: string | null;
-  /** Verification status (nested in raw API response) */
-  searchState?: SearchState | null;
-  /** When this citation was verified */
-  verifiedAt?: Date;
-  /** The original citation object */
-  citation?: Citation;
-}
-
-interface SearchState {
-  status: SearchStatus;
-  expectedPage?: number | null;
-  actualPage?: number | null;
-  searchAttempts?: SearchAttempt[];
+  verifications: { [citationKey: string]: Verification };
 }
 ```
 
 ---
 
-## PrepareAttachmentsResponse
+## Converted PDF Download Policy (Client)
 
-Response from the /prepareAttachments endpoint after processing a document.
+Controls when converted verification PDF download links are exposed.
 
 ```typescript
-interface PrepareAttachmentsResponse {
-  /** System-generated attachment ID for verification calls */
-  attachmentId: string;
-  /** Full text content with page markers and line IDs. Use this in wrapCitationPrompt(). */
-  deepTextPromptPortion: string;
-  /** File metadata */
-  metadata: {
-    filename: string;
-    mimeType: string;
-    pageCount: number;
-    textByteSize: number;
-  };
-  /** Processing status */
-  status: "ready" | "error";
-  /** Processing time in milliseconds */
-  processingTimeMs?: number;
-  /** Error message if status is "error" */
-  error?: string;
-}
+type ConvertedPdfDownloadPolicy = "url_only" | "always" | "never";
 ```
+
+Default behavior:
+
+- `"url_only"` (default): converted PDF download links are returned for URL-based conversions, not Office conversions
+- `"always"`: converted PDF download links are returned for URL and Office conversions
+- `"never"`: converted PDF download links are never returned
+
+Set globally:
+
+```typescript
+new DeepCitation({
+  apiKey: "...",
+  convertedPdfDownloadPolicy: "url_only",
+});
+```
+
+Override per request on:
+
+- `uploadFile(options)`
+- `prepareUrl(options)`
+- `convertToPdf(input)`
+- `prepareConvertedFile(options)`
+- `prepareAttachments([{ ... }])`
 
 ---
 
-## Component Types
+## React Download Policy (`CitationComponent`)
 
-Types used by the React CitationComponent.
-
-### CitationStatus
+`CitationComponent` separates source-file download behavior from proof/evidence image download behavior.
 
 ```typescript
-interface CitationStatus {
-  isVerified: boolean;    // Citation was found (exact or partial)
-  isPartialMatch: boolean; // Found but text differs
-  isMiss: boolean;        // Not found in document
-  isPending: boolean;     // Verification in progress
+type CitationDownloadPolicy = "original_only" | "original_plus_url_pdf" | "original_plus_all_pdf";
+```
+
+Relevant props:
+
+```typescript
+interface CitationComponentProps {
+  originalDownload?: FileDownload;   // file as received
+  convertedDownload?: FileDownload;  // PDF rendition / URL PDF capture
+  downloadPolicy?: CitationDownloadPolicy; // default: "original_plus_url_pdf"
+  onSourceDownload?: (citation: Citation) => void;
 }
 ```
 
-### CitationEventHandlers
+Default UI behavior:
 
-```typescript
-// Event handlers for side effects (disables default behaviors when provided)
-interface CitationEventHandlers {
-  onMouseEnter?: (citation: Citation, citationKey: string) => void;
-  onMouseLeave?: (citation: Citation, citationKey: string) => void;
-  onClick?: (citation: Citation, citationKey: string, event: React.MouseEvent | React.TouchEvent) => void;
-  onTouchEnd?: (citation: Citation, citationKey: string, event: React.TouchEvent) => void;
-}
-```
-
-### CitationBehaviorConfig
-
-```typescript
-// Configuration for customizing default behaviors (replaces defaults)
-interface CitationBehaviorConfig {
-  onClick?: CitationClickBehavior;
-  onHover?: CitationHoverBehavior;
-}
-
-// Context provided to behavior handlers
-interface CitationBehaviorContext {
-  citation: Citation;
-  citationKey: string;
-  verification: Verification | null;
-  isTooltipExpanded: boolean;
-  isImageExpanded: boolean;
-  hasImage: boolean;
-}
-
-// Actions that can be returned from behavior handlers
-interface CitationBehaviorActions {
-  setTooltipExpanded?: boolean;      // Pin/unpin popover
-  setImageExpanded?: boolean | string; // Open/close image overlay
-  setPhrasesExpanded?: boolean;      // Expand search phrases list
-}
-
-type CitationClickBehavior = (
-  context: CitationBehaviorContext,
-  event: React.MouseEvent | React.TouchEvent
-) => CitationBehaviorActions | false | void;
-
-interface CitationHoverBehavior {
-  onEnter?: (context: CitationBehaviorContext) => void;
-  onLeave?: (context: CitationBehaviorContext) => void;
-}
-```
-
-### CitationRenderProps
-
-```typescript
-// Props passed to custom renderContent function
-interface CitationRenderProps {
-  citation: Citation;
-  status: CitationStatus;
-  citationKey: string;
-  displayText: string;
-  isMergedDisplay: boolean;
-}
-```
-
-### BaseCitationProps
-
-```typescript
-// Base props shared by citation components
-interface BaseCitationProps {
-  /** The citation data to display */
-  citation: Citation;
-  /** Child content to render before the citation */
-  children?: React.ReactNode;
-  /** Additional class name for the container */
-  className?: string;
-  /** Class name for controlling inner content width */
-  innerWidthClassName?: string;
-  /** Visual style variant */
-  variant?: "text" | "linter" | "chip" | "brackets" | "superscript" | "footnote" | "badge";
-  /** What content to display */
-  content?: "anchorText" | "number" | "indicator" | "source";
-  /** Fallback display text when anchorText is empty */
-  fallbackDisplay?: string | null;
-  /**
-   * Override label for the source displayed in popovers/headers.
-   *
-   * For document citations, overrides the filename shown in the popover header.
-   * For URL citations, overrides the URL/domain display.
-   *
-   * Important: Citations only store the *original* filename from upload time.
-   * Use this prop to display user-friendly names or updated filenames.
-   */
-  sourceLabel?: string;
-  /** Visual style for status indicators: "icon" (default) or "dot" (subtle colored dots) */
-  indicatorVariant?: "icon" | "dot" | "caret" | "none";
-}
-```
-
-### IndicatorVariant
-
-```typescript
-/**
- * Visual style for status indicators.
- * - "icon": Icon-based indicators (checkmark, spinner, X) — default
- * - "dot": Subtle colored dots (like GitHub status dots / shadcn badge dots)
- */
-type IndicatorVariant = "icon" | "dot" | "caret" | "none";
-```
+- `original_plus_url_pdf`: show `originalDownload` when present; for URL inputs (no `originalDownload`), show `convertedDownload`
+- `original_plus_all_pdf`: show `originalDownload` when present, else show `convertedDownload`
+- `original_only`: show `originalDownload` only, never `convertedDownload`

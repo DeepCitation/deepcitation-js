@@ -6,10 +6,9 @@ import {
   normalizeCitationType,
   parseCitation,
 } from "../parsing/parseCitation.js";
-import { isDocumentCitation, isUrlCitation } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
+import { isDocumentCitation, isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
-import { NOT_FOUND_VERIFICATION_INDEX } from "../types/verification.js";
 
 describe("getCitationStatus", () => {
   it("marks verified citations", () => {
@@ -38,7 +37,7 @@ describe("getCitationStatus", () => {
         attachmentId: "file",
       },
       document: {
-        verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+        verifiedPageNumber: -1, // sentinel: -1 means "not found" (no valid page matched)
       },
       status: "not_found",
       verifiedMatchSnippet: "snippet",
@@ -212,7 +211,7 @@ describe("getCitationStatus", () => {
           attachmentId: "file",
         },
         document: {
-          verifiedPageNumber: NOT_FOUND_VERIFICATION_INDEX,
+          verifiedPageNumber: -1, // sentinel: -1 means "not found" (no valid page matched)
         },
         status: "not_found",
         verifiedMatchSnippet: "snippet",
@@ -2677,6 +2676,26 @@ Patient Profile:
       expect(citation.lineIds).toEqual([5, 6]);
     });
 
+    it("extracts citations from deferred JSON format with camelCase keys", () => {
+      const input = `Camel case [1].
+
+<<<CITATION_DATA>>>
+[
+  {"id": 1, "attachmentId": "abc123", "reasoning": "growth metrics", "fullPhrase": "The company achieved 45% year-over-year growth", "anchorText": "45% growth", "pageId": "2_1", "lineIds": [12, 13]}
+]
+<<<END_CITATION_DATA>>>`;
+
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result).length).toBe(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("The company achieved 45% year-over-year growth");
+      expect(citation.attachmentId).toBe("abc123");
+      expect(citation.anchorText).toBe("45% growth");
+      expect(citation.pageNumber).toBe(2);
+      expect(citation.lineIds).toEqual([12, 13]);
+    });
+
     it("extracts citations from deferred JSON format with multiple attachments", () => {
       const input = `From doc1 [1] and doc2 [2].
 
@@ -2932,13 +2951,19 @@ describe("normalizeCitationType", () => {
   it("returns DocumentCitation when no url field is present", () => {
     const raw = { attachmentId: "abc", pageNumber: 1, fullPhrase: "test" };
     const result = normalizeCitationType(raw);
-    expect(result.type).toBeUndefined();
+    expect(result.type).toBe("document");
   });
 
   it("returns DocumentCitation when url is not a string", () => {
     const raw = { url: 123, fullPhrase: "test" };
     const result = normalizeCitationType(raw);
-    expect(result.type).toBeUndefined();
+    expect(result.type).toBe("document");
+  });
+
+  it("coerces to UrlCitation when url field is present even if type is 'document'", () => {
+    const raw = { type: "document", url: "https://example.com", fullPhrase: "test" };
+    const result = normalizeCitationType(raw);
+    expect(result.type).toBe("url");
   });
 });
 
@@ -2954,20 +2979,9 @@ describe("type guards", () => {
   });
 
   it("isDocumentCitation returns true for document citations", () => {
-    const citation: Citation = { attachmentId: "abc", fullPhrase: "test" };
-    expect(isDocumentCitation(citation)).toBe(true);
-    expect(isUrlCitation(citation)).toBe(false);
-  });
-
-  it("isDocumentCitation returns true for citations with type 'document'", () => {
     const citation: Citation = { type: "document", attachmentId: "abc", fullPhrase: "test" };
     expect(isDocumentCitation(citation)).toBe(true);
     expect(isUrlCitation(citation)).toBe(false);
-  });
-
-  it("isDocumentCitation returns true for citations with no type (backward compat)", () => {
-    const citation: Citation = { fullPhrase: "test" };
-    expect(isDocumentCitation(citation)).toBe(true);
   });
 });
 
@@ -2979,7 +2993,7 @@ describe("groupCitationsByAttachmentId — mixed citation types", () => {
   it("groups URL citations under empty string key", () => {
     const citations: Citation[] = [
       { type: "url", url: "https://example.com", fullPhrase: "url phrase" },
-      { attachmentId: "file1", fullPhrase: "doc phrase", pageNumber: 1 },
+      { type: "document", attachmentId: "file1", fullPhrase: "doc phrase", pageNumber: 1 },
     ];
     const grouped = groupCitationsByAttachmentId(citations);
 

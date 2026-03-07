@@ -70,9 +70,6 @@ export const PARTIAL_VERIFICATION: Verification = {
 
 export const NOT_FOUND_VERIFICATION: Verification = {
   status: "not_found",
-  document: {
-    verifiedPageNumber: -1,
-  },
 };
 
 export const PENDING_VERIFICATION: Verification = {

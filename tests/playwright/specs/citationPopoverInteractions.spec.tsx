@@ -8,6 +8,7 @@ import type { Verification } from "../../../src/types/verification";
 // =============================================================================
 
 const baseCitation: Citation = {
+  attachmentId: "att-popover-1",
   citationNumber: 1,
   anchorText: "25% revenue growth",
   fullPhrase: "The company reported 25% revenue growth in Q4",
@@ -51,11 +52,25 @@ const testImageBase64 = (() => {
 
 const verifiedVerification: Verification = {
   status: "found",
+  attachmentId: "att-popover-1",
   document: {
     verifiedPageNumber: 5,
-    verificationImageSrc: testImageBase64,
-    verificationImageDimensions: { width: 400, height: 50 },
   },
+  evidence: {
+    src: testImageBase64,
+    dimensions: { width: 400, height: 50 },
+  },
+};
+
+const pageImagesByAttachmentId = {
+  "att-popover-1": [
+    {
+      pageNumber: 5,
+      imageUrl: testImageBase64,
+      dimensions: { width: 400, height: 50 },
+      isMatchPage: true,
+    },
+  ],
 };
 
 // Tall image to amplify summary -> expanded-keyhole geometry changes near viewport edges.
@@ -77,11 +92,25 @@ const tallImageBase64 = (() => {
 
 const tallVerification: Verification = {
   status: "found",
+  attachmentId: "att-popover-1",
   document: {
     verifiedPageNumber: 5,
-    verificationImageSrc: tallImageBase64,
-    verificationImageDimensions: { width: 800, height: 1600 },
   },
+  evidence: {
+    src: tallImageBase64,
+    dimensions: { width: 800, height: 1600 },
+  },
+};
+
+const tallPageImagesByAttachmentId = {
+  "att-popover-1": [
+    {
+      pageNumber: 5,
+      isMatchPage: true,
+      imageUrl: tallImageBase64,
+      dimensions: { width: 800, height: 1600 },
+    },
+  ],
 };
 
 // =============================================================================
@@ -90,7 +119,7 @@ const tallVerification: Verification = {
 
 test.describe("Citation Popover - Basic Behavior", () => {
   test("opens popover on citation click", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
     await citation.click();
@@ -101,7 +130,7 @@ test.describe("Citation Popover - Basic Behavior", () => {
   });
 
   test("closes popover on Escape key", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
     await citation.click();
@@ -124,7 +153,7 @@ test.describe("Citation Popover - Basic Behavior", () => {
   test("closes popover on click outside", async ({ mount, page }) => {
     await mount(
       <div>
-        <CitationComponent citation={baseCitation} verification={verifiedVerification} />
+        <CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         <div data-testid="outside-area" style={{ padding: "100px" }}>
           Outside area
         </div>
@@ -145,7 +174,7 @@ test.describe("Citation Popover - Basic Behavior", () => {
   });
 
   test("shows verification image when available", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
     await citation.click();
@@ -163,7 +192,7 @@ test.describe("Citation Popover - Basic Behavior", () => {
 
 test.describe("Citation Popover - Click-to-Close Behavior", () => {
   test("expanding evidence tray does not dismiss popover", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
 
@@ -187,7 +216,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
   });
 
   test("popover remains open after multiple evidence tray clicks", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
 
@@ -217,7 +246,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
   });
 
   test("popover stays open when mouse moves away (click-to-close model)", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
 
@@ -233,7 +262,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
   });
 
   test("popover closes on second click of the same citation", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
 
@@ -250,7 +279,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
   test("bottom-edge keyhole expand should not oscillate vertically", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "430px", paddingLeft: "80px" }}>
-        <CitationComponent citation={baseCitation} verification={tallVerification} />
+        <CitationComponent citation={baseCitation} verification={tallVerification} pageImagesByAttachmentId={tallPageImagesByAttachmentId} />
       </div>,
     );
 
@@ -330,7 +359,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
   test("center keyhole click should not left-snap at same width or spike quote gap", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "80px", paddingLeft: "220px" }}>
-        <CitationComponent citation={baseCitation} verification={tallVerification} />
+        <CitationComponent citation={baseCitation} verification={tallVerification} pageImagesByAttachmentId={tallPageImagesByAttachmentId} />
       </div>,
     );
 
@@ -398,7 +427,7 @@ test.describe("Citation Popover - Click-to-Close Behavior", () => {
   test("expanded-page roundtrip should not left-snap or show transient right gap", async ({ mount, page }) => {
     await mount(
       <div style={{ paddingTop: "120px", paddingLeft: "120px" }}>
-        <CitationComponent citation={baseCitation} verification={tallVerification} />
+        <CitationComponent citation={baseCitation} verification={tallVerification} pageImagesByAttachmentId={tallPageImagesByAttachmentId} />
       </div>,
     );
 
@@ -540,7 +569,7 @@ test.describe("Citation Popover - Hover Transitions", () => {
   });
 
   test("popover stays open when mouse leaves popover content", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
 
@@ -586,7 +615,7 @@ test.describe("Citation Popover - Mobile/Touch Behavior", () => {
   });
 
   test("tap on evidence tray expands to full page", async ({ mount, page }) => {
-    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} />);
+    await mount(<CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />);
 
     const citation = page.locator("[data-citation-id]");
 
@@ -612,7 +641,7 @@ test.describe("Citation Popover - Mobile/Touch Behavior", () => {
     await mount(
       <div style={{ width: "375px", height: "667px", position: "relative" }}>
         <div style={{ padding: "20px" }}>
-          <CitationComponent citation={baseCitation} verification={verifiedVerification} />
+          <CitationComponent citation={baseCitation} verification={verifiedVerification} pageImagesByAttachmentId={pageImagesByAttachmentId} />
         </div>
       </div>,
     );

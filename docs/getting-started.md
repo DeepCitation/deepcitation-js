@@ -107,7 +107,7 @@ Include your API key in the Authorization header:
 Authorization: Bearer dc_live_your_api_key
 ```
 
-Get your API key from the [dashboard](https://deepcitation.com/usage).
+Get your API key from the [API Keys Page](https://deepcitation.com/signup).
 
 ---
 
@@ -142,4 +142,3 @@ The SDK handles API routing automatically. You only need to configure your API k
 - [Code Examples]({{ site.baseurl }}/code-examples/) - See more integration patterns
 - [Error Handling]({{ site.baseurl }}/error-handling/) - Production error patterns and retry logic
 - [Styling]({{ site.baseurl }}/styling/) - CSS customization and theming
-- [Migration Guide]({{ site.baseurl }}/migration/) - API changes by version

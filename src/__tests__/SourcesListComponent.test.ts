@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { detectSourceType, getPlatformName, sourceCitationsToListItems } from "../react/SourcesListComponent.utils.js";
-import { generateCitationKey, isUrlCitation } from "../react/utils.js";
+import { generateCitationKey } from "../react/utils.js";
 import type { Citation } from "../types/citation.js";
+import { isUrlCitation } from "../types/citation.js";
 
 describe("SourcesListComponent utilities", () => {
   describe("detectSourceType", () => {

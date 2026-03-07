@@ -19,7 +19,6 @@ interface VerificationPanelProps {
 
 export function VerificationPanel({ verification }: VerificationPanelProps) {
   const [expandedCitation, setExpandedCitation] = useState<string | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const { summary, verifications } = verification;
   const verificationRate = summary.total > 0 ? (summary.verified / summary.total) * 100 : 0;
@@ -75,10 +74,15 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
       {/* Citation List */}
       <div className="flex-1 overflow-y-auto">
         {Object.entries(verifications).map(([key, v]: [string, Verification]) => {
-          const isVerified = v.status === "found";
-          const isPartial = ["partial_text_found", "found_on_other_page", "found_on_other_line"].includes(v.status);
-          const isMiss = v.status === "not_found";
+          const status = v.status ?? "";
+          const isVerified = status === "found";
+          const isPartial = ["partial_text_found", "found_on_other_page", "found_on_other_line"].includes(status);
+          const isMiss = status === "not_found";
           const isExpanded = expandedCitation === key;
+          const evidenceSrc = v.evidence?.src ?? null;
+          const expectedPage = v.citation?.pageNumber ?? null;
+          const verifiedPage = v.document?.verifiedPageNumber ?? null;
+          const hasPageMismatch = expectedPage != null && verifiedPage != null && verifiedPage !== expectedPage;
 
           return (
             <div key={key} className="border-b last:border-b-0">
@@ -130,53 +134,16 @@ export function VerificationPanel({ verification }: VerificationPanelProps) {
                     </div>
                   )}
 
-                  {v.proof?.proofImageUrl && isValidProofImageSrc(v.proof.proofImageUrl) ? (
+                  {evidenceSrc && isValidProofImageSrc(evidenceSrc) ? (
                     <div className="bg-gray-50 rounded p-2">
                       <div className="text-xs font-medium text-gray-500 mb-1">Visual Proof</div>
-                      <img src={v.proof.proofImageUrl} alt="Verification proof" className="w-full rounded border" />
-                    </div>
-                  ) : v.document?.verificationImageSrc && isValidProofImageSrc(v.document.verificationImageSrc) ? (
-                    <div className="bg-gray-50 rounded p-2">
-                      <div className="text-xs font-medium text-gray-500 mb-1">Visual Proof</div>
-                      <img src={v.document.verificationImageSrc} alt="Verification proof" className="w-full rounded border" />
+                      <img src={evidenceSrc} alt="Verification proof" className="w-full rounded border" />
                     </div>
                   ) : null}
 
-                  {v.proof?.proofUrl && (
-                    <div className="bg-blue-50 rounded p-2 flex items-center gap-2">
-                      <a
-                        href={v.proof.proofUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline flex-1 truncate"
-                      >
-                        View Hosted Proof
-                      </a>
-                      <button
-                        onClick={async () => {
-                          // Guard outside try/catch: React Compiler can't handle optional
-                          // chaining or conditionals inside try/catch blocks (current limitation).
-                          const url = v.proof?.proofUrl;
-                          if (!url) return;
-                          try {
-                            await navigator.clipboard.writeText(url);
-                            setCopiedKey(key);
-                            setTimeout(() => setCopiedKey(null), 2000);
-                          } catch {
-                            console.error("Failed to copy proof URL to clipboard");
-                          }
-                        }}
-                        className="text-gray-400 hover:text-gray-600 text-xs"
-                        title="Copy proof URL"
-                      >
-                        {copiedKey === key ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
-                  )}
-
-                  {v.document?.verifiedPageNumber !== v.citation?.pageNumber && v.citation?.pageNumber && (
+                  {hasPageMismatch && (
                     <div className="text-xs text-yellow-600">
-                      Found on page {v.document?.verifiedPageNumber} (expected {v.citation?.pageNumber})
+                      Found on page {verifiedPage} (expected {expectedPage})
                     </div>
                   )}
                 </div>

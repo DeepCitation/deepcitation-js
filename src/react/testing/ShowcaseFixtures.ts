@@ -119,10 +119,9 @@ function makeUrlCitation(url: string, domain: string, title: string): Citation {
 function makeUrlFailureVerification(urlAccessStatus: UrlAccessStatus, errorMessage?: string): Verification {
   return {
     status: "not_found",
-    verifiedPageNumber: -1,
     url: {
       urlAccessStatus,
-      urlVerificationError: errorMessage ?? null,
+      urlVerificationError: errorMessage,
     },
   };
 }

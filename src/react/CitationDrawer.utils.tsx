@@ -1,5 +1,6 @@
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
 import { isPartialSearchStatus } from "./citationStatus.js";
@@ -10,7 +11,6 @@ import {
   XCircleIcon as XCircleIconComponent,
 } from "./icons.js";
 import type { IndicatorVariant } from "./types.js";
-import { isUrlCitation } from "./utils.js";
 
 // =========
 // Utilities: sourceLabelMap lookup

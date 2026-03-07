@@ -11,6 +11,8 @@
  * @packageDocumentation
  */
 
+// Utilities - For generating citation keys and display text
+export { isDocumentCitation, isUrlCitation } from "../types/citation.js";
 // Components
 // URL Citation Component - For displaying URL citations
 export {
@@ -130,6 +132,10 @@ export {
   XCircleIcon,
   XIcon,
 } from "./icons.js";
+// Locale packs (typed dictionaries)
+export { esMessages } from "./locales/es.js";
+export { frMessages } from "./locales/fr.js";
+export { viMessages } from "./locales/vi.js";
 // Prefetch utilities (for pre-rendering images before hover)
 export {
   clearPrefetchCache,
@@ -260,7 +266,6 @@ export {
 } from "./useSmartDiff.js";
 // URL Metadata hook
 export { useUrlMeta } from "./useUrlMeta.js";
-// Utilities - For generating citation keys and display text
 export {
   CITATION_X_PADDING,
   CITATION_Y_PADDING,
@@ -270,8 +275,6 @@ export {
   getCitationAnchorText,
   getCitationDisplayText,
   getCitationNumber,
-  isDocumentCitation,
-  isUrlCitation,
 } from "./utils.js";
 // Verification Log Components (Search attempt timeline display)
 export {

@@ -16,10 +16,12 @@ import {
 } from "react";
 import { getCitationStatus } from "../parsing/parseCitation.js";
 import type { CitationStatus, Citation as CitationType } from "../types/citation.js";
+import { isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import { MISS_WAVY_UNDERLINE_STYLE, TAP_SLOP_PX } from "./constants.js";
+import { useTranslation } from "./i18n.js";
 import { CitationContext, type CitationContextValue, useCitationContext } from "./useCitationContext.js";
-import { classNames, generateCitationInstanceId, generateCitationKey, isUrlCitation } from "./utils.js";
+import { classNames, generateCitationInstanceId, generateCitationKey } from "./utils.js";
 
 export interface CitationRootProps {
   citation: CitationType;
@@ -73,7 +75,7 @@ export const CitationRoot = forwardRef<HTMLSpanElement, CitationRootProps & HTML
 CitationRoot.displayName = "Citation.Root";
 
 export interface CitationTriggerProps extends HTMLAttributes<HTMLSpanElement> {
-  onCitationClick?: (citation: CitationType, citationKey: string, event: MouseEvent) => void;
+  onCitationClick?: (citation: CitationType, citationKey: string, event: MouseEvent | KeyboardEvent) => void;
   onCitationMouseEnter?: (citation: CitationType, citationKey: string) => void;
   onCitationMouseLeave?: (citation: CitationType, citationKey: string) => void;
   onCitationTouchEnd?: (citation: CitationType, citationKey: string, event: TouchEvent) => void;
@@ -180,10 +182,7 @@ export const CitationTrigger = forwardRef<HTMLSpanElement, CitationTriggerProps>
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          // Safe cast: onCitationClick expects MouseEvent but only uses common Event properties
-          // (target, preventDefault, stopPropagation) that exist on both KeyboardEvent and MouseEvent.
-          // The handler doesn't access mouse-specific properties like clientX/clientY.
-          onCitationClick?.(citation, citationKey, e as unknown as MouseEvent<HTMLSpanElement>);
+          onCitationClick?.(citation, citationKey, e);
         }
       },
       [onCitationClick, citation, citationKey],
@@ -327,6 +326,7 @@ export const CitationIndicator = forwardRef<HTMLSpanElement, CitationIndicatorPr
     ref,
   ) => {
     const { status } = useCitationContext();
+    const t = useTranslation();
 
     const shouldShow = useCallback(
       (state: "verified" | "partial" | "miss" | "pending") => {
@@ -343,7 +343,7 @@ export const CitationIndicator = forwardRef<HTMLSpanElement, CitationIndicatorPr
         <span
           ref={ref}
           className={classNames(baseClasses, "text-amber-500 dark:text-amber-400", className)}
-          aria-label="Partial match"
+          aria-label={t("indicator.partial")}
           {...props}
         >
           {partialIndicator}
@@ -356,7 +356,7 @@ export const CitationIndicator = forwardRef<HTMLSpanElement, CitationIndicatorPr
         <span
           ref={ref}
           className={classNames(baseClasses, "text-green-600 dark:text-green-500", className)}
-          aria-label="Verified"
+          aria-label={t("indicator.verified")}
           {...props}
         >
           {verifiedIndicator}
@@ -369,7 +369,7 @@ export const CitationIndicator = forwardRef<HTMLSpanElement, CitationIndicatorPr
         <span
           ref={ref}
           className={classNames(baseClasses, "text-red-500 dark:text-red-400", className)}
-          aria-label="Not found"
+          aria-label={t("indicator.notFound")}
           {...props}
         >
           {missIndicator}
@@ -382,7 +382,7 @@ export const CitationIndicator = forwardRef<HTMLSpanElement, CitationIndicatorPr
         <span
           ref={ref}
           className={classNames(baseClasses, "text-gray-400 dark:text-gray-500", className)}
-          aria-label="Pending"
+          aria-label={t("indicator.verifying")}
           {...props}
         >
           {pendingIndicator}

@@ -10,7 +10,8 @@
 
 import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Citation, CitationStatus } from "../types/citation.js";
-import type { Verification } from "../types/verification.js";
+import { isUrlCitation } from "../types/citation.js";
+import type { PageImage, Verification } from "../types/verification.js";
 import { getStatusLabel } from "./citationStatus.js";
 import {
   BLINK_ENTER_EASING,
@@ -24,7 +25,7 @@ import {
   VT_EVIDENCE_DIP_OPACITY,
   VT_EVIDENCE_EXPAND_MS,
 } from "./constants.js";
-import { EvidenceTray, InlineExpandedImage, normalizeScreenshotSrc, resolveExpandedImage } from "./EvidenceTray.js";
+import { EvidenceTray, InlineExpandedImage, resolveEvidenceSrc, resolveExpandedImage } from "./EvidenceTray.js";
 import { getExpandedPopoverWidth, getSummaryPopoverWidth } from "./expandedWidthPolicy.js";
 import { HighlightedPhrase } from "./HighlightedPhrase.js";
 import { useAnimatedHeight } from "./hooks/useAnimatedHeight.js";
@@ -41,8 +42,7 @@ import {
   mapUrlAccessStatusToFetchStatus,
   type UrlAccessExplanation,
 } from "./urlAccessExplanation.js";
-import { isValidProofUrl } from "./urlUtils.js";
-import { cn, isImageSource, isUrlCitation } from "./utils.js";
+import { cn, isImageSource } from "./utils.js";
 import { SourceContextHeader, StatusHeader } from "./VerificationLog.js";
 import { DC_EVIDENCE_VT_NAME } from "./viewTransition.js";
 
@@ -66,6 +66,8 @@ export type PopoverViewState = "summary" | "expanded-keyhole" | "expanded-page";
 export interface PopoverContentProps {
   citation: BaseCitationProps["citation"];
   verification: Verification | null;
+  /** Page images for the current attachment (used for expanded page view). */
+  pageImages?: PageImage[];
   status: CitationStatus;
   isLoading?: boolean;
   /** Whether the popover is currently visible (used for Activity prefetching) */
@@ -158,6 +160,7 @@ function UrlAccessExplanationSection({ explanation }: { explanation: UrlAccessEx
  * Shows 1-3 snippets with the matched portion highlighted.
  */
 function PopoverSnippetZone({ snippets }: { snippets: MatchSnippet[] }) {
+  const t = useTranslation();
   if (snippets.length === 0) return null;
   return (
     <div className="px-4 py-2 space-y-1.5 border-b border-gray-100 dark:border-gray-800">
@@ -179,39 +182,24 @@ function PopoverSnippetZone({ snippets }: { snippets: MatchSnippet[] }) {
               <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">(p.{snippet.page})</span>
             )}
             {!snippet.isProximate && (
-              <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">(different section)</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">
+                {t("evidence.differentSection")}
+              </span>
             )}
           </div>
         );
       })}
       {snippets.length > 3 && (
-        <div className="text-[10px] text-gray-400 dark:text-gray-500 italic">...and {snippets.length - 3} more</div>
+        <div className="text-[10px] text-gray-400 dark:text-gray-500 italic">
+          {t("evidence.andMore", { count: snippets.length - 3 })}
+        </div>
       )}
     </div>
   );
 }
 
-/**
- * Resolves the keyhole evidence source for document/URL verifications.
- * Isolated from render hooks so React Compiler doesn't have to analyze
- * a try/catch value block inside component scope.
- */
-function resolveEvidenceImageSrc(verification: Verification | null): string | null {
-  if (verification?.document?.verificationImageSrc) {
-    const s = verification.document.verificationImageSrc;
-    return isValidProofImageSrc(s) ? s : null;
-  }
-
-  const raw = verification?.url?.webPageScreenshotBase64;
-  if (!raw) return null;
-
-  try {
-    const s = normalizeScreenshotSrc(raw);
-    return isValidProofImageSrc(s) ? s : null;
-  } catch {
-    return null;
-  }
-}
+// Evidence source resolution uses resolveEvidenceSrc() from EvidenceTray.tsx —
+// the single canonical resolver for evidence snippet / web capture images.
 
 // =============================================================================
 // EXTRACTED SUB-COMPONENTS
@@ -360,17 +348,18 @@ function AnimatedHeightWrapper({
     EASE_COLLAPSE,
   );
 
+  // Extracted from inline JSX arrow so the React Compiler can cache it.
+  // Only reads from the event parameter — zero closures captured.
+  const handleTransitionEnd = useCallback((e: React.TransitionEvent<HTMLDivElement>) => {
+    if (e.propertyName === "height") {
+      e.currentTarget.style.height = "";
+      e.currentTarget.style.overflow = "";
+      e.currentTarget.style.transition = "";
+    }
+  }, []);
+
   return (
-    <div
-      ref={wrapperRef}
-      onTransitionEnd={e => {
-        if (e.propertyName === "height") {
-          e.currentTarget.style.height = "";
-          e.currentTarget.style.overflow = "";
-          e.currentTarget.style.transition = "";
-        }
-      }}
-    >
+    <div ref={wrapperRef} onTransitionEnd={handleTransitionEnd}>
       <div ref={contentRef} style={{ display: "flow-root" }}>
         {children}
       </div>
@@ -451,34 +440,75 @@ function EvidenceZone({
     };
   }, [viewState, onRequestCollapseFromPage, escapeInterceptRef]);
 
+  // Extracted from inline JSX arrows so the React Compiler can cache them.
+  const handleKeyholeCollapse = useCallback(() => {
+    onViewStateChange?.("summary");
+  }, [onViewStateChange]);
+
+  const handlePageCollapse = useCallback(() => {
+    if (onRequestCollapseFromPage) {
+      onRequestCollapseFromPage();
+    } else {
+      onViewStateChange?.(prevBeforeExpandedPageRef.current);
+    }
+  }, [onRequestCollapseFromPage, onViewStateChange, prevBeforeExpandedPageRef]);
+
   return (
     <>
       {/* View Transitions CSS for evidence image morph between slots.
-          Both directions use EASE_COLLAPSE (decisive deceleration, no overshoot).
-          Duration is asymmetric: 180ms expand (ANIM_STANDARD_MS), 120ms collapse (ANIM_FAST_MS).
-          Cross-fade: old snapshot dips to ~45% opacity early so the user perceives
-          the spatial motion rather than content detail, then the new snapshot
-          fades in crisp near the end. */}
+          Three strategies keyed by data attributes on <html>:
+
+          1. Keyhole expand (default) — geometry-only morph, no cross-fade.
+             Old snapshot hidden immediately so the new content is visible
+             throughout the morph. Size change is small enough that the
+             geometry morph alone provides smooth continuity.
+
+          2. Page expand (data-dc-page-expand) — reverse-collapse cross-fade.
+             Both old (keyhole strip) and new (full page scroll container)
+             have visible content. Old fades out while new fades in, with
+             the group morphing from keyhole bounds → scroll container bounds.
+             The VT name is forced onto the scroll container (not the
+             transparent annotation marker) during page expand so the NEW
+             snapshot actually has image content.
+
+          3. Collapse (data-dc-collapse) — opacity cross-fade.
+             Quick exit where the opacity dip reinforces the "shrinking
+             away" feel. Uses EASE_COLLAPSE (decisive deceleration). */}
       <style>{`
         ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
-          animation: dc-evidence-fade-out ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+          animation: none;
+          opacity: 0;
         }
         ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
-          animation: dc-evidence-fade-in ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+          animation: none;
         }
         ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
           animation-duration: ${VT_EVIDENCE_EXPAND_MS}ms;
           animation-timing-function: ${EASE_COLLAPSE};
         }
-        :root[data-dc-collapse] ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
-        :root[data-dc-collapse] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
-          animation-duration: ${VT_EVIDENCE_COLLAPSE_MS}ms;
+
+        :root[data-dc-page-expand] ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-out ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+        }
+        :root[data-dc-page-expand] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-in ${VT_EVIDENCE_EXPAND_MS}ms ${EASE_COLLAPSE} both;
+        }
+        :root[data-dc-page-expand] ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
+          animation-duration: ${VT_EVIDENCE_EXPAND_MS}ms;
           animation-timing-function: ${EASE_COLLAPSE};
+        }
+
+        :root[data-dc-collapse] ::view-transition-old(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-out ${VT_EVIDENCE_COLLAPSE_MS}ms ${EASE_COLLAPSE} both;
+        }
+        :root[data-dc-collapse] ::view-transition-new(${DC_EVIDENCE_VT_NAME}) {
+          animation: dc-evidence-fade-in ${VT_EVIDENCE_COLLAPSE_MS}ms ${EASE_COLLAPSE} both;
         }
         :root[data-dc-collapse] ::view-transition-group(${DC_EVIDENCE_VT_NAME}) {
           animation-duration: ${VT_EVIDENCE_COLLAPSE_MS}ms;
           animation-timing-function: ${EASE_COLLAPSE};
         }
+
         @media (prefers-reduced-motion: reduce) {
           ::view-transition-group(${DC_EVIDENCE_VT_NAME}),
           ::view-transition-old(${DC_EVIDENCE_VT_NAME}),
@@ -486,6 +516,7 @@ function EvidenceZone({
             animation-duration: 0s !important;
           }
         }
+
         @keyframes dc-evidence-fade-out {
           0%   { opacity: 1; }
           30%  { opacity: ${VT_EVIDENCE_DIP_OPACITY}; }
@@ -505,7 +536,7 @@ function EvidenceZone({
         {evidenceSrc && (
           <InlineExpandedImage
             src={evidenceSrc}
-            onCollapse={() => onViewStateChange?.("summary")}
+            onCollapse={handleKeyholeCollapse}
             onExpand={onExpandToPage}
             expandCtaLabel={expandCtaLabel}
             onNaturalSize={handleKeyholeImageLoad}
@@ -525,11 +556,7 @@ function EvidenceZone({
         {expandedImage?.src && (
           <InlineExpandedImage
             src={expandedImage.src}
-            onCollapse={() =>
-              onRequestCollapseFromPage
-                ? onRequestCollapseFromPage()
-                : onViewStateChange?.(prevBeforeExpandedPageRef.current)
-            }
+            onCollapse={handlePageCollapse}
             verification={verification}
             fill
             onNaturalSize={handlePageImageLoad}
@@ -682,6 +709,7 @@ function PopoverFallbackView({
 export function DefaultPopoverContent({
   citation,
   verification,
+  pageImages,
   status,
   isLoading = false,
   isVisible = true,
@@ -696,7 +724,9 @@ export function DefaultPopoverContent({
   escapeInterceptRef,
 }: PopoverContentProps) {
   const t = useTranslation();
-  const hasImage = verification?.document?.verificationImageSrc || verification?.url?.webPageScreenshotBase64;
+  // Resolve evidence src up-front so hasImage reflects only actually-renderable images.
+  const evidenceSrc = useMemo(() => resolveEvidenceSrc(verification), [verification]);
+  const hasImage = !!evidenceSrc || (pageImages != null && pageImages.length > 0);
   const expandCtaLabel = isImageSource(verification) ? t("action.viewImage") : undefined;
   const { isMiss, isPartialMatch, isPending, isVerified } = status;
   const searchStatus = verification?.status;
@@ -713,30 +743,30 @@ export function DefaultPopoverContent({
     if (prevIsPendingRef.current && !isPending) {
       // Pending → resolved: announce the verification result
       if (isVerified && !isPartialMatch && !isMiss) {
-        el.textContent = "Citation verified — exact match found";
+        el.textContent = t("aria.announcement.verifiedExact");
       } else if (isMiss) {
-        el.textContent = "Verification complete — citation not found in source";
+        el.textContent = t("aria.announcement.notFound");
       } else if (isPartialMatch) {
-        el.textContent = "Verification complete — partial match found";
+        el.textContent = t("aria.announcement.partial");
       }
     } else if (!prevIsPendingRef.current && isPending) {
       // Resolved → pending (retry): clear so next resolution triggers a new announcement.
       el.textContent = "";
     }
     prevIsPendingRef.current = isPending;
-  }, [isPending, isVerified, isPartialMatch, isMiss]);
+  }, [isPending, isVerified, isPartialMatch, isMiss, t]);
 
   // Save/restore scroll position for back navigation
 
   // Resolve expanded image for the full-page viewer; allow caller to override the src
   const expandedImage = useMemo(() => {
-    const resolved = resolveExpandedImage(verification);
+    const resolved = resolveExpandedImage(verification, pageImages);
     if (!expandedImageSrcOverride || !isValidProofImageSrc(expandedImageSrcOverride)) return resolved;
     // Custom src provided: clear overlay metadata since dimensions belong to the original image
     return resolved
       ? { ...resolved, src: expandedImageSrcOverride, dimensions: null, highlightBox: null, renderScale: null }
       : { src: expandedImageSrcOverride };
-  }, [verification, expandedImageSrcOverride]);
+  }, [verification, pageImages, expandedImageSrcOverride]);
 
   // Suppress page expand when page image dimensions are known and already fit within
   // the evidence view constraints (≤480px wide, ≤600px tall) — expanding adds no value.
@@ -745,16 +775,16 @@ export function DefaultPopoverContent({
   // Content-adaptive summary width: pre-seed from verification dimensions to avoid
   // a width flash, then confirm/correct when the keyhole image actually renders.
   const [keyholeDisplayedWidth, setKeyholeDisplayedWidth] = useState<number | null>(() => {
-    const dims = verification?.document?.verificationImageDimensions;
+    const dims = verification?.evidence?.dimensions;
     if (!dims || dims.height <= 0) return null;
     return dims.width * (KEYHOLE_STRIP_HEIGHT_DEFAULT / dims.height);
   });
 
   const summaryWidth = useMemo(() => getSummaryPopoverWidth(keyholeDisplayedWidth), [keyholeDisplayedWidth]);
   const keyholeNaturalWidthSeed = useMemo(() => {
-    const width = verification?.document?.verificationImageDimensions?.width;
+    const width = verification?.evidence?.dimensions?.width;
     return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : null;
-  }, [verification?.document?.verificationImageDimensions?.width]);
+  }, [verification?.evidence?.dimensions?.width]);
   const pageNaturalWidthSeed = useMemo(() => {
     const width = expandedImage?.dimensions?.width;
     return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : null;
@@ -789,11 +819,11 @@ export function DefaultPopoverContent({
         setExpandedPageShell(prev => (prev ? prev : { width, src: expandedImage.src }));
       }
     },
-    [viewState, expandedImage?.src],
+    // expandedImage (not expandedImage?.src) — compiler infers the whole object
+    // because of the optional chaining property access pattern. Stable ref identity
+    // means this rarely triggers extra re-creation.
+    [viewState, expandedImage],
   );
-
-  // Resolve the evidence image src — used by handleKeyholeClick and the prefetch effect.
-  const evidenceSrc = useMemo(() => resolveEvidenceImageSrc(verification), [verification]);
 
   const keyholeImageNaturalWidth =
     evidenceSrc && keyholeImageNatural?.src === evidenceSrc ? keyholeImageNatural.width : null;
@@ -833,10 +863,13 @@ export function DefaultPopoverContent({
   // Tracks which state we entered expanded-page from, so onCollapse can return there.
   const localPrevBeforeExpandedPageRef = useRef<"summary" | "expanded-keyhole">("summary");
   const prevBeforeExpandedPageRef = propPrevBeforeExpandedPageRef ?? localPrevBeforeExpandedPageRef;
-  const handleCollapseFromExpandedPage = useCallback(() => {
+  // Not wrapped in useCallback — the compiler auto-memoizes this with correct deps.
+  // Manual useCallback conflicts with the compiler's inference of ref.current access
+  // ("Differences in ref.current access"), causing a file-level bailout.
+  const handleCollapseFromExpandedPage = () => {
     const target = prevBeforeExpandedPageRef.current;
     onViewStateChange?.(target);
-  }, [onViewStateChange, prevBeforeExpandedPageRef]);
+  };
 
   // Toggles the keyhole expanded view. Clicking when already expanded collapses back to summary.
   const handleKeyholeClick = useCallback(() => {
@@ -861,12 +894,10 @@ export function DefaultPopoverContent({
     onViewStateChange?.("expanded-keyhole");
   }, [viewState, evidenceSrc, onExpandedWidthChange, onViewStateChange]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prevBeforeExpandedPageRef is a stable ref identity — including it causes a React Compiler bailout (value modification after hook)
   const handleExpand = useCallback(() => {
     if (!canExpandToPage) return;
-    if (viewState !== "expanded-page") {
-      prevBeforeExpandedPageRef.current = viewState === "expanded-keyhole" ? "expanded-keyhole" : "summary";
-    }
+    // prevBeforeExpandedPageRef.current is now set by setViewStateWithHaptics in
+    // Citation.tsx — no ref mutation needed here, which eliminates a React Compiler bailout.
     const expandedPageWidth =
       expandedPageShellWidth ?? pageNaturalWidth ?? keyholeImageNaturalWidth ?? keyholeNaturalWidthSeed;
     if (expandedPageWidth != null && expandedImage?.src) {
@@ -877,13 +908,14 @@ export function DefaultPopoverContent({
   }, [
     canExpandToPage,
     expandedPageShellWidth,
-    expandedImage?.src,
+    // expandedImage (not expandedImage?.src) — compiler infers the whole object
+    // because of the optional chaining property access pattern.
+    expandedImage,
     keyholeImageNaturalWidth,
     keyholeNaturalWidthSeed,
     onExpandedWidthChange,
     onViewStateChange,
     pageNaturalWidth,
-    viewState,
   ]);
 
   // Prefetch images imperatively when the popover becomes visible.
@@ -968,8 +1000,6 @@ export function DefaultPopoverContent({
   if ((isVerified && !isPartialMatch && !isMiss && hasImage && verification) || isMiss || isPartialMatch) {
     const isExpanded = viewState === "expanded-keyhole" || viewState === "expanded-page";
     const isFullPage = viewState === "expanded-page";
-    const validProofUrl =
-      isFullPage && verification?.proof?.proofUrl ? isValidProofUrl(verification.proof.proofUrl) : null;
 
     const claimBorderColor = isMiss
       ? "border-red-500 dark:border-red-400"
@@ -999,7 +1029,7 @@ export function DefaultPopoverContent({
           }
           pageCtaLabel={expandCtaLabel}
           onScrollCapture={evidenceSrc ? handleKeyholeScrollCapture : undefined}
-          proofImageSrc={expandedImage?.src}
+          pageImageSrc={expandedImage?.src}
           onKeyholeWidth={setKeyholeDisplayedWidth}
           escapeInterceptRef={escapeInterceptRef}
         />
@@ -1023,7 +1053,6 @@ export function DefaultPopoverContent({
               sourceLabel={sourceLabel}
               onExpand={isFullPage ? undefined : canExpandToPage ? handleExpand : undefined}
               onClose={isFullPage ? handleCollapseFromExpandedPage : undefined}
-              proofUrl={validProofUrl}
               onSourceDownload={onSourceDownload}
             />
             {/* Zone 2: Claim Body — Status + highlighted phrase */}

@@ -144,10 +144,10 @@ function cleanPrefetchCache(): void {
  *
  * // Prefetch when verification arrives
  * useEffect(() => {
- *   if (verification?.document?.verificationImageSrc) {
- *     prefetchImage(verification.document.verificationImageSrc);
+ *   if (verification?.evidence?.src) {
+ *     prefetchImage(verification.evidence.src);
  *   }
- * }, [verification?.document?.verificationImageSrc]);
+ * }, [verification?.evidence?.src]);
  * ```
  */
 export function usePrefetchImage() {
@@ -187,8 +187,8 @@ export function usePrefetchImage() {
  * // Prefetch all images when verifications load
  * useEffect(() => {
  *   const srcs = verifications
- *     .filter(v => v.document?.verificationImageSrc)
- *     .map(v => v.document!.verificationImageSrc!);
+ *     .filter(v => v.evidence?.src)
+ *     .map(v => v.evidence!.src!);
  *   prefetchImages(srcs);
  * }, [verifications]);
  * ```

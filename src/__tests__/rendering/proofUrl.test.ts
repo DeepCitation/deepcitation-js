@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { buildProofUrl, buildProofUrls, buildSnippetImageUrl } from "../../rendering/proofUrl.js";
-import type { VerificationRecord } from "../../types/citation.js";
+import * as packageRoot from "../../index.js";
+import { buildProofUrl, buildSnippetImageUrl } from "../../rendering/proofUrl.js";
 
 describe("buildProofUrl", () => {
   const baseOptions = { baseUrl: "https://proof.deepcitation.com" };
@@ -55,23 +55,10 @@ describe("buildSnippetImageUrl", () => {
   });
 });
 
-describe("buildProofUrls", () => {
-  it("builds proof URLs for all verifications", () => {
-    const verifications = {
-      key1: { status: "found" as const, document: { verifiedPageNumber: 1 } },
-      key2: { status: "not_found" as const },
-    };
-    const urls = buildProofUrls(verifications, { baseUrl: "https://proof.deepcitation.com" });
-    expect(Object.keys(urls)).toHaveLength(2);
-    expect(urls.key1).toContain("/p/key1");
-    expect(urls.key2).toContain("/p/key2");
-  });
-
-  it("uses proofId from verification when available", () => {
-    const verifications: VerificationRecord = {
-      key1: { status: "found" as const, proof: { proofId: "proof_abc" } },
-    };
-    const urls = buildProofUrls(verifications, { baseUrl: "https://proof.deepcitation.com" });
-    expect(urls.key1).toContain("/p/proof_abc");
+describe("package root export guard", () => {
+  it("does not export buildProofUrl from the package root (internal-only)", () => {
+    expect((packageRoot as Record<string, unknown>).buildProofUrl).toBeUndefined();
+    expect((packageRoot as Record<string, unknown>).buildProofUrls).toBeUndefined();
+    expect((packageRoot as Record<string, unknown>).buildSnippetImageUrl).toBeUndefined();
   });
 });

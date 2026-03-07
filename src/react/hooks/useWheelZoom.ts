@@ -53,6 +53,8 @@ export interface WheelZoomAnchor {
   startZoom: number;
   /** Wrapper's left offset within the scroll container at gesture start (centering margin). */
   wrapperOffsetLeft: number;
+  /** Wrapper's top offset within the scroll container at gesture start (canvas padding). */
+  wrapperOffsetTop?: number;
 }
 
 export interface UseWheelZoomReturn {
@@ -69,7 +71,7 @@ export interface UseWheelZoomReturn {
  * Uses `transform-origin: 0 0` with translate+scale so the content point under
  * the anchor stays visually stable without updating origin per-frame.
  */
-function applyGestureTransform(
+export function applyGestureTransform(
   wrapper: HTMLDivElement,
   gestureZoom: number,
   committedZoom: number,
@@ -77,10 +79,10 @@ function applyGestureTransform(
 ): void {
   if (committedZoom === 0) return;
   const s = gestureZoom / committedZoom;
-  // Wrapper-relative coordinates: subtract wrapperOffsetLeft (centering margin).
+  // Wrapper-relative coordinates: subtract offsets (centering margin + canvas padding).
   // When image overflows (wrapperOffsetLeft = 0), identical to container-absolute.
   const wx = anchor.mx + anchor.sx - anchor.wrapperOffsetLeft;
-  const wy = anchor.my + anchor.sy;
+  const wy = anchor.my + anchor.sy - (anchor.wrapperOffsetTop ?? 0);
   wrapper.style.transform = `translate(${wx * (1 - s)}px, ${wy * (1 - s)}px) scale(${s})`;
 }
 
@@ -154,10 +156,13 @@ export function useWheelZoom({
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY === 0) return; // Horizontal-only — let native handle (keyhole pan)
       if (requireCtrl && !e.ctrlKey) return;
-      e.preventDefault(); // Block page scroll — zoom active
 
       const wrapper = wrapperRef.current;
       if (!wrapper) return;
+      // Only zoom when cursor is over the image wrapper, not the surrounding canvas.
+      // Events on the grey padding bubble to the Popover's wheel passthrough handler.
+      if (!wrapper.contains(e.target as Node)) return;
+      e.preventDefault(); // Block page scroll — zoom active
 
       // Normalize deltaY across deltaMode values:
       // mode 0 = pixels (trackpad/smooth wheel), mode 1 = lines (~16px each),
@@ -181,6 +186,7 @@ export function useWheelZoom({
           sy: el.scrollTop,
           startZoom: gestureStartZoom,
           wrapperOffsetLeft: wrapperRect.left - rect.left + el.scrollLeft,
+          wrapperOffsetTop: wrapperRect.top - rect.top + el.scrollTop,
         };
         wrapper.style.willChange = "transform";
         wrapper.style.transformOrigin = "0 0";

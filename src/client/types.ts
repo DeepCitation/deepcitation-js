@@ -1,4 +1,21 @@
-import type { Citation, DeepTextItem, SourcePage, Verification } from "../types/index.js";
+import type {
+  Citation,
+  DeepTextItem,
+  FileDownload,
+  ImageFormat,
+  PageImage,
+  PageImagesStatus,
+  Verification,
+  VerifyCitationResponse,
+} from "../types/index.js";
+
+/**
+ * Policy for exposing a download URL to the converted verification PDF.
+ * - "url_only": expose for URL conversions only (default)
+ * - "always": expose for URL + Office conversions
+ * - "never": never expose converted PDF download URLs
+ */
+export type ConvertedPdfDownloadPolicy = "url_only" | "always" | "never";
 
 /**
  * Logger interface for DeepCitation client observability.
@@ -11,6 +28,27 @@ export interface DeepCitationLogger {
   warn?: (message: string, meta?: Record<string, unknown>) => void;
   error?: (message: string, meta?: Record<string, unknown>) => void;
 }
+
+// ==========================================================================
+// Shared option bases
+// ==========================================================================
+
+/**
+ * Per-request billing and policy overrides.
+ * These override the corresponding instance-level defaults on DeepCitationConfig.
+ */
+export interface FileRequestOptions {
+  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
+  endUserId?: string;
+  /** Developer's file identifier for billing attribution. Overrides the instance-level endFileId if set. */
+  endFileId?: string;
+  /** Per-request override for converted verification PDF download policy. */
+  convertedPdfDownloadPolicy?: ConvertedPdfDownloadPolicy;
+}
+
+// ==========================================================================
+// Client configuration
+// ==========================================================================
 
 /**
  * Configuration options for the DeepCitation client
@@ -48,7 +86,22 @@ export interface DeepCitationConfig {
    * Max 128 characters. Must not contain control characters.
    */
   endUserId?: string;
+  /**
+   * Developer's file identifier for billing attribution.
+   * Applied to all file-related API calls unless overridden per-request.
+   * Max 128 characters. Must not contain control characters.
+   */
+  endFileId?: string;
+  /**
+   * Default policy for exposing converted verification PDF download links.
+   * @default "url_only"
+   */
+  convertedPdfDownloadPolicy?: ConvertedPdfDownloadPolicy;
 }
+
+// ==========================================================================
+// Upload / prepare responses
+// ==========================================================================
 
 /**
  * Response from uploading a file for citation verification
@@ -78,22 +131,20 @@ export interface UploadFileResponse {
   processingTimeMs?: number;
   /** Error message if status is "error" */
   error?: string;
-  /** Optional expiration date for the attachment (ISO 8601 string). If "never", the attachment does not expire (enterprise). */
-  expiresAt?: string | "never";
-  /** Signed download URL for the stored file. Expires after 7 days. */
-  downloadUrl?: string;
+  /** Optional expiration date for the attachment. */
+  expiresAt?: (string & {}) | "never";
+  /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
+  originalDownload?: FileDownload;
+  /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. Absent for plain PDF uploads. */
+  convertedDownload?: FileDownload;
   /**
    * Pre-assigned page structure with dimensions and storage paths.
-   * For PDFs, images are generated asynchronously after upload (check pagesGenerationStatus).
+   * For PDFs, images are generated asynchronously after upload (check pageImagesStatus).
    * For images, contains a single completed page entry.
    */
-  pages?: SourcePage[];
-  /**
-   * Status of page image generation.
-   * - "pending": Page images are being generated asynchronously (PDFs).
-   * - "completed": All page images are available (images, or after async generation finishes).
-   */
-  pagesGenerationStatus?: "pending" | "completed";
+  pageImages?: PageImage[];
+  /** Status of page image generation. */
+  pageImagesStatus?: PageImagesStatus;
   /**
    * Cache information for URL-based requests.
    * Only present when the request was for a URL (not file upload).
@@ -103,26 +154,28 @@ export interface UploadFileResponse {
    * Source URL information when the attachment originated from a URL.
    * Use this to populate Citation.url and Citation.domain when creating citations.
    */
-  urlSource?: UrlSourceInfo;
+  urlSource?: UrlSource;
 }
+
+// ==========================================================================
+// Request option interfaces
+// ==========================================================================
 
 /**
  * Options for file upload
  */
-export interface UploadFileOptions {
+export interface UploadFileOptions extends FileRequestOptions {
   /** Optional custom attachment ID to use instead of auto-generated one */
   attachmentId?: string;
   /** Optional custom filename (uses File.name if not provided) */
   filename?: string;
-  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
-  endUserId?: string;
 }
 
 /**
  * Options for preparing a URL for citation verification.
  * URLs and Office files take ~30s to process vs. <1s for images/PDFs.
  */
-export interface PrepareUrlOptions {
+export interface PrepareUrlOptions extends FileRequestOptions {
   /** The URL to convert and prepare for citation verification */
   url: string;
   /** Optional custom attachment ID to use instead of auto-generated one */
@@ -146,8 +199,6 @@ export interface PrepareUrlOptions {
    * Default is false (use cache if available).
    */
   skipCache?: boolean;
-  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
-  endUserId?: string;
 }
 
 /**
@@ -168,7 +219,7 @@ export interface UrlCacheInfo {
  * This information should be used to populate Citation.url and Citation.domain
  * when creating citations for verification.
  */
-export interface UrlSourceInfo {
+export interface UrlSource {
   /** The original URL that was converted */
   url: string;
   /** The domain extracted from the URL (e.g., "example.com") */
@@ -176,59 +227,18 @@ export interface UrlSourceInfo {
 }
 
 /**
- * Response from verifying citations
+ * Response from verifying citations.
+ * Alias for `VerifyCitationResponse` — kept for naming consistency
+ * with the plural `verifyCitations` method.
  */
-export interface VerifyCitationsResponse {
-  /** Map of citation keys to their verification results */
-  verifications: Record<string, Verification>;
-  /** Signed download URL for the source file. Expires after 7 days. */
-  downloadUrl?: string;
-}
+export type VerifyCitationsResponse = VerifyCitationResponse;
 
 /**
- * Options for citation verification
+ * Options for citation verification.
  */
 export interface VerifyCitationsOptions {
   /** Output image format for verification screenshots */
-  outputImageFormat?: "jpeg" | "png" | "avif";
-
-  /**
-   * When true, the backend will persist proof artifacts and return
-   * proofId, proofUrl, and proofImageUrl in each verification.
-   * @default false
-   */
-  generateProofUrls?: boolean;
-
-  /**
-   * Proof URL configuration. Only used when `generateProofUrls` is `true`.
-   * Ignored when `generateProofUrls` is `false` or omitted.
-   *
-   * @example
-   * ```typescript
-   * // Signed URLs with 7-day expiry and PNG images
-   * proofConfig: {
-   *   access: "signed",
-   *   signedUrlExpiry: "7d",
-   *   imageFormat: "png",
-   * }
-   *
-   * // Public proof URLs with AVIF images
-   * proofConfig: {
-   *   access: "public",
-   *   imageFormat: "avif",
-   * }
-   * ```
-   */
-  proofConfig?: {
-    /** Access control for proof URLs */
-    access?: "signed" | "workspace" | "public";
-    /** Expiry duration for signed URLs. Only used when `access` is `"signed"`. */
-    signedUrlExpiry?: "1h" | "24h" | "7d" | "30d" | "90d" | "1y";
-    /** Image format for proof images */
-    imageFormat?: "png" | "jpeg" | "avif" | "webp";
-    /** Whether to also return base64 images inline */
-    includeBase64?: boolean;
-  };
+  outputImageFormat?: ImageFormat;
   /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
   endUserId?: string;
 }
@@ -241,25 +251,31 @@ export type CitationInput = Citation | Record<string, Citation>;
 /**
  * Input for file upload in prepareAttachments
  */
-export interface FileInput {
+export interface FileInput extends FileRequestOptions {
   /** The file content (File, Blob, or Buffer) */
   file: File | Blob | Buffer;
   /** Optional filename */
   filename?: string;
   /** Optional custom attachment ID */
   attachmentId?: string;
-  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
-  endUserId?: string;
 }
 
 /**
- * File reference returned from prepareAttachments
+ * Per-attachment assets returned from prepareAttachments
  */
-export interface FileDataPart {
+export interface PreparedAttachment {
   /** The attachment ID assigned by DeepCitation */
   attachmentId: string;
-  /** Optional filename for display purposes */
-  filename?: string;
+  /** Source URL information when the attachment originated from a URL. Absent for document inputs. */
+  urlSource?: UrlSource;
+  /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
+  originalDownload?: FileDownload;
+  /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. */
+  convertedDownload?: FileDownload;
+  /** Renderable page images for inspection and viewer views */
+  pageImages?: PageImage[];
+  /** Status of page image generation. */
+  pageImagesStatus?: PageImagesStatus;
 }
 
 /**
@@ -267,49 +283,55 @@ export interface FileDataPart {
  */
 export interface PrepareAttachmentsResult {
   /** Array of file references for verification */
-  fileDataParts: FileDataPart[];
+  fileDataParts: Array<{ attachmentId: string; filename?: string }>;
   /** The combined formatted text content for LLM prompts (with page markers and line IDs) for all files */
   deepTextPromptPortion: string;
+  /** Per-attachment assets for downloads and page images */
+  attachments: PreparedAttachment[];
 }
 
 /**
- * Input for verify method
+ * Input for verify method.
  */
 export interface VerifyInput {
   /** The LLM response containing citations */
   llmOutput: string;
   /** Optional file references (required for Zero Data Retention or after storage expires) */
-  fileDataParts?: FileDataPart[];
+  fileDataParts?: Array<{ attachmentId: string; filename?: string }>;
   /** Output image format for verification screenshots */
-  outputImageFormat?: "jpeg" | "png" | "avif";
-  /**
-   * When true, the backend will persist proof artifacts and return
-   * proofId, proofUrl, and proofImageUrl in each verification.
-   * @default false
-   */
-  generateProofUrls?: boolean;
-  /**
-   * Proof URL configuration. Only used when `generateProofUrls` is `true`.
-   */
-  proofConfig?: VerifyCitationsOptions["proofConfig"];
+  outputImageFormat?: ImageFormat;
   /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
   endUserId?: string;
 }
 
 /**
- * Input for convertFile - convert URL or Office file to PDF
+ * Input for convertFile - convert URL or Office file to PDF.
+ * Provide either `url` or `file`, not both.
  */
-export interface ConvertFileInput {
+export type ConvertFileInput = ConvertFileUrlInput | ConvertFileUploadInput;
+
+/** Convert a URL to PDF */
+interface ConvertFileUrlInput extends FileRequestOptions {
   /** URL to convert to PDF (for web pages or direct PDF links) */
-  url?: string;
-  /** Office file to convert (doc, docx, xls, xlsx, ppt, pptx, odt, ods, odp) */
-  file?: File | Blob | Buffer;
+  url: string;
+  /** Not applicable for URL conversion */
+  file?: never;
   /** Optional custom filename for the converted PDF */
   filename?: string;
   /** Optional custom attachment ID */
   attachmentId?: string;
-  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
-  endUserId?: string;
+}
+
+/** Convert an uploaded Office file to PDF */
+interface ConvertFileUploadInput extends FileRequestOptions {
+  /** Not applicable for file upload conversion */
+  url?: never;
+  /** Office file to convert (doc, docx, xls, xlsx, ppt, pptx, odt, ods, odp) */
+  file: File | Blob | Buffer;
+  /** Optional custom filename for the converted PDF */
+  filename?: string;
+  /** Optional custom attachment ID */
+  attachmentId?: string;
 }
 
 /**
@@ -338,19 +360,10 @@ export interface ConvertFileResponse {
 /**
  * Options for processing a converted file
  */
-export interface PrepareConvertedFileOptions {
+export interface PrepareConvertedFileOptions extends FileRequestOptions {
   /** The attachment ID from a previous convertFile call */
   attachmentId: string;
-  /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
-  endUserId?: string;
 }
-
-/**
- * Expiration value for attachments and pages.
- * - ISO 8601 date string (e.g., "2025-12-31T23:59:59Z"): expires at this date
- * - "never": does not expire (enterprise feature)
- */
-export type ExpirationValue = string | "never";
 
 /**
  * Duration to extend the expiration by
@@ -373,10 +386,10 @@ export interface ExtendExpirationOptions {
 export interface ExtendExpirationResponse {
   /** The attachment ID that was extended */
   attachmentId: string;
-  /** The new expiration date (ISO 8601 string), or "never" for enterprise attachments that don't expire */
-  expiresAt: string | "never";
-  /** The previous expiration date (ISO 8601 string), "never", or undefined if not previously set */
-  previousExpiresAt?: string | "never";
+  /** The new expiration date */
+  expiresAt: (string & {}) | "never";
+  /** The previous expiration date, or undefined if not previously set */
+  previousExpiresAt?: (string & {}) | "never";
 }
 
 /**
@@ -399,9 +412,9 @@ export interface GetAttachmentOptions {
 
 /**
  * Response from querying an attachment by ID.
- * Returns full attachment metadata including pages, verifications, and optional deep text items.
+ * Returns full attachment metadata including page renders, verifications, and optional deep text items.
  *
- * Note: Response size can be substantial for large documents with many pages or verifications.
+ * Note: Response size can be substantial for large documents with many page renders or verifications.
  */
 export interface AttachmentResponse {
   /** The attachment ID (returned as `id` by the API, unlike other response types which use `attachmentId`) */
@@ -421,9 +434,9 @@ export interface AttachmentResponse {
   /** Total text content size in bytes */
   textByteSize?: number;
   /** Extracted page data with text and geometry */
-  pages: SourcePage[];
-  /** Status of page image generation: pending, generating, completed, or failed */
-  pagesGenerationStatus?: "pending" | "generating" | "completed" | "failed";
+  pageImages: PageImage[];
+  /** Status of page image generation */
+  pageImagesStatus?: PageImagesStatus;
   /** Verification results keyed by citation key */
   verifications: Record<string, Verification>;
   /** Deep text items by page index (Phase 1: from verification results) */
@@ -433,9 +446,11 @@ export interface AttachmentResponse {
   /** ISO 8601 timestamp when processing completed */
   processedAt?: string;
   /** Source URL information when the attachment originated from a URL */
-  urlSource?: UrlSourceInfo;
-  /** Expiration date (ISO 8601 string), or "never" for enterprise attachments */
-  expiresAt?: string | "never";
-  /** Signed download URL for the stored file. Expires after 7 days. */
-  downloadUrl?: string;
+  urlSource?: UrlSource;
+  /** Expiration date */
+  expiresAt?: (string & {}) | "never";
+  /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
+  originalDownload?: FileDownload;
+  /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. */
+  convertedDownload?: FileDownload;
 }

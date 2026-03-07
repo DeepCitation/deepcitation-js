@@ -39,6 +39,20 @@ const COMPACT_KEY_MAP: Record<string, keyof CitationData> = {
 } as const;
 
 /**
+ * Map of camelCase aliases to canonical snake_case keys.
+ */
+const KEY_ALIAS_MAP: Record<string, keyof CitationData> = {
+  attachmentId: "attachment_id",
+  fullPhrase: "full_phrase",
+  anchorText: "anchor_text",
+  pageId: "page_id",
+  lineIds: "line_ids",
+  // "fileId" was an early API field name before "attachmentId" was standardized.
+  // Kept as an alias for backward compatibility with serialized citation payloads.
+  fileId: "attachment_id",
+} as const;
+
+/**
  * Map for timestamp sub-keys.
  */
 const _TIMESTAMP_KEY_MAP: Record<string, string> = {
@@ -73,7 +87,7 @@ function expandCompactKeys(
 
   for (const [key, value] of Object.entries(data)) {
     // Check if this is a compact key
-    const fullKey = COMPACT_KEY_MAP[key] || key;
+    const fullKey = KEY_ALIAS_MAP[key] || COMPACT_KEY_MAP[key] || key;
 
     // Only assign if key is safe (prevents prototype pollution)
     if (!isSafeKey(fullKey)) {
@@ -81,11 +95,11 @@ function expandCompactKeys(
     }
 
     // Handle timestamps specially (nested object with s/e keys)
-    if ((key === "t" || key === "timestamps") && value && typeof value === "object") {
+    if ((key === "t" || fullKey === "timestamps") && value && typeof value === "object") {
       const ts = value as Record<string, unknown>;
       result.timestamps = {
-        start_time: ts.s ?? ts.start_time,
-        end_time: ts.e ?? ts.end_time,
+        start_time: ts.s ?? ts.start_time ?? ts.startTime,
+        end_time: ts.e ?? ts.end_time ?? ts.endTime,
       };
       continue;
     }
@@ -111,14 +125,19 @@ function expandCompactKeys(
 /**
  * Checks if the parsed JSON is in grouped format (object with attachment IDs as keys)
  * vs flat format (array of citations).
+ *
+ * Requires all values to be arrays of objects to avoid misclassifying unrelated
+ * JSON shapes (e.g. `{ citations: [...strings] }` or `{ data: [...], meta: [...] }`).
  */
 function isGroupedFormat(parsed: unknown): parsed is Record<string, unknown[]> {
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     return false;
   }
-  // Check if all values are arrays (grouped format)
   const values = Object.values(parsed);
-  return values.length > 0 && values.every(Array.isArray);
+  return (
+    values.length > 0 &&
+    values.every(v => Array.isArray(v) && v.every(item => typeof item === "object" && item !== null))
+  );
 }
 
 /**
@@ -406,6 +425,7 @@ export function deferredCitationToCitation(data: CitationData, citationNumber?: 
   const lineIds = data.line_ids?.length ? [...data.line_ids].sort((a, b) => a - b) : undefined;
 
   return {
+    type: "document" as const,
     attachmentId: data.attachment_id,
     pageNumber,
     startPageId,

@@ -30,7 +30,8 @@ import { getUniqueSearchAttemptCount, groupSearchAttempts } from "./searchAttemp
 import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
 
-import { cn, isImageSource, isUrlCitation } from "./utils.js";
+import { isUrlCitation } from "../types/citation.js";
+import { cn, isImageSource } from "./utils.js";
 
 /**
  * Statuses that show only the successful hit (not the full search trail).
@@ -137,12 +138,6 @@ export interface SourceContextHeaderProps {
    */
   onClose?: () => void;
   /**
-   * Proof URL to link to in the expanded view header.
-   * Rendered whenever a valid URL is provided.
-   * Validated internally via `isValidProofUrl()` — safe to pass untrusted input.
-   */
-  proofUrl?: string | null;
-  /**
    * Callback when the user clicks the download button.
    * The button only renders when this prop is provided.
    * Receives the full Citation object so the consumer can determine download logic.
@@ -183,23 +178,11 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
 }
 
 function resolveImageDownloadUrl(verification: Verification | null | undefined): string | null {
-  const proofImageUrl = verification?.proof?.proofImageUrl;
-  if (proofImageUrl && isValidProofImageSrc(proofImageUrl)) {
-    return proofImageUrl;
-  }
-
-  const verificationImageSrc = verification?.document?.verificationImageSrc;
+  const verificationImageSrc = verification?.evidence?.src;
   if (verificationImageSrc && isValidProofImageSrc(verificationImageSrc)) {
     return verificationImageSrc;
   }
-
-  const rawScreenshot = verification?.url?.webPageScreenshotBase64;
-  if (!rawScreenshot || typeof rawScreenshot !== "string") {
-    return null;
-  }
-
-  const screenshotSrc = rawScreenshot.startsWith("data:") ? rawScreenshot : `data:image/jpeg;base64,${rawScreenshot}`;
-  return isValidProofImageSrc(screenshotSrc) ? screenshotSrc : null;
+  return null;
 }
 
 const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
@@ -366,6 +349,7 @@ const PAGE_PILL_COLORS = {
  * - With `onClose`: shows X icon with blue "active" styling, triggers close/back
  */
 export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }: PagePillProps) {
+  const t = useTranslation();
   const hasPage = pageNumber !== undefined && pageNumber > 0;
   // Need either a page number to display or an action to perform
   if (!hasPage && !onClick && !onClose) return null;
@@ -388,8 +372,14 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }:
           FOCUS_RING_CLASSES,
           HITBOX_EXTEND_8x14,
         )}
-        aria-label={isImage ? "Close image view" : hasPage ? `Close page ${pageNumber} view` : "Close page view"}
-        title="Close expanded view (Esc)"
+        aria-label={
+          isImage
+            ? t("aria.closeImageView")
+            : hasPage
+              ? t("aria.closePageViewNum", { pageNumber })
+              : t("aria.closePageView")
+        }
+        title={t("action.closeExpanded")}
       >
         <span>{label}</span>
         <span className="size-3">
@@ -425,7 +415,13 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }:
         HITBOX_EXTEND_8x14,
         colorClasses,
       )}
-      aria-label={isImage ? "View full image" : hasPage ? `Expand to full page ${pageNumber}` : "Expand to full page"}
+      aria-label={
+        isImage
+          ? t("action.viewImage")
+          : hasPage
+            ? t("action.expandFullPageNum", { pageNumber })
+            : t("action.expandFullPage")
+      }
     >
       <span>{label}</span>
       <span className="size-3">
@@ -455,9 +451,9 @@ export function SourceContextHeader({
   sourceLabel,
   onExpand,
   onClose,
-  proofUrl: _proofUrl,
   onSourceDownload,
 }: SourceContextHeaderProps) {
+  const t = useTranslation();
   const isUrl = isUrlCitation(citation);
 
   // Common page/line data (pageNumber/lineIds only exist on DocumentCitation)
@@ -472,9 +468,7 @@ export function SourceContextHeader({
   const showPagePill = !!onExpand || !!onClose;
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
-  // Show the source download button whenever the caller provides onSourceDownload.
-  // The caller (CitationComponent) already resolved whether a downloadable source
-  // exists (via the downloadUrl prop), so we trust that signal unconditionally.
+
   const shouldShowSourceDownloadButton = !!onSourceDownload;
   const imageDownloadUrl = resolveImageDownloadUrl(verification);
   // Keep a single download action visible: explicit source-download callback wins.
@@ -529,8 +523,8 @@ export function SourceContextHeader({
         {shouldShowImageDownloadButton && (
           <button
             type="button"
-            aria-label="Download image"
-            title="Download evidence image"
+            aria-label={t("aria.downloadImage")}
+            title={t("aria.downloadImage")}
             className={cn(HEADER_DOWNLOAD_BUTTON_BASE_CLASSES, HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES)}
             onClick={e => {
               e.stopPropagation();
@@ -546,7 +540,7 @@ export function SourceContextHeader({
         {shouldShowSourceDownloadButton && (
           <button
             type="button"
-            aria-label="Download source"
+            aria-label={t("aria.downloadSource")}
             title={`Download ${displayName ?? url}`}
             className={cn(HEADER_DOWNLOAD_BUTTON_BASE_CLASSES, HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES)}
             onClick={e => {
@@ -567,7 +561,7 @@ export function SourceContextHeader({
             href={validatedProofUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Open proof in new tab"
+            aria-label={t("action.openProof")}
             className="shrink-0 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
             onClick={e => e.stopPropagation()}
           >
@@ -808,6 +802,7 @@ interface AmbiguityWarningProps {
  * Helps auditors understand potential matching ambiguity.
  */
 export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
+  const t = useTranslation();
   if (ambiguity.totalOccurrences <= 1) return null;
 
   // Truncate very long notes at word boundary to prevent layout issues
@@ -832,7 +827,7 @@ export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
           stroke="currentColor"
           strokeWidth="2"
           role="img"
-          aria-label="Warning"
+          aria-label={t("misc.warning")}
         >
           <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -1371,6 +1366,7 @@ export function VerificationLogTimeline({
   status,
   onCollapse,
 }: VerificationLogTimelineProps) {
+  const t = useTranslation();
   const content = (
     <AuditSearchDisplay
       searchAttempts={searchAttempts}
@@ -1390,7 +1386,7 @@ export function VerificationLogTimeline({
     <button
       type="button"
       id="verification-log-timeline"
-      aria-label="Collapse search log"
+      aria-label={t("aria.collapseSearchLog")}
       className="w-full p-0 m-0 border-0 bg-transparent text-left cursor-pointer"
       onClick={e => {
         // Stop propagation so parent handlers (e.g. page-expand) don't fire

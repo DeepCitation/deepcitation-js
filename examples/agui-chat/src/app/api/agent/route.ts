@@ -178,12 +178,6 @@ export async function POST(req: Request) {
 
             const result = await dc.verifyAttachment(attachmentId, citations, {
               outputImageFormat: "avif",
-              generateProofUrls: true,
-              proofConfig: {
-                access: "signed",
-                signedUrlExpiry: "7d",
-                imageFormat: "png",
-              },
             });
 
             const { verifications } = result;

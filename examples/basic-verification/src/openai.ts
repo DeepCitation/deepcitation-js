@@ -237,8 +237,8 @@ provided documents accurately and cite your sources.`;
         );
       }
 
-      if (verification.document?.verificationImageSrc) {
-        const imgSize = Math.round(verification.document?.verificationImageSrc.length / 1024);
+      if (verification.evidence?.src) {
+        const imgSize = Math.round(verification.evidence.src.length / 1024);
         console.log(`  🖼️  Proof image: Yes (${imgSize}KB)`);
       } else {
         console.log(`  🖼️  Proof image: No`);
