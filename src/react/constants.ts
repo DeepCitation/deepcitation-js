@@ -362,11 +362,7 @@ export const SAFE_DATA_IMAGE_PREFIXES = [
 ] as const;
 
 /** Base trusted CDN hostnames for proof images (always included). */
-const BASE_TRUSTED_IMAGE_HOSTS = [
-  "api.deepcitation.com",
-  "cdn.deepcitation.com",
-  "proof.deepcitation.com"
-] as const;
+const BASE_TRUSTED_IMAGE_HOSTS = ["api.deepcitation.com", "cdn.deepcitation.com", "proof.deepcitation.com"] as const;
 
 /**
  * Trusted CDN hostnames for proof images.

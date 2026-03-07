@@ -840,7 +840,6 @@ describe("SourceContextHeader", () => {
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
       expect(queryByRole("button", { name: /download image/i })).toBeNull();
     });
-
   });
 });
 

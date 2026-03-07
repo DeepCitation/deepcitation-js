@@ -173,7 +173,6 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
   }
 }
 
-
 const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
 const DOWNLOAD_IFRAME_CLEANUP_DELAY_MS = 30_000;
 
