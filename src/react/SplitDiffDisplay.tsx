@@ -1,6 +1,7 @@
 import type React from "react";
 import { memo, useMemo, useState } from "react";
 import type { SearchStatus } from "../types/search.js";
+import { useTranslation } from "./i18n.js";
 import { CheckIcon } from "./icons.js";
 import { cn } from "./utils.js";
 
@@ -142,6 +143,7 @@ interface CollapsibleTextProps {
 
 const CollapsibleText: React.FC<CollapsibleTextProps> = memo(
   ({ text, maxLength, className, anchorText, anchorTextClass = "border-b-2 border-blue-400 dark:border-blue-500" }) => {
+    const t = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
     const shouldCollapse = text.length > maxLength;
 
@@ -161,7 +163,7 @@ const CollapsibleText: React.FC<CollapsibleTextProps> = memo(
             }}
             className="ml-1 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-[10px] font-medium"
           >
-            {isExpanded ? "Show less" : "Show full text"}
+            {isExpanded ? t("diff.showLess") : t("diff.showFullText")}
           </button>
         )}
       </div>
@@ -187,6 +189,7 @@ interface SplitViewProps {
 
 const SplitView: React.FC<SplitViewProps> = memo(
   ({ expected, actual, maxCollapsedLength, anchorTextExpected, anchorTextFound, showMatchQuality, similarity }) => {
+    const t = useTranslation();
     return (
       <div className="space-y-2">
         {showMatchQuality && <MatchQualityBar similarity={similarity} className="mb-3" />}
@@ -195,7 +198,7 @@ const SplitView: React.FC<SplitViewProps> = memo(
         <div className="rounded-md overflow-hidden">
           <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-900/20">
             <span className="shrink-0 text-[10px] font-medium text-red-600 dark:text-red-400 uppercase tracking-wide pt-0.5">
-              Expected:
+              {t("diff.expectedLabel")}
             </span>
             <CollapsibleText
               text={expected}
@@ -211,7 +214,7 @@ const SplitView: React.FC<SplitViewProps> = memo(
         <div className="rounded-md overflow-hidden">
           <div className="flex items-start gap-2 p-2.5 bg-green-50 dark:bg-green-900/20">
             <span className="shrink-0 text-[10px] font-medium text-green-600 dark:text-green-400 uppercase tracking-wide pt-0.5 inline-flex items-center gap-1">
-              Found:
+              {t("diff.foundLabel")}
               <span className="size-2.5 text-green-500 dark:text-green-400">
                 <CheckIcon />
               </span>
@@ -226,7 +229,7 @@ const SplitView: React.FC<SplitViewProps> = memo(
               />
             ) : (
               <span className="flex-1 font-mono text-[11px] text-gray-500 dark:text-gray-400 italic">
-                No text found
+                {t("misc.noTextFound")}
               </span>
             )}
           </div>
@@ -267,6 +270,7 @@ export const SplitDiffDisplay: React.FC<SplitDiffDisplayProps> = memo(
     status,
     similarity: providedSimilarity,
   }) => {
+    const t = useTranslation();
     // Sanitize inputs
     const sanitizedExpected = useMemo(() => {
       const clean = (expected || "").trim().replace(/\r\n/g, "\n");
@@ -314,7 +318,7 @@ export const SplitDiffDisplay: React.FC<SplitDiffDisplayProps> = memo(
             <span className="size-2.5">
               <CheckIcon />
             </span>
-            <span>Exact match</span>
+            <span>{t("outcome.exactMatch")}</span>
           </div>
           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md text-sm text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-words">
             {sanitizedActual}

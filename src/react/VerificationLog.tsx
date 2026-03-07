@@ -13,7 +13,7 @@ import {
   TERTIARY_ACTION_IDLE_CLASSES,
 } from "./constants.js";
 import { formatCaptureDate } from "./dateUtils.js";
-import { type MessageKey, type TranslateFunction, useTranslation } from "./i18n.js";
+import { type MessageKey, type TranslateFunction, tPlural, useTranslation } from "./i18n.js";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -194,8 +194,9 @@ function isSameOrigin(url: string): boolean {
  * remains visible even when the browser ignores anchor `download`.
  *
  * Same-origin URLs use a hidden iframe for a seamless download experience.
- * Cross-origin URLs use an `<a download>` click to avoid CSP frame-ancestors
- * errors (proof.deepcitation.com blocks framing from other origins).
+ * Cross-origin URLs use fetch→blob URL so the download is in-place with no
+ * new-tab flash. Falls back to a plain anchor (no target="_blank") if CORS
+ * blocks the fetch — Content-Disposition: attachment still downloads in-place.
  */
 function triggerBackgroundDownload(url: string): void {
   if (typeof document === "undefined") {
@@ -204,11 +205,12 @@ function triggerBackgroundDownload(url: string): void {
 
   const isHappyDom = typeof navigator !== "undefined" && /HappyDOM/i.test(navigator.userAgent);
 
+  // Anchor fallback — no target="_blank" to avoid new-tab flash.
+  // Relies on Content-Disposition: attachment for in-place download.
   const anchorDownload = () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = "";
-    a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.style.display = "none";
     document.body.appendChild(a);
@@ -218,41 +220,65 @@ function triggerBackgroundDownload(url: string): void {
     a.remove();
   };
 
-  // HappyDOM (test env) and cross-origin URLs use the anchor approach.
-  // Cross-origin iframes are blocked by CSP frame-ancestors on proof pages.
-  if (isHappyDom || !isSameOrigin(url)) {
+  if (isHappyDom) {
     anchorDownload();
     return;
   }
 
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.setAttribute(DOWNLOAD_IFRAME_DATA_ATTR, "true");
+  // Same-origin: iframe path (seamless, no navigation risk).
+  if (isSameOrigin(url)) {
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.setAttribute(DOWNLOAD_IFRAME_DATA_ATTR, "true");
 
-  const cleanup = () => {
-    if (iframe.parentNode) {
-      iframe.remove();
+    const cleanup = () => {
+      if (iframe.parentNode) {
+        iframe.remove();
+      }
+    };
+
+    const timeoutId = window.setTimeout(cleanup, DOWNLOAD_IFRAME_CLEANUP_DELAY_MS);
+    iframe.addEventListener("load", () => {
+      window.clearTimeout(timeoutId);
+      cleanup();
+    });
+    iframe.addEventListener("error", () => {
+      window.clearTimeout(timeoutId);
+      cleanup();
+    });
+
+    try {
+      iframe.src = url;
+      document.body.appendChild(iframe);
+    } catch {
+      window.clearTimeout(timeoutId);
+      cleanup();
+      anchorDownload();
     }
-  };
-
-  const timeoutId = window.setTimeout(cleanup, DOWNLOAD_IFRAME_CLEANUP_DELAY_MS);
-  iframe.addEventListener("load", () => {
-    window.clearTimeout(timeoutId);
-    cleanup();
-  });
-  iframe.addEventListener("error", () => {
-    window.clearTimeout(timeoutId);
-    cleanup();
-  });
-
-  try {
-    iframe.src = url;
-    document.body.appendChild(iframe);
-  } catch {
-    window.clearTimeout(timeoutId);
-    cleanup();
-    anchorDownload();
+    return;
   }
+
+  // Cross-origin: fetch → blob URL for a seamless, no-new-tab download.
+  fetch(url, { credentials: "omit" })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.blob();
+    })
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    })
+    .catch(() => {
+      // CORS blocked or network error — fall back to anchor (no new tab).
+      anchorDownload();
+    });
 }
 
 /**
@@ -274,6 +300,7 @@ export function FaviconImage({
   domain: string | null | undefined;
   alt: string;
 }) {
+  const t = useTranslation();
   const [hasError, setHasError] = useState(false);
 
   // Build fallback chain for favicon URL (simple computation, no useMemo needed)
@@ -297,7 +324,7 @@ export function FaviconImage({
   return (
     <img
       src={effectiveFaviconUrl}
-      alt={alt?.trim() || "Source"}
+      alt={alt?.trim() || t("drawer.source")}
       className="w-4 h-4 shrink-0"
       onError={() => setHasError(true)}
       loading="lazy"
@@ -342,7 +369,7 @@ export function PagePill({ pageNumber, colorScheme, onClick, onClose, isImage }:
   // Need either a page number to display or an action to perform
   if (!hasPage && !onClick && !onClose) return null;
 
-  const label = isImage ? (onClick ? "Image" : "Image") : hasPage ? `p.${pageNumber}` : "Page";
+  const label = isImage ? t("location.image") : hasPage ? t("location.page", { pageNumber }) : t("location.pageLabel");
   const colorClasses = PAGE_PILL_COLORS[colorScheme];
 
   // Active/expanded state: entire pill is a button to close, shows X instead of chevron
@@ -448,7 +475,7 @@ export function SourceContextHeader({
   const pageNumber = verification?.document?.verifiedPageNumber ?? (isUrl ? undefined : citation.pageNumber);
   const lineIds = verification?.document?.verifiedLineIds ?? (isUrl ? undefined : citation.lineIds);
   const isImage = isImageSource(verification);
-  const pageLineText = isImage ? "Image" : formatPageLineText(pageNumber, lineIds);
+  const pageLineText = isImage ? t("location.image") : formatPageLineText(pageNumber, lineIds, t);
   const colorScheme = getStatusColorScheme(status);
   // Show page pill when there's an expand/close action. Page number is shown when available
   // but the pill also renders with a generic "Page" label for not_found citations where
@@ -460,7 +487,7 @@ export function SourceContextHeader({
   const shouldShowSourceDownloadButton = !!downloadUrl;
 
   // Display name for document citations (never show attachmentId to users)
-  const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
+  const displayName = isUrl ? undefined : sourceLabel || verification?.label || t("drawer.document");
 
   return (
     <div
@@ -569,11 +596,12 @@ export function SourceContextHeader({
 function formatPageLineText(
   pageNumber: number | null | undefined,
   _lineIds: number[] | null | undefined,
+  t: TranslateFunction,
 ): string | null {
   if (!pageNumber || pageNumber <= 0) return null;
   // Don't show line numbers in the header - they can be unreliable due to column layouts
   // Line differences are shown separately in the verification log when relevant
-  return `p.${pageNumber}`;
+  return t("location.page", { pageNumber });
 }
 
 // =============================================================================
@@ -681,26 +709,26 @@ export function getStatusColorScheme(status?: SearchStatus | null): "green" | "a
 /**
  * Get the header text based on status.
  */
-function getStatusHeaderText(status?: SearchStatus | null): string {
-  if (!status) return "Verifying...";
+function getStatusHeaderText(status: SearchStatus | null | undefined, t: TranslateFunction): string {
+  if (!status) return t("status.verifying");
 
   switch (status) {
     case "found":
     case "found_anchor_text_only":
     case "found_phrase_missed_anchor_text":
-      return "Verified";
+      return t("status.verified");
     case "found_on_other_page":
-      return "Found on different page";
+      return t("message.foundOnDifferentPage");
     case "found_on_other_line":
-      return "Found on different line";
+      return t("message.foundOnDifferentLine");
     case "partial_text_found":
     case "first_word_found":
-      return "Partial match";
+      return t("status.partialMatch");
     case "not_found":
-      return "Not found";
+      return t("status.notFound");
     case "pending":
     case "loading":
-      return "Verifying...";
+      return t("status.verifying");
     default:
       return "";
   }
@@ -727,13 +755,14 @@ interface PageBadgeProps {
  * since documents start at "Page 1" in user-facing contexts.
  */
 function PageBadge({ expectedPage, foundPage, isImage }: PageBadgeProps) {
+  const t = useTranslation();
   // Pages are 1-indexed for display; page 0 indicates unset/invalid
   const hasExpected = expectedPage != null && expectedPage > 0;
   const hasFound = foundPage != null && foundPage > 0;
 
   // Image sources: show "Image" instead of page numbers
   if (isImage && (hasExpected || hasFound)) {
-    return <span className="text-xs text-gray-500 dark:text-gray-400">Image</span>;
+    return <span className="text-xs text-gray-500 dark:text-gray-400">{t("location.image")}</span>;
   }
 
   const locationDiffers = hasExpected && hasFound && expectedPage !== foundPage;
@@ -742,7 +771,7 @@ function PageBadge({ expectedPage, foundPage, isImage }: PageBadgeProps) {
   if (locationDiffers) {
     return (
       <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-        <span className="text-gray-400 dark:text-gray-500">p.{expectedPage}</span>
+        <span className="text-gray-400 dark:text-gray-500">{t("location.page", { pageNumber: expectedPage })}</span>
         <span className="text-gray-400 dark:text-gray-500">→</span>
         <span className="text-gray-700 dark:text-gray-300">{foundPage}</span>
       </span>
@@ -752,7 +781,9 @@ function PageBadge({ expectedPage, foundPage, isImage }: PageBadgeProps) {
   // Show found page or expected page
   const pageToShow = hasFound ? foundPage : expectedPage;
   if (pageToShow != null && pageToShow > 0) {
-    return <span className="text-xs text-gray-500 dark:text-gray-400">p.{pageToShow}</span>;
+    return (
+      <span className="text-xs text-gray-500 dark:text-gray-400">{t("location.page", { pageNumber: pageToShow })}</span>
+    );
   }
 
   return null;
@@ -801,11 +832,15 @@ export function AmbiguityWarning({ ambiguity }: AmbiguityWarningProps) {
           <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div className="text-xs text-amber-800 dark:text-amber-200">
-          <span className="font-medium">Found {ambiguity.totalOccurrences.toLocaleString()} occurrences</span>
+          <span className="font-medium">
+            {t("ambiguity.found", { totalOccurrences: ambiguity.totalOccurrences.toLocaleString() })}
+          </span>
           {ambiguity.occurrencesOnExpectedPage > 0 && (
             <span className="text-amber-700 dark:text-amber-300">
               {" "}
-              ({ambiguity.occurrencesOnExpectedPage.toLocaleString()} on expected page)
+              {t("ambiguity.onExpectedPage", {
+                occurrencesOnExpectedPage: ambiguity.occurrencesOnExpectedPage.toLocaleString(),
+              })}
             </span>
           )}
           {displayNote && <p className="mt-0.5 text-amber-700 dark:text-amber-300 max-w-prose">{displayNote}</p>}
@@ -838,8 +873,9 @@ export function StatusHeader({
   indicatorVariant = "icon",
   isImage,
 }: StatusHeaderProps) {
+  const t = useTranslation();
   const colorScheme = getStatusColorScheme(status);
-  const headerText = getStatusHeaderText(status);
+  const headerText = getStatusHeaderText(status, t);
 
   // Select appropriate icon based on status
   // - Green (verified): CheckIcon
@@ -962,11 +998,15 @@ interface VerificationLogSummaryProps {
  * Get a human-readable outcome summary for the collapsed state.
  * Shows what kind of match was found (or that nothing was found).
  */
-function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttempts: SearchAttempt[]): string {
+function getOutcomeSummary(
+  status: SearchStatus | null | undefined,
+  searchAttempts: SearchAttempt[],
+  t: TranslateFunction,
+): string {
   // Early return for not_found - no need to search for successful attempt
   if (!status || status === "not_found") {
     const count = getUniqueSearchAttemptCount(searchAttempts);
-    return `${count} ${count === 1 ? "attempt" : "attempts"} tried`;
+    return tPlural(t, "verification.attemptsTried", count, { count });
   }
 
   // Only search for successful attempt when we know something was found
@@ -976,19 +1016,19 @@ function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttemp
   if (successfulAttempt?.matchedVariation) {
     switch (successfulAttempt.matchedVariation) {
       case "exact_full_phrase":
-        return "Exact match";
+        return t("outcome.exactMatch");
       case "normalized_full_phrase":
-        return "Normalized match";
+        return t("outcome.normalizedMatch");
       case "exact_anchor_text":
       case "normalized_anchor_text":
-        return "Anchor text match";
+        return t("outcome.anchorTextMatch");
       case "partial_full_phrase":
       case "partial_anchor_text":
-        return "Partial match";
+        return t("outcome.partialMatch");
       case "first_word_only":
-        return "First word match";
+        return t("outcome.firstWordMatch");
       default:
-        return "Match found";
+        return t("outcome.matchFound");
     }
   }
 
@@ -996,18 +1036,18 @@ function getOutcomeSummary(status: SearchStatus | null | undefined, searchAttemp
   switch (status) {
     case "found":
     case "found_phrase_missed_anchor_text":
-      return "Exact match";
+      return t("outcome.exactMatch");
     case "found_anchor_text_only":
-      return "Anchor text match";
+      return t("outcome.anchorTextMatch");
     case "found_on_other_page":
     case "found_on_other_line":
-      return "Found at different location";
+      return t("outcome.foundDifferentLocation");
     case "partial_text_found":
-      return "Partial match";
+      return t("outcome.partialMatch");
     case "first_word_found":
-      return "First word match";
+      return t("outcome.firstWordMatch");
     default:
-      return "Match found";
+      return t("outcome.matchFound");
   }
 }
 
@@ -1023,8 +1063,9 @@ function VerificationLogSummary({
   onToggle,
   verifiedAt,
 }: VerificationLogSummaryProps) {
+  const t = useTranslation();
   const isMiss = status === "not_found";
-  const outcomeSummary = getOutcomeSummary(status, searchAttempts);
+  const outcomeSummary = getOutcomeSummary(status, searchAttempts, t);
 
   // Format the verified date for display
   const formatted = formatCaptureDate(verifiedAt);
@@ -1049,13 +1090,17 @@ function VerificationLogSummary({
         >
           <path d="M9 6l6 6-6 6" />
         </svg>
-        <span>Verification details</span>
+        <span>{t("verification.details")}</span>
         <span className="text-gray-400/70 dark:text-gray-600">({outcomeSummary})</span>
       </div>
       {dateStr && (
         <span
           className="text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2"
-          title={isMiss ? `Checked ${formatted?.tooltip ?? dateStr}` : `Verified ${formatted?.tooltip ?? dateStr}`}
+          title={
+            isMiss
+              ? t("verification.checkedAt", { date: formatted?.tooltip ?? dateStr })
+              : t("verification.verifiedAt", { date: formatted?.tooltip ?? dateStr })
+          }
         >
           {dateStr}
         </span>
@@ -1093,13 +1138,13 @@ function getFirstLine(line: number | number[] | undefined): number | undefined {
   return line;
 }
 
-function formatLocationLabel(page?: number, line?: number): string {
+function formatLocationLabel(page: number | undefined, line: number | undefined, t: TranslateFunction): string {
   const hasPage = page != null && page > 0;
   const hasLine = line != null && line > 0;
-  if (hasPage && hasLine) return `p.${page} · l.${line}`;
-  if (hasPage) return `p.${page}`;
-  if (hasLine) return `l.${line}`;
-  return "unknown";
+  if (hasPage && hasLine) return t("location.pageLine", { pageNumber: page, lineNumber: line });
+  if (hasPage) return t("location.page", { pageNumber: page });
+  if (hasLine) return t("location.line", { lineNumber: line });
+  return t("location.unknown");
 }
 
 interface AttemptTableRowProps {
@@ -1112,8 +1157,12 @@ interface AttemptTableRowProps {
 
 /** Compact row used by the attempts table for not-found and partial states. */
 function AttemptTableRow({ text, locationText, duplicateCount, success, isUnexpectedHit }: AttemptTableRowProps) {
+  const t = useTranslation();
   const isTruncated = (text ?? "").length > MAX_PHRASE_DISPLAY_LENGTH;
   const showLocationMultiplicity = success && isUnexpectedHit && duplicateCount > 1;
+  const locationMultiplicityLabel = showLocationMultiplicity
+    ? tPlural(t, "location.matchingLocations", duplicateCount, { count: duplicateCount })
+    : null;
 
   // success here means we successfully found a partial match, exact match does not need attempt details as the result is self evident
   return (
@@ -1135,7 +1184,7 @@ function AttemptTableRow({ text, locationText, duplicateCount, success, isUnexpe
         )}
       >
         {locationText}
-        {showLocationMultiplicity ? ` · ${duplicateCount} matching locations` : ""}
+        {locationMultiplicityLabel ? ` · ${locationMultiplicityLabel}` : ""}
       </span>
     </div>
   );
@@ -1145,6 +1194,7 @@ function AttemptTableRow({ text, locationText, duplicateCount, success, isUnexpe
  * "Looking for" section showing original citation text being searched.
  */
 export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: string; fullPhrase?: string }) {
+  const t = useTranslation();
   const hasAnchorText = anchorText && anchorText.trim().length > 0;
   const hasFullPhrase = fullPhrase && fullPhrase.trim().length > 0 && fullPhrase !== anchorText;
 
@@ -1152,7 +1202,9 @@ export function LookingForSection({ anchorText, fullPhrase }: { anchorText?: str
 
   return (
     <div>
-      <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Looking for</div>
+      <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+        {t("verification.lookingFor")}
+      </div>
       {hasAnchorText && (
         <div className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-1 border-l-2 border-gray-300 dark:border-gray-600 pl-2">
           {anchorText}
@@ -1201,7 +1253,7 @@ function AuditSearchDisplay({
       <div className="px-4 py-3 space-y-3 text-sm">
         <div>
           <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-            Searched for
+            {t("verification.searchedFor")}
           </div>
           <div className="space-y-1">
             {fallbackPhrases.map(phrase => (
@@ -1226,9 +1278,14 @@ function AuditSearchDisplay({
 
     const methodName = getMethodDisplayName(successfulAttempt.method, t);
     const locationText = successfulAttempt.foundLocation
-      ? `Page ${successfulAttempt.foundLocation.page}${successfulAttempt.foundLocation.line ? `, line ${successfulAttempt.foundLocation.line}` : ""}`
+      ? successfulAttempt.foundLocation.line
+        ? t("location.pageLineFull", {
+            pageNumber: successfulAttempt.foundLocation.page,
+            lineNumber: successfulAttempt.foundLocation.line,
+          })
+        : t("location.pageFull", { pageNumber: successfulAttempt.foundLocation.page })
       : successfulAttempt.pageSearched != null
-        ? `Page ${successfulAttempt.pageSearched}`
+        ? t("location.pageFull", { pageNumber: successfulAttempt.pageSearched })
         : "";
 
     return (
@@ -1259,7 +1316,7 @@ function AuditSearchDisplay({
     const { attempt, key, duplicateCount } = group;
     const foundPage = attempt.foundLocation?.page ?? attempt.pageSearched;
     const foundLine = attempt.foundLocation?.line ?? getFirstLine(attempt.lineSearched);
-    const locationText = formatLocationLabel(foundPage, foundLine);
+    const locationText = formatLocationLabel(foundPage, foundLine, t);
 
     const unexpectedPage =
       attempt.success &&
@@ -1462,13 +1519,14 @@ export interface AttemptingToVerifyProps {
  * Displays the anchor text and quote box being searched.
  */
 export function AttemptingToVerify({ anchorText, fullPhrase }: AttemptingToVerifyProps) {
-  const displayAnchorText = anchorText || fullPhrase?.slice(0, MAX_ANCHOR_TEXT_PREVIEW_LENGTH) || "Citation";
+  const t = useTranslation();
+  const displayAnchorText = anchorText || fullPhrase?.slice(0, MAX_ANCHOR_TEXT_PREVIEW_LENGTH) || t("aria.citation");
   const displayPhrase = fullPhrase || anchorText || "";
 
   return (
     <div className="px-4 py-3 space-y-2">
       <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-medium tracking-wide">
-        Searching for:
+        {t("verification.lookingFor")}
       </div>
       <div className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 border-l-2 border-gray-300 dark:border-gray-600 pl-2">
         {displayAnchorText}

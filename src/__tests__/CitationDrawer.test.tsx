@@ -1326,7 +1326,7 @@ describe("CitationDrawer page badges", () => {
     // Should render a clickable page pill button with aria-label (PagePill uses "Expand to full page N")
     const pageButton = container.querySelector("button[aria-label='Expand to full page 3']");
     expect(pageButton).toBeInTheDocument();
-    expect(pageButton?.textContent).toContain("p.3");
+    expect(pageButton?.textContent).toContain("p.\u202f3");
   });
 
   it("clicking page badge does not expand the accordion (opens header panel instead)", () => {

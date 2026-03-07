@@ -1,5 +1,6 @@
 import type React from "react";
 import { memo, useMemo } from "react";
+import { useTranslation } from "./i18n.js";
 import { useSmartDiff } from "./useSmartDiff.js";
 import { cn } from "./utils.js";
 
@@ -12,6 +13,7 @@ interface DiffDisplayProps {
 }
 
 const DiffDisplay: React.FC<DiffDisplayProps> = memo(({ expected, actual, label, className, sanitize }) => {
+  const t = useTranslation();
   // 1. Sanitize Inputs if sanitization function provided
   const { sanitizedExpected, sanitizedActual } = useMemo(() => {
     if (sanitize) {
@@ -62,7 +64,7 @@ const DiffDisplay: React.FC<DiffDisplayProps> = memo(({ expected, actual, label,
                         key={key}
                         data-diff-type="removed"
                         className="bg-red-200 dark:bg-red-800/50 text-red-800 dark:text-red-200 line-through"
-                        title="Expected text"
+                        title={t("diff.expectedText")}
                       >
                         {part.value}
                       </span>
@@ -75,7 +77,7 @@ const DiffDisplay: React.FC<DiffDisplayProps> = memo(({ expected, actual, label,
                         key={key}
                         data-diff-type="added"
                         className="bg-green-200 dark:bg-green-800/50 text-green-800 dark:text-green-200"
-                        title="Actual text found"
+                        title={t("diff.actualTextFound")}
                       >
                         {part.value}
                       </span>

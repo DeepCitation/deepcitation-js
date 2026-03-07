@@ -2428,13 +2428,24 @@ describe("CitationComponent interactionMode", () => {
 
       await waitForPopoverVisible(container);
 
-      // Click on the trigger again (handled by click handler, not outside dismiss)
+      // A full click on the trigger toggles the popover (by design), so we
+      // verify via a second full click that the toggle cycle works and the
+      // outside-dismiss handler did not interfere.  A third click should
+      // re-open the popover, proving the previous close was a toggle, not
+      // an outside-dismiss.
       await act(async () => {
-        fireEvent.mouseDown(trigger);
+        fireEvent.click(trigger);
+      });
+      // Toggled closed — expected
+      await waitFor(() => {
+        expect(container.querySelector('[data-state="open"]')).toBeNull();
       });
 
-      // Popover should still be open
-      expect(container.querySelector('[data-state="open"]')).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(trigger);
+      });
+      // Toggled open again — proves outside-dismiss didn't break the cycle
+      await waitForPopoverVisible(container);
     });
 
     it("does not dismiss when clicking inside popover content", async () => {

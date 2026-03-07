@@ -271,9 +271,11 @@ SourcesListItem.displayName = "SourcesListItem";
  * Matches the "Sources" button shown in the screenshots with stacked favicons.
  */
 export const SourcesTrigger = forwardRef<HTMLButtonElement, SourcesTriggerProps>(
-  ({ sources, maxIcons = 3, onClick, label = "Sources", className, isOpen }, ref) => {
+  ({ sources, maxIcons = 3, onClick, label, className, isOpen }, ref) => {
+    const t = useTranslation();
     const displaySources = useMemo(() => sources.slice(0, maxIcons), [sources, maxIcons]);
     const hasMore = sources.length > maxIcons;
+    const resolvedLabel = label ?? t("drawer.sources");
 
     return (
       <button
@@ -290,7 +292,7 @@ export const SourcesTrigger = forwardRef<HTMLButtonElement, SourcesTriggerProps>
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        <span className="font-medium">{label}</span>
+        <span className="font-medium">{resolvedLabel}</span>
 
         {/* Stacked favicons */}
         <div className="flex items-center -space-x-1">
@@ -417,12 +419,13 @@ const SourcesListContentArea = ({
   renderEmpty,
   renderLoading,
 }: SourcesListContentAreaProps) => {
+  const t = useTranslation();
   if (isLoading) {
     if (renderLoading) return renderLoading();
     return (
       <div className="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
         <SpinnerIcon />
-        <span className="ml-2 text-sm">Loading sources...</span>
+        <span className="ml-2 text-sm">{t("sources.loading")}</span>
       </div>
     );
   }
@@ -522,7 +525,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
       onOpenChange,
       header = {},
       isLoading = false,
-      emptyMessage = "No sources available",
+      emptyMessage,
       maxHeight,
       className,
       listClassName,
@@ -537,6 +540,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
     },
     ref,
   ) => {
+    const t = useTranslation();
     const containerRef = useRef<HTMLDivElement>(null);
     // Lazy-init: true on client (portals available), false during SSR — avoids a
     // useEffect + setState flash that would render null then immediately re-render.
@@ -581,6 +585,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
       },
       [handleClose],
     );
+    const resolvedEmptyMessage = emptyMessage ?? t("sources.empty");
 
     const headerElement = (
       <SourcesListHeader
@@ -597,7 +602,7 @@ export const SourcesListComponent = forwardRef<HTMLDivElement, SourcesListProps>
       <SourcesListContentArea
         isLoading={isLoading}
         sources={sources}
-        emptyMessage={emptyMessage}
+        emptyMessage={resolvedEmptyMessage}
         groupByDomain={groupByDomain}
         groupedSources={groupedSources}
         listClassName={listClassName}

@@ -88,7 +88,7 @@ test.describe("Page Pill Interactions", () => {
     const popover = page.getByRole("dialog");
     await expect(popover).toBeVisible({ timeout: 10000 });
 
-    await expect(popover.getByText("p.5")).toBeVisible();
+    await expect(popover.getByText(/p\.\s*5/).first()).toBeVisible();
     await expect(popover.getByRole("button", { name: /expand to full page 5/i })).not.toBeVisible();
   });
 
@@ -112,6 +112,6 @@ test.describe("Page Pill Interactions", () => {
 
     const expandedView = popover.locator("[data-dc-inline-expanded]").filter({ visible: true });
     await expect(expandedView).toBeVisible({ timeout: 10000 });
-    await expect(popover.getByText("p.5")).toBeVisible();
+    await expect(popover.getByText(/p\.\s*5/).first()).toBeVisible();
   });
 });

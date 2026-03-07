@@ -4,6 +4,8 @@ import { isUrlCitation } from "../types/citation.js";
 import type { Verification } from "../types/verification.js";
 import type { CitationDrawerItem, SourceCitationGroup } from "./CitationDrawer.types.js";
 import { isPartialSearchStatus } from "./citationStatus.js";
+import type { MessageKey, TranslateFunction } from "./i18n.js";
+import { defaultMessages, defaultTranslator } from "./i18n.js";
 // Import icon components for JSX rendering in getStatusInfo
 import {
   CheckIcon as CheckIconComponent,
@@ -72,9 +74,12 @@ export function resolveGroupLabels(
  * the "+N" overflow separately in a styled span, so this function
  * returns only the primary name (no overflow suffix).
  */
-export function getPrimarySourceName(citationGroups: SourceCitationGroup[]): string {
-  if (citationGroups.length === 0) return "Sources";
-  const firstName = citationGroups[0].sourceName?.trim() || "Source";
+export function getPrimarySourceName(
+  citationGroups: SourceCitationGroup[],
+  t: TranslateFunction = defaultTranslator,
+): string {
+  if (citationGroups.length === 0) return t("drawer.sources");
+  const firstName = citationGroups[0].sourceName?.trim() || t("drawer.source");
   return firstName.length > 25 ? `${firstName.slice(0, 25)}...` : firstName;
 }
 
@@ -86,8 +91,11 @@ export function getPrimarySourceName(citationGroups: SourceCitationGroup[]): str
  * The drawer heading uses getPrimarySourceName() directly since it renders
  * the "+N" overflow count in a separate styled element.
  */
-export function generateDefaultLabel(citationGroups: SourceCitationGroup[]): string {
-  const name = getPrimarySourceName(citationGroups);
+export function generateDefaultLabel(
+  citationGroups: SourceCitationGroup[],
+  t: TranslateFunction = defaultTranslator,
+): string {
+  const name = getPrimarySourceName(citationGroups, t);
   if (citationGroups.length <= 1) return name;
   return `${name} +${citationGroups.length - 1}`;
 }
@@ -167,6 +175,7 @@ import { DOT_INDICATOR_FIXED_SIZE_STYLE } from "./constants.js";
 export function getStatusInfo(
   verification: Verification | null,
   indicatorVariant: IndicatorVariant = "icon",
+  t: TranslateFunction = defaultTranslator,
 ): {
   color: string;
   icon: React.ReactNode;
@@ -177,13 +186,13 @@ export function getStatusInfo(
   const isPartial = isPartialSearchStatus(status);
 
   if (indicatorVariant === "none") {
-    let label = "Verified";
+    let label = t("indicator.verified");
     if (!status || status === "pending" || status === "loading") {
-      label = "Verifying";
+      label = t("indicator.verifying");
     } else if (status === "not_found") {
-      label = "Not found";
+      label = t("indicator.notFound");
     } else if (isPartial) {
-      label = "Partial match";
+      label = t("indicator.partial");
     }
 
     return { color: "", icon: null, label };
@@ -194,27 +203,27 @@ export function getStatusInfo(
       return {
         color: "text-gray-400",
         icon: <span className="block rounded-full bg-gray-400 animate-pulse" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
-        label: "Verifying",
+        label: t("indicator.verifying"),
       };
     }
     if (status === "not_found") {
       return {
         color: "text-red-500",
         icon: <span className="block rounded-full bg-red-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
-        label: "Not found",
+        label: t("indicator.notFound"),
       };
     }
     if (isPartial) {
       return {
         color: "text-amber-500",
         icon: <span className="block rounded-full bg-amber-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
-        label: "Partial match",
+        label: t("indicator.partial"),
       };
     }
     return {
       color: "text-green-500",
       icon: <span className="block rounded-full bg-green-500" style={DOT_INDICATOR_FIXED_SIZE_STYLE} />,
-      label: "Verified",
+      label: t("indicator.verified"),
     };
   }
 
@@ -223,7 +232,7 @@ export function getStatusInfo(
     return {
       color: "text-gray-400",
       icon: <SpinnerIconComponent />,
-      label: "Verifying",
+      label: t("indicator.verifying"),
     };
   }
 
@@ -231,7 +240,7 @@ export function getStatusInfo(
     return {
       color: "text-red-500",
       icon: <XCircleIconComponent />,
-      label: "Not found",
+      label: t("indicator.notFound"),
     };
   }
 
@@ -239,7 +248,7 @@ export function getStatusInfo(
     return {
       color: "text-amber-500",
       icon: <CheckIconComponent />,
-      label: "Partial match",
+      label: t("indicator.partial"),
     };
   }
 
@@ -247,7 +256,7 @@ export function getStatusInfo(
   return {
     color: "text-green-500",
     icon: <CheckIconComponent />,
-    label: "Verified",
+    label: t("indicator.verified"),
   };
 }
 
@@ -295,18 +304,33 @@ export interface StatusSection {
  * and border color (for citation item left borders in CitationDrawer).
  */
 export const STATUS_DISPLAY_MAP: Record<StatusCategory, { label: string; textColor: string; borderColor: string }> = {
-  notFound: { label: "Not found", textColor: "text-red-500", borderColor: "border-l-red-400 dark:border-l-red-500" },
+  notFound: {
+    label: defaultMessages["indicator.notFound"],
+    textColor: "text-red-500",
+    borderColor: "border-l-red-400 dark:border-l-red-500",
+  },
   partial: {
-    label: "Partial match",
+    label: defaultMessages["indicator.partial"],
     textColor: "text-amber-500",
     borderColor: "border-l-amber-400 dark:border-l-amber-500",
   },
-  pending: { label: "Verifying", textColor: "text-gray-400", borderColor: "border-l-gray-300 dark:border-l-gray-600" },
+  pending: {
+    label: defaultMessages["indicator.verifying"],
+    textColor: "text-gray-400",
+    borderColor: "border-l-gray-300 dark:border-l-gray-600",
+  },
   verified: {
-    label: "Verified",
+    label: defaultMessages["indicator.verified"],
     textColor: "text-green-500",
     borderColor: "border-l-green-400 dark:border-l-green-500",
   },
+};
+
+const STATUS_LABEL_KEYS: Record<StatusCategory, MessageKey> = {
+  notFound: "indicator.notFound",
+  partial: "indicator.partial",
+  pending: "indicator.verifying",
+  verified: "indicator.verified",
 };
 
 /**
@@ -392,7 +416,10 @@ export function getItemStatusCategory(item: CitationDrawerItem): StatusCategory 
  * Returns sections ordered: notFound → partial → pending → verified.
  * Empty sections are omitted.
  */
-export function groupCitationsByStatus(groups: SourceCitationGroup[]): StatusSection[] {
+export function groupCitationsByStatus(
+  groups: SourceCitationGroup[],
+  t: TranslateFunction = defaultTranslator,
+): StatusSection[] {
   const buckets: Record<StatusCategory, CitationDrawerItem[]> = {
     notFound: [],
     partial: [],
@@ -412,7 +439,7 @@ export function groupCitationsByStatus(groups: SourceCitationGroup[]): StatusSec
     .filter(category => buckets[category].length > 0)
     .map(category => ({
       category,
-      label: STATUS_DISPLAY_MAP[category].label,
+      label: t(STATUS_LABEL_KEYS[category]),
       color: STATUS_DISPLAY_MAP[category].textColor,
       items: buckets[category],
     }));
@@ -508,13 +535,16 @@ export interface FlatCitationItem {
  * Flatten citation groups into individual citation items with source context.
  * Sorted by status priority (worst first) so failures appear at the start of the icon row.
  */
-export function flattenCitations(citationGroups: SourceCitationGroup[]): FlatCitationItem[] {
+export function flattenCitations(
+  citationGroups: SourceCitationGroup[],
+  t: TranslateFunction = defaultTranslator,
+): FlatCitationItem[] {
   const items: FlatCitationItem[] = [];
   for (const group of citationGroups) {
     for (const item of group.citations) {
       items.push({
         item,
-        sourceName: group.sourceName?.trim() || "Source",
+        sourceName: group.sourceName?.trim() || t("drawer.source"),
         sourceFavicon: group.sourceFavicon,
         group,
       });

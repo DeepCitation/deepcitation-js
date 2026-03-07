@@ -215,6 +215,7 @@ function StatusIndicators({
   renderPartialIndicator: (s: CitationStatus) => ReactNode;
   pendingClassName?: string;
 }) {
+  const t = useTranslation();
   const { isVerified, isMiss, isPartialMatch, isPending } = status;
   return (
     <>
@@ -225,7 +226,7 @@ function StatusIndicators({
           <StatusIndicatorWrapper>
             <XIcon />
           </StatusIndicatorWrapper>
-          <span className="sr-only">not found</span>
+          <span className="sr-only">{t("indicator.notFound")}</span>
         </>
       )}
       {isPending && <span className={pendingClassName ?? "opacity-70"}>{pendingContent}</span>}
