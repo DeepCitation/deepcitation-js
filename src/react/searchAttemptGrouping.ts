@@ -8,6 +8,7 @@ export interface GroupedSearchAttempt {
 }
 
 function normalizePhrase(value: string): string {
+  if (!value) return "";
   const stripped = safeReplace(value.normalize("NFKD"), /[\u0300-\u036f]/g, "").toLowerCase();
   const noDigitSeps = safeReplace(stripped, /(\d)[,._](?=\d)/g, "$1");
   const alphanumOnly = safeReplace(noDigitSeps, /[^a-z0-9]+/g, " ").trim();
