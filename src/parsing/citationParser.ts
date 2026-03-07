@@ -49,6 +49,8 @@ const KEY_ALIAS_MAP: Record<string, keyof CitationData | "start_page_id" | "star
   lineIds: "line_ids",
   startPageId: "start_page_id",
   startPageKey: "start_page_key",
+  // "fileId" was an early API field name before "attachmentId" was standardized.
+  // Kept as an alias for backward compatibility with serialized citation payloads.
   fileId: "attachment_id",
 } as const;
 

@@ -73,7 +73,7 @@ function computePosition(
     }
     x += alignOffset;
     y = side === "bottom" ? triggerRect.bottom + sideOffset : triggerRect.top - contentRect.height - sideOffset;
-    return { x, y };
+    return { x: Math.round(x), y: Math.round(y) };
   }
 
   if (align === "center") {
@@ -86,7 +86,7 @@ function computePosition(
   y += alignOffset;
   x = side === "right" ? triggerRect.right + sideOffset : triggerRect.left - contentRect.width - sideOffset;
 
-  return { x, y };
+  return { x: Math.round(x), y: Math.round(y) };
 }
 
 const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
@@ -105,7 +105,11 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
     },
     forwardedRef,
   ) => {
-    // React Compiler opt-out: coordsRef.current read during render is intentional (imperative positioning)
+    // coordsRef holds the last-computed position. It is written imperatively in recomputePosition
+    // (via wrapper.style.transform) and read during render to seed the initial inline style.
+    // Invariant: coordsRef.current is always updated before wrapper.style.transform, so React
+    // re-renders never overwrite the imperative style with a stale value.
+    // React Compiler opt-out: coordsRef.current is intentionally read during render.
     const { open, onOpenChange, triggerRef, contentRef } = usePopoverContext();
     const localContentRef = React.useRef<HTMLDivElement | null>(null);
     const wrapperRef = React.useRef<HTMLDivElement | null>(null);

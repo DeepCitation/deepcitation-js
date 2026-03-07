@@ -9,7 +9,9 @@ import type { SearchAttempt, SearchStatus } from "./search.js";
 /**
  * Default empty verification object.
  * Shallow-frozen — top-level fields cannot be reassigned at runtime.
- * (Nested objects added in future must also be frozen to maintain immutability.)
+ * IMPORTANT: `Object.freeze` is shallow. If nested object fields are added here
+ * in future, freeze them individually (e.g. `Object.freeze({ ... })` inline)
+ * to maintain the immutability guarantee.
  */
 export const BLANK_VERIFICATION: Verification = Object.freeze({
   status: "not_found",

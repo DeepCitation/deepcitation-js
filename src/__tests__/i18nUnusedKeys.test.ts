@@ -84,10 +84,6 @@ describe("i18n unused keys", () => {
   it("has no new unused message keys (update KNOWN_UNUSED if intentional)", () => {
     const newlyUnused = allKeys.filter(key => !isUsed(key) && !KNOWN_UNUSED.has(key));
 
-    expect(newlyUnused).toEqual(
-      expect.arrayContaining(newlyUnused.length > 0 ? [] : newlyUnused.map(k => expect.stringContaining(k))),
-    );
-
     if (newlyUnused.length > 0) {
       throw new Error(
         `${newlyUnused.length} new unused key(s) in defaultMessages. Either use them or add to KNOWN_UNUSED:\n` +

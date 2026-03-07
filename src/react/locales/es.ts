@@ -4,8 +4,7 @@ import { type DeepCitationMessages, defaultMessages } from "../i18n.js";
  * Spanish locale overrides for DeepCitation React components.
  *
  * Notes:
- * - This dictionary intentionally starts from `defaultMessages` so new keys
- *   added upstream always fall back to English until translated.
+ * - All keys from `defaultMessages` must be present (CI enforces full parity via i18nLocales.test.ts).
  * - Use `satisfies DeepCitationMessages` to keep compile-time key safety.
  *
  * `esOverrides` contains ONLY the locale-specific translations (no spread).
