@@ -446,4 +446,8 @@ export interface AttachmentResponse {
   originalDownload?: FileDownload;
   /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. */
   convertedDownload?: FileDownload;
+  /** The full text content formatted for LLM prompts with page markers and line IDs. */
+  deepTextPromptPortion?: string;
+  /** Raw per-page text array extracted from the document. */
+  pageTexts?: string[];
 }

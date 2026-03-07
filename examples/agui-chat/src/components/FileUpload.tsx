@@ -36,11 +36,11 @@ export function FileUpload({ onUpload, uploadedFiles }: FileUploadProps) {
       await onUpload(file);
     } catch (error) {
       console.error("Upload failed:", error);
-    } finally {
-      setIsUploading(false);
-      // Reset input so the same file can be uploaded again
-      resetInput();
     }
+    // Runs after try/catch regardless of outcome (equivalent to finally,
+    // but React Compiler doesn't support TryStatement with a finally clause).
+    setIsUploading(false);
+    resetInput();
   };
 
   return (
