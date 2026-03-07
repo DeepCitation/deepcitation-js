@@ -39,6 +39,20 @@ const COMPACT_KEY_MAP: Record<string, keyof CitationData> = {
 } as const;
 
 /**
+ * Map of camelCase aliases to canonical snake_case keys.
+ */
+const KEY_ALIAS_MAP: Record<string, keyof CitationData | "start_page_id" | "start_page_key"> = {
+  attachmentId: "attachment_id",
+  fullPhrase: "full_phrase",
+  anchorText: "anchor_text",
+  pageId: "page_id",
+  lineIds: "line_ids",
+  startPageId: "start_page_id",
+  startPageKey: "start_page_key",
+  fileId: "attachment_id",
+} as const;
+
+/**
  * Map for timestamp sub-keys.
  */
 const _TIMESTAMP_KEY_MAP: Record<string, string> = {
@@ -73,7 +87,7 @@ function expandCompactKeys(
 
   for (const [key, value] of Object.entries(data)) {
     // Check if this is a compact key
-    const fullKey = COMPACT_KEY_MAP[key] || key;
+    const fullKey = KEY_ALIAS_MAP[key] || COMPACT_KEY_MAP[key] || key;
 
     // Only assign if key is safe (prevents prototype pollution)
     if (!isSafeKey(fullKey)) {
@@ -81,11 +95,11 @@ function expandCompactKeys(
     }
 
     // Handle timestamps specially (nested object with s/e keys)
-    if ((key === "t" || key === "timestamps") && value && typeof value === "object") {
+    if ((key === "t" || fullKey === "timestamps") && value && typeof value === "object") {
       const ts = value as Record<string, unknown>;
       result.timestamps = {
-        start_time: ts.s ?? ts.start_time,
-        end_time: ts.e ?? ts.end_time,
+        start_time: ts.s ?? ts.start_time ?? ts.startTime,
+        end_time: ts.e ?? ts.end_time ?? ts.endTime,
       };
       continue;
     }

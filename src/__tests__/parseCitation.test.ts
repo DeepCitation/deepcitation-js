@@ -2676,6 +2676,26 @@ Patient Profile:
       expect(citation.lineIds).toEqual([5, 6]);
     });
 
+    it("extracts citations from deferred JSON format with camelCase keys", () => {
+      const input = `Camel case [1].
+
+<<<CITATION_DATA>>>
+[
+  {"id": 1, "attachmentId": "abc123", "reasoning": "growth metrics", "fullPhrase": "The company achieved 45% year-over-year growth", "anchorText": "45% growth", "pageId": "2_1", "lineIds": [12, 13]}
+]
+<<<END_CITATION_DATA>>>`;
+
+      const result = getAllCitationsFromLlmOutput(input);
+
+      expect(Object.keys(result).length).toBe(1);
+      const citation = Object.values(result)[0];
+      expect(citation.fullPhrase).toBe("The company achieved 45% year-over-year growth");
+      expect(citation.attachmentId).toBe("abc123");
+      expect(citation.anchorText).toBe("45% growth");
+      expect(citation.pageNumber).toBe(2);
+      expect(citation.lineIds).toEqual([12, 13]);
+    });
+
     it("extracts citations from deferred JSON format with multiple attachments", () => {
       const input = `From doc1 [1] and doc2 [2].
 
