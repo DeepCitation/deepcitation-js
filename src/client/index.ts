@@ -19,7 +19,6 @@ export type {
   ExtendExpirationDuration,
   ExtendExpirationOptions,
   ExtendExpirationResponse,
-  FileDataPart,
   FileInput,
   GetAttachmentOptions,
   PrepareAttachmentsResult,

@@ -24,7 +24,6 @@ export type {
   ExtendExpirationDuration,
   ExtendExpirationOptions,
   ExtendExpirationResponse,
-  FileDataPart,
   FileInput,
   GetAttachmentOptions,
   PrepareAttachmentsResult,
@@ -123,18 +122,16 @@ export {
   generateCitationKey,
   generateVerificationKey,
 } from "./react/utils.js";
-export type { DeepTextItem, ScreenBox, SourcePage } from "./types/boxes.js";
+export type { DeepTextItem, ScreenBox } from "./types/boxes.js";
 // Types
 export type {
   Citation,
-  CitationBase,
   // Record types (object dictionaries, NOT arrays)
   CitationRecord,
   CitationStatus,
   CitationType,
   DocumentCitation,
   ImageFormat,
-  SourceMeta,
   // Source types for categorization
   SourceType,
   UrlCitation,
@@ -157,7 +154,6 @@ export type {
   DocumentVerificationResult,
   DownloadLink,
   EvidenceImage,
-  ExpiresAt,
   FileDownload,
   PageImage,
   PageImagesStatus,

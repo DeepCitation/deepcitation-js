@@ -650,49 +650,6 @@ describe("DeepCitation Client", () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
-    it("differentiates citations with same text but different selection", async () => {
-      const client = new DeepCitation({ apiKey: "sk-dc-123" });
-
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            verifications: { "1": { status: "found" } },
-          }),
-        } as Response)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            verifications: { "1": { status: "found" } },
-          }),
-        } as Response);
-
-      // Same text, different selection
-      const citations1 = {
-        "1": {
-          fullPhrase: "test phrase",
-          anchorText: "test",
-          pageNumber: 1,
-          selection: { x: 0, y: 0, width: 100, height: 20 },
-          attachmentId: "file_abc",
-        },
-      };
-      const citations2 = {
-        "1": {
-          fullPhrase: "test phrase",
-          anchorText: "test",
-          pageNumber: 1,
-          selection: { x: 50, y: 100, width: 100, height: 20 },
-          attachmentId: "file_abc",
-        },
-      };
-
-      await client.verifyAttachment("file_abc", citations1);
-      await client.verifyAttachment("file_abc", citations2);
-
-      // Different selection should result in separate API calls
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-    });
 
     it("uses same cache for identical citations with different numbering", async () => {
       const client = new DeepCitation({ apiKey: "sk-dc-123" });

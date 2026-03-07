@@ -5,10 +5,9 @@
  */
 
 // Box/geometry types
-export type { DeepTextItem, ScreenBox, SourcePage } from "./boxes.js";
+export type { DeepTextItem, ScreenBox } from "./boxes.js";
 export type {
   Citation,
-  CitationBase,
   CitationStatus,
   DocumentCitation,
   ImageFormat,
@@ -31,7 +30,6 @@ export type {
   DocumentVerificationResult,
   DownloadLink,
   EvidenceImage,
-  ExpiresAt,
   FileDownload,
   PageImage,
   PageImagesStatus,

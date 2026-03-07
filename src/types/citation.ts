@@ -1,4 +1,3 @@
-import type { ScreenBox } from "./boxes.js";
 import type { Verification } from "./verification.js";
 
 /**
@@ -104,7 +103,7 @@ export type SourceType =
  * Common fields shared by all citation types.
  * Only contains fields that are semantically valid for both document and URL citations.
  */
-export interface CitationBase {
+interface CitationBase {
   /** The full context/excerpt containing the cited information */
   fullPhrase?: string;
 
@@ -156,9 +155,6 @@ export interface DocumentCitation extends CitationBase {
 
   /** Start page ID for multi-page citations */
   startPageId?: string;
-
-  /** Selection box coordinates in the document */
-  selection?: ScreenBox;
 }
 
 /**
@@ -257,7 +253,7 @@ export interface CitationStatus {
  * Metadata for a source in an aggregated sources list.
  * Used by SourcesListComponent to display collected citations.
  */
-export interface SourceMeta {
+interface SourceMeta {
   /** Unique identifier for this source */
   id: string;
   /** The source URL */

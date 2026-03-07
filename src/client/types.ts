@@ -1,7 +1,6 @@
 import type {
   Citation,
   DeepTextItem,
-  ExpiresAt,
   FileDownload,
   ImageFormat,
   PageImage,
@@ -133,7 +132,7 @@ export interface UploadFileResponse {
   /** Error message if status is "error" */
   error?: string;
   /** Optional expiration date for the attachment. */
-  expiresAt?: ExpiresAt;
+  expiresAt?: (string & {}) | "never";
   /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
   originalDownload?: FileDownload;
   /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. Absent for plain PDF uploads. */
@@ -262,16 +261,6 @@ export interface FileInput extends FileRequestOptions {
 }
 
 /**
- * File reference returned from prepareAttachments
- */
-export interface FileDataPart {
-  /** The attachment ID assigned by DeepCitation */
-  attachmentId: string;
-  /** Optional filename for display purposes */
-  filename?: string;
-}
-
-/**
  * Per-attachment assets returned from prepareAttachments
  */
 export interface PreparedAttachment {
@@ -294,7 +283,7 @@ export interface PreparedAttachment {
  */
 export interface PrepareAttachmentsResult {
   /** Array of file references for verification */
-  fileDataParts: FileDataPart[];
+  fileDataParts: Array<{ attachmentId: string; filename?: string }>;
   /** The combined formatted text content for LLM prompts (with page markers and line IDs) for all files */
   deepTextPromptPortion: string;
   /** Per-attachment assets for downloads and page images */
@@ -308,7 +297,7 @@ export interface VerifyInput {
   /** The LLM response containing citations */
   llmOutput: string;
   /** Optional file references (required for Zero Data Retention or after storage expires) */
-  fileDataParts?: FileDataPart[];
+  fileDataParts?: Array<{ attachmentId: string; filename?: string }>;
   /** Output image format for verification screenshots */
   outputImageFormat?: ImageFormat;
   /** Developer's end-user identifier for usage attribution. Overrides the instance-level endUserId if set. */
@@ -398,9 +387,9 @@ export interface ExtendExpirationResponse {
   /** The attachment ID that was extended */
   attachmentId: string;
   /** The new expiration date */
-  expiresAt: ExpiresAt;
+  expiresAt: (string & {}) | "never";
   /** The previous expiration date, or undefined if not previously set */
-  previousExpiresAt?: ExpiresAt;
+  previousExpiresAt?: (string & {}) | "never";
 }
 
 /**
@@ -459,7 +448,7 @@ export interface AttachmentResponse {
   /** Source URL information when the attachment originated from a URL */
   urlSource?: UrlSource;
   /** Expiration date */
-  expiresAt?: ExpiresAt;
+  expiresAt?: (string & {}) | "never";
   /** Original file as received (PDF, DOCX, MP4, …). Absent for URL inputs. */
   originalDownload?: FileDownload;
   /** Converted artifact: PDF rendition for docs/URLs, transcript for audio/video. */

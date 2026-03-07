@@ -1,16 +1,10 @@
-import type { DeepTextItem, ScreenBox, SourcePage } from "./boxes.js";
+import type { DeepTextItem, ScreenBox } from "./boxes.js";
 import type { Citation } from "./citation.js";
 import type { SearchAttempt, SearchStatus } from "./search.js";
 
 // ==========================================================================
 // Shared utility types
 // ==========================================================================
-
-/**
- * An expiration timestamp — either an ISO 8601 date string or `"never"` for non-expiring resources.
- * The `& {}` intersection preserves IDE autocomplete for the `"never"` literal.
- */
-export type ExpiresAt = (string & {}) | "never";
 
 /**
  * Default empty verification object.
@@ -32,7 +26,7 @@ export const BLANK_VERIFICATION: Verification = Object.freeze({
 export interface DownloadLink {
   url: string;
   /** Optional expiration timestamp for signed links */
-  expiresAt?: ExpiresAt;
+  expiresAt?: (string & {}) | "never";
 }
 
 /**
@@ -171,9 +165,21 @@ export interface UrlVerificationResult {
 
 /**
  * A page render returned from verification for user inspection.
- * Extends SourcePage from boxes.ts with verification-specific metadata.
  */
-export interface PageImage extends SourcePage {
+export interface PageImage {
+  /** Page number (1-indexed) */
+  pageNumber: number;
+  /** Page dimensions in pixels or PDF units */
+  dimensions: {
+    width: number;
+    height: number;
+  };
+  /** Source URL for the page image/render */
+  imageUrl: string;
+  /** Optional base64-encoded thumbnail image (e.g., avif) for quick preview */
+  thumbnailUrl?: string;
+  /** Optional expiration date for the page data (ISO 8601 string or "never" for enterprise). */
+  expiresAt?: string;
   /** Whether this page contains the verified citation match */
   isMatchPage?: boolean;
   /** Highlighted region on this page (if match found) */

@@ -14,7 +14,6 @@ import type {
   DeleteAttachmentResponse,
   ExtendExpirationOptions,
   ExtendExpirationResponse,
-  FileDataPart,
   FileInput,
   GetAttachmentOptions,
   PrepareAttachmentsResult,
@@ -579,7 +578,7 @@ export class DeepCitation {
 
     const uploadResults = await Promise.all(uploadPromises);
 
-    const fileDataParts: FileDataPart[] = uploadResults.map(({ result, filename }) => ({
+    const fileDataParts: Array<{ attachmentId: string; filename?: string }> = uploadResults.map(({ result, filename }) => ({
       attachmentId: result.attachmentId,
       filename: filename || result.metadata?.filename,
     }));
@@ -678,11 +677,7 @@ export class DeepCitation {
     // Note: We use Object.values, not Object.entries, because the map key (citation number)
     // is just a display identifier - verification results depend only on citation content
     const citationKeys = Object.values(citationMap)
-      .map(citation => {
-        const baseKey = generateCitationKey(citation);
-        const selectionKey = citation.type !== "url" && citation.selection ? JSON.stringify(citation.selection) : "";
-        return `${baseKey}:${selectionKey}`;
-      })
+      .map(citation => generateCitationKey(citation))
       .sort()
       .join("|");
     const rawKey = `${attachmentId}:${citationKeys}:${options?.outputImageFormat || "avif"}`;
