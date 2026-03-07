@@ -1181,8 +1181,6 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       // Note: popoverContentRef.current is intentionally read at call time (not snapshotted)
       // because the popover content mounts asynchronously after useBlinkMotionStage's effect
       // runs setMounted(true). By handler call time, the ref is always populated.
-      const triggerEl = triggerRef.current;
-
       const handleOutsideClick = (e: MouseEvent) => {
         // Don't dismiss popover while an image overlay is open - user expects to return
         // to the popover after closing the zoomed image. Uses ref to avoid stale closure.
@@ -1196,8 +1194,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           return;
         }
 
-        // Check if click is inside the trigger element
-        if (triggerEl?.contains(target)) {
+        // Read triggerRef at handler time, not effect setup time, so it is
+        // never stale when React 18 batches or defers effect execution.
+        if (triggerRef.current?.contains(target)) {
           return;
         }
 
