@@ -297,7 +297,13 @@ describe("deferredCitationToCitation", () => {
     };
 
     const citation = deferredCitationToCitation(data);
+    expect(citation.type).toBe("audio");
     expect(citation.fullPhrase).toBe("transcript text");
+    // timestamps are mapped to camelCase on AudioVideoCitation
+    if (citation.type === "audio" || citation.type === "video") {
+      expect(citation.timestamps?.startTime).toBe("00:01:00.000");
+      expect(citation.timestamps?.endTime).toBe("00:01:30.500");
+    }
   });
 
   it("allows overriding citation number", () => {

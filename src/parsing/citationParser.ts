@@ -21,7 +21,7 @@ import {
   type ParsedCitationResponse,
 } from "../prompts/citationPrompts.js";
 import { generateCitationKey } from "../react/utils.js";
-import type { Citation } from "../types/citation.js";
+import type { AudioVideoCitation, Citation } from "../types/citation.js";
 import { createSafeObject, isSafeKey } from "../utils/objectSafety.js";
 
 /**
@@ -414,6 +414,22 @@ export function deferredCitationToCitation(data: CitationData, citationNumber?: 
 
   // Sort lineIds if present
   const lineIds = data.line_ids?.length ? [...data.line_ids].sort((a, b) => a - b) : undefined;
+
+  // AV citation: timestamps present means this is an audio/video citation.
+  if (data.timestamps) {
+    return {
+      type: "audio" as const,
+      attachmentId: data.attachment_id,
+      fullPhrase: data.full_phrase,
+      anchorText: data.anchor_text,
+      citationNumber: citationNumber ?? data.id,
+      reasoning: data.reasoning,
+      timestamps: {
+        startTime: data.timestamps.start_time,
+        endTime: data.timestamps.end_time,
+      },
+    } as AudioVideoCitation;
+  }
 
   return {
     type: "document" as const,

@@ -2738,7 +2738,12 @@ Patient Profile:
 
       expect(Object.keys(result).length).toBe(1);
       const citation = Object.values(result)[0];
+      expect(citation.type).toBe("audio");
       expect(citation.attachmentId).toBe("video456");
+      if (citation.type === "audio" || citation.type === "video") {
+        expect(citation.timestamps?.startTime).toBe("00:01:00.000");
+        expect(citation.timestamps?.endTime).toBe("00:01:30.000");
+      }
     });
 
     it("extracts both deferred JSON and XML citations when both present", () => {
