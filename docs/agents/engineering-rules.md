@@ -95,6 +95,38 @@ Use existing utilities in `src/utils/` and avoid ad-hoc equivalents.
 - Prioritize "fewer lines" over readability (e.g., nested ternaries, dense one-liners)
 - Make the code harder to debug or extend
 
+## Type Safety
+
+### Discriminated Unions Must Be Complete
+
+When a type uses a discriminator field (e.g., `type: "url" | "document"`), **every function that creates instances of that type must set the discriminator**. After adding or modifying a discriminator field, grep for all constructors, factories, and parsing functions that produce that type and ensure they set the field correctly.
+
+```typescript
+// WRONG
+return { pageNumber, lineIds, fullPhrase }; // Missing type: "document"
+
+// CORRECT
+return { type: "document", pageNumber, lineIds, fullPhrase };
+```
+
+### No Unsafe Casts
+
+**Avoid `as unknown as T` casts.** Use type guards instead. If a cast is truly unavoidable, add a comment explaining why it's safe.
+
+### Export Verification
+
+When adding new public types or functions, verify they are exported from `src/index.ts` or `src/react/index.ts`. Missing exports have required follow-up fix PRs in the past.
+
+## Internal vs External Data
+
+### Line IDs are Internal Only
+
+**Do NOT expose `lineIds` to end users.** Line IDs are internal identifiers used by the verification system — they do not correspond to visible line numbers in documents.
+
+- **Internal use**: `lineIds` for verification matching, stored in `Citation.lineIds`
+- **User-facing display**: Show only `pageNumber` (e.g., "Page 3") — never show line IDs
+- **Acceptable**: Humanize into relative positions: `Page 3 (expected early, found middle)`
+
 ## PR Description Rules
 
 - Description must match actual diff.
