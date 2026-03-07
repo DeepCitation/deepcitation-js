@@ -253,15 +253,6 @@ export const parseCitation = (
     if (isVerbose) console.error("Error parsing lineIds", e);
   }
 
-  // Check for AV citation (has timestamps instead of line_ids)
-  const timestampsRaw = extractAttribute(middleCite, ["timestamps"]);
-  let timestamps: { startTime?: string; endTime?: string } | undefined;
-
-  if (timestampsRaw) {
-    const [startTime, endTime] = timestampsRaw.split("-") || [];
-    timestamps = { startTime, endTime };
-  }
-
   // Extract URL-specific attributes
   const url = cleanAndUnescape(extractAttribute(middleCite, ["url"]));
   const domain = cleanAndUnescape(extractAttribute(middleCite, ["domain"]));
@@ -284,7 +275,6 @@ export const parseCitation = (
           fullPhrase,
           anchorText: anchorText || value,
           citationNumber,
-          timestamps,
           reasoning,
         } as UrlCitation)
       : ({
@@ -296,7 +286,6 @@ export const parseCitation = (
           anchorText: anchorText || value,
           citationNumber,
           lineIds,
-          timestamps,
           reasoning,
         } as DocumentCitation);
 

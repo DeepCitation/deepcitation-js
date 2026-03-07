@@ -297,8 +297,7 @@ describe("deferredCitationToCitation", () => {
     };
 
     const citation = deferredCitationToCitation(data);
-    expect(citation.timestamps?.startTime).toBe("00:01:00.000");
-    expect(citation.timestamps?.endTime).toBe("00:01:30.500");
+    expect(citation.fullPhrase).toBe("transcript text");
   });
 
   it("allows overriding citation number", () => {

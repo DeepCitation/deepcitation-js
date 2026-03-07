@@ -412,15 +412,6 @@ export function deferredCitationToCitation(data: CitationData, citationNumber?: 
     startPageId = parsed.startPageId;
   }
 
-  // Parse timestamps for AV citations
-  let timestamps: { startTime?: string; endTime?: string } | undefined;
-  if (data.timestamps) {
-    timestamps = {
-      startTime: data.timestamps.start_time,
-      endTime: data.timestamps.end_time,
-    };
-  }
-
   // Sort lineIds if present
   const lineIds = data.line_ids?.length ? [...data.line_ids].sort((a, b) => a - b) : undefined;
 
@@ -434,7 +425,6 @@ export function deferredCitationToCitation(data: CitationData, citationNumber?: 
     citationNumber: citationNumber ?? data.id,
     lineIds,
     reasoning: data.reasoning,
-    timestamps,
   };
 }
 

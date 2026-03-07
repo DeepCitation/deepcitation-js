@@ -302,10 +302,6 @@ describe("parseCitation", () => {
 
     expect(citation.attachmentId).toBe("av123");
     expect(citation.fullPhrase).toBe("Audio clip");
-    expect(citation.timestamps).toEqual({
-      startTime: "00:00:01.000",
-      endTime: "00:00:03.000",
-    });
     expect(citation.reasoning).toBe("Because");
   });
 
@@ -576,7 +572,7 @@ describe("getAllCitationsFromLlmOutput", () => {
       expect(citation.anchorText).toBe("price");
     });
 
-    it("extracts AV citation with timestamps", () => {
+    it("extracts AV citation with timestamps attribute", () => {
       const input =
         "<cite attachment_id='av12345678901234567' full_phrase='audio transcript' timestamps='00:01:30-00:02:45' />";
       const result = getAllCitationsFromLlmOutput(input);
@@ -584,10 +580,6 @@ describe("getAllCitationsFromLlmOutput", () => {
       expect(Object.keys(result)).toHaveLength(1);
       const citation = Object.values(result)[0];
       expect(citation.fullPhrase).toBe("audio transcript");
-      expect(citation.timestamps).toEqual({
-        startTime: "00:01:30",
-        endTime: "00:02:45",
-      });
     });
   });
 
@@ -1242,10 +1234,6 @@ describe("getAllCitationsFromLlmOutput", () => {
       expect(Object.keys(result)).toHaveLength(1);
       const citation = Object.values(result)[0];
       expect(citation.fullPhrase).toBe("audio transcript");
-      expect(citation.timestamps).toEqual({
-        startTime: "00:01:30",
-        endTime: "00:02:45",
-      });
     });
 
     it("parses JSON citation with fileId property (backward compat: startPageKey -> startPageId)", () => {
@@ -2751,8 +2739,6 @@ Patient Profile:
       expect(Object.keys(result).length).toBe(1);
       const citation = Object.values(result)[0];
       expect(citation.attachmentId).toBe("video456");
-      expect(citation.timestamps?.startTime).toBe("00:01:00.000");
-      expect(citation.timestamps?.endTime).toBe("00:01:30.000");
     });
 
     it("extracts both deferred JSON and XML citations when both present", () => {

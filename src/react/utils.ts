@@ -23,12 +23,7 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
  */
 export function generateCitationKey(citation: Citation): string {
   // Common key parts
-  const keyParts = [
-    citation.fullPhrase || "",
-    citation.anchorText?.toString() || "",
-    citation.timestamps?.startTime || "",
-    citation.timestamps?.endTime || "",
-  ];
+  const keyParts = [citation.fullPhrase || "", citation.anchorText?.toString() || ""];
 
   if (isUrlCitation(citation)) {
     // URL-specific key parts
