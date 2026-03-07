@@ -1,14 +1,13 @@
 import { type ReactNode, useMemo, useState } from "react";
 import type { Citation } from "../types/citation.js";
+import { isUrlCitation } from "../types/citation.js";
 import type { SearchAttempt, SearchMethod, SearchStatus } from "../types/search.js";
 import type { Verification } from "../types/verification.js";
-
 import { UrlCitationComponent } from "./Citation.js";
 import {
   DOT_COLORS,
   FOCUS_RING_CLASSES,
   HITBOX_EXTEND_8x14,
-  isValidProofImageSrc,
   TERTIARY_ACTION_BASE_CLASSES,
   TERTIARY_ACTION_HOVER_CLASSES,
   TERTIARY_ACTION_IDLE_CLASSES,
@@ -29,8 +28,7 @@ import {
 import { getUniqueSearchAttemptCount, groupSearchAttempts } from "./searchAttemptGrouping.js";
 import type { IndicatorVariant, UrlFetchStatus } from "./types.js";
 // import { isValidProofUrl } from "./urlUtils.js"; // temporarily unused while proof link is disabled
-
-import { isUrlCitation } from "../types/citation.js";
+import { sanitizeUrl } from "./urlUtils.js";
 import { cn, isImageSource } from "./utils.js";
 
 /**
@@ -138,11 +136,9 @@ export interface SourceContextHeaderProps {
    */
   onClose?: () => void;
   /**
-   * Callback when the user clicks the download button.
-   * The button only renders when this prop is provided.
-   * Receives the full Citation object so the consumer can determine download logic.
+   * Download URL for the source file. When provided, renders a download button in the popover header.
    */
-  onSourceDownload?: (citation: Citation) => void;
+  downloadUrl?: string;
 }
 
 /**
@@ -177,13 +173,6 @@ function mapSearchStatusToUrlFetchStatus(status: SearchStatus | null | undefined
   }
 }
 
-function resolveImageDownloadUrl(verification: Verification | null | undefined): string | null {
-  const verificationImageSrc = verification?.evidence?.src;
-  if (verificationImageSrc && isValidProofImageSrc(verificationImageSrc)) {
-    return verificationImageSrc;
-  }
-  return null;
-}
 
 const DOWNLOAD_IFRAME_DATA_ATTR = "data-deepcitation-download-frame";
 const DOWNLOAD_IFRAME_CLEANUP_DELAY_MS = 30_000;
@@ -451,7 +440,7 @@ export function SourceContextHeader({
   sourceLabel,
   onExpand,
   onClose,
-  onSourceDownload,
+  downloadUrl,
 }: SourceContextHeaderProps) {
   const t = useTranslation();
   const isUrl = isUrlCitation(citation);
@@ -469,10 +458,7 @@ export function SourceContextHeader({
   // URL-specific data
   const url = isUrl ? citation.url || "" : "";
 
-  const shouldShowSourceDownloadButton = !!onSourceDownload;
-  const imageDownloadUrl = resolveImageDownloadUrl(verification);
-  // Keep a single download action visible: explicit source-download callback wins.
-  const shouldShowImageDownloadButton = !!imageDownloadUrl && !shouldShowSourceDownloadButton;
+  const shouldShowSourceDownloadButton = !!downloadUrl;
 
   // Display name for document citations (never show attachmentId to users)
   const displayName = isUrl ? undefined : sourceLabel || verification?.label || "Document";
@@ -520,23 +506,6 @@ export function SourceContextHeader({
             )}
           </>
         )}
-        {shouldShowImageDownloadButton && (
-          <button
-            type="button"
-            aria-label={t("aria.downloadImage")}
-            title={t("aria.downloadImage")}
-            className={cn(HEADER_DOWNLOAD_BUTTON_BASE_CLASSES, HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES)}
-            onClick={e => {
-              e.stopPropagation();
-              if (!imageDownloadUrl) return;
-              triggerBackgroundDownload(imageDownloadUrl);
-            }}
-          >
-            <span className="size-3.5 block">
-              <DownloadIcon />
-            </span>
-          </button>
-        )}
         {shouldShowSourceDownloadButton && (
           <button
             type="button"
@@ -545,7 +514,8 @@ export function SourceContextHeader({
             className={cn(HEADER_DOWNLOAD_BUTTON_BASE_CLASSES, HEADER_DOWNLOAD_BUTTON_REVEAL_CLASSES)}
             onClick={e => {
               e.stopPropagation();
-              onSourceDownload?.(citation);
+              const safeUrl = downloadUrl ? sanitizeUrl(downloadUrl) : null;
+              if (safeUrl) triggerBackgroundDownload(safeUrl);
             }}
           >
             <span className="size-3.5 block">

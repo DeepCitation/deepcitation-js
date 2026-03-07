@@ -55,7 +55,7 @@ import type {
   UrlFetchStatus,
 } from "./types.js";
 import { isBlockedStatus, isErrorStatus } from "./urlStatus.js";
-import { extractDomain, getUrlPath, safeWindowOpen, sanitizeUrl, truncateString } from "./urlUtils.js";
+import { extractDomain, getUrlPath, safeWindowOpen, truncateString } from "./urlUtils.js";
 import { cn, generateCitationInstanceId, generateCitationKey } from "./utils.js";
 import { startEvidenceViewTransition } from "./viewTransition.js";
 
@@ -68,32 +68,6 @@ export type {
 
 /** Tracks which deprecation warnings have already been emitted (dev-mode only). */
 const deprecationWarned = new Set<string>();
-
-export type CitationDownloadPolicy = "original_only" | "original_plus_url_pdf" | "original_plus_all_pdf";
-
-// biome-ignore lint/style/useComponentExportOnlyModules: exported for unit testing only — not part of the public API
-export function resolveSourceDownloadUrl(
-  originalDownload: FileDownload | undefined,
-  convertedDownload: FileDownload | undefined,
-  policy: CitationDownloadPolicy,
-): string | null {
-  // Original download always takes priority
-  const originalUrl = originalDownload?.link.url;
-  if (originalUrl) return originalUrl;
-
-  if (policy === "original_only") return null;
-
-  const convertedUrl = convertedDownload?.link.url;
-  if (!convertedUrl) return null;
-
-  // "original_plus_all_pdf": expose any converted artifact
-  if (policy === "original_plus_all_pdf") return convertedUrl;
-
-  // "original_plus_url_pdf" (default): URL inputs have no originalDownload —
-  // their convertedDownload is the PDF capture. originalUrl is always absent
-  // here (we returned early above if it was present).
-  return convertedUrl;
-}
 
 function getUrlStatusLabel(fetchStatus: UrlFetchStatus, t: TranslateFunction): string {
   const KEY_MAP: Record<UrlFetchStatus, MessageKey> = {
@@ -250,34 +224,12 @@ export interface CitationComponentProps extends BaseCitationProps {
    * Side-effect only — never replaces default behavior.
    */
   onTimingEvent?: (event: import("../types/timing.js").CitationTimingEvent) => void;
-  /**
-   * Callback when the user clicks the download button in the popover header.
-   * The button only renders when this prop is provided. Consumers handle actual
-   * download logic — the component just fires the callback with the Citation object.
-   *
-   * @example
-   * ```tsx
-   * <CitationComponent
-   *   citation={citation}
-   *   verification={verification}
-   *   onSourceDownload={(c) => downloadFile(c.attachmentId)}
-   * />
-   * ```
-   */
-  onSourceDownload?: (citation: Citation) => void;
   /** Original file as received (PDF, DOCX, …). Absent for URL inputs. Used for source download. */
   originalDownload?: FileDownload;
   /** Converted artifact (PDF rendition, transcript, …). Used for source download with URL inputs. */
   convertedDownload?: FileDownload;
   /** Optional page images keyed by attachmentId (used for full-page rendering). */
   pageImagesByAttachmentId?: Record<string, PageImage[]>;
-  /**
-   * Source download behavior when `onSourceDownload` is not provided.
-   * - "original_only": only original upload downloads are shown
-   * - "original_plus_url_pdf": original upload + URL-converted PDF (default)
-   * - "original_plus_all_pdf": original upload + any verification PDF
-   */
-  downloadPolicy?: CitationDownloadPolicy;
   /**
    * Enable haptic feedback on mobile for expand/collapse transitions.
    * Experimental — off by default while we validate the feel across devices.
@@ -430,7 +382,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   onExpandedWidthChange,
   pageImages,
   prevBeforeExpandedPageRef,
-  onSourceDownload,
+  downloadUrl,
   escapeInterceptRef,
 }: {
   renderPopoverContent?: CitationComponentProps["renderPopoverContent"];
@@ -447,7 +399,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
   onExpandedWidthChange?: (width: number | null, source?: "expanded-keyhole" | "expanded-page" | null) => void;
   pageImages?: PageImage[];
   prevBeforeExpandedPageRef: React.RefObject<"summary" | "expanded-keyhole">;
-  onSourceDownload?: (citation: Citation) => void;
+  downloadUrl?: string;
   escapeInterceptRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   if (renderPopoverContent) {
@@ -474,7 +426,7 @@ const PopoverContentRenderer = memo(function PopoverContentRenderer({
         onExpandedWidthChange={onExpandedWidthChange}
         pageImages={pageImages}
         prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
-        onSourceDownload={onSourceDownload}
+        downloadUrl={downloadUrl}
         escapeInterceptRef={escapeInterceptRef}
       />
     </CitationErrorBoundary>
@@ -524,11 +476,9 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
       indicatorVariant: indicatorVariantProp = "icon",
       sourceLabel,
       onTimingEvent,
-      onSourceDownload,
       originalDownload,
       convertedDownload,
       pageImagesByAttachmentId,
-      downloadPolicy = "original_plus_url_pdf",
       experimentalHaptics = false,
     },
     ref,
@@ -550,30 +500,21 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
     const indicatorVariant: IndicatorVariant = indicatorVariantProp;
 
     const pageImages = useMemo(() => {
+      if (verification?.pageImages) return verification.pageImages;
       const attachmentId = verification?.attachmentId;
       if (!attachmentId || !pageImagesByAttachmentId) return undefined;
       return pageImagesByAttachmentId[attachmentId];
-    }, [pageImagesByAttachmentId, verification?.attachmentId]);
-    const fallbackDownloadUrl = useMemo(
-      () => resolveSourceDownloadUrl(originalDownload, convertedDownload, downloadPolicy),
-      [originalDownload, convertedDownload, downloadPolicy],
-    );
+    }, [pageImagesByAttachmentId, verification]);
 
-    // Resolve effective download handler: explicit callback wins, else trigger browser download
-    const effectiveOnSourceDownload = useMemo(() => {
-      if (onSourceDownload) return onSourceDownload;
-      if (fallbackDownloadUrl && sanitizeUrl(fallbackDownloadUrl)) {
-        return () => {
-          const a = document.createElement("a");
-          a.href = fallbackDownloadUrl;
-          a.download = "";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        };
-      }
-      return undefined;
-    }, [onSourceDownload, fallbackDownloadUrl]);
+    const downloadUrl = useMemo(
+      () =>
+        verification?.originalDownload?.link.url ??
+        originalDownload?.link.url ??
+        verification?.convertedDownload?.link.url ??
+        convertedDownload?.link.url ??
+        null,
+      [verification, originalDownload, convertedDownload],
+    );
 
     const t = useTranslation();
 
@@ -1508,7 +1449,7 @@ export const CitationComponent = forwardRef<HTMLSpanElement, CitationComponentPr
           onExpandedWidthChange={handleExpandedWidthChange}
           pageImages={pageImages}
           prevBeforeExpandedPageRef={prevBeforeExpandedPageRef}
-          onSourceDownload={effectiveOnSourceDownload}
+          downloadUrl={downloadUrl ?? undefined}
           escapeInterceptRef={escapeInterceptRef}
         />
       );

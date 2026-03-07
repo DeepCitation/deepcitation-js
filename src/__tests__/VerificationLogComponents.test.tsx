@@ -601,7 +601,7 @@ describe("SourceContextHeader", () => {
   // ==========================================================================
 
   describe("Source download button", () => {
-    it("does not render download button when onSourceDownload is absent", () => {
+    it("does not render download button when downloadUrl is absent", () => {
       const citation: Citation = {
         type: "document",
         attachmentId: "abc123",
@@ -613,16 +613,17 @@ describe("SourceContextHeader", () => {
       expect(queryByRole("button", { name: /download source/i })).toBeNull();
     });
 
-    it("renders download button for document citation when onSourceDownload is provided", () => {
+    it("renders download button for document citation when downloadUrl is provided", () => {
       const citation: Citation = {
         type: "document",
         attachmentId: "abc123",
         pageNumber: 1,
         fullPhrase: "Test phrase",
       };
-      const onSourceDownload = () => {};
 
-      const { getByRole } = render(<SourceContextHeader citation={citation} onSourceDownload={onSourceDownload} />);
+      const { getByRole } = render(
+        <SourceContextHeader citation={citation} downloadUrl="https://example.com/file.pdf" />,
+      );
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
     });
 
@@ -634,7 +635,9 @@ describe("SourceContextHeader", () => {
         fullPhrase: "Test phrase",
       };
 
-      const { getByRole } = render(<SourceContextHeader citation={citation} onSourceDownload={() => {}} />);
+      const { getByRole } = render(
+        <SourceContextHeader citation={citation} downloadUrl="https://example.com/file.pdf" />,
+      );
       const button = getByRole("button", { name: /download source/i });
 
       expect(button.className).toContain("md:opacity-30");
@@ -642,7 +645,7 @@ describe("SourceContextHeader", () => {
       expect(button.className).toContain("md:group-focus-within/source-header:opacity-100");
     });
 
-    it("does not render download button for URL citation when onSourceDownload is omitted", () => {
+    it("does not render download button for URL citation when downloadUrl is omitted", () => {
       const citation: Citation = {
         type: "url",
         url: "https://example.com/article",
@@ -654,7 +657,7 @@ describe("SourceContextHeader", () => {
       expect(queryByRole("button", { name: /download source/i })).toBeNull();
     });
 
-    it("renders download button for URL citation when converted PDF metadata exists", () => {
+    it("renders download button for URL citation when downloadUrl is provided", () => {
       const citation: Citation = {
         type: "url",
         url: "https://example.com/article",
@@ -665,10 +668,13 @@ describe("SourceContextHeader", () => {
         attachmentId: "att-url-123",
         label: "example.com.pdf",
       };
-      const onSourceDownload = () => {};
 
       const { getByRole } = render(
-        <SourceContextHeader citation={citation} verification={verification} onSourceDownload={onSourceDownload} />,
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          downloadUrl="https://example.com/article.pdf"
+        />,
       );
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
     });
@@ -685,10 +691,13 @@ describe("SourceContextHeader", () => {
           src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
-      const onSourceDownload = () => {};
 
       const { getByRole, queryByRole, queryAllByRole } = render(
-        <SourceContextHeader citation={citation} verification={verification} onSourceDownload={onSourceDownload} />,
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          downloadUrl="https://example.com/file.pdf"
+        />,
       );
 
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
@@ -696,20 +705,26 @@ describe("SourceContextHeader", () => {
       expect(queryAllByRole("button", { name: /download/i })).toHaveLength(1);
     });
 
-    it("calls onSourceDownload with citation on click", () => {
+    it("triggers download when button is clicked", () => {
       const citation: Citation = {
         type: "document",
         attachmentId: "abc123",
         pageNumber: 3,
         fullPhrase: "Revenue grew 15%",
       };
-      const onSourceDownload = jest.fn();
+      const appendChildSpy = jest.spyOn(document.body, "appendChild");
 
-      const { getByRole } = render(<SourceContextHeader citation={citation} onSourceDownload={onSourceDownload} />);
+      const { getByRole } = render(
+        <SourceContextHeader citation={citation} downloadUrl="https://example.com/file.pdf" />,
+      );
       fireEvent.click(getByRole("button", { name: /download source/i }));
 
-      expect(onSourceDownload).toHaveBeenCalledTimes(1);
-      expect(onSourceDownload).toHaveBeenCalledWith(citation);
+      expect(appendChildSpy).toHaveBeenCalled();
+      const anchor = appendChildSpy.mock.calls.find(
+        ([el]) => el instanceof HTMLAnchorElement && (el as HTMLAnchorElement).href.includes("example.com/file.pdf"),
+      );
+      expect(anchor).toBeDefined();
+      appendChildSpy.mockRestore();
     });
 
     it("stops event propagation on click", () => {
@@ -719,7 +734,6 @@ describe("SourceContextHeader", () => {
         pageNumber: 1,
         fullPhrase: "Test phrase",
       };
-      const onSourceDownload = jest.fn();
       const parentClick = jest.fn();
 
       const { getByRole } = render(
@@ -731,12 +745,11 @@ describe("SourceContextHeader", () => {
             if (e.key === "Enter" || e.key === " ") parentClick();
           }}
         >
-          <SourceContextHeader citation={citation} onSourceDownload={onSourceDownload} />
+          <SourceContextHeader citation={citation} downloadUrl="https://example.com/file.pdf" />
         </div>,
       );
       fireEvent.click(getByRole("button", { name: /download source/i }));
 
-      expect(onSourceDownload).toHaveBeenCalledTimes(1);
       expect(parentClick).not.toHaveBeenCalled();
     });
   });
@@ -773,10 +786,13 @@ describe("SourceContextHeader", () => {
           src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPk5OT8DwAC2gF6qAj3rwAAAABJRU5ErkJggg==",
         },
       };
-      const onSourceDownload = () => {};
 
       const { getByRole, queryByRole, queryAllByRole } = render(
-        <SourceContextHeader citation={citation} verification={verification} onSourceDownload={onSourceDownload} />,
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          downloadUrl="https://example.com/article.pdf"
+        />,
       );
 
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
@@ -827,7 +843,7 @@ describe("SourceContextHeader", () => {
       expect(parentClick).not.toHaveBeenCalled();
     });
 
-    it("prefers source download when onSourceDownload is available", () => {
+    it("prefers source download when downloadUrl is available", () => {
       const citation: Citation = {
         type: "url",
         url: "https://example.com/article",
@@ -841,21 +857,17 @@ describe("SourceContextHeader", () => {
         },
       };
 
-      const onSourceDownload = jest.fn();
-
       const { getByRole, queryByRole } = render(
-        <SourceContextHeader citation={citation} verification={verification} onSourceDownload={onSourceDownload} />,
+        <SourceContextHeader
+          citation={citation}
+          verification={verification}
+          downloadUrl="https://example.com/article.pdf"
+        />,
       );
 
       // Source download button must be visible, image download must not
       expect(getByRole("button", { name: /download source/i })).toBeInTheDocument();
       expect(queryByRole("button", { name: /download image/i })).toBeNull();
-
-      // Click the download button
-      fireEvent.click(getByRole("button", { name: /download source/i }));
-
-      // Must call onSourceDownload (which points to the real file), not triggerBackgroundDownload
-      expect(onSourceDownload).toHaveBeenCalledTimes(1);
     });
 
     it("starts image download without navigating the current view", () => {

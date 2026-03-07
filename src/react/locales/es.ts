@@ -103,7 +103,6 @@ export const esOverrides = {
   "aria.closeImageView": "Cerrar vista de imagen",
   "aria.closePageView": "Cerrar vista de página",
   "aria.closePageViewNum": "Cerrar vista de página {pageNumber}",
-  "aria.downloadImage": "Descargar imagen",
   "aria.downloadSource": "Descargar fuente",
   "aria.collapseSearchLog": "Contraer registro de búsqueda",
   "aria.keyhole.image": "Imagen de verificación",

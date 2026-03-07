@@ -103,7 +103,6 @@ export const frOverrides = {
   "aria.closeImageView": "Fermer la vue image",
   "aria.closePageView": "Fermer la vue page",
   "aria.closePageViewNum": "Fermer la vue page {pageNumber}",
-  "aria.downloadImage": "Télécharger l'image",
   "aria.downloadSource": "Télécharger la source",
   "aria.collapseSearchLog": "Réduire le journal de recherche",
   "aria.keyhole.image": "Image de verification",

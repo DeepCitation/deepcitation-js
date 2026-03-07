@@ -155,7 +155,6 @@ export const defaultMessages = {
   "aria.closeImageView": "Close image view",
   "aria.closePageView": "Close page view",
   "aria.closePageViewNum": "Close page {pageNumber} view",
-  "aria.downloadImage": "Download image",
   "aria.downloadSource": "Download source",
   "aria.collapseSearchLog": "Collapse search log",
   "aria.verificationEvidence": "Verification evidence",
