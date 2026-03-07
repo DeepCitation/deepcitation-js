@@ -136,7 +136,11 @@ const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
       const triggerRect = triggerEl.getBoundingClientRect();
       const contentRect = contentEl.getBoundingClientRect();
       const next = computePosition(triggerRect, contentRect, side, align, sideOffset, alignOffset);
-      if (Math.abs(coordsRef.current.x - next.x) < 0.5 && Math.abs(coordsRef.current.y - next.y) < 0.5) return;
+      // Skip if coords haven't changed — BUT only when the wrapper already has a transform.
+      // On remount the wrapper is a fresh DOM node with no transform; coordsRef still holds
+      // the previous open's coords, so the diff check would fire and leave the wrapper at (0,0).
+      const alreadyPositioned = wrapper.style.transform !== "";
+      if (alreadyPositioned && Math.abs(coordsRef.current.x - next.x) < 0.5 && Math.abs(coordsRef.current.y - next.y) < 0.5) return;
       coordsRef.current = next;
       wrapper.style.transform = `translate3d(${next.x}px, ${next.y}px, 0)`;
     }, [align, alignOffset, isMounted, open, side, sideOffset, triggerRef]);
