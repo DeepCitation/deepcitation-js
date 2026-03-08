@@ -114,6 +114,7 @@ export {
   defaultMessages,
   defaultTranslator,
   tPlural,
+  useLocale,
   useTranslation,
 } from "./i18n.js";
 // Icons

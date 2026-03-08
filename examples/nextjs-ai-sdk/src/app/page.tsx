@@ -43,18 +43,6 @@ export default function Home() {
   const [provider, setProvider] = useState<ModelProvider>("gemini");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    streamProtocol: "text",
-    body: {
-      provider,
-      fileDataParts,
-      deepTextPromptPortions,
-    },
-    onError: error => {
-      console.error("[useChat] Error:", error);
-    },
-  });
-
   // Stable event handler for verification - doesn't need to be in deps
   const onVerifyMessage = useEffectEvent((messageId: string, messageContent: string) => {
     if (!messageContent || fileDataParts.length === 0) return;
@@ -98,30 +86,30 @@ export default function Home() {
       .finally(() => setIsVerifying(false));
   });
 
-  // Detect when streaming completes (isLoading: true → false) and trigger verification.
-  // Using a ref (not state) for prevIsLoading avoids an extra re-render, and calling
-  // onVerifyMessage directly in the effect (it's a useEffectEvent) eliminates the
-  // intermediate pendingVerify state that caused a setState cascade.
-  const prevIsLoadingRef = useRef(false);
-
-  useEffect(() => {
-    if (prevIsLoadingRef.current && !isLoading) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage?.role === "assistant" && !messageVerifications[lastMessage.id]) {
-        console.log("[effect] Stream finished, verifying...");
-        const messageContent =
-          lastMessage.content ||
-          lastMessage.parts
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+    streamProtocol: "text",
+    body: {
+      provider,
+      fileDataParts,
+      deepTextPromptPortions,
+    },
+    onFinish: message => {
+      if (message.role === "assistant") {
+        const content =
+          message.content ||
+          (message as Record<string, unknown> & { parts?: Array<{ type: string; text?: string }> }).parts
             ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
             .map(p => p.text)
             .join("") ||
           "";
         setIsVerifying(true);
-        onVerifyMessage(lastMessage.id, messageContent);
+        onVerifyMessage(message.id, content);
       }
-    }
-    prevIsLoadingRef.current = isLoading;
-  }, [isLoading, messages, messageVerifications]);
+    },
+    onError: err => {
+      console.error("[useChat] Error:", err);
+    },
+  });
 
   const [uploadError, setUploadError] = useState<string | null>(null);
 

@@ -15,6 +15,7 @@ import {
   DeepCitation,
   getAllCitationsFromLlmOutput,
   getCitationStatus,
+  getVerificationTextIndicator,
   sanitizeForLog,
   wrapCitationPrompt,
   type FileDataPart,
@@ -174,6 +175,15 @@ export async function POST(req: Request) {
           const citationCount = Object.keys(citations).length;
 
           if (citationCount > 0) {
+            const citationEntries = Object.entries(citations);
+            console.log(`[agui-chat] Parsed ${citationCount} citation(s) from LLM output`);
+            for (const [key, citation] of citationEntries) {
+              console.log(
+                `[agui-chat] Citation ${key}: anchor="${citation.anchorText ?? ""}" full="${citation.fullPhrase ?? ""}" ` +
+                  `pageId="${citation.startPageId ?? citation.pageId ?? ""}" lineIds="${citation.lineIds?.join(",") ?? ""}"`,
+              );
+            }
+
             const attachmentId = fileDataParts[0].attachmentId;
 
             const result = await dc.verifyAttachment(attachmentId, citations, {
@@ -192,6 +202,21 @@ export async function POST(req: Request) {
               if (status.isVerified) verified++;
               if (status.isMiss) missed++;
               if (status.isPending) pending++;
+            }
+
+            for (const [key, verification] of Object.entries(verifications)) {
+              const indicator = getVerificationTextIndicator(verification);
+              const status = getCitationStatus(verification);
+              console.log(
+                `[agui-chat] Verification ${key}: ${indicator} status="${verification.status ?? "unknown"}" ` +
+                  `verified=${status.isVerified} partial=${status.isPartialMatch} miss=${status.isMiss}`,
+              );
+            }
+
+            for (const [key] of citationEntries) {
+              if (!verifications[key]) {
+                console.log(`[agui-chat] Missing verification for citation key: ${key}`);
+              }
             }
 
             const summary = {

@@ -188,7 +188,6 @@ export const esOverrides = {
   "location.matchingLocations_other": "{count} ubicaciones coincidentes",
   "evidence.textNotFound": "Texto no encontrado en el documento",
   "evidence.similarTextFound": "Texto similar encontrado",
-  "evidence.scrollToZoom": "Desplazar para ampliar",
   "evidence.differentSection": "(sección diferente)",
   "evidence.andMore": "…y {count} más",
   "misc.noTextFound": "No se encontró texto",

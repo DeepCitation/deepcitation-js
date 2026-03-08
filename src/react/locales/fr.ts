@@ -189,7 +189,6 @@ export const frOverrides = {
   "location.matchingLocations_other": "{count} emplacements correspondants",
   "evidence.textNotFound": "Texte introuvable dans le document",
   "evidence.similarTextFound": "Texte similaire trouvé",
-  "evidence.scrollToZoom": "Défiler pour zoomer",
   "evidence.differentSection": "(section différente)",
   "evidence.andMore": "\u2026et {count} de plus",
   "misc.noTextFound": "Aucun texte trouvé",

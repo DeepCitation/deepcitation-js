@@ -28,7 +28,7 @@ describe("formatCaptureDate", () => {
 
   it("formats a Date object", () => {
     const date = new Date("2026-01-15T15:42:00Z");
-    const result = formatCaptureDate(date);
+    const result = formatCaptureDate(date, { locale: "en-US" });
     expect(result).not.toBeNull();
     expect(result?.display).toMatch(/Jan\s+15/);
     expect(result?.tooltip).toBe(date.toISOString());
@@ -37,14 +37,14 @@ describe("formatCaptureDate", () => {
   // === ISO string formatting ===
 
   it("formats an ISO string", () => {
-    const result = formatCaptureDate("2026-06-20T10:30:00Z");
+    const result = formatCaptureDate("2026-06-20T10:30:00Z", { locale: "en-US" });
     expect(result).not.toBeNull();
     expect(result?.display).toMatch(/Jun\s+20/);
     expect(result?.tooltip).toContain("2026-06-20");
   });
 
   it("handles ISO string without timezone", () => {
-    const result = formatCaptureDate("2026-01-15T15:42:00");
+    const result = formatCaptureDate("2026-01-15T15:42:00", { locale: "en-US" });
     expect(result).not.toBeNull();
     expect(result?.display).toMatch(/Jan\s+15/);
     expect(result?.tooltip).toContain("2026-01-15");
@@ -103,19 +103,19 @@ describe("formatCaptureDate", () => {
   });
 
   it("handles future dates", () => {
-    const result = formatCaptureDate("2030-12-15T12:00:00Z");
+    const result = formatCaptureDate("2030-12-15T12:00:00Z", { locale: "en-US" });
     expect(result).not.toBeNull();
     expect(result?.display).toMatch(/Dec\s+15.*2030/);
   });
 
   it("handles leap day", () => {
-    const result = formatCaptureDate("2024-02-29T12:00:00Z");
+    const result = formatCaptureDate("2024-02-29T12:00:00Z", { locale: "en-US" });
     expect(result).not.toBeNull();
     expect(result?.display).toMatch(/Feb\s+29/);
   });
 
   it("handles date-only string", () => {
-    const result = formatCaptureDate("2025-06-15");
+    const result = formatCaptureDate("2025-06-15", { locale: "en-US" });
     expect(result).not.toBeNull();
     expect(result?.display).toMatch(/Jun\s+15/);
   });

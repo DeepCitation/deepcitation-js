@@ -191,7 +191,6 @@ export const viOverrides = {
   "location.matchingLocations_other": "{count} vị trí khớp",
   "evidence.textNotFound": "Không tìm thấy văn bản trong tài liệu",
   "evidence.similarTextFound": "Tìm thấy văn bản tương tự",
-  "evidence.scrollToZoom": "Cuộn để phóng to",
   "evidence.differentSection": "(phần khác)",
   "evidence.andMore": "\u2026và {count} mục khác",
   "evidence.alreadyFullSize": "Đã ở kích thước đầy đủ",
